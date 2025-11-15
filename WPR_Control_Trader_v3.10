@@ -724,18 +724,27 @@ void UpdateOverrideRRLabel()
 {
     if(!InpUsePanelOverrides) return;
 
-    double sl = g_override_use_atr ? g_override_sl_atr : g_override_sl_pts;
-    double tp = g_override_use_atr ? g_override_tp_atr : g_override_tp_pts;
+    double sl = g_override_use_atr ? g_override_sl_atr : (double)g_override_sl_pts;
+    double tp = g_override_use_atr ? g_override_tp_atr : (double)g_override_tp_pts;
 
     string rr_text = "R:R Ratio: ";
-    if (sl > 0 && tp > 0)
+    if (sl > 0)
     {
-        double ratio = tp / sl;
-        rr_text += "1:" + DoubleToString(ratio, 2);
+        if (tp > 0)
+        {
+            double ratio = tp / sl;
+            rr_text += "1:" + DoubleToString(ratio, 2);
+            Print("Calculating R:R. SL: ", sl, ", TP: ", tp, ". Ratio: 1:", DoubleToString(ratio, 2));
+        }
+        else
+        {
+            rr_text += "No TP";
+        }
     }
     else
     {
-        rr_text += "N/A";
+        rr_text += "Invalid SL";
+        Print("Calculating R:R. SL is zero or negative, cannot calculate ratio.");
     }
     ObjectSetString(0, override_rr_label_name, OBJPROP_TEXT, rr_text);
 }
@@ -1288,18 +1297,27 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
        if(sparam == override_margin_edit_name)
        {
            double val = StringToDouble(ObjectGetString(0, sparam, OBJPROP_TEXT));
-           if(val > 0) g_override_margin_percent = val;
-           else ObjectSetString(0, sparam, OBJPROP_TEXT, DoubleToString(g_override_margin_percent, 1)); // Visszaállítás
+           if(val > 0) {
+               g_override_margin_percent = val;
+               Print("Override Margin % changed to: ", g_override_margin_percent);
+           }
+           else ObjectSetString(0, sparam, OBJPROP_TEXT, DoubleToString(g_override_margin_percent, 1));
        }
        else if(sparam == override_sl_edit_name)
        {
            if(g_override_use_atr) {
                double val = StringToDouble(ObjectGetString(0, sparam, OBJPROP_TEXT));
-               if(val > 0) g_override_sl_atr = val;
+               if(val > 0) {
+                   g_override_sl_atr = val;
+                   Print("Override SL (ATR) changed to: ", g_override_sl_atr);
+               }
                else ObjectSetString(0, sparam, OBJPROP_TEXT, DoubleToString(g_override_sl_atr, 1));
            } else {
                int val = (int)StringToInteger(ObjectGetString(0, sparam, OBJPROP_TEXT));
-               if(val > 0) g_override_sl_pts = val;
+               if(val > 0) {
+                   g_override_sl_pts = val;
+                   Print("Override SL (Points) changed to: ", g_override_sl_pts);
+               }
                else ObjectSetString(0, sparam, OBJPROP_TEXT, IntegerToString(g_override_sl_pts));
            }
        }
@@ -1307,11 +1325,17 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
        {
            if(g_override_use_atr) {
                double val = StringToDouble(ObjectGetString(0, sparam, OBJPROP_TEXT));
-               if(val >= 0) g_override_tp_atr = val;
+               if(val >= 0) {
+                   g_override_tp_atr = val;
+                   Print("Override TP (ATR) changed to: ", g_override_tp_atr);
+               }
                else ObjectSetString(0, sparam, OBJPROP_TEXT, DoubleToString(g_override_tp_atr, 1));
            } else {
                int val = (int)StringToInteger(ObjectGetString(0, sparam, OBJPROP_TEXT));
-               if(val >= 0) g_override_tp_pts = val;
+               if(val >= 0) {
+                   g_override_tp_pts = val;
+                   Print("Override TP (Points) changed to: ", g_override_tp_pts);
+               }
                else ObjectSetString(0, sparam, OBJPROP_TEXT, IntegerToString(g_override_tp_pts));
            }
        }
@@ -1324,21 +1348,31 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
    {
        if(sparam == override_mode_button_atr_name && !g_override_use_atr)
        {
+           Print("Override mode changed to: ATR");
            g_override_use_atr = true;
            ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_STATE, true);
            ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_STATE, false);
-           ObjectSetString(0, override_sl_edit_name, OBJPROP_TEXT, DoubleToString(g_override_sl_atr, 1));
-           ObjectSetString(0, override_tp_edit_name, OBJPROP_TEXT, DoubleToString(g_override_tp_atr, 1));
+           string sl_val = DoubleToString(g_override_sl_atr, 1);
+           string tp_val = DoubleToString(g_override_tp_atr, 1);
+           ObjectSetString(0, override_sl_edit_name, OBJPROP_TEXT, sl_val);
+           ObjectSetString(0, override_tp_edit_name, OBJPROP_TEXT, tp_val);
+           Print("Setting SL Editbox to: ", sl_val);
+           Print("Setting TP Editbox to: ", tp_val);
            UpdateOverrideRRLabel();
            ChartRedraw();
        }
        else if(sparam == override_mode_button_pts_name && g_override_use_atr)
        {
+           Print("Override mode changed to: Points");
            g_override_use_atr = false;
            ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_STATE, false);
            ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_STATE, true);
-           ObjectSetString(0, override_sl_edit_name, OBJPROP_TEXT, IntegerToString(g_override_sl_pts));
-           ObjectSetString(0, override_tp_edit_name, OBJPROP_TEXT, IntegerToString(g_override_tp_pts));
+           string sl_val = IntegerToString(g_override_sl_pts);
+           string tp_val = IntegerToString(g_override_tp_pts);
+           ObjectSetString(0, override_sl_edit_name, OBJPROP_TEXT, sl_val);
+           ObjectSetString(0, override_tp_edit_name, OBJPROP_TEXT, tp_val);
+           Print("Setting SL Editbox to: ", sl_val);
+           Print("Setting TP Editbox to: ", tp_val);
            UpdateOverrideRRLabel();
            ChartRedraw();
        }
