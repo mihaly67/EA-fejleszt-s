@@ -101,6 +101,8 @@ int             adaptive_atr_handle = INVALID_HANDLE;
 int             g_current_wpr_period = 0; // Dinamikusan kalkulált WPR periódus
 int             g_rsi_handle = INVALID_HANDLE;
 int             g_bb_handle = INVALID_HANDLE;
+int             g_ema_m15_handle = INVALID_HANDLE;
+int             g_ema_m30_handle = INVALID_HANDLE;
 int             g_ema_h1_handle = INVALID_HANDLE;
 int             g_ema_h4_handle = INVALID_HANDLE;
 int             g_ema_current_handle = INVALID_HANDLE;
@@ -289,6 +291,7 @@ void CreatePanelAndControls()
    ObjectSetInteger(0, sell_button_name, OBJPROP_COLOR, clrWhite);
    ObjectSetInteger(0, sell_button_name, OBJPROP_BGCOLOR, 0xDC143C);
    ObjectSetInteger(0, sell_button_name, OBJPROP_BORDER_COLOR, clrBlack);
+   ObjectSetInteger(0, sell_button_name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
    ObjectSetInteger(0, sell_button_name, OBJPROP_ZORDER, 1);
    ObjectSetInteger(0, sell_button_name, OBJPROP_SELECTABLE, true);
    ObjectSetInteger(0, sell_button_name, OBJPROP_STATE, false);
@@ -304,6 +307,7 @@ void CreatePanelAndControls()
    ObjectSetInteger(0, buy_button_name, OBJPROP_COLOR, clrWhite);
    ObjectSetInteger(0, buy_button_name, OBJPROP_BGCOLOR, 0x228B22);
    ObjectSetInteger(0, buy_button_name, OBJPROP_BORDER_COLOR, clrBlack);
+   ObjectSetInteger(0, buy_button_name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
    ObjectSetInteger(0, buy_button_name, OBJPROP_ZORDER, 1);
    ObjectSetInteger(0, buy_button_name, OBJPROP_SELECTABLE, true);
    ObjectSetInteger(0, buy_button_name, OBJPROP_STATE, false);
@@ -319,6 +323,7 @@ void CreatePanelAndControls()
    ObjectSetInteger(0, close_button_name, OBJPROP_COLOR, clrWhite);
    ObjectSetInteger(0, close_button_name, OBJPROP_BGCOLOR, clrSlateGray);
    ObjectSetInteger(0, close_button_name, OBJPROP_BORDER_COLOR, clrBlack);
+   ObjectSetInteger(0, close_button_name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
    ObjectSetInteger(0, close_button_name, OBJPROP_ZORDER, 1);
    ObjectSetInteger(0, close_button_name, OBJPROP_SELECTABLE, true);
    ObjectSetInteger(0, close_button_name, OBJPROP_STATE, false);
@@ -425,6 +430,7 @@ void CreatePanelAndControls()
        ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_XSIZE, 80);
        ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_YSIZE, 25);
        ObjectSetString(0, override_mode_button_atr_name, OBJPROP_TEXT, "ATR Mode");
+       ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
        ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_STATE, InpUseATRManagement);
        ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_ZORDER, 2);
 
@@ -435,6 +441,7 @@ void CreatePanelAndControls()
        ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_XSIZE, 80);
        ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_YSIZE, 25);
        ObjectSetString(0, override_mode_button_pts_name, OBJPROP_TEXT, "Points Mode");
+       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
        ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_STATE, !InpUseATRManagement);
        ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_ZORDER, 2);
 
@@ -550,6 +557,17 @@ void UpdatePanelStatus()
    ObjectSetString(0, balance_label_name, OBJPROP_TEXT, balance_text);
   }
 //+------------------------------------------------------------------+
+string TimeframeToString(ENUM_TIMEFRAMES period)
+{
+    string str = PeriodToString(period);
+    // Ha a PeriodToString csak számot ad vissza (pl. _Period esetén), adjunk hozzá egy 'M'-et
+    if(StringFind(str, "M") < 0 && StringFind(str, "H") < 0 && StringFind(str, "D") < 0 && StringFind(str, "W") < 0 && StringFind(str, "N") < 0)
+    {
+        str = "M" + str;
+    }
+    return str;
+}
+//+------------------------------------------------------------------+
 string GetTrendDirection(ENUM_TIMEFRAMES timeframe)
 {
     double ema_buffer[2];
@@ -558,6 +576,8 @@ string GetTrendDirection(ENUM_TIMEFRAMES timeframe)
     switch(timeframe)
     {
         case PERIOD_CURRENT: handle_to_use = g_ema_current_handle; break;
+        case PERIOD_M15:     handle_to_use = g_ema_m15_handle; break;
+        case PERIOD_M30:     handle_to_use = g_ema_m30_handle; break;
         case PERIOD_H1:      handle_to_use = g_ema_h1_handle; break;
         case PERIOD_H4:      handle_to_use = g_ema_h4_handle; break;
         default:             handle_to_use = g_ema_current_handle; break;
@@ -589,8 +609,10 @@ void UpdatePanelInfoLabels()
     ObjectSetString(0, market_info_label_name, OBJPROP_TEXT, market_text);
 
     // MTF Trend
-    string mtf_text = StringFormat("Trend | M%d: %s H1: %s H4: %s",
-                                   (int)_Period, GetTrendDirection(_Period),
+    string mtf_text = StringFormat("Trend | %s: %s M15: %s M30: %s H1: %s H4: %s",
+                                   TimeframeToString(_Period), GetTrendDirection(_Period),
+                                   GetTrendDirection(PERIOD_M15),
+                                   GetTrendDirection(PERIOD_M30),
                                    GetTrendDirection(PERIOD_H1),
                                    GetTrendDirection(PERIOD_H4));
     ObjectSetString(0, multi_tf_trend_label_name, OBJPROP_TEXT, mtf_text);
@@ -617,41 +639,70 @@ void UpdatePanelInfoLabels()
 int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
 {
     int score = 0;
+    int max_score = 0;
 
     // 1. Alap WPR jelzés (1 pont)
     score += 1;
+    max_score += 1;
 
-    // 2. Trend-egyezés (max 4 pont)
+    // 2. Trend-egyezés (max 6 pont)
+    max_score += 6;
+    string trend_m15 = GetTrendDirection(PERIOD_M15);
+    string trend_m30 = GetTrendDirection(PERIOD_M30);
     string trend_h1 = GetTrendDirection(PERIOD_H1);
     string trend_h4 = GetTrendDirection(PERIOD_H4);
+
+    if(trend_m15 == "?") { max_score -= 1; Print("Signal Strength: M15 trend data not available."); }
+    if(trend_m30 == "?") { max_score -= 1; Print("Signal Strength: M30 trend data not available."); }
+    if(trend_h1 == "?")  { max_score -= 2; Print("Signal Strength: H1 trend data not available."); }
+    if(trend_h4 == "?")  { max_score -= 2; Print("Signal Strength: H4 trend data not available."); }
+
     if (signal_type == ORDER_TYPE_BUY)
     {
+        if (trend_m15 == "↑") score += 1;
+        if (trend_m30 == "↑") score += 1;
         if (trend_h1 == "↑") score += 2;
         if (trend_h4 == "↑") score += 2;
     }
     else // SELL
     {
+        if (trend_m15 == "↓") score += 1;
+        if (trend_m30 == "↓") score += 1;
         if (trend_h1 == "↓") score += 2;
         if (trend_h4 == "↓") score += 2;
     }
 
     // 3. Momentum (RSI) (max 3 pont)
+    max_score += 3;
     double rsi_buffer[2];
     if (g_rsi_handle != INVALID_HANDLE && CopyBuffer(g_rsi_handle, 0, 0, 2, rsi_buffer) >= 2)
     {
         if (signal_type == ORDER_TYPE_BUY && rsi_buffer[1] < 30 && rsi_buffer[0] >= 30) score += 3;
         if (signal_type == ORDER_TYPE_SELL && rsi_buffer[1] > 70 && rsi_buffer[0] <= 70) score += 3;
     }
+    else
+    {
+        max_score -= 3;
+        Print("Signal Strength: RSI data not available.");
+    }
 
     // 4. Volatilitás (Bollinger Bands) (max 2 pont)
+    max_score += 2;
     double bb_upper[1], bb_lower[1];
     if (g_bb_handle != INVALID_HANDLE && CopyBuffer(g_bb_handle, 1, 0, 1, bb_upper) >= 1 && CopyBuffer(g_bb_handle, 2, 0, 1, bb_lower) >= 1)
     {
         if (signal_type == ORDER_TYPE_BUY && symbol_info.Bid() > bb_upper[0]) score += 2;
         if (signal_type == ORDER_TYPE_SELL && symbol_info.Ask() < bb_lower[0]) score += 2;
     }
+    else
+    {
+        max_score -= 2;
+        Print("Signal Strength: Bollinger Bands data not available.");
+    }
 
-    return MathMin(10, score); // A pontszámot 10-ben maximalizáljuk
+    // Arányosítás a 10-es skálára
+    if (max_score <= 0) return 0;
+    return (int)MathRound((double)score / max_score * 10.0);
 }
 //+------------------------------------------------------------------+
 //| KERESKEDÉSI LOGIKA (Változatlan)                                 |
@@ -1087,6 +1138,12 @@ int OnInit()
    g_ema_current_handle = iMA(_Symbol, _Period, 50, 0, MODE_EMA, PRICE_CLOSE);
    if(g_ema_current_handle == INVALID_HANDLE) { Print("Error creating Current TF EMA handle"); return(INIT_FAILED); }
 
+   g_ema_m15_handle = iMA(_Symbol, PERIOD_M15, 50, 0, MODE_EMA, PRICE_CLOSE);
+   if(g_ema_m15_handle == INVALID_HANDLE) { Print("Error creating M15 EMA handle"); return(INIT_FAILED); }
+
+   g_ema_m30_handle = iMA(_Symbol, PERIOD_M30, 50, 0, MODE_EMA, PRICE_CLOSE);
+   if(g_ema_m30_handle == INVALID_HANDLE) { Print("Error creating M30 EMA handle"); return(INIT_FAILED); }
+
    g_ema_h1_handle = iMA(_Symbol, PERIOD_H1, 50, 0, MODE_EMA, PRICE_CLOSE);
    if(g_ema_h1_handle == INVALID_HANDLE) { Print("Error creating H1 EMA handle"); return(INIT_FAILED); }
 
@@ -1143,6 +1200,8 @@ void OnDeinit(const int reason)
    if(g_rsi_handle != INVALID_HANDLE) IndicatorRelease(g_rsi_handle);
    if(g_bb_handle != INVALID_HANDLE) IndicatorRelease(g_bb_handle);
    if(g_ema_current_handle != INVALID_HANDLE) IndicatorRelease(g_ema_current_handle);
+   if(g_ema_m15_handle != INVALID_HANDLE) IndicatorRelease(g_ema_m15_handle);
+   if(g_ema_m30_handle != INVALID_HANDLE) IndicatorRelease(g_ema_m30_handle);
    if(g_ema_h1_handle != INVALID_HANDLE) IndicatorRelease(g_ema_h1_handle);
    if(g_ema_h4_handle != INVALID_HANDLE) IndicatorRelease(g_ema_h4_handle);
    if(g_wpr_smooth_handle != INVALID_HANDLE && g_wpr_smooth_handle != wpr_handle)
