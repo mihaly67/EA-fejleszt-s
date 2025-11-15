@@ -41,18 +41,27 @@ input ENUM_TRADE_MODE InpTradeMode            = MODE_SEMI_AUTOMATIC;
 input ENUM_EXIT_LOGIC InpExitLogic            = MODE_POINT_BASED;
 input int           InpUjraProbaIdotullepesSec= 10;
 input group "Panel Settings"
+input bool          InpUsePanelOverrides      = true;
 input int           InpPanelInitialX          = 10;
 input int           InpPanelInitialY          = 80;
-input int           InpPanelWidth             = 450;
-input int           InpPanelHeight            = 165;
+input int           InpPanelWidth             = 700;
+input int           InpPanelHeight            = 280;
 input group "Point Input Scaling"
 input double        InpInputPointScaler       = 1.0;
 input group "Entry Signal & Filters (WPR)"
-input int           InpWPRPeriod              = 7;
+input bool          InpUseAdaptiveWPR         = true;
+input int           InpWprBasePeriod          = 14;
+input int           InpAdaptiveAtrPeriod      = 21;
+input double        InpAdaptiveSensitivity    = 1.5;
+input int           InpWprPeriodMin           = 5;
+input int           InpWprPeriodMax           = 100;
 input ENUM_SMOOTH_METHOD InpWprSmoothingMethod = SMOOTH_DEMA;
 input int            InpWprSmoothingPeriod    = 3;
 input double        InpWPRLevelUp             = -20.0;
 input double        InpWPRLevelDown           = -80.0;
+input group "Signal Strength Filter"
+input bool          InpUseSignalStrengthFilter= true;
+input int           InpMinSignalStrength      = 5;      // Minimum score (1-10) for auto trade
 input int           InpConfirmationPoints     = 0;
 input bool          InpUseEmaFilter           = false;
 input int           InpEmaPeriod              = 200;
@@ -88,6 +97,13 @@ int             wpr_handle = INVALID_HANDLE;
 int             ema_handle = INVALID_HANDLE;
 int             atr_handle = INVALID_HANDLE;
 int             g_wpr_smooth_handle = INVALID_HANDLE;
+int             adaptive_atr_handle = INVALID_HANDLE;
+int             g_current_wpr_period = 0; // Dinamikusan kalkulált WPR periódus
+int             g_rsi_handle = INVALID_HANDLE;
+int             g_bb_handle = INVALID_HANDLE;
+int             g_ema_h1_handle = INVALID_HANDLE;
+int             g_ema_h4_handle = INVALID_HANDLE;
+int             g_ema_current_handle = INVALID_HANDLE;
 int             g_digits = 0;
 double          g_point = 0.0;
 long            g_stops_level = 0;
@@ -103,6 +119,10 @@ string          buy_button_name  = "WPR_Manual_Buy_Button";
 string          close_button_name= "WPR_Manual_Close_Button";
 string          balance_label_name = "WPR_Panel_Balance";
 string          pl_label_name    = "WPR_Panel_PL";
+string          broker_info_label_name = "WPR_Panel_Broker_Info";
+string          market_info_label_name = "WPR_Panel_Market_Info";
+string          multi_tf_trend_label_name = "WPR_Panel_MTF_Trend";
+string          signal_strength_label_name = "WPR_Panel_Signal_Strength";
 bool            is_panel_dragging= false;
 int             panel_drag_offset_x = 0;
 int             panel_drag_offset_y = 0;
@@ -111,12 +131,35 @@ bool            g_belepes_fuggoben = false;
 ENUM_ORDER_TYPE g_fuggoben_irany;
 datetime        g_fuggoben_idotullepes;
 datetime        g_utolso_proba_ido;
+int             g_last_signal_strength = 0;
 
 //--- Globális indikátornevek a tiszta törléshez ---
 string          g_wpr_shortname = "";
 string          g_smooth_wpr_shortname = "";
 string          g_ema_filter_shortname = ""; // VÁLTOZÁS: Hozzáadva
 //-----------------------------------------------------
+
+//--- Panel Override Globális Változók ---
+bool            g_override_active = false;
+double          g_override_margin_percent = 0;
+bool            g_override_use_atr = true;
+double          g_override_sl_atr = 0;
+double          g_override_tp_atr = 0;
+int             g_override_sl_pts = 0;
+int             g_override_tp_pts = 0;
+
+//--- Panel Override Objektumnevek ---
+string          override_title_name = "WPR_Override_Title";
+string          override_margin_label_name = "WPR_Override_Margin_Label";
+string          override_margin_edit_name = "WPR_Override_Margin_Edit";
+string          override_mode_button_atr_name = "WPR_Override_Mode_ATR";
+string          override_mode_button_pts_name = "WPR_Override_Mode_PTS";
+string          override_sl_label_name = "WPR_Override_SL_Label";
+string          override_sl_edit_name = "WPR_Override_SL_Edit";
+string          override_tp_label_name = "WPR_Override_TP_Label";
+string          override_tp_edit_name = "WPR_Override_TP_Edit";
+string          override_rr_label_name = "WPR_Override_RR_Label";
+
 
 //+------------------------------------------------------------------+
 //| SEGÉDFÜGGVÉNYEK (Változatlan)                                    |
@@ -142,12 +185,56 @@ double GetCurrentATRValue()
    if (atr_buffer[0] <= 0) { Print("Figyelmeztetés: Az ATR érték nulla vagy negatív (", atr_buffer[0], "). Visszatérés 100 ponttal."); return g_point * 100; }
    return atr_buffer[0];
   }
+//+------------------------------------------------------------------+
+//| ADAPTÍV LOGIKA                                                   |
+//+------------------------------------------------------------------+
+void UpdateAdaptiveWPRPeriod()
+{
+    if (!InpUseAdaptiveWPR || adaptive_atr_handle == INVALID_HANDLE)
+    {
+        g_current_wpr_period = InpWprBasePeriod;
+        return;
+    }
+
+    // Volatilitás mérése az ATR segítségével
+    double atr_buffer[100]; // Elég nagy buffer a hosszútávú átlaghoz
+    if (CopyBuffer(adaptive_atr_handle, 0, 0, 100, atr_buffer) < 100)
+    {
+        Print("Hiba az adaptív ATR buffer másolásakor! Visszaállás az alap periódusra.");
+        g_current_wpr_period = InpWprBasePeriod;
+        return;
+    }
+
+    // Egyszerűsített volatilitási arány számítás: utolsó 5 gyertya átlaga a 100-as átlaghoz képest
+    double short_term_avg_atr = 0;
+    for (int i = 0; i < 5; i++) short_term_avg_atr += atr_buffer[i];
+    short_term_avg_atr /= 5;
+
+    double long_term_avg_atr = 0;
+    for (int i = 0; i < 100; i++) long_term_avg_atr += atr_buffer[i];
+    long_term_avg_atr /= 100;
+
+    if (long_term_avg_atr <= 0) {
+        g_current_wpr_period = InpWprBasePeriod;
+        return;
+    }
+
+    double volatility_ratio = short_term_avg_atr / long_term_avg_atr;
+
+    // A WPR periódus beállítása a volatilitási arány alapján
+    int new_period = (int)MathRound(InpWprBasePeriod * (1.0 + (volatility_ratio - 1.0) * InpAdaptiveSensitivity));
+
+    // A periódus korlátozása a megadott min/max értékek között
+    g_current_wpr_period = MathMax(InpWprPeriodMin, MathMin(InpWprPeriodMax, new_period));
+}
+
 
 //+------------------------------------------------------------------+
-//| PANEL ÉS GOMB FUNKCIÓK (Változatlan, kivéve verziószám)          |
+//| PANEL ÉS GOMB FUNKCIóK (Refaktorált)                             |
 //+------------------------------------------------------------------+
-void CreatePanel()
+void CreatePanelAndControls()
   {
+   // --- Alap Panel ---
    ObjectCreate(0, panel_bg_name, OBJ_RECTANGLE_LABEL, 0, 0, 0);
    ObjectSetInteger(0, panel_bg_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
    ObjectSetInteger(0, panel_bg_name, OBJPROP_XDISTANCE, InpPanelInitialX);
@@ -160,16 +247,18 @@ void CreatePanel()
    ObjectSetInteger(0, panel_bg_name, OBJPROP_BACK, false);
    ObjectSetInteger(0, panel_bg_name, OBJPROP_ZORDER, 0);
 
+   // --- Címke ---
    ObjectCreate(0, panel_title_name, OBJ_LABEL, 0, 0, 0);
    ObjectSetInteger(0, panel_title_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
    ObjectSetInteger(0, panel_title_name, OBJPROP_XDISTANCE, InpPanelInitialX + 10);
    ObjectSetInteger(0, panel_title_name, OBJPROP_YDISTANCE, InpPanelInitialY + 10);
-   ObjectSetString(0, panel_title_name, OBJPROP_TEXT, "WPR Control Trader v3.10"); // VÁLTOZÁS: Verzió
+   ObjectSetString(0, panel_title_name, OBJPROP_TEXT, "WPR Control Trader v3.10");
    ObjectSetInteger(0, panel_title_name, OBJPROP_COLOR, clrWhite);
    ObjectSetInteger(0, panel_title_name, OBJPROP_FONTSIZE, 12);
    ObjectSetInteger(0, panel_title_name, OBJPROP_SELECTABLE, false);
    ObjectSetInteger(0, panel_title_name, OBJPROP_ZORDER, 1);
 
+   // --- Státusz Címke ---
    ObjectCreate(0, panel_status_name, OBJ_LABEL, 0, 0, 0);
    ObjectSetInteger(0, panel_status_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
    ObjectSetInteger(0, panel_status_name, OBJPROP_XDISTANCE, InpPanelInitialX + 10);
@@ -180,31 +269,9 @@ void CreatePanel()
    ObjectSetInteger(0, panel_status_name, OBJPROP_SELECTABLE, false);
    ObjectSetInteger(0, panel_status_name, OBJPROP_ZORDER, 1);
 
-   ObjectCreate(0, balance_label_name, OBJ_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, balance_label_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSetInteger(0, balance_label_name, OBJPROP_XDISTANCE, InpPanelInitialX + 10);
-   ObjectSetInteger(0, balance_label_name, OBJPROP_YDISTANCE, InpPanelInitialY + 120);
-   ObjectSetString(0, balance_label_name, OBJPROP_TEXT, "Balance: ...");
-   ObjectSetInteger(0, balance_label_name, OBJPROP_COLOR, clrWhite);
-   ObjectSetInteger(0, balance_label_name, OBJPROP_FONTSIZE, 10);
-   ObjectSetInteger(0, balance_label_name, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, balance_label_name, OBJPROP_ZORDER, 1);
-
-   ObjectCreate(0, pl_label_name, OBJ_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, pl_label_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSetInteger(0, pl_label_name, OBJPROP_XDISTANCE, InpPanelInitialX + 10);
-   ObjectSetInteger(0, pl_label_name, OBJPROP_YDISTANCE, InpPanelInitialY + 140);
-   ObjectSetString(0, pl_label_name, OBJPROP_TEXT, "P/L: N/A");
-   ObjectSetInteger(0, pl_label_name, OBJPROP_COLOR, clrWhite);
-   ObjectSetInteger(0, pl_label_name, OBJPROP_FONTSIZE, 10);
-   ObjectSetInteger(0, pl_label_name, OBJPROP_SELECTABLE, false);
-   ObjectSetInteger(0, pl_label_name, OBJPROP_ZORDER, 1);
-  }
-//+------------------------------------------------------------------+
-void CreateButtons()
-  {
-   int panel_x = (int)ObjectGetInteger(0, panel_bg_name, OBJPROP_XDISTANCE);
-   int panel_y = (int)ObjectGetInteger(0, panel_bg_name, OBJPROP_YDISTANCE);
+   // --- Gombok ---
+   int panel_x = InpPanelInitialX;
+   int panel_y = InpPanelInitialY;
    int button_y_pos = panel_y + 70;
    int button_width = 130;
    int button_height = 40;
@@ -255,6 +322,169 @@ void CreateButtons()
    ObjectSetInteger(0, close_button_name, OBJPROP_ZORDER, 1);
    ObjectSetInteger(0, close_button_name, OBJPROP_SELECTABLE, true);
    ObjectSetInteger(0, close_button_name, OBJPROP_STATE, false);
+
+   // --- Számla Információk ---
+   ObjectCreate(0, balance_label_name, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, balance_label_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, balance_label_name, OBJPROP_XDISTANCE, InpPanelInitialX + 10);
+   ObjectSetInteger(0, balance_label_name, OBJPROP_YDISTANCE, InpPanelInitialY + 120);
+   ObjectSetString(0, balance_label_name, OBJPROP_TEXT, "Balance: ...");
+   ObjectSetInteger(0, balance_label_name, OBJPROP_COLOR, clrWhite);
+   ObjectSetInteger(0, balance_label_name, OBJPROP_FONTSIZE, 10);
+   ObjectSetInteger(0, balance_label_name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, balance_label_name, OBJPROP_ZORDER, 1);
+
+   ObjectCreate(0, pl_label_name, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, pl_label_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, pl_label_name, OBJPROP_XDISTANCE, InpPanelInitialX + 10);
+   ObjectSetInteger(0, pl_label_name, OBJPROP_YDISTANCE, InpPanelInitialY + 140);
+   ObjectSetString(0, pl_label_name, OBJPROP_TEXT, "P/L: N/A");
+   ObjectSetInteger(0, pl_label_name, OBJPROP_COLOR, clrWhite);
+   ObjectSetInteger(0, pl_label_name, OBJPROP_FONTSIZE, 10);
+   ObjectSetInteger(0, pl_label_name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, pl_label_name, OBJPROP_ZORDER, 1);
+
+   // --- Info Szekció ---
+   int info_y_start = InpPanelInitialY + 165;
+   ObjectCreate(0, broker_info_label_name, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, broker_info_label_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, broker_info_label_name, OBJPROP_XDISTANCE, InpPanelInitialX + 10);
+   ObjectSetInteger(0, broker_info_label_name, OBJPROP_YDISTANCE, info_y_start);
+   ObjectSetString(0, broker_info_label_name, OBJPROP_TEXT, "Broker: ...");
+   ObjectSetInteger(0, broker_info_label_name, OBJPROP_COLOR, clrWhite);
+   ObjectSetInteger(0, broker_info_label_name, OBJPROP_FONTSIZE, 10);
+   ObjectSetInteger(0, broker_info_label_name, OBJPROP_ZORDER, 1);
+
+   ObjectCreate(0, market_info_label_name, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, market_info_label_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, market_info_label_name, OBJPROP_XDISTANCE, InpPanelInitialX + 10);
+   ObjectSetInteger(0, market_info_label_name, OBJPROP_YDISTANCE, info_y_start + 20);
+   ObjectSetString(0, market_info_label_name, OBJPROP_TEXT, "Market: ...");
+   ObjectSetInteger(0, market_info_label_name, OBJPROP_COLOR, clrWhite);
+   ObjectSetInteger(0, market_info_label_name, OBJPROP_FONTSIZE, 10);
+   ObjectSetInteger(0, market_info_label_name, OBJPROP_ZORDER, 1);
+
+   ObjectCreate(0, multi_tf_trend_label_name, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, multi_tf_trend_label_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, multi_tf_trend_label_name, OBJPROP_XDISTANCE, InpPanelInitialX + 10);
+   ObjectSetInteger(0, multi_tf_trend_label_name, OBJPROP_YDISTANCE, info_y_start + 40);
+   ObjectSetString(0, multi_tf_trend_label_name, OBJPROP_TEXT, "MTF Trend: ...");
+   ObjectSetInteger(0, multi_tf_trend_label_name, OBJPROP_COLOR, clrWhite);
+   ObjectSetInteger(0, multi_tf_trend_label_name, OBJPROP_FONTSIZE, 10);
+   ObjectSetInteger(0, multi_tf_trend_label_name, OBJPROP_ZORDER, 1);
+
+   ObjectCreate(0, signal_strength_label_name, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, signal_strength_label_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, signal_strength_label_name, OBJPROP_XDISTANCE, InpPanelInitialX + 10);
+   ObjectSetInteger(0, signal_strength_label_name, OBJPROP_YDISTANCE, info_y_start + 60);
+   ObjectSetString(0, signal_strength_label_name, OBJPROP_TEXT, "Signal Strength: ...");
+   ObjectSetInteger(0, signal_strength_label_name, OBJPROP_COLOR, clrWhite);
+   ObjectSetInteger(0, signal_strength_label_name, OBJPROP_FONTSIZE, 10);
+   ObjectSetInteger(0, signal_strength_label_name, OBJPROP_ZORDER, 1);
+
+   // --- Position Management Override Szekció ---
+   if(InpUsePanelOverrides)
+   {
+       int override_x_start = InpPanelInitialX + 430;
+       int override_y_start = InpPanelInitialY + 10;
+
+       ObjectCreate(0, override_title_name, OBJ_LABEL, 0, 0, 0);
+       ObjectSetInteger(0, override_title_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+       ObjectSetInteger(0, override_title_name, OBJPROP_XDISTANCE, override_x_start);
+       ObjectSetInteger(0, override_title_name, OBJPROP_YDISTANCE, override_y_start);
+       ObjectSetString(0, override_title_name, OBJPROP_TEXT, "--- Next Trade Overrides ---");
+       ObjectSetInteger(0, override_title_name, OBJPROP_COLOR, clrWhite);
+       ObjectSetInteger(0, override_title_name, OBJPROP_FONTSIZE, 10);
+       ObjectSetInteger(0, override_title_name, OBJPROP_ZORDER, 1);
+
+       // Margin
+       ObjectCreate(0, override_margin_label_name, OBJ_LABEL, 0, 0, 0);
+       ObjectSetInteger(0, override_margin_label_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+       ObjectSetInteger(0, override_margin_label_name, OBJPROP_XDISTANCE, override_x_start);
+       ObjectSetInteger(0, override_margin_label_name, OBJPROP_YDISTANCE, override_y_start + 30);
+       ObjectSetString(0, override_margin_label_name, OBJPROP_TEXT, "Max Margin %:");
+       ObjectSetInteger(0, override_margin_label_name, OBJPROP_COLOR, clrWhite);
+       ObjectSetInteger(0, override_margin_label_name, OBJPROP_FONTSIZE, 10);
+       ObjectSetInteger(0, override_margin_label_name, OBJPROP_ZORDER, 1);
+
+       ObjectCreate(0, override_margin_edit_name, OBJ_EDIT, 0, 0, 0);
+       ObjectSetInteger(0, override_margin_edit_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+       ObjectSetInteger(0, override_margin_edit_name, OBJPROP_XDISTANCE, override_x_start + 100);
+       ObjectSetInteger(0, override_margin_edit_name, OBJPROP_YDISTANCE, override_y_start + 25);
+       ObjectSetInteger(0, override_margin_edit_name, OBJPROP_XSIZE, 50);
+       ObjectSetInteger(0, override_margin_edit_name, OBJPROP_YSIZE, 20);
+       ObjectSetString(0, override_margin_edit_name, OBJPROP_TEXT, DoubleToString(InpMaxMarginPercent, 1));
+       ObjectSetInteger(0, override_margin_edit_name, OBJPROP_ZORDER, 2);
+
+
+       // Mode Buttons
+       ObjectCreate(0, override_mode_button_atr_name, OBJ_BUTTON, 0, 0, 0);
+       ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+       ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_XDISTANCE, override_x_start);
+       ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_YDISTANCE, override_y_start + 60);
+       ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_XSIZE, 80);
+       ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_YSIZE, 25);
+       ObjectSetString(0, override_mode_button_atr_name, OBJPROP_TEXT, "ATR Mode");
+       ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_STATE, InpUseATRManagement);
+       ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_ZORDER, 2);
+
+       ObjectCreate(0, override_mode_button_pts_name, OBJ_BUTTON, 0, 0, 0);
+       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_XDISTANCE, override_x_start + 90);
+       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_YDISTANCE, override_y_start + 60);
+       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_XSIZE, 80);
+       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_YSIZE, 25);
+       ObjectSetString(0, override_mode_button_pts_name, OBJPROP_TEXT, "Points Mode");
+       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_STATE, !InpUseATRManagement);
+       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_ZORDER, 2);
+
+       // SL/TP Edits
+       ObjectCreate(0, override_sl_label_name, OBJ_LABEL, 0, 0, 0);
+       ObjectSetInteger(0, override_sl_label_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+       ObjectSetInteger(0, override_sl_label_name, OBJPROP_XDISTANCE, override_x_start);
+       ObjectSetInteger(0, override_sl_label_name, OBJPROP_YDISTANCE, override_y_start + 100);
+       ObjectSetString(0, override_sl_label_name, OBJPROP_TEXT, "Stop Loss:");
+       ObjectSetInteger(0, override_sl_label_name, OBJPROP_COLOR, clrWhite);
+       ObjectSetInteger(0, override_sl_label_name, OBJPROP_FONTSIZE, 10);
+       ObjectSetInteger(0, override_sl_label_name, OBJPROP_ZORDER, 1);
+
+       ObjectCreate(0, override_sl_edit_name, OBJ_EDIT, 0, 0, 0);
+       ObjectSetInteger(0, override_sl_edit_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+       ObjectSetInteger(0, override_sl_edit_name, OBJPROP_XDISTANCE, override_x_start + 100);
+       ObjectSetInteger(0, override_sl_edit_name, OBJPROP_YDISTANCE, override_y_start + 95);
+       ObjectSetInteger(0, override_sl_edit_name, OBJPROP_XSIZE, 50);
+       ObjectSetInteger(0, override_sl_edit_name, OBJPROP_YSIZE, 20);
+       ObjectSetString(0, override_sl_edit_name, OBJPROP_TEXT, InpUseATRManagement ? DoubleToString(InpATRMultiplierSL, 1) : IntegerToString(InpInitialStopLossPoints));
+       ObjectSetInteger(0, override_sl_edit_name, OBJPROP_ZORDER, 2);
+
+       ObjectCreate(0, override_tp_label_name, OBJ_LABEL, 0, 0, 0);
+       ObjectSetInteger(0, override_tp_label_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+       ObjectSetInteger(0, override_tp_label_name, OBJPROP_XDISTANCE, override_x_start);
+       ObjectSetInteger(0, override_tp_label_name, OBJPROP_YDISTANCE, override_y_start + 130);
+       ObjectSetString(0, override_tp_label_name, OBJPROP_TEXT, "Take Profit:");
+       ObjectSetInteger(0, override_tp_label_name, OBJPROP_COLOR, clrWhite);
+       ObjectSetInteger(0, override_tp_label_name, OBJPROP_FONTSIZE, 10);
+       ObjectSetInteger(0, override_tp_label_name, OBJPROP_ZORDER, 1);
+
+       ObjectCreate(0, override_tp_edit_name, OBJ_EDIT, 0, 0, 0);
+       ObjectSetInteger(0, override_tp_edit_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+       ObjectSetInteger(0, override_tp_edit_name, OBJPROP_XDISTANCE, override_x_start + 100);
+       ObjectSetInteger(0, override_tp_edit_name, OBJPROP_YDISTANCE, override_y_start + 125);
+       ObjectSetInteger(0, override_tp_edit_name, OBJPROP_XSIZE, 50);
+       ObjectSetInteger(0, override_tp_edit_name, OBJPROP_YSIZE, 20);
+       ObjectSetString(0, override_tp_edit_name, OBJPROP_TEXT, InpUseATRManagement ? DoubleToString(InpATRMultiplierTP, 1) : IntegerToString(InpTakeProfitPoints));
+       ObjectSetInteger(0, override_tp_edit_name, OBJPROP_ZORDER, 2);
+
+       // R:R Label
+       ObjectCreate(0, override_rr_label_name, OBJ_LABEL, 0, 0, 0);
+       ObjectSetInteger(0, override_rr_label_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+       ObjectSetInteger(0, override_rr_label_name, OBJPROP_XDISTANCE, override_x_start);
+       ObjectSetInteger(0, override_rr_label_name, OBJPROP_YDISTANCE, override_y_start + 160);
+       ObjectSetString(0, override_rr_label_name, OBJPROP_TEXT, "R:R Ratio: N/A");
+       ObjectSetInteger(0, override_rr_label_name, OBJPROP_COLOR, clrWhite);
+       ObjectSetInteger(0, override_rr_label_name, OBJPROP_FONTSIZE, 10);
+       ObjectSetInteger(0, override_rr_label_name, OBJPROP_ZORDER, 1);
+   }
   }
 //+------------------------------------------------------------------+
 void DeletePanelAndButtons()
@@ -267,6 +497,24 @@ void DeletePanelAndButtons()
    ObjectDelete(0, close_button_name);
    ObjectDelete(0, balance_label_name);
    ObjectDelete(0, pl_label_name);
+   ObjectDelete(0, broker_info_label_name);
+   ObjectDelete(0, market_info_label_name);
+   ObjectDelete(0, multi_tf_trend_label_name);
+   ObjectDelete(0, signal_strength_label_name);
+
+   if(InpUsePanelOverrides)
+   {
+       ObjectDelete(0, override_title_name);
+       ObjectDelete(0, override_margin_label_name);
+       ObjectDelete(0, override_margin_edit_name);
+       ObjectDelete(0, override_mode_button_atr_name);
+       ObjectDelete(0, override_mode_button_pts_name);
+       ObjectDelete(0, override_sl_label_name);
+       ObjectDelete(0, override_sl_edit_name);
+       ObjectDelete(0, override_tp_label_name);
+       ObjectDelete(0, override_tp_edit_name);
+       ObjectDelete(0, override_rr_label_name);
+   }
   }
 //+------------------------------------------------------------------+
 void UpdatePanelStatus()
@@ -302,7 +550,144 @@ void UpdatePanelStatus()
    ObjectSetString(0, balance_label_name, OBJPROP_TEXT, balance_text);
   }
 //+------------------------------------------------------------------+
+string GetTrendDirection(ENUM_TIMEFRAMES timeframe)
+{
+    double ema_buffer[2];
+    int handle_to_use = INVALID_HANDLE;
+
+    switch(timeframe)
+    {
+        case PERIOD_CURRENT: handle_to_use = g_ema_current_handle; break;
+        case PERIOD_H1:      handle_to_use = g_ema_h1_handle; break;
+        case PERIOD_H4:      handle_to_use = g_ema_h4_handle; break;
+        default:             handle_to_use = g_ema_current_handle; break;
+    }
+
+    if (handle_to_use == INVALID_HANDLE || CopyBuffer(handle_to_use, 0, 0, 2, ema_buffer) < 2)
+    {
+        return "?"; // Hiba
+    }
+
+    if (ema_buffer[0] > ema_buffer[1]) return "↑"; // Emelkedő
+    if (ema_buffer[0] < ema_buffer[1]) return "↓"; // Csökkenő
+    return "→"; // Oldalazó
+}
+//+------------------------------------------------------------------+
+void UpdatePanelInfoLabels()
+{
+    // Bróker Infó
+    symbol_info.Refresh();
+    long spread = symbol_info.Spread();
+    double swap_long = symbol_info.SwapLong();
+    double swap_short = symbol_info.SwapShort();
+    string broker_text = StringFormat("Spread: %d | Swap L: %.2f, S: %.2f", spread, swap_long, swap_short);
+    ObjectSetString(0, broker_info_label_name, OBJPROP_TEXT, broker_text);
+
+    // Piaci Infó (Volatilitás)
+    double current_atr = GetCurrentATRValue();
+    string market_text = StringFormat("Volatility (ATR): %.2f", NormalizeDouble(current_atr, g_digits));
+    ObjectSetString(0, market_info_label_name, OBJPROP_TEXT, market_text);
+
+    // MTF Trend
+    string mtf_text = StringFormat("Trend | M%d: %s H1: %s H4: %s",
+                                   (int)_Period, GetTrendDirection(_Period),
+                                   GetTrendDirection(PERIOD_H1),
+                                   GetTrendDirection(PERIOD_H4));
+    ObjectSetString(0, multi_tf_trend_label_name, OBJPROP_TEXT, mtf_text);
+
+    // Jel Erősség
+    string strength_text;
+    color strength_color;
+    if (g_last_signal_strength > 0)
+    {
+        strength_text = StringFormat("Signal Strength: %d/10", g_last_signal_strength);
+        if (g_last_signal_strength >= 8) strength_color = clrLimeGreen;
+        else if (g_last_signal_strength >= 5) strength_color = clrOrange;
+        else strength_color = clrRed;
+    }
+    else
+    {
+        strength_text = "Signal Strength: N/A";
+        strength_color = clrWhite;
+    }
+    ObjectSetString(0, signal_strength_label_name, OBJPROP_TEXT, strength_text);
+    ObjectSetInteger(0, signal_strength_label_name, OBJPROP_COLOR, strength_color);
+}
+//+------------------------------------------------------------------+
+int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
+{
+    int score = 0;
+
+    // 1. Alap WPR jelzés (1 pont)
+    score += 1;
+
+    // 2. Trend-egyezés (max 4 pont)
+    string trend_h1 = GetTrendDirection(PERIOD_H1);
+    string trend_h4 = GetTrendDirection(PERIOD_H4);
+    if (signal_type == ORDER_TYPE_BUY)
+    {
+        if (trend_h1 == "↑") score += 2;
+        if (trend_h4 == "↑") score += 2;
+    }
+    else // SELL
+    {
+        if (trend_h1 == "↓") score += 2;
+        if (trend_h4 == "↓") score += 2;
+    }
+
+    // 3. Momentum (RSI) (max 3 pont)
+    double rsi_buffer[2];
+    if (g_rsi_handle != INVALID_HANDLE && CopyBuffer(g_rsi_handle, 0, 0, 2, rsi_buffer) >= 2)
+    {
+        if (signal_type == ORDER_TYPE_BUY && rsi_buffer[1] < 30 && rsi_buffer[0] >= 30) score += 3;
+        if (signal_type == ORDER_TYPE_SELL && rsi_buffer[1] > 70 && rsi_buffer[0] <= 70) score += 3;
+    }
+
+    // 4. Volatilitás (Bollinger Bands) (max 2 pont)
+    double bb_upper[1], bb_lower[1];
+    if (g_bb_handle != INVALID_HANDLE && CopyBuffer(g_bb_handle, 1, 0, 1, bb_upper) >= 1 && CopyBuffer(g_bb_handle, 2, 0, 1, bb_lower) >= 1)
+    {
+        if (signal_type == ORDER_TYPE_BUY && symbol_info.Bid() > bb_upper[0]) score += 2;
+        if (signal_type == ORDER_TYPE_SELL && symbol_info.Ask() < bb_lower[0]) score += 2;
+    }
+
+    return MathMin(10, score); // A pontszámot 10-ben maximalizáljuk
+}
+//+------------------------------------------------------------------+
 //| KERESKEDÉSI LOGIKA (Változatlan)                                 |
+//+------------------------------------------------------------------+
+void InitializeOverrides()
+{
+    if(!InpUsePanelOverrides) return;
+
+    g_override_active = true;
+    g_override_margin_percent = InpMaxMarginPercent;
+    g_override_use_atr = InpUseATRManagement;
+    g_override_sl_atr = InpATRMultiplierSL;
+    g_override_tp_atr = InpATRMultiplierTP;
+    g_override_sl_pts = InpInitialStopLossPoints;
+    g_override_tp_pts = InpTakeProfitPoints;
+}
+//+------------------------------------------------------------------+
+void UpdateOverrideRRLabel()
+{
+    if(!InpUsePanelOverrides) return;
+
+    double sl = g_override_use_atr ? g_override_sl_atr : g_override_sl_pts;
+    double tp = g_override_use_atr ? g_override_tp_atr : g_override_tp_pts;
+
+    string rr_text = "R:R Ratio: ";
+    if (sl > 0 && tp > 0)
+    {
+        double ratio = tp / sl;
+        rr_text += "1:" + DoubleToString(ratio, 2);
+    }
+    else
+    {
+        rr_text += "N/A";
+    }
+    ObjectSetString(0, override_rr_label_name, OBJPROP_TEXT, rr_text);
+}
 //+------------------------------------------------------------------+
 double NormalizeLot(double lot)
   {
@@ -313,11 +698,12 @@ double NormalizeLot(double lot)
    return(normalized_lot);
   }
 //+------------------------------------------------------------------+
-double CalculateLotSizeByMargin(double max_margin_percent)
+double CalculateLotSizeByMargin()
   {
+   double margin_percent_to_use = (g_override_active) ? g_override_margin_percent : InpMaxMarginPercent;
    double account_equity = AccountInfoDouble(ACCOUNT_EQUITY);
    if(account_equity <= 0) return 0.0;
-   double max_margin_allowed = account_equity * (max_margin_percent / 100.0);
+   double max_margin_allowed = account_equity * (margin_percent_to_use / 100.0);
    double margin_required_for_one_lot = 0.0;
    if(!OrderCalcMargin(ORDER_TYPE_BUY, _Symbol, 1.0, symbol_info.Ask(), margin_required_for_one_lot) || margin_required_for_one_lot <= 0)
      { Print("Error calculating margin: ", GetLastError()); return 0.0; }
@@ -341,7 +727,7 @@ bool OpenPosition(ENUM_ORDER_TYPE type)
       Print("Signal confirmed.");
      }
 
-   double lot_size = CalculateLotSizeByMargin(InpMaxMarginPercent);
+   double lot_size = CalculateLotSizeByMargin();
    if(lot_size <= 0)
      { Print("Could not calculate a valid lot size."); confirmation_signal_price = 0; return false; }
 
@@ -352,24 +738,31 @@ bool OpenPosition(ENUM_ORDER_TYPE type)
    double min_stop_distance_price = (double)min_stop_distance_points * g_point;
    if (min_stop_distance_price <= 0) min_stop_distance_price = g_point;
 
-   if(InpUseATRManagement)
+   // Felülírási logika
+   bool use_atr = (g_override_active) ? g_override_use_atr : InpUseATRManagement;
+   double atr_sl_mult = (g_override_active) ? g_override_sl_atr : InpATRMultiplierSL;
+   double atr_tp_mult = (g_override_active) ? g_override_tp_atr : InpATRMultiplierTP;
+   int pts_sl = (g_override_active) ? g_override_sl_pts : InpInitialStopLossPoints;
+   int pts_tp = (g_override_active) ? g_override_tp_pts : InpTakeProfitPoints;
+
+   if(use_atr)
      {
       current_atr = GetCurrentATRValue();
       if(current_atr <= 0) { Print("Hiba: Érvénytelen ATR érték (ATR mód)."); confirmation_signal_price = 0; return false; }
-      double sl_distance_price = current_atr * InpATRMultiplierSL;
+      double sl_distance_price = current_atr * atr_sl_mult;
       double final_sl_distance_price = MathMax(sl_distance_price, min_stop_distance_price);
       sl_price = (type == ORDER_TYPE_BUY) ? current_price - final_sl_distance_price : current_price + final_sl_distance_price;
-      if(InpATRMultiplierTP > 0)
+      if(atr_tp_mult > 0)
         {
-         double tp_distance_price = current_atr * InpATRMultiplierTP;
+         double tp_distance_price = current_atr * atr_tp_mult;
          tp_distance_price = MathMax(tp_distance_price, min_stop_distance_price);
          tp_price = (type == ORDER_TYPE_BUY) ? current_price + tp_distance_price : current_price - tp_distance_price;
         }
      }
    else
      {
-      double sl_input_scaled = InpInitialStopLossPoints * InpInputPointScaler;
-      double tp_input_scaled = (InpTakeProfitPoints > 0) ? InpTakeProfitPoints * InpInputPointScaler : 0;
+      double sl_input_scaled = pts_sl * InpInputPointScaler;
+      double tp_input_scaled = (pts_tp > 0) ? pts_tp * InpInputPointScaler : 0;
       double sl_actual_points = sl_input_scaled * g_point_adjustment_factor;
       double tp_actual_points = tp_input_scaled * g_point_adjustment_factor;
       double desired_sl_price = (type == ORDER_TYPE_BUY) ? current_price - sl_actual_points * g_point : current_price + sl_actual_points * g_point;
@@ -426,13 +819,25 @@ void CheckForNewSignal(const double previous_wpr_val, const double current_wpr_v
    bool sell_cross = previous_wpr_val > InpWPRLevelUp && current_wpr_val <= InpWPRLevelUp;
 
    if(!buy_cross && !sell_cross)
-     { confirmation_signal_price = 0; return; }
+     {
+      g_last_signal_strength = 0;
+      confirmation_signal_price = 0;
+      return;
+     }
+
+   ENUM_ORDER_TYPE signal_type = (buy_cross) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+   g_last_signal_strength = CalculateSignalStrength(signal_type);
+
+   if(InpUseSignalStrengthFilter && g_last_signal_strength < InpMinSignalStrength)
+     {
+      PrintFormat("Signal ignored. Strength (%d) is below minimum (%d).", g_last_signal_strength, InpMinSignalStrength);
+      return;
+     }
 
    symbol_info.Refresh();
    if(symbol_info.Spread() > InpMaxSpreadPoints)
      { PrintFormat("Signal ignored due to high spread: %d > %d", symbol_info.Spread(), InpMaxSpreadPoints); confirmation_signal_price = 0; return; }
 
-   ENUM_ORDER_TYPE signal_type = (buy_cross) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
 
    if(InpUseEmaFilter)
      {
@@ -583,8 +988,19 @@ int OnInit()
    g_smooth_wpr_shortname = "";
    g_ema_filter_shortname = ""; // VÁLTOZÁS: Inicializálás
 
+   // --- Adaptív ATR Indikátor (ha szükséges) ---
+   if(InpUseAdaptiveWPR)
+     {
+      adaptive_atr_handle = iATR(_Symbol, _Period, InpAdaptiveAtrPeriod);
+      if(adaptive_atr_handle == INVALID_HANDLE) { Print("Error creating Adaptive ATR handle"); return(INIT_FAILED); }
+     }
+
+   // --- WPR Periódus Kezdeti Beállítása ---
+   UpdateAdaptiveWPRPeriod();
+
+
    // --- Nyers WPR Indikátor Létrehozása ---
-   wpr_handle = iWPR(_Symbol, _Period, InpWPRPeriod);
+   wpr_handle = iWPR(_Symbol, _Period, g_current_wpr_period);
    if(wpr_handle == INVALID_HANDLE) { Print("Error creating WPR handle"); return(INIT_FAILED); }
 
    if(ChartIndicatorAdd(0, 1, wpr_handle))
@@ -656,9 +1072,27 @@ int OnInit()
       if(atr_handle == INVALID_HANDLE) { Print("Error creating ATR handle: ", GetLastError()); return(INIT_FAILED); }
      }
 
-   CreatePanel();
-   CreateButtons();
+   CreatePanelAndControls();
    UpdatePanelStatus();
+   InitializeOverrides();
+   UpdateOverrideRRLabel();
+
+   // --- Segéd Indikátorok Inicializálása ---
+   g_rsi_handle = iRSI(_Symbol, _Period, 14, PRICE_CLOSE);
+   if(g_rsi_handle == INVALID_HANDLE) { Print("Error creating RSI handle"); return(INIT_FAILED); }
+
+   g_bb_handle = iBands(_Symbol, _Period, 20, 0, 2, PRICE_CLOSE);
+   if(g_bb_handle == INVALID_HANDLE) { Print("Error creating Bollinger Bands handle"); return(INIT_FAILED); }
+
+   g_ema_current_handle = iMA(_Symbol, _Period, 50, 0, MODE_EMA, PRICE_CLOSE);
+   if(g_ema_current_handle == INVALID_HANDLE) { Print("Error creating Current TF EMA handle"); return(INIT_FAILED); }
+
+   g_ema_h1_handle = iMA(_Symbol, PERIOD_H1, 50, 0, MODE_EMA, PRICE_CLOSE);
+   if(g_ema_h1_handle == INVALID_HANDLE) { Print("Error creating H1 EMA handle"); return(INIT_FAILED); }
+
+   g_ema_h4_handle = iMA(_Symbol, PERIOD_H4, 50, 0, MODE_EMA, PRICE_CLOSE);
+   if(g_ema_h4_handle == INVALID_HANDLE) { Print("Error creating H4 EMA handle"); return(INIT_FAILED); }
+
 
    Print("WPR Control Trader v3.10 Initialized. (Cleanup Fix)"); // VÁLTOZÁS: Üzenet
    return(INIT_SUCCEEDED);
@@ -705,6 +1139,12 @@ void OnDeinit(const int reason)
    if(wpr_handle != INVALID_HANDLE) IndicatorRelease(wpr_handle);
    if(ema_handle != INVALID_HANDLE) IndicatorRelease(ema_handle);
    if(atr_handle != INVALID_HANDLE) IndicatorRelease(atr_handle);
+   if(adaptive_atr_handle != INVALID_HANDLE) IndicatorRelease(adaptive_atr_handle);
+   if(g_rsi_handle != INVALID_HANDLE) IndicatorRelease(g_rsi_handle);
+   if(g_bb_handle != INVALID_HANDLE) IndicatorRelease(g_bb_handle);
+   if(g_ema_current_handle != INVALID_HANDLE) IndicatorRelease(g_ema_current_handle);
+   if(g_ema_h1_handle != INVALID_HANDLE) IndicatorRelease(g_ema_h1_handle);
+   if(g_ema_h4_handle != INVALID_HANDLE) IndicatorRelease(g_ema_h4_handle);
    if(g_wpr_smooth_handle != INVALID_HANDLE && g_wpr_smooth_handle != wpr_handle)
      {
       IndicatorRelease(g_wpr_smooth_handle);
@@ -745,6 +1185,11 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
          ObjectSetInteger(0, close_button_name, OBJPROP_XDISTANCE, close_button_x); ObjectSetInteger(0, close_button_name, OBJPROP_YDISTANCE, button_y_pos);
          ObjectSetInteger(0, balance_label_name, OBJPROP_XDISTANCE, new_x + 10); ObjectSetInteger(0, balance_label_name, OBJPROP_YDISTANCE, new_y + 120);
          ObjectSetInteger(0, pl_label_name, OBJPROP_XDISTANCE, new_x + 10); ObjectSetInteger(0, pl_label_name, OBJPROP_YDISTANCE, new_y + 140);
+         int info_y_start = new_y + 165;
+         ObjectSetInteger(0, broker_info_label_name, OBJPROP_XDISTANCE, new_x + 10); ObjectSetInteger(0, broker_info_label_name, OBJPROP_YDISTANCE, info_y_start);
+         ObjectSetInteger(0, market_info_label_name, OBJPROP_XDISTANCE, new_x + 10); ObjectSetInteger(0, market_info_label_name, OBJPROP_YDISTANCE, info_y_start + 20);
+         ObjectSetInteger(0, multi_tf_trend_label_name, OBJPROP_XDISTANCE, new_x + 10); ObjectSetInteger(0, multi_tf_trend_label_name, OBJPROP_YDISTANCE, info_y_start + 40);
+         ObjectSetInteger(0, signal_strength_label_name, OBJPROP_XDISTANCE, new_x + 10); ObjectSetInteger(0, signal_strength_label_name, OBJPROP_YDISTANCE, info_y_start + 60);
         } else { is_panel_dragging = false; } return;
      }
 
@@ -777,10 +1222,109 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
 
       ObjectSetInteger(0, sparam, OBJPROP_STATE, false); ChartRedraw();
      }
+
+   //--- Felülírási logika eseménykezelése ---
+   if(InpUsePanelOverrides && id == CHARTEVENT_OBJECT_ENDEDIT)
+   {
+       if(sparam == override_margin_edit_name)
+       {
+           double val = StringToDouble(ObjectGetString(0, sparam, OBJPROP_TEXT));
+           if(val > 0) g_override_margin_percent = val;
+           else ObjectSetString(0, sparam, OBJPROP_TEXT, DoubleToString(g_override_margin_percent, 1)); // Visszaállítás
+       }
+       else if(sparam == override_sl_edit_name)
+       {
+           if(g_override_use_atr) {
+               double val = StringToDouble(ObjectGetString(0, sparam, OBJPROP_TEXT));
+               if(val > 0) g_override_sl_atr = val;
+               else ObjectSetString(0, sparam, OBJPROP_TEXT, DoubleToString(g_override_sl_atr, 1));
+           } else {
+               int val = (int)StringToInteger(ObjectGetString(0, sparam, OBJPROP_TEXT));
+               if(val > 0) g_override_sl_pts = val;
+               else ObjectSetString(0, sparam, OBJPROP_TEXT, IntegerToString(g_override_sl_pts));
+           }
+       }
+       else if(sparam == override_tp_edit_name)
+       {
+           if(g_override_use_atr) {
+               double val = StringToDouble(ObjectGetString(0, sparam, OBJPROP_TEXT));
+               if(val >= 0) g_override_tp_atr = val;
+               else ObjectSetString(0, sparam, OBJPROP_TEXT, DoubleToString(g_override_tp_atr, 1));
+           } else {
+               int val = (int)StringToInteger(ObjectGetString(0, sparam, OBJPROP_TEXT));
+               if(val >= 0) g_override_tp_pts = val;
+               else ObjectSetString(0, sparam, OBJPROP_TEXT, IntegerToString(g_override_tp_pts));
+           }
+       }
+       UpdateOverrideRRLabel();
+       ChartRedraw();
+       return;
+   }
+
+   if(InpUsePanelOverrides && id == CHARTEVENT_OBJECT_CLICK)
+   {
+       if(sparam == override_mode_button_atr_name && !g_override_use_atr)
+       {
+           g_override_use_atr = true;
+           ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_STATE, true);
+           ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_STATE, false);
+           ObjectSetString(0, override_sl_edit_name, OBJPROP_TEXT, DoubleToString(g_override_sl_atr, 1));
+           ObjectSetString(0, override_tp_edit_name, OBJPROP_TEXT, DoubleToString(g_override_tp_atr, 1));
+           UpdateOverrideRRLabel();
+           ChartRedraw();
+       }
+       else if(sparam == override_mode_button_pts_name && g_override_use_atr)
+       {
+           g_override_use_atr = false;
+           ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_STATE, false);
+           ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_STATE, true);
+           ObjectSetString(0, override_sl_edit_name, OBJPROP_TEXT, IntegerToString(g_override_sl_pts));
+           ObjectSetString(0, override_tp_edit_name, OBJPROP_TEXT, IntegerToString(g_override_tp_pts));
+           UpdateOverrideRRLabel();
+           ChartRedraw();
+       }
+   }
   }
 //+------------------------------------------------------------------+
 void OnTick()
   {
+
+   // --- WPR Periódus Frissítése (ha adaptív mód aktív) ---
+   if(InpUseAdaptiveWPR)
+     {
+      int old_wpr_period = g_current_wpr_period;
+      UpdateAdaptiveWPRPeriod();
+
+      if(g_current_wpr_period != old_wpr_period)
+        {
+         Print("WPR Period changed from ", old_wpr_period, " to ", g_current_wpr_period);
+
+         // Régi handle-ök felszabadítása
+         if(wpr_handle != INVALID_HANDLE) IndicatorRelease(wpr_handle);
+         if(g_wpr_smooth_handle != INVALID_HANDLE && g_wpr_smooth_handle != wpr_handle) IndicatorRelease(g_wpr_smooth_handle);
+
+         // Új WPR handle létrehozása az új periódussal
+         wpr_handle = iWPR(_Symbol, _Period, g_current_wpr_period);
+         if(wpr_handle == INVALID_HANDLE) { Print("Error re-creating WPR handle"); return; }
+
+         // Új simított WPR handle létrehozása
+         if(InpWprSmoothingPeriod > 1) {
+             ENUM_MA_METHOD classic_method = (ENUM_MA_METHOD)InpWprSmoothingMethod;
+             switch(InpWprSmoothingMethod) {
+                 case SMOOTH_DEMA: g_wpr_smooth_handle = iDEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle); break;
+                 case SMOOTH_TEMA: g_wpr_smooth_handle = iTEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle); break;
+                 default: g_wpr_smooth_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, classic_method, wpr_handle); break;
+             }
+             if(g_wpr_smooth_handle == INVALID_HANDLE) { Print("Error re-creating Smoothed WPR handle"); }
+         } else {
+             g_wpr_smooth_handle = wpr_handle;
+         }
+        }
+     }
+   // --- Panel Frissítés ---
+   UpdatePanelStatus();
+   UpdatePanelInfoLabels();
+
    // --- WPR Adatok olvasása (Nyers ÉS Simított) ---
    double wpr_buffer_raw[2];
    double wpr_buffer_smoothed[2];
@@ -798,9 +1342,6 @@ void OnTick()
      }
    double smoothed_current_wpr  = wpr_buffer_smoothed[0];
    double smoothed_previous_wpr = wpr_buffer_smoothed[1];
-
-   // --- Panel Frissítés ---
-   UpdatePanelStatus();
 
    // --- ÁLLAPOTGÉP (RETRY LOGIC) ---
    if(g_belepes_fuggoben)
