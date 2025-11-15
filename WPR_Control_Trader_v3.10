@@ -99,6 +99,11 @@ int             atr_handle = INVALID_HANDLE;
 int             g_wpr_smooth_handle = INVALID_HANDLE;
 int             adaptive_atr_handle = INVALID_HANDLE;
 int             g_current_wpr_period = 0; // Dinamikusan kalkulált WPR periódus
+int             g_rsi_handle = INVALID_HANDLE;
+int             g_bb_handle = INVALID_HANDLE;
+int             g_ema_h1_handle = INVALID_HANDLE;
+int             g_ema_h4_handle = INVALID_HANDLE;
+int             g_ema_current_handle = INVALID_HANDLE;
 int             g_digits = 0;
 double          g_point = 0.0;
 long            g_stops_level = 0;
@@ -548,13 +553,20 @@ void UpdatePanelStatus()
 string GetTrendDirection(ENUM_TIMEFRAMES timeframe)
 {
     double ema_buffer[2];
-    int handle = iMA(_Symbol, timeframe, 50, 0, MODE_EMA, PRICE_CLOSE);
-    if (handle == INVALID_HANDLE || CopyBuffer(handle, 0, 0, 2, ema_buffer) < 2)
+    int handle_to_use = INVALID_HANDLE;
+
+    switch(timeframe)
     {
-        IndicatorRelease(handle);
-        return "~"; // Ismeretlen
+        case PERIOD_CURRENT: handle_to_use = g_ema_current_handle; break;
+        case PERIOD_H1:      handle_to_use = g_ema_h1_handle; break;
+        case PERIOD_H4:      handle_to_use = g_ema_h4_handle; break;
+        default:             handle_to_use = g_ema_current_handle; break;
     }
-    IndicatorRelease(handle);
+
+    if (handle_to_use == INVALID_HANDLE || CopyBuffer(handle_to_use, 0, 0, 2, ema_buffer) < 2)
+    {
+        return "?"; // Hiba
+    }
 
     if (ema_buffer[0] > ema_buffer[1]) return "↑"; // Emelkedő
     if (ema_buffer[0] < ema_buffer[1]) return "↓"; // Csökkenő
@@ -625,23 +637,19 @@ int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
 
     // 3. Momentum (RSI) (max 3 pont)
     double rsi_buffer[2];
-    int rsi_handle = iRSI(_Symbol, _Period, 14, PRICE_CLOSE);
-    if (rsi_handle != INVALID_HANDLE && CopyBuffer(rsi_handle, 0, 0, 2, rsi_buffer) >= 2)
+    if (g_rsi_handle != INVALID_HANDLE && CopyBuffer(g_rsi_handle, 0, 0, 2, rsi_buffer) >= 2)
     {
         if (signal_type == ORDER_TYPE_BUY && rsi_buffer[1] < 30 && rsi_buffer[0] >= 30) score += 3;
         if (signal_type == ORDER_TYPE_SELL && rsi_buffer[1] > 70 && rsi_buffer[0] <= 70) score += 3;
     }
-    IndicatorRelease(rsi_handle);
 
     // 4. Volatilitás (Bollinger Bands) (max 2 pont)
     double bb_upper[1], bb_lower[1];
-    int bb_handle = iBands(_Symbol, _Period, 20, 0, 2, PRICE_CLOSE);
-    if (bb_handle != INVALID_HANDLE && CopyBuffer(bb_handle, 1, 0, 1, bb_upper) >= 1 && CopyBuffer(bb_handle, 2, 0, 1, bb_lower) >= 1)
+    if (g_bb_handle != INVALID_HANDLE && CopyBuffer(g_bb_handle, 1, 0, 1, bb_upper) >= 1 && CopyBuffer(g_bb_handle, 2, 0, 1, bb_lower) >= 1)
     {
         if (signal_type == ORDER_TYPE_BUY && symbol_info.Bid() > bb_upper[0]) score += 2;
         if (signal_type == ORDER_TYPE_SELL && symbol_info.Ask() < bb_lower[0]) score += 2;
     }
-    IndicatorRelease(bb_handle);
 
     return MathMin(10, score); // A pontszámot 10-ben maximalizáljuk
 }
@@ -1069,6 +1077,23 @@ int OnInit()
    InitializeOverrides();
    UpdateOverrideRRLabel();
 
+   // --- Segéd Indikátorok Inicializálása ---
+   g_rsi_handle = iRSI(_Symbol, _Period, 14, PRICE_CLOSE);
+   if(g_rsi_handle == INVALID_HANDLE) { Print("Error creating RSI handle"); return(INIT_FAILED); }
+
+   g_bb_handle = iBands(_Symbol, _Period, 20, 0, 2, PRICE_CLOSE);
+   if(g_bb_handle == INVALID_HANDLE) { Print("Error creating Bollinger Bands handle"); return(INIT_FAILED); }
+
+   g_ema_current_handle = iMA(_Symbol, _Period, 50, 0, MODE_EMA, PRICE_CLOSE);
+   if(g_ema_current_handle == INVALID_HANDLE) { Print("Error creating Current TF EMA handle"); return(INIT_FAILED); }
+
+   g_ema_h1_handle = iMA(_Symbol, PERIOD_H1, 50, 0, MODE_EMA, PRICE_CLOSE);
+   if(g_ema_h1_handle == INVALID_HANDLE) { Print("Error creating H1 EMA handle"); return(INIT_FAILED); }
+
+   g_ema_h4_handle = iMA(_Symbol, PERIOD_H4, 50, 0, MODE_EMA, PRICE_CLOSE);
+   if(g_ema_h4_handle == INVALID_HANDLE) { Print("Error creating H4 EMA handle"); return(INIT_FAILED); }
+
+
    Print("WPR Control Trader v3.10 Initialized. (Cleanup Fix)"); // VÁLTOZÁS: Üzenet
    return(INIT_SUCCEEDED);
   }
@@ -1115,6 +1140,11 @@ void OnDeinit(const int reason)
    if(ema_handle != INVALID_HANDLE) IndicatorRelease(ema_handle);
    if(atr_handle != INVALID_HANDLE) IndicatorRelease(atr_handle);
    if(adaptive_atr_handle != INVALID_HANDLE) IndicatorRelease(adaptive_atr_handle);
+   if(g_rsi_handle != INVALID_HANDLE) IndicatorRelease(g_rsi_handle);
+   if(g_bb_handle != INVALID_HANDLE) IndicatorRelease(g_bb_handle);
+   if(g_ema_current_handle != INVALID_HANDLE) IndicatorRelease(g_ema_current_handle);
+   if(g_ema_h1_handle != INVALID_HANDLE) IndicatorRelease(g_ema_h1_handle);
+   if(g_ema_h4_handle != INVALID_HANDLE) IndicatorRelease(g_ema_h4_handle);
    if(g_wpr_smooth_handle != INVALID_HANDLE && g_wpr_smooth_handle != wpr_handle)
      {
       IndicatorRelease(g_wpr_smooth_handle);
@@ -1291,6 +1321,9 @@ void OnTick()
          }
         }
      }
+   // --- Panel Frissítés ---
+   UpdatePanelStatus();
+   UpdatePanelInfoLabels();
 
    // --- WPR Adatok olvasása (Nyers ÉS Simított) ---
    double wpr_buffer_raw[2];
@@ -1309,10 +1342,6 @@ void OnTick()
      }
    double smoothed_current_wpr  = wpr_buffer_smoothed[0];
    double smoothed_previous_wpr = wpr_buffer_smoothed[1];
-
-   // --- Panel Frissítés ---
-   UpdatePanelStatus();
-   UpdatePanelInfoLabels();
 
    // --- ÁLLAPOTGÉP (RETRY LOGIC) ---
    if(g_belepes_fuggoben)
