@@ -13,12 +13,15 @@
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
 #include <Trade\PositionInfo.mqh>
+#include <Trailings.mqh>
+#include <Math\Stat\Stat.mqh>
 
 //+------------------------------------------------------------------+
 //| Enum definíciók                                                  |
 //+------------------------------------------------------------------+
 enum ENUM_EXIT_LOGIC { MODE_POINT_BASED, MODE_SIGNAL_BASED };
 enum ENUM_TRADE_MODE { MODE_AUTOMATIC, MODE_SEMI_AUTOMATIC };
+enum ENUM_PROFIT_MODE { MODE_POINTS, MODE_PSAR, MODE_VIDYA, MODE_SPIKE_PROTECTOR };
 
 enum ENUM_SMOOTH_METHOD
   {
@@ -62,6 +65,12 @@ input double        InpWPRLevelDown           = -80.0;
 input group "Signal Strength Filter"
 input bool          InpUseSignalStrengthFilter= true;
 input int           InpMinSignalStrength      = 5;      // Minimum score (1-10) for auto trade
+input group "Statistical Filters"
+input int           InpStatLookbackSeconds    = 120;    // "Nyugodt piac" időablaka (sec)
+input int           InpStatBreakoutSeconds    = 10;     // "Kitörés" időablaka (sec)
+input double        InpStatVolFactor          = 2.0;    // Hányszorosára nőjön a tick volumen?
+input double        InpStatStdDevFactor       = 2.0;    // Hányszorosára nőjön a szórás?
+input double        InpStatCorrThreshold      = 0.7;    // Minimális korreláció a trendhez
 input int           InpConfirmationPoints     = 0;
 input bool          InpUseEmaFilter           = false;
 input int           InpEmaPeriod              = 200;
@@ -69,16 +78,23 @@ input group "Capital Management"
 input double        InpMaxMarginPercent       = 70;
 input long          InpMaxSpreadPoints        = 50000;
 input int           InpStopsLevelBufferPoints = 5;
-input group "Position Management Mode"
-input bool          InpUseATRManagement       = true;
-input group "Position Management (ATR Based)"
-input int           InpATRPeriod              = 14;
-input double        InpATRMultiplierSL        = 1.5;
-input double        InpATRMultiplierTP        = 3.0;
-input double        InpATRMultiplierBETrigger = 0.5;
-input double        InpATRMultiplierBELock    = 0.1;
-input double        InpATRMultiplierTSTrigger = 0.8;
-input double        InpATRMultiplierTSDistance= 0.6;
+input group "Profit Management Settings"
+input ENUM_PROFIT_MODE InpProfitMode = MODE_SPIKE_PROTECTOR;
+input group "PSAR Trailing Settings"
+input double InpPsarStep = 0.02;
+input double InpPsarMax  = 0.2;
+input group "VIDYA Trailing Settings"
+input int    InpVidyaCmoPeriod = 9;
+input int    InpVidyaEmaPeriod = 30;
+input int    InpVidyaShiftPts  = 10;
+input group "Spike Protector Settings"
+input int    InpSpikeProfitPoints   = 50;
+input int    InpSpikeTimeSeconds    = 5;
+input int    InpSpikeBreakevenPts   = 5;
+input int    InpSpikeConfirmSeconds = 10;
+input double InpSpikePullbackTol    = 50.0;
+input int    InpSpikeTrailTemaPeriod = 9;
+input int    InpSpikeTrailTemaShift  = 10;
 input group "Position Management (Points Based)"
 input int           InpInitialStopLossPoints    = 200;
 input int           InpTakeProfitPoints         = 500;
@@ -134,6 +150,14 @@ ENUM_ORDER_TYPE g_fuggoben_irany;
 datetime        g_fuggoben_idotullepes;
 datetime        g_utolso_proba_ido;
 int             g_last_signal_strength = 0;
+//--- Spike Protector Globális Változók ---
+datetime        g_spike_detected_time = 0;
+double          g_spike_peak_price = 0;
+bool            g_spike_breakeven_set = false;
+bool            g_spike_trailing_activated = false;
+
+//--- Trailings.mqh Objektum ---
+CTrailings     *g_trailings;
 
 //--- Globális indikátornevek a tiszta törléshez ---
 string          g_wpr_shortname = "";
@@ -700,6 +724,72 @@ int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
         Print("Signal Strength: Bollinger Bands data not available.");
     }
 
+    // 5. Statisztikai "Look Back" Analízis (max 3 pont)
+    max_score += 3;
+    MqlTick ticks[];
+    datetime from = TimeCurrent() - InpStatLookbackSeconds;
+    if(CopyTicks(_Symbol, ticks, COPY_TICKS_ALL, from * 1000, 0) > 0)
+    {
+        // Adatok szétválogatása
+        datetime breakout_start_time = TimeCurrent() - InpStatBreakoutSeconds;
+        CArrayDouble lookback_prices, breakout_prices;
+        long lookback_vol = 0, breakout_vol = 0;
+        int lookback_count = 0, breakout_count = 0;
+
+        for(int i=0; i<ArraySize(ticks); i++)
+        {
+            if(ticks[i].time_msc < breakout_start_time * 1000) {
+                lookback_prices.Add(ticks[i].last);
+                lookback_vol += ticks[i].volume;
+                lookback_count++;
+            } else {
+                breakout_prices.Add(ticks[i].last);
+                breakout_vol += ticks[i].volume;
+                breakout_count++;
+            }
+        }
+
+        if(lookback_count > 1 && breakout_count > 1)
+        {
+            double lookback_stddev = MathStandardDeviation(lookback_prices.GetPointer());
+            double breakout_stddev = MathStandardDeviation(breakout_prices.GetPointer());
+            double lookback_avg_vol = (double)lookback_vol / lookback_count;
+            double breakout_avg_vol = (double)breakout_vol / breakout_count;
+
+            if(breakout_stddev > lookback_stddev * InpStatStdDevFactor && breakout_avg_vol > lookback_avg_vol * InpStatVolFactor)
+            {
+                score += 3;
+                Print("Signal Strength: 'Calm Before Storm' breakout detected. +3 points.");
+            }
+        }
+    }
+    else { max_score -= 3; Print("Signal Strength: Not enough tick data for Look Back analysis."); }
+
+
+    // 6. Korreláció-alapú Trend Megerősítés (max 2 pont)
+    max_score += 2;
+    int corr_ticks = breakout_count > 0 ? breakout_count : ArraySize(ticks);
+    if(corr_ticks > 1)
+    {
+        CArrayDouble prices, time_series;
+        for(int i = ArraySize(ticks) - corr_ticks; i < ArraySize(ticks); i++)
+        {
+            prices.Add(ticks[i].last);
+            time_series.Add(i);
+        }
+        double correlation = MathCorrelation(prices.GetPointer(), time_series.GetPointer());
+
+        if(signal_type == ORDER_TYPE_BUY && correlation >= InpStatCorrThreshold) {
+            score += 2;
+            Print("Signal Strength: Strong positive correlation found. +2 points.");
+        }
+        if(signal_type == ORDER_TYPE_SELL && correlation <= -InpStatCorrThreshold) {
+            score += 2;
+            Print("Signal Strength: Strong negative correlation found. +2 points.");
+        }
+    } else { max_score -= 2; Print("Signal Strength: Not enough data for Correlation analysis.");}
+
+
     // Arányosítás a 10-es skálára
     if (max_score <= 0) return 0;
     return (int)MathRound((double)score / max_score * 10.0);
@@ -910,7 +1000,13 @@ void CheckForNewSignal(const double previous_wpr_val, const double current_wpr_v
         }
      }
 
-   if(!OpenPosition(signal_type))
+   if(OpenPosition(signal_type))
+     {
+      // Spike Protector állapot nullázása
+      g_spike_breakeven_set = false;
+      g_spike_trailing_activated = false;
+     }
+   else
      {
       long retcode = trade.ResultRetcode();
       if(retcode == 0 || retcode == 10009) { return; }
@@ -950,55 +1046,84 @@ void ManageOpenPosition(const double prev_wpr_value, const double current_wpr_va
    double current_close_price = (type == POSITION_TYPE_BUY) ? symbol_info.Bid() : symbol_info.Ask();
    bool trailing_stop_modified = false;
 
-   if(InpUseATRManagement)
-     {
-      double current_atr = GetCurrentATRValue();
-      if(current_atr <= 0) { Print("Hiba: Érvénytelen ATR érték (ATR mód)."); return; }
-      double be_trigger_price_diff   = current_atr * InpATRMultiplierBETrigger;
-      double be_lock_price_diff      = current_atr * InpATRMultiplierBELock;
-      double ts_trigger_price_diff   = current_atr * InpATRMultiplierTSTrigger;
-      double ts_distance_price_diff  = current_atr * InpATRMultiplierTSDistance;
-      double current_profit_price = (type == POSITION_TYPE_BUY) ? (current_close_price - open_price) : (open_price - current_close_price);
+   switch(InpProfitMode)
+   {
+       case MODE_POINTS:
+           double profit_in_actual_points = ((type == POSITION_TYPE_BUY) ? (current_close_price - open_price) : (open_price - current_close_price)) / g_point;
 
-      if(InpATRMultiplierTSTrigger > 0 && current_profit_price >= ts_trigger_price_diff)
-        {
-         double new_ts_sl_price = (type == POSITION_TYPE_BUY) ? current_close_price - ts_distance_price_diff : current_close_price + ts_distance_price_diff;
-         new_ts_sl_price = NormalizeDouble(new_ts_sl_price, g_digits);
-         if((type == POSITION_TYPE_BUY && new_ts_sl_price > current_sl) || (type == POSITION_TYPE_SELL && (new_ts_sl_price < current_sl || current_sl == 0)))
-           { if(trade.PositionModify(position_info.Ticket(), new_ts_sl_price, current_tp)) trailing_stop_modified = true; else Print("Hiba a TS módosításakor (ATR): ", trade.ResultRetcode(), " - ", trade.ResultComment()); }
-        }
-      if(!trailing_stop_modified && InpATRMultiplierBETrigger > 0 && current_profit_price >= be_trigger_price_diff)
-        {
-         double be_price = (type == POSITION_TYPE_BUY) ? open_price + be_lock_price_diff : open_price - be_lock_price_diff;
-         be_price = NormalizeDouble(be_price, g_digits);
-         if((type == POSITION_TYPE_BUY && current_sl < be_price) || (type == POSITION_TYPE_SELL && (current_sl > be_price || current_sl == 0)))
-           { if(!trade.PositionModify(position_info.Ticket(), be_price, current_tp)) Print("Hiba a BE módosításakor (ATR): ", trade.ResultRetcode(), " - ", trade.ResultComment()); }
-        }
-     }
-   else
-     {
-      double profit_in_actual_points = ((type == POSITION_TYPE_BUY) ? (current_close_price - open_price) : (open_price - current_close_price)) / g_point;
+           double ts_trigger_actual_points = InpTrailingStopTriggerPoints * InpInputPointScaler * g_point_adjustment_factor;
+           if(InpTrailingStopTriggerPoints > 0 && profit_in_actual_points >= ts_trigger_actual_points)
+           {
+               double ts_distance_actual_points = InpTrailingStopDistancePoints * InpInputPointScaler * g_point_adjustment_factor;
+               double new_ts_sl_price = (type == POSITION_TYPE_BUY) ? current_close_price - ts_distance_actual_points * g_point : current_close_price + ts_distance_actual_points * g_point;
+               new_ts_sl_price = NormalizeDouble(new_ts_sl_price, g_digits);
+               if((type == POSITION_TYPE_BUY && new_ts_sl_price > current_sl) || (type == POSITION_TYPE_SELL && (new_ts_sl_price < current_sl || current_sl == 0)))
+               { if(trade.PositionModify(position_info.Ticket(), new_ts_sl_price, current_tp)) trailing_stop_modified = true; else Print("Hiba a TS módosításakor (Pont): ", trade.ResultRetcode(), " - ", trade.ResultComment()); }
+           }
 
-      double ts_trigger_actual_points = InpTrailingStopTriggerPoints * InpInputPointScaler * g_point_adjustment_factor;
-      if(InpTrailingStopTriggerPoints > 0 && profit_in_actual_points >= ts_trigger_actual_points)
-        {
-         double ts_distance_actual_points = InpTrailingStopDistancePoints * InpInputPointScaler * g_point_adjustment_factor;
-         double new_ts_sl_price = (type == POSITION_TYPE_BUY) ? current_close_price - ts_distance_actual_points * g_point : current_close_price + ts_distance_actual_points * g_point;
-         new_ts_sl_price = NormalizeDouble(new_ts_sl_price, g_digits);
-         if((type == POSITION_TYPE_BUY && new_ts_sl_price > current_sl) || (type == POSITION_TYPE_SELL && (new_ts_sl_price < current_sl || current_sl == 0)))
-           { if(trade.PositionModify(position_info.Ticket(), new_ts_sl_price, current_tp)) trailing_stop_modified = true; else Print("Hiba a TS módosításakor (Pont): ", trade.ResultRetcode(), " - ", trade.ResultComment()); }
-        }
+           double be_trigger_actual_points = InpBreakevenTriggerPoints * InpInputPointScaler * g_point_adjustment_factor;
+           if(!trailing_stop_modified && InpBreakevenTriggerPoints > 0 && profit_in_actual_points >= be_trigger_actual_points)
+           {
+               double be_lock_actual_points = InpBreakevenLockInPoints * InpInputPointScaler * g_point_adjustment_factor;
+               double be_price = (type == POSITION_TYPE_BUY) ? open_price + be_lock_actual_points * g_point : open_price - be_lock_actual_points * g_point;
+               be_price = NormalizeDouble(be_price, g_digits);
+               if((type == POSITION_TYPE_BUY && current_sl < be_price) || (type == POSITION_TYPE_SELL && (current_sl > be_price || current_sl == 0)))
+               { if(!trade.PositionModify(position_info.Ticket(), be_price, current_tp)) Print("Hiba a BE módosításakor (Pont): ", trade.ResultRetcode(), " - ", trade.ResultComment()); }
+           }
+           break;
 
-      double be_trigger_actual_points = InpBreakevenTriggerPoints * InpInputPointScaler * g_point_adjustment_factor;
-      if(!trailing_stop_modified && InpBreakevenTriggerPoints > 0 && profit_in_actual_points >= be_trigger_actual_points)
-        {
-         double be_lock_actual_points = InpBreakevenLockInPoints * InpInputPointScaler * g_point_adjustment_factor;
-         double be_price = (type == POSITION_TYPE_BUY) ? open_price + be_lock_actual_points * g_point : open_price - be_lock_actual_points * g_point;
-         be_price = NormalizeDouble(be_price, g_digits);
-         if((type == POSITION_TYPE_BUY && current_sl < be_price) || (type == POSITION_TYPE_SELL && (current_sl > be_price || current_sl == 0)))
-           { if(!trade.PositionModify(position_info.Ticket(), be_price, current_tp)) Print("Hiba a BE módosításakor (Pont): ", trade.ResultRetcode(), " - ", trade.ResultComment()); }
-        }
-     }
+       case MODE_PSAR:
+           g_trailings.TrailingParabolicSAR(position_info.Ticket(),_Symbol,_Period,InpPsarStep,InpPsarMax);
+           break;
+
+       case MODE_VIDYA:
+           g_trailings.TrailingVIDYA(position_info.Ticket(),_Symbol,_Period,InpVidyaCmoPeriod,InpVidyaEmaPeriod,InpVidyaShiftPts);
+           break;
+
+       case MODE_SPIKE_PROTECTOR:
+           {
+               double profit_in_points = ((type == POSITION_TYPE_BUY) ? (current_close_price - open_price) : (open_price - current_close_price)) / g_point;
+
+               // 1. FÁZIS: Spike detektálás és Breakeven+
+               if (!g_spike_breakeven_set && profit_in_points >= InpSpikeProfitPoints)
+               {
+                   double be_price = (type == POSITION_TYPE_BUY) ? open_price + InpSpikeBreakevenPts * g_point : open_price - InpSpikeBreakevenPts * g_point;
+                   if (trade.PositionModify(position_info.Ticket(), be_price, current_tp))
+                   {
+                       g_spike_breakeven_set = true;
+                       g_spike_detected_time = TimeCurrent();
+                       g_spike_peak_price = current_close_price;
+                       Print("Spike detected! Position moved to Breakeven+.");
+                   }
+               }
+
+               // Ha a breakeven be van állítva, de a trailing még nem aktív, figyeljük a megerősítést
+               if (g_spike_breakeven_set && !g_spike_trailing_activated)
+               {
+                   // Mindig frissítjük a csúcsot, amíg a megerősítésre várunk
+                   if(type == POSITION_TYPE_BUY && current_close_price > g_spike_peak_price) g_spike_peak_price = current_close_price;
+                   if(type == POSITION_TYPE_SELL && current_close_price < g_spike_peak_price) g_spike_peak_price = current_close_price;
+
+                   // Megerősítési feltételek ellenőrzése
+                   bool time_passed = (TimeCurrent() - g_spike_detected_time) >= InpSpikeConfirmSeconds;
+                   double pullback_limit = g_spike_peak_price - (g_spike_peak_price - position_info.PriceOpen()) * (InpSpikePullbackTol / 100.0);
+                   bool price_stable = (type == POSITION_TYPE_BUY) ? current_close_price >= pullback_limit : current_close_price <= pullback_limit;
+
+                   if (time_passed && price_stable)
+                   {
+                       g_spike_trailing_activated = true;
+                       Print("Spike confirmed. Activating TEMA trailing stop.");
+                   }
+               }
+
+               // 2. FÁZIS: Agresszív követés a megerősítés után
+               if (g_spike_trailing_activated)
+               {
+                   g_trailings.TrailingTEMA(position_info.Ticket(), _Symbol, _Period, InpSpikeTrailTemaPeriod, 0, InpSpikeTrailTemaShift);
+               }
+           }
+           break;
+   }
   }
 //+------------------------------------------------------------------+
 //| ESEMÉNYKEZELŐ FUNKCIÓK                                           |
@@ -1043,6 +1168,9 @@ int OnInit()
    PrintFormat("Felhasználói Skálázó (InpInputPointScaler): %.2f", InpInputPointScaler);
 
    // --- Inicializálás ---
+   g_trailings = new CTrailings();
+   g_spike_breakeven_set = false;
+   g_spike_trailing_activated = false;
    g_belepes_fuggoben = false;
    g_wpr_shortname = "";
    g_smooth_wpr_shortname = "";
@@ -1217,6 +1345,9 @@ void OnDeinit(const int reason)
      {
       IndicatorRelease(g_wpr_smooth_handle);
      }
+
+   // Trailings objektum felszabadítása
+   if(CheckPointer(g_trailings) == POINTER_VALID) delete g_trailings;
 
    // Pozíciók zárása (CSAK ha az EA-t eltávolítják)
    if(reason == REASON_REMOVE)
