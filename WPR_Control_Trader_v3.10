@@ -13,7 +13,8 @@
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
 #include <Trade\PositionInfo.mqh>
-#include <Trailings.mqh>
+#include <Arrays/ArrayDouble.mqh>
+#include "Trailings.mqh"
 #include <Math\Stat\Stat.mqh>
 
 //+------------------------------------------------------------------+
@@ -157,7 +158,7 @@ bool            g_spike_breakeven_set = false;
 bool            g_spike_trailing_activated = false;
 
 //--- Trailings.mqh Objektum ---
-CTrailings     *g_trailings;
+CSimpleTrailing *g_trailings;
 
 //--- Globális indikátornevek a tiszta törléshez ---
 string          g_wpr_shortname = "";
@@ -168,7 +169,6 @@ string          g_ema_filter_shortname = ""; // VÁLTOZÁS: Hozzáadva
 //--- Panel Override Globális Változók ---
 bool            g_override_active = false;
 double          g_override_margin_percent = 0;
-bool            g_override_use_atr = true;
 double          g_override_sl_atr = 0;
 double          g_override_tp_atr = 0;
 int             g_override_sl_pts = 0;
@@ -205,7 +205,7 @@ bool FatalisHiba(long retcode)
 //+------------------------------------------------------------------+
 double GetCurrentATRValue()
   {
-   if(!InpUseATRManagement || atr_handle == INVALID_HANDLE) { return 0.0; }
+   if(atr_handle == INVALID_HANDLE) { return 0.0; }
    double atr_buffer[1];
    if(CopyBuffer(atr_handle, 0, 1, 1, atr_buffer) < 1) { Print("Hiba az ATR érték másolásakor! ", GetLastError()); return 0.0; }
    if (atr_buffer[0] <= 0) { Print("Figyelmeztetés: Az ATR érték nulla vagy negatív (", atr_buffer[0], "). Visszatérés 100 ponttal."); return g_point * 100; }
@@ -453,21 +453,7 @@ void CreatePanelAndControls()
        ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_YDISTANCE, override_y_start + 60);
        ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_XSIZE, 80);
        ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_YSIZE, 25);
-       ObjectSetString(0, override_mode_button_atr_name, OBJPROP_TEXT, "ATR Mode");
-       ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-       ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_STATE, InpUseATRManagement);
-       ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_ZORDER, 2);
-
-       ObjectCreate(0, override_mode_button_pts_name, OBJ_BUTTON, 0, 0, 0);
-       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_XDISTANCE, override_x_start + 90);
-       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_YDISTANCE, override_y_start + 60);
-       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_XSIZE, 80);
-       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_YSIZE, 25);
-       ObjectSetString(0, override_mode_button_pts_name, OBJPROP_TEXT, "Points Mode");
-       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_STATE, !InpUseATRManagement);
-       ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_ZORDER, 2);
+       // ATR/Ponts váltógombok eltávolítva
 
        // SL/TP Edits
        ObjectCreate(0, override_sl_label_name, OBJ_LABEL, 0, 0, 0);
@@ -485,7 +471,7 @@ void CreatePanelAndControls()
        ObjectSetInteger(0, override_sl_edit_name, OBJPROP_YDISTANCE, override_y_start + 95);
        ObjectSetInteger(0, override_sl_edit_name, OBJPROP_XSIZE, 50);
        ObjectSetInteger(0, override_sl_edit_name, OBJPROP_YSIZE, 20);
-       ObjectSetString(0, override_sl_edit_name, OBJPROP_TEXT, InpUseATRManagement ? DoubleToString(InpATRMultiplierSL, 1) : IntegerToString(InpInitialStopLossPoints));
+       ObjectSetString(0, override_sl_edit_name, OBJPROP_TEXT, IntegerToString(InpInitialStopLossPoints));
        ObjectSetInteger(0, override_sl_edit_name, OBJPROP_ZORDER, 2);
 
        ObjectCreate(0, override_tp_label_name, OBJ_LABEL, 0, 0, 0);
@@ -503,7 +489,7 @@ void CreatePanelAndControls()
        ObjectSetInteger(0, override_tp_edit_name, OBJPROP_YDISTANCE, override_y_start + 125);
        ObjectSetInteger(0, override_tp_edit_name, OBJPROP_XSIZE, 50);
        ObjectSetInteger(0, override_tp_edit_name, OBJPROP_YSIZE, 20);
-       ObjectSetString(0, override_tp_edit_name, OBJPROP_TEXT, InpUseATRManagement ? DoubleToString(InpATRMultiplierTP, 1) : IntegerToString(InpTakeProfitPoints));
+       ObjectSetString(0, override_tp_edit_name, OBJPROP_TEXT, IntegerToString(InpTakeProfitPoints));
        ObjectSetInteger(0, override_tp_edit_name, OBJPROP_ZORDER, 2);
 
        // R:R Label
@@ -538,8 +524,6 @@ void DeletePanelAndButtons()
        ObjectDelete(0, override_title_name);
        ObjectDelete(0, override_margin_label_name);
        ObjectDelete(0, override_margin_edit_name);
-       ObjectDelete(0, override_mode_button_atr_name);
-       ObjectDelete(0, override_mode_button_pts_name);
        ObjectDelete(0, override_sl_label_name);
        ObjectDelete(0, override_sl_edit_name);
        ObjectDelete(0, override_tp_label_name);
@@ -728,10 +712,10 @@ int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
     max_score += 3;
     MqlTick ticks[];
     datetime from = TimeCurrent() - InpStatLookbackSeconds;
-    if(CopyTicks(_Symbol, ticks, COPY_TICKS_ALL, from * 1000, 0) > 0)
+    if((long)CopyTicks(_Symbol, ticks, COPY_TICKS_ALL, (ulong)from * 1000, 0) > 0)
     {
         // Adatok szétválogatása
-        datetime breakout_start_time = TimeCurrent() - InpStatBreakoutSeconds;
+        datetime breakout_start_time = (datetime)((long)TimeCurrent() - InpStatBreakoutSeconds);
         CArrayDouble lookback_prices, breakout_prices;
         long lookback_vol = 0, breakout_vol = 0;
         int lookback_count = 0, breakout_count = 0;
@@ -751,8 +735,13 @@ int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
 
         if(lookback_count > 1 && breakout_count > 1)
         {
-            double lookback_stddev = MathStandardDeviation(lookback_prices.GetPointer());
-            double breakout_stddev = MathStandardDeviation(breakout_prices.GetPointer());
+            double lookback_prices_arr[];
+            lookback_prices.CopyTo(lookback_prices_arr);
+            double breakout_prices_arr[];
+            breakout_prices.CopyTo(breakout_prices_arr);
+
+            double lookback_stddev = MathStandardDeviation(lookback_prices_arr);
+            double breakout_stddev = MathStandardDeviation(breakout_prices_arr);
             double lookback_avg_vol = (double)lookback_vol / lookback_count;
             double breakout_avg_vol = (double)breakout_vol / breakout_count;
 
@@ -777,7 +766,12 @@ int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
             prices.Add(ticks[i].last);
             time_series.Add(i);
         }
-        double correlation = MathCorrelation(prices.GetPointer(), time_series.GetPointer());
+
+        double prices_arr[];
+        prices.CopyTo(prices_arr);
+        double time_series_arr[];
+        time_series.CopyTo(time_series_arr);
+        double correlation = MathCorrelation(prices_arr, time_series_arr);
 
         if(signal_type == ORDER_TYPE_BUY && correlation >= InpStatCorrThreshold) {
             score += 2;
@@ -803,9 +797,6 @@ void InitializeOverrides()
 
     g_override_active = true;
     g_override_margin_percent = InpMaxMarginPercent;
-    g_override_use_atr = InpUseATRManagement;
-    g_override_sl_atr = InpATRMultiplierSL;
-    g_override_tp_atr = InpATRMultiplierTP;
     g_override_sl_pts = InpInitialStopLossPoints;
     g_override_tp_pts = InpTakeProfitPoints;
 }
@@ -814,8 +805,8 @@ void UpdateOverrideRRLabel()
 {
     if(!InpUsePanelOverrides) return;
 
-    double sl = g_override_use_atr ? g_override_sl_atr : (double)g_override_sl_pts;
-    double tp = g_override_use_atr ? g_override_tp_atr : (double)g_override_tp_pts;
+    double sl = (double)g_override_sl_pts;
+    double tp = (double)g_override_tp_pts;
 
     string rr_text = "R:R Ratio: ";
     if (sl > 0)
@@ -889,28 +880,10 @@ bool OpenPosition(ENUM_ORDER_TYPE type)
    if (min_stop_distance_price <= 0) min_stop_distance_price = g_point;
 
    // Felülírási logika
-   bool use_atr = (g_override_active) ? g_override_use_atr : InpUseATRManagement;
-   double atr_sl_mult = (g_override_active) ? g_override_sl_atr : InpATRMultiplierSL;
-   double atr_tp_mult = (g_override_active) ? g_override_tp_atr : InpATRMultiplierTP;
    int pts_sl = (g_override_active) ? g_override_sl_pts : InpInitialStopLossPoints;
    int pts_tp = (g_override_active) ? g_override_tp_pts : InpTakeProfitPoints;
 
-   if(use_atr)
-     {
-      current_atr = GetCurrentATRValue();
-      if(current_atr <= 0) { Print("Hiba: Érvénytelen ATR érték (ATR mód)."); confirmation_signal_price = 0; return false; }
-      double sl_distance_price = current_atr * atr_sl_mult;
-      double final_sl_distance_price = MathMax(sl_distance_price, min_stop_distance_price);
-      sl_price = (type == ORDER_TYPE_BUY) ? current_price - final_sl_distance_price : current_price + final_sl_distance_price;
-      if(atr_tp_mult > 0)
-        {
-         double tp_distance_price = current_atr * atr_tp_mult;
-         tp_distance_price = MathMax(tp_distance_price, min_stop_distance_price);
-         tp_price = (type == ORDER_TYPE_BUY) ? current_price + tp_distance_price : current_price - tp_distance_price;
-        }
-     }
-   else
-     {
+   {
       double sl_input_scaled = pts_sl * InpInputPointScaler;
       double tp_input_scaled = (pts_tp > 0) ? pts_tp * InpInputPointScaler : 0;
       double sl_actual_points = sl_input_scaled * g_point_adjustment_factor;
@@ -937,17 +910,16 @@ bool OpenPosition(ENUM_ORDER_TYPE type)
    sl_price = NormalizeDouble(sl_price, g_digits);
    if(tp_price != 0) tp_price = NormalizeDouble(tp_price, g_digits);
 
-   Print("OpenPosition (", (InpUseATRManagement?"ATR":"Pont")," mód): Aktuális ár=", DoubleToString(current_price, g_digits),
-         ", Számított SL=", DoubleToString(sl_price, g_digits),
-         ", Számított TP=", (tp_price == 0 ? "0.0" : DoubleToString(tp_price, g_digits)),
-         (!InpUseATRManagement? ", AdjFactor="+DoubleToString(g_point_adjustment_factor,1)+", Scaler="+DoubleToString(InpInputPointScaler,2) : ""),
-         (InpUseATRManagement? ", ATR="+DoubleToString(current_atr, g_digits) : ""),
+   Print("OpenPosition (Pont mód): Price=", DoubleToString(current_price, g_digits),
+         ", SL=", DoubleToString(sl_price, g_digits),
+         ", TP=", (tp_price == 0 ? "0.0" : DoubleToString(tp_price, g_digits)),
+         ", AdjF=", DoubleToString(g_point_adjustment_factor,1), ", Scaler=", DoubleToString(InpInputPointScaler,2),
          ", MinStopPrice=", DoubleToString(min_stop_distance_price, g_digits));
 
    if(trade.PositionOpen(_Symbol, type, lot_size, current_price, sl_price, tp_price, InpEaComment))
      {
-      string mode_info = InpUseATRManagement ? (" (ATR: " + DoubleToString(current_atr, g_digits) + ")") : (" (Pont, Adj: " + DoubleToString(g_point_adjustment_factor, 1) + ", Scaler: "+ DoubleToString(InpInputPointScaler, 2) + ")");
-      Print("Position opened: ", EnumToString(type), " ", lot_size, " lots. SL: ", DoubleToString(sl_price, g_digits), " TP: ", (tp_price==0?"N/A":DoubleToString(tp_price, g_digits)), mode_info);
+      string mode_info = "(Pont, Adj: " + DoubleToString(g_point_adjustment_factor, 1) + ", Scaler: "+ DoubleToString(InpInputPointScaler, 2) + ")";
+      Print("Position opened: ", EnumToString(type), " ", DoubleToString(lot_size,2), " lots. SL: ", DoubleToString(sl_price, g_digits), " TP: ", (tp_price==0?"N/A":DoubleToString(tp_price, g_digits)), " ", mode_info);
       confirmation_signal_price = 0;
       return true;
      }
@@ -1049,9 +1021,10 @@ void ManageOpenPosition(const double prev_wpr_value, const double current_wpr_va
    switch(InpProfitMode)
    {
        case MODE_POINTS:
-           double profit_in_actual_points = ((type == POSITION_TYPE_BUY) ? (current_close_price - open_price) : (open_price - current_close_price)) / g_point;
+           {
+               double profit_in_actual_points = ((type == POSITION_TYPE_BUY) ? (current_close_price - open_price) : (open_price - current_close_price)) / g_point;
 
-           double ts_trigger_actual_points = InpTrailingStopTriggerPoints * InpInputPointScaler * g_point_adjustment_factor;
+               double ts_trigger_actual_points = InpTrailingStopTriggerPoints * InpInputPointScaler * g_point_adjustment_factor;
            if(InpTrailingStopTriggerPoints > 0 && profit_in_actual_points >= ts_trigger_actual_points)
            {
                double ts_distance_actual_points = InpTrailingStopDistancePoints * InpInputPointScaler * g_point_adjustment_factor;
@@ -1070,14 +1043,20 @@ void ManageOpenPosition(const double prev_wpr_value, const double current_wpr_va
                if((type == POSITION_TYPE_BUY && current_sl < be_price) || (type == POSITION_TYPE_SELL && (current_sl > be_price || current_sl == 0)))
                { if(!trade.PositionModify(position_info.Ticket(), be_price, current_tp)) Print("Hiba a BE módosításakor (Pont): ", trade.ResultRetcode(), " - ", trade.ResultComment()); }
            }
+           }
            break;
 
        case MODE_PSAR:
-           g_trailings.TrailingParabolicSAR(position_info.Ticket(),_Symbol,_Period,InpPsarStep,InpPsarMax);
+           if(CheckPointer(g_trailings) == POINTER_VALID)
+           {
+               g_trailings.Run(position_info.Ticket());
+           }
            break;
-
        case MODE_VIDYA:
-           g_trailings.TrailingVIDYA(position_info.Ticket(),_Symbol,_Period,InpVidyaCmoPeriod,InpVidyaEmaPeriod,InpVidyaShiftPts);
+           if(CheckPointer(g_trailings) == POINTER_VALID)
+           {
+               g_trailings.Run(position_info.Ticket());
+           }
            break;
 
        case MODE_SPIKE_PROTECTOR:
@@ -1119,7 +1098,10 @@ void ManageOpenPosition(const double prev_wpr_value, const double current_wpr_va
                // 2. FÁZIS: Agresszív követés a megerősítés után
                if (g_spike_trailing_activated)
                {
-                   g_trailings.TrailingTEMA(position_info.Ticket(), _Symbol, _Period, InpSpikeTrailTemaPeriod, 0, InpSpikeTrailTemaShift);
+                   if(CheckPointer(g_trailings) == POINTER_VALID)
+                   {
+                       g_trailings.Run(position_info.Ticket());
+                   }
                }
            }
            break;
@@ -1168,7 +1150,30 @@ int OnInit()
    PrintFormat("Felhasználói Skálázó (InpInputPointScaler): %.2f", InpInputPointScaler);
 
    // --- Inicializálás ---
-   g_trailings = new CTrailings();
+   g_trailings = NULL; // Alapértelmezésben NULL
+
+   switch(InpProfitMode)
+   {
+       case MODE_PSAR:
+           // Paraméterek: symbol, timeframe, magic, sar_step, sar_maximum, trail_start, trail_step, trail_offset
+           g_trailings = new CTrailingBySAR(_Symbol, _Period, InpMagicNumber, InpPsarStep, InpPsarMax, 0, 1, 0);
+           break;
+       case MODE_VIDYA:
+           // Paraméterek: symbol, timeframe, magic, cmo_period, ema_period, shift(bar), price, trail_start, trail_step, trail_offset(points)
+           g_trailings = new CTrailingByVIDYA(_Symbol, _Period, InpMagicNumber, InpVidyaCmoPeriod, InpVidyaEmaPeriod, 0, PRICE_CLOSE, 0, 1, InpVidyaShiftPts);
+           break;
+       case MODE_SPIKE_PROTECTOR:
+           // A Spike Protector is TEMA trailinget használ a 2. fázisban
+           // Paraméterek: symbol, timeframe, magic, period, shift(bar), price, trail_start, trail_step, trail_offset(points)
+           g_trailings = new CTrailingByTEMA(_Symbol, _Period, InpMagicNumber, InpSpikeTrailTemaPeriod, 0, PRICE_CLOSE, 0, 1, InpSpikeTrailTemaShift);
+           break;
+   }
+
+   if(CheckPointer(g_trailings) == POINTER_VALID)
+   {
+       g_trailings.SetActive(true);
+   }
+
    g_spike_breakeven_set = false;
    g_spike_trailing_activated = false;
    g_belepes_fuggoben = false;
@@ -1207,14 +1212,20 @@ int OnInit()
       switch(InpWprSmoothingMethod)
         {
          case SMOOTH_DEMA:
-            g_wpr_smooth_handle = iDEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle);
-            break;
+            {
+               g_wpr_smooth_handle = iDEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle);
+               break;
+            }
          case SMOOTH_TEMA:
-            g_wpr_smooth_handle = iTEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle);
-            break;
+            {
+               g_wpr_smooth_handle = iTEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle);
+               break;
+            }
          default:
-            g_wpr_smooth_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, classic_method, wpr_handle);
-            break;
+            {
+               g_wpr_smooth_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, classic_method, wpr_handle);
+               break;
+            }
         }
 
       if(g_wpr_smooth_handle != INVALID_HANDLE)
@@ -1254,11 +1265,8 @@ int OnInit()
      }
 
    // ATR
-   if(InpUseATRManagement)
-     {
-      atr_handle = iATR(_Symbol, _Period, InpATRPeriod);
-      if(atr_handle == INVALID_HANDLE) { Print("Error creating ATR handle: ", GetLastError()); return(INIT_FAILED); }
-     }
+   atr_handle = iATR(_Symbol, _Period, 14);
+   if(atr_handle == INVALID_HANDLE) { Print("Error creating ATR handle: ", GetLastError()); return(INIT_FAILED); }
 
    CreatePanelAndControls();
    UpdatePanelStatus();
@@ -1436,78 +1444,28 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
        }
        else if(sparam == override_sl_edit_name)
        {
-           if(g_override_use_atr) {
-               double val = StringToDouble(ObjectGetString(0, sparam, OBJPROP_TEXT));
-               if(val > 0) {
-                   g_override_sl_atr = val;
-                   Print("Override SL (ATR) changed to: ", g_override_sl_atr);
-               }
-               else ObjectSetString(0, sparam, OBJPROP_TEXT, DoubleToString(g_override_sl_atr, 1));
-           } else {
-               int val = (int)StringToInteger(ObjectGetString(0, sparam, OBJPROP_TEXT));
-               if(val > 0) {
-                   g_override_sl_pts = val;
-                   Print("Override SL (Points) changed to: ", g_override_sl_pts);
-               }
-               else ObjectSetString(0, sparam, OBJPROP_TEXT, IntegerToString(g_override_sl_pts));
+           int val = (int)StringToInteger(ObjectGetString(0, sparam, OBJPROP_TEXT));
+           if(val > 0) {
+               g_override_sl_pts = val;
+               Print("Override SL (Points) changed to: ", g_override_sl_pts);
            }
+           else ObjectSetString(0, sparam, OBJPROP_TEXT, IntegerToString(g_override_sl_pts));
        }
        else if(sparam == override_tp_edit_name)
        {
-           if(g_override_use_atr) {
-               double val = StringToDouble(ObjectGetString(0, sparam, OBJPROP_TEXT));
-               if(val >= 0) {
-                   g_override_tp_atr = val;
-                   Print("Override TP (ATR) changed to: ", g_override_tp_atr);
-               }
-               else ObjectSetString(0, sparam, OBJPROP_TEXT, DoubleToString(g_override_tp_atr, 1));
-           } else {
-               int val = (int)StringToInteger(ObjectGetString(0, sparam, OBJPROP_TEXT));
-               if(val >= 0) {
-                   g_override_tp_pts = val;
-                   Print("Override TP (Points) changed to: ", g_override_tp_pts);
-               }
-               else ObjectSetString(0, sparam, OBJPROP_TEXT, IntegerToString(g_override_tp_pts));
+           int val = (int)StringToInteger(ObjectGetString(0, sparam, OBJPROP_TEXT));
+           if(val >= 0) {
+               g_override_tp_pts = val;
+               Print("Override TP (Points) changed to: ", g_override_tp_pts);
            }
+           else ObjectSetString(0, sparam, OBJPROP_TEXT, IntegerToString(g_override_tp_pts));
        }
        UpdateOverrideRRLabel();
        ChartRedraw();
        return;
    }
 
-   if(InpUsePanelOverrides && id == CHARTEVENT_OBJECT_CLICK)
-   {
-       if(sparam == override_mode_button_atr_name && !g_override_use_atr)
-       {
-           Print("Override mode changed to: ATR");
-           g_override_use_atr = true;
-           ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_STATE, true);
-           ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_STATE, false);
-           string sl_val = DoubleToString(g_override_sl_atr, 1);
-           string tp_val = DoubleToString(g_override_tp_atr, 1);
-           ObjectSetString(0, override_sl_edit_name, OBJPROP_TEXT, sl_val);
-           ObjectSetString(0, override_tp_edit_name, OBJPROP_TEXT, tp_val);
-           Print("Setting SL Editbox to: ", sl_val);
-           Print("Setting TP Editbox to: ", tp_val);
-           UpdateOverrideRRLabel();
-           ChartRedraw();
-       }
-       else if(sparam == override_mode_button_pts_name && g_override_use_atr)
-       {
-           Print("Override mode changed to: Points");
-           g_override_use_atr = false;
-           ObjectSetInteger(0, override_mode_button_atr_name, OBJPROP_STATE, false);
-           ObjectSetInteger(0, override_mode_button_pts_name, OBJPROP_STATE, true);
-           string sl_val = IntegerToString(g_override_sl_pts);
-           string tp_val = IntegerToString(g_override_tp_pts);
-           ObjectSetString(0, override_sl_edit_name, OBJPROP_TEXT, sl_val);
-           ObjectSetString(0, override_tp_edit_name, OBJPROP_TEXT, tp_val);
-           Print("Setting SL Editbox to: ", sl_val);
-           Print("Setting TP Editbox to: ", tp_val);
-           UpdateOverrideRRLabel();
-           ChartRedraw();
-       }
-   }
+   // ATR/Ponts váltógombok eseménykezelése eltávolítva
   }
 //+------------------------------------------------------------------+
 void OnTick()
@@ -1535,9 +1493,9 @@ void OnTick()
          if(InpWprSmoothingPeriod > 1) {
              ENUM_MA_METHOD classic_method = (ENUM_MA_METHOD)InpWprSmoothingMethod;
              switch(InpWprSmoothingMethod) {
-                 case SMOOTH_DEMA: g_wpr_smooth_handle = iDEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle); break;
-                 case SMOOTH_TEMA: g_wpr_smooth_handle = iTEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle); break;
-                 default: g_wpr_smooth_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, classic_method, wpr_handle); break;
+                 case SMOOTH_DEMA: { g_wpr_smooth_handle = iDEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle); break; }
+                 case SMOOTH_TEMA: { g_wpr_smooth_handle = iTEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle); break; }
+                 default: { g_wpr_smooth_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, classic_method, wpr_handle); break; }
              }
              if(g_wpr_smooth_handle == INVALID_HANDLE) { Print("Error re-creating Smoothed WPR handle"); }
          } else {
