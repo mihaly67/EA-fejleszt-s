@@ -567,13 +567,14 @@ void UpdatePanelStatus()
 //+------------------------------------------------------------------+
 string TimeframeToString(ENUM_TIMEFRAMES period)
 {
+    // Helyesebb és tisztább implementáció a hibák elkerülésére.
     string str = PeriodToString(period);
-    // Ha a PeriodToString csak számot ad vissza (pl. _Period esetén), adjunk hozzá egy 'M'-et
-    if(StringFind(str, "M") < 0 && StringFind(str, "H") < 0 && StringFind(str, "D") < 0 && StringFind(str, "W") < 0 && StringFind(str, "N") < 0)
+    string check_str = StringSubstr(str, 0, 1);
+    if(check_str != "M" && check_str != "H" && check_str != "D" && check_str != "W" && check_str != "N")
     {
-        str = "M" + str;
+        return("M" + str);
     }
-    return str;
+    return(str);
 }
 //+------------------------------------------------------------------+
 string GetTrendDirection(ENUM_TIMEFRAMES timeframe)
@@ -712,17 +713,19 @@ int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
     max_score += 3;
     MqlTick ticks[];
     datetime from = TimeCurrent() - InpStatLookbackSeconds;
-    if((long)CopyTicks(_Symbol, ticks, COPY_TICKS_ALL, (ulong)from * 1000, 0) > 0)
+    // JAVÍTÁS: Explicit (ulong) kasztolás a "possible loss of data" figyelmeztetés elkerülésére.
+    if(CopyTicks(_Symbol, ticks, COPY_TICKS_ALL, (ulong)from * 1000, 0) > 0)
     {
         // Adatok szétválogatása
-        datetime breakout_start_time = (datetime)((long)TimeCurrent() - InpStatBreakoutSeconds);
+        // JAVÍTÁS: Konzisztens (ulong) kasztolás itt is.
+        datetime breakout_start_time = TimeCurrent() - InpStatBreakoutSeconds;
         CArrayDouble lookback_prices, breakout_prices;
         long lookback_vol = 0, breakout_vol = 0;
         int lookback_count = 0, breakout_count = 0;
 
         for(int i=0; i<ArraySize(ticks); i++)
         {
-            if(ticks[i].time_msc < breakout_start_time * 1000) {
+            if(ticks[i].time_msc < (ulong)breakout_start_time * 1000) {
                 lookback_prices.Add(ticks[i].last);
                 lookback_vol += ticks[i].volume;
                 lookback_count++;
@@ -735,13 +738,15 @@ int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
 
         if(lookback_count > 1 && breakout_count > 1)
         {
-            double lookback_prices_arr[];
-            lookback_prices.CopyTo(lookback_prices_arr);
-            double breakout_prices_arr[];
-            breakout_prices.CopyTo(breakout_prices_arr);
+            // JAVÍTÁS: A blokk teljes újraírása a rejtett hibák elkerülése végett.
+            double temp_lookback_arr[];
+            lookback_prices.CopyTo(temp_lookback_arr);
 
-            double lookback_stddev = MathStandardDeviation(lookback_prices_arr);
-            double breakout_stddev = MathStandardDeviation(breakout_prices_arr);
+            double temp_breakout_arr[];
+            breakout_prices.CopyTo(temp_breakout_arr);
+
+            double lookback_stddev = MathStandardDeviation(temp_lookback_arr);
+            double breakout_stddev = MathStandardDeviation(temp_breakout_arr);
             double lookback_avg_vol = (double)lookback_vol / lookback_count;
             double breakout_avg_vol = (double)breakout_vol / breakout_count;
 
@@ -767,13 +772,23 @@ int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
             time_series.Add(i);
         }
 
+        // --- JAVÍTÁS ---
+        // A CArrayDouble objektumok tartalmát át kell másolni a statisztikai
+        // függvények által elvárt double[] tömbökbe.
+
+        // 1. A cél tömbök deklarálása
         double prices_arr[];
-        prices.CopyTo(prices_arr);
         double time_series_arr[];
+
+        // 2. Adatok másolása a CArrayDouble objektumokból a tömbökbe
+        prices.CopyTo(prices_arr);
         time_series.CopyTo(time_series_arr);
+
+        // 3. A korreláció számítása a helyes (double[]) tömbökkel
         double correlation = MathCorrelation(prices_arr, time_series_arr);
 
-        if(signal_type == ORDER_TYPE_BUY && correlation >= InpStatCorrThreshold) {
+        if(signal_type == ORDER_TYPE_BUY && correlation >= InpStatCorrThreshold)
+        {
             score += 2;
             Print("Signal Strength: Strong positive correlation found. +2 points.");
         }
@@ -1207,26 +1222,10 @@ int OnInit()
    // --- Simított WPR Indikátor Létrehozása (DEMA/TEMA logikával) ---
    if(InpWprSmoothingPeriod > 1)
      {
-      ENUM_MA_METHOD classic_method = (ENUM_MA_METHOD)InpWprSmoothingMethod;
-
-      switch(InpWprSmoothingMethod)
-        {
-         case SMOOTH_DEMA:
-            {
-               g_wpr_smooth_handle = iDEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle);
-               break;
-            }
-         case SMOOTH_TEMA:
-            {
-               g_wpr_smooth_handle = iTEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle);
-               break;
-            }
-         default:
-            {
-               g_wpr_smooth_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, classic_method, wpr_handle);
-               break;
-            }
-        }
+      // JAVÍTÁS: Az iDEMA és iTEMA nem tud másik indikátorra hivatkozni.
+      // A helyes módszer az iMA használata a megfelelő ENUM_MA_METHOD-dal.
+      ENUM_MA_METHOD ma_method_to_use = (ENUM_MA_METHOD)InpWprSmoothingMethod;
+      g_wpr_smooth_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, ma_method_to_use, wpr_handle);
 
       if(g_wpr_smooth_handle != INVALID_HANDLE)
         {
@@ -1491,12 +1490,9 @@ void OnTick()
 
          // Új simított WPR handle létrehozása
          if(InpWprSmoothingPeriod > 1) {
-             ENUM_MA_METHOD classic_method = (ENUM_MA_METHOD)InpWprSmoothingMethod;
-             switch(InpWprSmoothingMethod) {
-                 case SMOOTH_DEMA: { g_wpr_smooth_handle = iDEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle); break; }
-                 case SMOOTH_TEMA: { g_wpr_smooth_handle = iTEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle); break; }
-                 default: { g_wpr_smooth_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, classic_method, wpr_handle); break; }
-             }
+             // JAVÍTÁS: Itt is az iMA a helyes megoldás.
+             ENUM_MA_METHOD ma_method_to_use = (ENUM_MA_METHOD)InpWprSmoothingMethod;
+             g_wpr_smooth_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, ma_method_to_use, wpr_handle);
              if(g_wpr_smooth_handle == INVALID_HANDLE) { Print("Error re-creating Smoothed WPR handle"); }
          } else {
              g_wpr_smooth_handle = wpr_handle;
