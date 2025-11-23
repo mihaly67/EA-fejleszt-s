@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                          WPR_Hybrid_Analyst_v3.19.mq5 |
+//|                          WPR_Hybrid_Analyst_v3.18.mq5 |
 //|                        Copyright 2024, Gemini & User Collaboration |
-//|        Verzió: v3.19 - Robusztus SL/TP kalkuláció (TickSize)       |
+//|        Verzió: Statisztikai modul eltávolítva, stabil alap         |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "3.19"
+#property version   "3.18"
 
 //+------------------------------------------------------------------+
 //| Tartalmazza (Includes)                                           |
@@ -40,7 +40,7 @@ enum ENUM_SMOOTH_METHOD
 //+------------------------------------------------------------------+
 input group "EA Settings"
 input ulong         InpMagicNumber            = 202433;
-input string        InpEaComment              = "WPR_Hybrid_Analyst_v3.19";
+input string        InpEaComment              = "WPR_Hybrid_Analyst_v3.18";
 input ENUM_TRADE_MODE InpTradeMode            = MODE_SEMI_AUTOMATIC;
 input ENUM_EXIT_LOGIC InpExitLogic            = MODE_POINT_BASED;
 input int           InpUjraProbaIdotullepesSec= 10;
@@ -124,6 +124,7 @@ long            g_stops_level = 0;
 double          g_min_lot = 0.0;
 double          g_max_lot = 0.0;
 double          g_lot_step = 0.0;
+double          g_point_adjustment_factor = 1.0;
 string          panel_bg_name    = "WPR_Panel_BG";
 string          panel_title_name = "WPR_Panel_Title";
 string          panel_status_name= "WPR_Panel_Status";
@@ -157,7 +158,7 @@ CSimpleTrailing *g_trailings;
 //--- Globális indikátornevek a tiszta törléshez ---
 string          g_wpr_shortname = "";
 string          g_smooth_wpr_shortname = "";
-string          g_ema_filter_shortname = ""; // VÁLTOZÁS: Hozzáadva
+string          g_ema_filter_shortname = "";
 //-----------------------------------------------------
 
 //--- Panel Override Globális Változók ---
@@ -204,30 +205,6 @@ double GetCurrentATRValue()
    if(CopyBuffer(atr_handle, 0, 1, 1, atr_buffer) < 1) { Print("Hiba az ATR érték másolásakor! ", GetLastError()); return 0.0; }
    if (atr_buffer[0] <= 0) { Print("Figyelmeztetés: Az ATR érték nulla vagy negatív (", atr_buffer[0], "). Visszatérés 100 ponttal."); return g_point * 100; }
    return atr_buffer[0];
-  }
-//+------------------------------------------------------------------+
-//| Normalizálja a pont alapú inputot valós, kereskedhető árréssé      |
-//+------------------------------------------------------------------+
-double NormalizePointsToPriceDistance(const int points_input)
-  {
-   // 1. A felhasználói skálázó alkalmazása és a pontok átváltása nyers ár-távolságra
-   const double raw_distance = (points_input * InpInputPointScaler) * g_point;
-
-   // 2. A TickSize lekérdezése a normalizáláshoz
-   const double tick_size = symbol_info.TickSize();
-
-   // 3. Normalizálás a legközelebbi érvényes Tick méretre
-   if(tick_size > 0)
-     {
-      const double normalized_distance = MathRound(raw_distance / tick_size) * tick_size;
-      PrintFormat("NormalizePoints -> Input: %d pts, RawDist: %.5f, TickSize: %.5f, FinalDist: %.5f",
-                  points_input, raw_distance, tick_size, normalized_distance);
-      return(normalized_distance);
-     }
-
-   PrintFormat("NormalizePoints -> Input: %d pts, RawDist: %.5f, TickSize: %.5f (nem használt), FinalDist: %.5f",
-               points_input, raw_distance, tick_size, raw_distance);
-   return(raw_distance);
   }
 //+------------------------------------------------------------------+
 //| ADAPTÍV LOGIKA                                                   |
@@ -296,7 +273,7 @@ void CreatePanelAndControls()
    ObjectSetInteger(0, panel_title_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
    ObjectSetInteger(0, panel_title_name, OBJPROP_XDISTANCE, InpPanelInitialX + 10);
    ObjectSetInteger(0, panel_title_name, OBJPROP_YDISTANCE, InpPanelInitialY + 10);
-   ObjectSetString(0, panel_title_name, OBJPROP_TEXT, "WPR Control Trader v3.12");
+   ObjectSetString(0, panel_title_name, OBJPROP_TEXT, "WPR Control Trader v3.18");
    ObjectSetInteger(0, panel_title_name, OBJPROP_COLOR, clrWhite);
    ObjectSetInteger(0, panel_title_name, OBJPROP_FONTSIZE, 12);
    ObjectSetInteger(0, panel_title_name, OBJPROP_SELECTABLE, false);
@@ -625,7 +602,7 @@ void UpdatePanelInfoLabels()
     string broker_text = StringFormat("Spread: %d | Swap L: %.2f, S: %.2f", spread, swap_long, swap_short);
     ObjectSetString(0, broker_info_label_name, OBJPROP_TEXT, broker_text);
 
-   // Piaci Infó (Volatilitás)
+    // Piaci Infó (Volatilitás)
     double current_atr = GetCurrentATRValue();
     string market_text = StringFormat("Volatility (ATR): %.2f", NormalizeDouble(current_atr, g_digits));
     ObjectSetString(0, market_info_label_name, OBJPROP_TEXT, market_text);
@@ -674,10 +651,10 @@ int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
     string trend_h1 = GetTrendDirection(PERIOD_H1);
     string trend_h4 = GetTrendDirection(PERIOD_H4);
 
-    if(trend_m15 == "?") { max_score -= 1; }
-    if(trend_m30 == "?") { max_score -= 1; }
-    if(trend_h1 == "?")  { max_score -= 2; }
-    if(trend_h4 == "?")  { max_score -= 2; }
+    if(trend_m15 == "?") { max_score -= 1; Print("Signal Strength: M15 trend data not available."); }
+    if(trend_m30 == "?") { max_score -= 1; Print("Signal Strength: M30 trend data not available."); }
+    if(trend_h1 == "?")  { max_score -= 2; Print("Signal Strength: H1 trend data not available."); }
+    if(trend_h4 == "?")  { max_score -= 2; Print("Signal Strength: H4 trend data not available."); }
 
     if (signal_type == ORDER_TYPE_BUY)
     {
@@ -702,7 +679,11 @@ int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
         if (signal_type == ORDER_TYPE_BUY && rsi_buffer[1] < 30 && rsi_buffer[0] >= 30) score += 3;
         if (signal_type == ORDER_TYPE_SELL && rsi_buffer[1] > 70 && rsi_buffer[0] <= 70) score += 3;
     }
-    else { max_score -= 3; }
+    else
+    {
+        max_score -= 3;
+        Print("Signal Strength: RSI data not available.");
+    }
 
     // 4. Volatilitás (Bollinger Bands) (max 2 pont)
     max_score += 2;
@@ -712,7 +693,11 @@ int CalculateSignalStrength(ENUM_ORDER_TYPE signal_type)
         if (signal_type == ORDER_TYPE_BUY && symbol_info.Bid() > bb_upper[0]) score += 2;
         if (signal_type == ORDER_TYPE_SELL && symbol_info.Ask() < bb_lower[0]) score += 2;
     }
-    else { max_score -= 2; }
+    else
+    {
+        max_score -= 2;
+        Print("Signal Strength: Bollinger Bands data not available.");
+    }
 
     // Arányosítás a 10-es skálára
     if (max_score <= 0) return 0;
@@ -814,15 +799,14 @@ bool OpenPosition(ENUM_ORDER_TYPE type)
    int pts_tp = (g_override_active) ? g_override_tp_pts : InpTakeProfitPoints;
 
    {
-      // ÚJ, ROBUSZTUS LOGIKA
-      double sl_distance = NormalizePointsToPriceDistance(pts_sl);
-      double tp_distance = (pts_tp > 0) ? NormalizePointsToPriceDistance(pts_tp) : 0;
-
-      double desired_sl_price = (type == ORDER_TYPE_BUY) ? current_price - sl_distance : current_price + sl_distance;
+      double sl_input_scaled = pts_sl * InpInputPointScaler;
+      double tp_input_scaled = (pts_tp > 0) ? pts_tp * InpInputPointScaler : 0;
+      double sl_actual_points = sl_input_scaled * g_point_adjustment_factor;
+      double tp_actual_points = tp_input_scaled * g_point_adjustment_factor;
+      double desired_sl_price = (type == ORDER_TYPE_BUY) ? current_price - sl_actual_points * g_point : current_price + sl_actual_points * g_point;
       double desired_tp_price = 0;
-      if(tp_distance > 0)
-        { desired_tp_price = (type == ORDER_TYPE_BUY) ? current_price + tp_distance : current_price - tp_distance; }
-      // ÚJ LOGIKA VÉGE
+      if(tp_actual_points > 0)
+        { desired_tp_price = (type == ORDER_TYPE_BUY) ? current_price + tp_actual_points * g_point : current_price - tp_actual_points * g_point; }
 
       if(type == ORDER_TYPE_BUY)
         {
@@ -841,16 +825,15 @@ bool OpenPosition(ENUM_ORDER_TYPE type)
    sl_price = NormalizeDouble(sl_price, g_digits);
    if(tp_price != 0) tp_price = NormalizeDouble(tp_price, g_digits);
 
-   // MÓDOSÍTOTT DIAGNOSZTIKA
    Print("OpenPosition (Pont mód): Price=", DoubleToString(current_price, g_digits),
          ", SL=", DoubleToString(sl_price, g_digits),
          ", TP=", (tp_price == 0 ? "0.0" : DoubleToString(tp_price, g_digits)),
-         ", Scaler=", DoubleToString(InpInputPointScaler,2),
+         ", AdjF=", DoubleToString(g_point_adjustment_factor,1), ", Scaler=", DoubleToString(InpInputPointScaler,2),
          ", MinStopPrice=", DoubleToString(min_stop_distance_price, g_digits));
 
    if(trade.PositionOpen(_Symbol, type, lot_size, current_price, sl_price, tp_price, InpEaComment))
      {
-      string mode_info = "(Pont, Scaler: "+ DoubleToString(InpInputPointScaler, 2) + ")";
+      string mode_info = "(Pont, Adj: " + DoubleToString(g_point_adjustment_factor, 1) + ", Scaler: "+ DoubleToString(InpInputPointScaler, 2) + ")";
       Print("Position opened: ", EnumToString(type), " ", DoubleToString(lot_size,2), " lots. SL: ", DoubleToString(sl_price, g_digits), " TP: ", (tp_price==0?"N/A":DoubleToString(tp_price, g_digits)), " ", mode_info);
       confirmation_signal_price = 0;
       return true;
@@ -954,46 +937,27 @@ void ManageOpenPosition(const double prev_wpr_value, const double current_wpr_va
    {
        case MODE_POINTS:
            {
-               // ÚJ, ÁR ALAPÚ LOGIKA
-               const double profit_in_price = (type == POSITION_TYPE_BUY) ? (current_close_price - open_price) : (open_price - current_close_price);
+               double profit_in_actual_points = ((type == POSITION_TYPE_BUY) ? (current_close_price - open_price) : (open_price - current_close_price)) / g_point;
 
-               // Trailing Stop Logika
-               if(InpTrailingStopTriggerPoints > 0)
-                 {
-                  const double ts_trigger_distance = NormalizePointsToPriceDistance(InpTrailingStopTriggerPoints);
-                  if(profit_in_price >= ts_trigger_distance)
-                    {
-                     const double ts_distance = NormalizePointsToPriceDistance(InpTrailingStopDistancePoints);
-                     double new_ts_sl_price = (type == POSITION_TYPE_BUY) ? current_close_price - ts_distance : current_close_price + ts_distance;
-                     new_ts_sl_price = NormalizeDouble(new_ts_sl_price, g_digits);
+               double ts_trigger_actual_points = InpTrailingStopTriggerPoints * InpInputPointScaler * g_point_adjustment_factor;
+           if(InpTrailingStopTriggerPoints > 0 && profit_in_actual_points >= ts_trigger_actual_points)
+           {
+               double ts_distance_actual_points = InpTrailingStopDistancePoints * InpInputPointScaler * g_point_adjustment_factor;
+               double new_ts_sl_price = (type == POSITION_TYPE_BUY) ? current_close_price - ts_distance_actual_points * g_point : current_close_price + ts_distance_actual_points * g_point;
+               new_ts_sl_price = NormalizeDouble(new_ts_sl_price, g_digits);
+               if((type == POSITION_TYPE_BUY && new_ts_sl_price > current_sl) || (type == POSITION_TYPE_SELL && (new_ts_sl_price < current_sl || current_sl == 0)))
+               { if(trade.PositionModify(position_info.Ticket(), new_ts_sl_price, current_tp)) trailing_stop_modified = true; else Print("Hiba a TS módosításakor (Pont): ", trade.ResultRetcode(), " - ", trade.ResultComment()); }
+           }
 
-                     if((type == POSITION_TYPE_BUY && new_ts_sl_price > current_sl) || (type == POSITION_TYPE_SELL && (new_ts_sl_price < current_sl || current_sl == 0)))
-                       {
-                        if(trade.PositionModify(position_info.Ticket(), new_ts_sl_price, current_tp))
-                          trailing_stop_modified = true;
-                        else
-                          Print("Hiba a TS módosításakor (Pont): ", trade.ResultRetcode(), " - ", trade.ResultComment());
-                       }
-                    }
-                 }
-
-               // Breakeven Logika
-               if(!trailing_stop_modified && InpBreakevenTriggerPoints > 0)
-                 {
-                  const double be_trigger_distance = NormalizePointsToPriceDistance(InpBreakevenTriggerPoints);
-                  if(profit_in_price >= be_trigger_distance)
-                    {
-                     const double be_lock_distance = NormalizePointsToPriceDistance(InpBreakevenLockInPoints);
-                     double be_price = (type == POSITION_TYPE_BUY) ? open_price + be_lock_distance : open_price - be_lock_distance;
-                     be_price = NormalizeDouble(be_price, g_digits);
-
-                     if((type == POSITION_TYPE_BUY && current_sl < be_price) || (type == POSITION_TYPE_SELL && (current_sl > be_price || current_sl == 0)))
-                       {
-                        if(!trade.PositionModify(position_info.Ticket(), be_price, current_tp))
-                          Print("Hiba a BE módosításakor (Pont): ", trade.ResultRetcode(), " - ", trade.ResultComment());
-                       }
-                    }
-                 }
+           double be_trigger_actual_points = InpBreakevenTriggerPoints * InpInputPointScaler * g_point_adjustment_factor;
+           if(!trailing_stop_modified && InpBreakevenTriggerPoints > 0 && profit_in_actual_points >= be_trigger_actual_points)
+           {
+               double be_lock_actual_points = InpBreakevenLockInPoints * InpInputPointScaler * g_point_adjustment_factor;
+               double be_price = (type == POSITION_TYPE_BUY) ? open_price + be_lock_actual_points * g_point : open_price - be_lock_actual_points * g_point;
+               be_price = NormalizeDouble(be_price, g_digits);
+               if((type == POSITION_TYPE_BUY && current_sl < be_price) || (type == POSITION_TYPE_SELL && (current_sl > be_price || current_sl == 0)))
+               { if(!trade.PositionModify(position_info.Ticket(), be_price, current_tp)) Print("Hiba a BE módosításakor (Pont): ", trade.ResultRetcode(), " - ", trade.ResultComment()); }
+           }
            }
            break;
 
@@ -1084,6 +1048,20 @@ int OnInit()
    if(trade_mode != SYMBOL_TRADE_MODE_FULL)
      { Print("Figyelmeztetés: Kereskedés nem engedélyezett (TradeMode: ", EnumToString(trade_mode), ")"); }
 
+   g_point_adjustment_factor = 1.0;
+   bool is_forex_calc_mode = (calc_mode == SYMBOL_CALC_MODE_FOREX || calc_mode == SYMBOL_CALC_MODE_FOREX_NO_LEVERAGE);
+
+   if (is_forex_calc_mode && (g_digits == 5 || g_digits == 3))
+     {
+      g_point_adjustment_factor = 0.1;
+      PrintFormat("%s: Forex (5/3 Digits) detektálva. Pont alapú inputok tizedelve (belső x0.1 szorzó).", _Symbol);
+     }
+   else
+     {
+      g_point_adjustment_factor = 1.0;
+      PrintFormat("%s: Nem-pip Forex vagy egyéb instrumentum detektálva. Pont alapú inputok változatlanul (belső x1.0 szorzó).", _Symbol);
+     }
+   PrintFormat("Automatikus Pont Faktor: %.1f", g_point_adjustment_factor);
    PrintFormat("Felhasználói Skálázó (InpInputPointScaler): %.2f", InpInputPointScaler);
 
    // --- Inicializálás ---
@@ -1116,7 +1094,7 @@ int OnInit()
    g_belepes_fuggoben = false;
    g_wpr_shortname = "";
    g_smooth_wpr_shortname = "";
-   g_ema_filter_shortname = ""; // VÁLTOZÁS: Inicializálás
+   g_ema_filter_shortname = "";
 
    // --- Adaptív ATR Indikátor (ha szükséges) ---
    if(InpUseAdaptiveWPR)
@@ -1176,7 +1154,7 @@ int OnInit()
      }
    else
      {
-      Print("WPR simítás kikapcsolva (Period <= 1). A nyers WPR jelet használjuk a belépéshez.");
+      Print("WPR simítás kikcsapolva (Period <= 1). A nyers WPR jelet használjuk a belépéshez.");
       g_wpr_smooth_handle = wpr_handle;
      }
 
@@ -1186,10 +1164,8 @@ int OnInit()
       ema_handle = iMA(_Symbol, _Period, InpEmaPeriod, 0, MODE_EMA, PRICE_CLOSE);
       if(ema_handle == INVALID_HANDLE) { Print("Error creating EMA handle"); return(INIT_FAILED); }
 
-      // VÁLTOZÁS: Név lekérdezése a tiszta OnDeinit-hez
       if(ChartIndicatorAdd(0, 0, ema_handle)) // EMA a fő ablakba (0)
         {
-         // Feltételezzük, hogy ez az egyetlen indi a fő ablakban, így az indexe 0
          g_ema_filter_shortname = ChartIndicatorName(0, 0, 0);
          Print("Added EMA Filter indicator, shortname: ", g_ema_filter_shortname);
         }
@@ -1228,11 +1204,9 @@ int OnInit()
    if(g_ema_h4_handle == INVALID_HANDLE) { Print("Error creating H4 EMA handle"); return(INIT_FAILED); }
 
 
-   Print("WPR Control Trader v3.10 Initialized. (Cleanup Fix)"); // VÁLTOZÁS: Üzenet
+   Print("WPR Hybrid Analyst v3.18 Initialized.");
    return(INIT_SUCCEEDED);
   }
-//+------------------------------------------------------------------+
-//| VÁLTOZÁS: Az OnDeinit most már MINDIG törli az indikátorokat      |
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
   {
@@ -1240,10 +1214,7 @@ void OnDeinit(const int reason)
    g_belepes_fuggoben = false;
    DeletePanelAndButtons();
 
-   // --- Indikátorok törlése a chartról (MINDIG lefut) ---
-   // Ez biztosítja, hogy paraméterváltáskor a régi görbék eltűnjenek.
-
-   // 1. Simított WPR törlése (Alablak 1)
+   // --- Indikátorok törlése a chartról ---
    if(g_smooth_wpr_shortname != "")
      {
       if(!ChartIndicatorDelete(0, 1, g_smooth_wpr_shortname))
@@ -1251,7 +1222,6 @@ void OnDeinit(const int reason)
       else { Print("Deleted Smoothed WPR indicator: ", g_smooth_wpr_shortname); }
      }
 
-   // 2. Nyers WPR törlése (Alablak 1)
    if(g_wpr_shortname != "")
      {
       if(!ChartIndicatorDelete(0, 1, g_wpr_shortname))
@@ -1259,17 +1229,14 @@ void OnDeinit(const int reason)
       else { Print("Deleted WPR indicator: ", g_wpr_shortname); }
      }
 
-   // 3. EMA Szűrő törlése (Fő ablak 0)
    if(g_ema_filter_shortname != "")
      {
       if(!ChartIndicatorDelete(0, 0, g_ema_filter_shortname))
         { Print("Failed to delete EMA Filter indicator: ", g_ema_filter_shortname); }
       else { Print("Deleted EMA Filter indicator: ", g_ema_filter_shortname); }
      }
-   // --- Indikátor törlés vége ---
 
-
-   // Handle-ök felszabadítása (ez is mindig kell)
+   // Handle-ök felszabadítása
    if(wpr_handle != INVALID_HANDLE) IndicatorRelease(wpr_handle);
    if(ema_handle != INVALID_HANDLE) IndicatorRelease(ema_handle);
    if(atr_handle != INVALID_HANDLE) IndicatorRelease(atr_handle);
@@ -1289,7 +1256,6 @@ void OnDeinit(const int reason)
    // Trailings objektum felszabadítása
    if(CheckPointer(g_trailings) != POINTER_INVALID) delete g_trailings;
 
-   // Pozíciók zárása (CSAK ha az EA-t eltávolítják)
    if(reason == REASON_REMOVE)
      {
       if(position_info.SelectByMagic(_Symbol, InpMagicNumber))
@@ -1298,7 +1264,7 @@ void OnDeinit(const int reason)
          trade.PositionClose(position_info.Ticket());
         }
      }
-   Print("WPR Control Trader deinitialized.");
+   Print("WPR Hybrid Analyst deinitialized.");
   }
 //+------------------------------------------------------------------+
 void OnChartEvent(const int id, const long &lparam, const double &dparam, const string &sparam)
@@ -1396,8 +1362,6 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
        ChartRedraw();
        return;
    }
-
-   // ATR/Ponts váltógombok eseménykezelése eltávolítva
   }
 //+------------------------------------------------------------------+
 void OnTick()
