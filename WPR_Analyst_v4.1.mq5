@@ -48,6 +48,15 @@ int            panel_drag_offset_y = 0;
 enum ENUM_EXIT_LOGIC { MODE_POINT_BASED, MODE_SIGNAL_BASED };
 enum ENUM_TRADE_MODE { MODE_AUTOMATIC, MODE_SEMI_AUTOMATIC };
 
+//--- Egyéni simítási mód Enum ---
+enum ENUM_SMOOTH_METHOD
+{
+   SMOOTH_SMA,    // Simple moving average
+   SMOOTH_EMA,    // Exponential moving average
+   SMOOTH_SMMA,   // Smoothed moving average
+   SMOOTH_DEMA    // Double Exponential Moving Average
+};
+
 //--- Globális Kereskedési Változók ---
 double         confirmation_signal_price = 0;
 
@@ -80,7 +89,7 @@ input group "Point Input Scaling"
 input double        InpInputPointScaler       = 1.0;
 input group "Entry Signal & Filters (WPR)"
 input int           InpWPRPeriod              = 7;
-input ENUM_MA_METHOD InpWprSmoothingMethod    = MODE_EMA;
+input ENUM_SMOOTH_METHOD InpWprSmoothingMethod = SMOOTH_DEMA;
 input int           InpWprSmoothingPeriod     = 3; // (0 = off)
 input double        InpWPRLevelUp             = -20.0;
 input double        InpWPRLevelDown           = -80.0;
@@ -615,8 +624,23 @@ int OnInit()
    smooth_wpr_handle = INVALID_HANDLE; // Alaphelyzetbe állítás
    if(InpWprSmoothingPeriod > 0)
      {
-      // Az iMA-t közvetlenül a wpr_handle-re alkalmazzuk
-      smooth_wpr_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, InpWprSmoothingMethod, wpr_handle);
+      // A felhasználói input alapján választjuk ki a megfelelő simítási függvényt
+      switch(InpWprSmoothingMethod)
+        {
+         case SMOOTH_DEMA:
+            // DEMA hívása, ha az van kiválasztva
+            smooth_wpr_handle = iDEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle);
+            break;
+         case SMOOTH_SMA:
+            smooth_wpr_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, MODE_SMA, wpr_handle);
+            break;
+         case SMOOTH_EMA:
+            smooth_wpr_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, MODE_EMA, wpr_handle);
+            break;
+         case SMOOTH_SMMA:
+            smooth_wpr_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, MODE_SMMA, wpr_handle);
+            break;
+        }
 
       if(smooth_wpr_handle != INVALID_HANDLE)
         {
@@ -625,7 +649,7 @@ int OnInit()
            {
             // A név lekérdezése a Deinit-hez szükséges
             g_smooth_ma_shortname = ChartIndicatorName(0, 1, 1); // Index 1, mert ez a második a subwindow-ban
-            Print("Added Smoothed WPR indicator (", EnumToString((ENUM_MA_METHOD)InpWprSmoothingMethod), "), shortname: ", g_smooth_ma_shortname);
+            Print("Added Smoothed WPR indicator (", EnumToString(InpWprSmoothingMethod), "), shortname: ", g_smooth_ma_shortname);
            }
          else
            {
