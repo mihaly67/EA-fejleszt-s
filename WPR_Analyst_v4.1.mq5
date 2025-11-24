@@ -6,7 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "4.0"
+#property version   "4.1"
 
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
@@ -17,6 +17,7 @@ CTrade         trade;
 CSymbolInfo    symbol_info;
 CPositionInfo  position_info;
 int            wpr_handle;
+int            smooth_wpr_handle;
 int            ema_handle;
 int            atr_handle = INVALID_HANDLE;
 
@@ -79,6 +80,7 @@ input group "Point Input Scaling"
 input double        InpInputPointScaler       = 1.0;
 input group "Entry Signal & Filters (WPR)"
 input int           InpWPRPeriod              = 7;
+input ENUM_MA_METHOD InpWprSmoothingMethod    = MODE_EMA;
 input int           InpWprSmoothingPeriod     = 3; // (0 = off)
 input double        InpWPRLevelUp             = -20.0;
 input double        InpWPRLevelDown           = -80.0;
@@ -133,21 +135,6 @@ double GetCurrentATRValue()
    return 0.0;
   }
 //+------------------------------------------------------------------+
-double CalculateSMA(const double &arr[], int start_index, int count)
-  {
-   if(count <= 0 || start_index < 0 || ArraySize(arr) < start_index + count)
-     {
-      PrintFormat("Hiba a CalculateSMA-ban: Érvénytelen paraméterek. ArraySize=%d, start=%d, count=%d", ArraySize(arr), start_index, count);
-      return 0.0;
-     }
-   double sum = 0;
-   for(int i = 0; i < count; i++)
-     {
-      sum += arr[start_index + i];
-     }
-   return (sum / count);
-  }
-//+------------------------------------------------------------------+
 //| PANEL ÉS GOMB FUNKCIÓK                                           |
 //+------------------------------------------------------------------+
 void CreatePanel()
@@ -168,7 +155,7 @@ void CreatePanel()
    ObjectSetInteger(0, panel_title_name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
    ObjectSetInteger(0, panel_title_name, OBJPROP_XDISTANCE, InpPanelInitialX + 10);
    ObjectSetInteger(0, panel_title_name, OBJPROP_YDISTANCE, InpPanelInitialY + 10);
-   ObjectSetString(0, panel_title_name, OBJPROP_TEXT, "WPR Analyst v4.0");
+   ObjectSetString(0, panel_title_name, OBJPROP_TEXT, "WPR Analyst v4.1");
    ObjectSetInteger(0, panel_title_name, OBJPROP_COLOR, clrWhite);
    ObjectSetInteger(0, panel_title_name, OBJPROP_FONTSIZE, 12);
    ObjectSetInteger(0, panel_title_name, OBJPROP_SELECTABLE, false);
@@ -431,44 +418,21 @@ void CheckForNewSignal(const double prev_wpr_value_unused, const double current_
   {
    if(position_info.SelectByMagic(_Symbol, InpMagicNumber)) return;
 
-   // --- WPR Adatok Beolvasása és Simítás ---
-   int smooth_period = InpWprSmoothingPeriod;
-   int buffer_to_copy = (smooth_period > 0) ? smooth_period + 1 : 2;
-   double wpr_buffer[];
-   if(smooth_period < 0) smooth_period = 0;
-   if(buffer_to_copy < 2) buffer_to_copy = 2;
+   // --- Jel Értékek Beolvasása ---
+   double signal_buffer[2];
+   int handle_to_use = (InpWprSmoothingPeriod > 0 && smooth_wpr_handle != INVALID_HANDLE) ? smooth_wpr_handle : wpr_handle;
 
-   if(ArrayResize(wpr_buffer, buffer_to_copy) != buffer_to_copy)
+   if(CopyBuffer(handle_to_use, 0, 0, 2, signal_buffer) < 2)
      {
-      Print("Hiba a WPR buffer átméretezésekor!");
+      // Nincs elég adat a jel bufferben, csendben kilépünk.
       return;
      }
 
-   if(CopyBuffer(wpr_handle, 0, 0, buffer_to_copy, wpr_buffer) < buffer_to_copy)
-     {
-      return; // Nincs elég adat
-     }
-
-   double current_wpr_val = EMPTY_VALUE;
-   double previous_wpr_val = EMPTY_VALUE;
-
-   if(smooth_period > 0)
-     {
-      current_wpr_val = CalculateSMA(wpr_buffer, 0, smooth_period);
-      previous_wpr_val = CalculateSMA(wpr_buffer, 1, smooth_period);
-      if(current_wpr_val == 0.0 && previous_wpr_val == 0.0) // CalculateSMA hibaértéke
-      {
-         return;
-      }
-     }
-   else
-     {
-      current_wpr_val = wpr_buffer[0];
-      previous_wpr_val = wpr_buffer[1];
-     }
+   double current_wpr_val = signal_buffer[0];
+   double previous_wpr_val = signal_buffer[1];
 
    if(current_wpr_val == EMPTY_VALUE || previous_wpr_val == EMPTY_VALUE) return;
-   // --- Simítás Vége ---
+   // --- Beolvasás Vége ---
 
    bool buy_cross = previous_wpr_val < InpWPRLevelDown && current_wpr_val >= InpWPRLevelDown;
    bool sell_cross = previous_wpr_val > InpWPRLevelUp && current_wpr_val <= InpWPRLevelUp;
@@ -647,27 +611,33 @@ int OnInit()
    else { Print("Failed to add WPR indicator to chart!"); }
 
 
-   // Vizuális simított vonal hozzáadása és nevének lekérdezése
+   // --- Simított WPR Indikátor Létrehozása és Hozzáadása ---
+   smooth_wpr_handle = INVALID_HANDLE; // Alaphelyzetbe állítás
    if(InpWprSmoothingPeriod > 0)
      {
-      int smooth_handle_visual = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, MODE_SMA, wpr_handle);
-      if(smooth_handle_visual != INVALID_HANDLE)
-        {
-         PlotIndexSetInteger(smooth_handle_visual, 0, PLOT_LINE_COLOR, clrYellow);
+      // Az iMA-t közvetlenül a wpr_handle-re alkalmazzuk
+      smooth_wpr_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, InpWprSmoothingMethod, wpr_handle);
 
-         // VÁLTOZÁS: Indikátornév lekérdezése
-         if(ChartIndicatorAdd(0, 1, smooth_handle_visual))
+      if(smooth_wpr_handle != INVALID_HANDLE)
+        {
+         // Hozzáadjuk a simított indikátort ugyanahhoz az ablakhoz, mint a WPR-t
+         if(ChartIndicatorAdd(0, 1, smooth_wpr_handle))
            {
-            // Mivel ez a MÁSODIK indikátor az 1-es ablakban, az indexe 1
-            g_smooth_ma_shortname = ChartIndicatorName(0, 1, 1);
-            Print("Added Smooth MA indicator, shortname: ", g_smooth_ma_shortname);
+            // A név lekérdezése a Deinit-hez szükséges
+            g_smooth_ma_shortname = ChartIndicatorName(0, 1, 1); // Index 1, mert ez a második a subwindow-ban
+            Print("Added Smoothed WPR indicator (", EnumToString((ENUM_MA_METHOD)InpWprSmoothingMethod), "), shortname: ", g_smooth_ma_shortname);
            }
-         else { Print("Failed to add Smooth MA indicator to chart!"); }
+         else
+           {
+            Print("Failed to add Smoothed WPR indicator to chart! Error: ", GetLastError());
+           }
         }
       else
-        { Print("Hiba a vizuális simított WPR handle létrehozásakor!"); }
+        {
+         Print("Error creating Smoothed WPR handle! Error: ", GetLastError());
+        }
      }
-   // --- Vizuális simítás vége ---
+   // --- Simítás Vége ---
 
    if(InpUseEmaFilter)
      {
@@ -687,7 +657,7 @@ int OnInit()
    CreateButtons();
    UpdatePanelStatus();
 
-   Print("WPR Analyst v4.0 Initialized.");
+   Print("WPR Analyst v4.1 Initialized.");
    return(INIT_SUCCEEDED);
   }
 //+------------------------------------------------------------------+
@@ -717,6 +687,7 @@ void OnDeinit(const int reason) // VÁLTOZÁS: Takarítás ChartIndicatorDelete-
 
    // Handle-ök felszabadítása továbbra is szükséges
    if(wpr_handle != INVALID_HANDLE) IndicatorRelease(wpr_handle);
+   if(smooth_wpr_handle != INVALID_HANDLE) IndicatorRelease(smooth_wpr_handle);
    if(ema_handle != INVALID_HANDLE) IndicatorRelease(ema_handle);
    if(atr_handle != INVALID_HANDLE) IndicatorRelease(atr_handle);
 
