@@ -20,6 +20,7 @@ int            wpr_handle;
 int            smooth_wpr_handle;
 int            ema_handle;
 int            atr_handle = INVALID_HANDLE;
+int            macd_handle = INVALID_HANDLE;
 
 //--- Globális változók az instrumentum adatok tárolására ---
 int                     g_digits = 0;
@@ -47,6 +48,7 @@ int            panel_drag_offset_y = 0;
 //--- Állapotkezelő Enum-ok ---
 enum ENUM_EXIT_LOGIC { MODE_POINT_BASED, MODE_SIGNAL_BASED };
 enum ENUM_TRADE_MODE { MODE_AUTOMATIC, MODE_SEMI_AUTOMATIC };
+enum ENUM_MACD_COLOR_MODE { MACD_MULTI_COLOR = 0, MACD_SINGLE_COLOR = 1 };
 
 //--- Egyéni simítási mód Enum ---
 enum ENUM_SMOOTH_METHOD
@@ -69,6 +71,7 @@ datetime       g_utolso_proba_ido;
 //--- VÁLTOZÁS: Globális változók az indikátornevekhez ---
 string         g_wpr_shortname = "";
 string         g_smooth_ma_shortname = "";
+string         g_macd_shortname = "";
 //-----------------------------------------------------
 
 //--- Bemeneti Paraméterek ---
@@ -117,6 +120,24 @@ input int           InpBreakevenTriggerPoints  = 100;
 input int           InpBreakevenLockInPoints   = 2;
 input int           InpTrailingStopTriggerPoints= 120;
 input int           InpTrailingStopDistancePoints= 80;
+input group "MACD Overlay"
+input bool          InpShowMacdOverlay         = true;
+input int           InpMacdFastPeriod          = 8;
+input int           InpMacdSlowPeriod          = 17;
+input int           InpMacdSignalPeriod        = 9;
+input ENUM_MA_METHOD InpMacdSignalMethod       = MODE_SMA;
+input ENUM_MACD_COLOR_MODE InpMacdColorMode    = MACD_MULTI_COLOR;
+input ENUM_APPLIED_PRICE   InpMacdAppliedPrice = PRICE_CLOSE;
+input color         InpMacdLineColor           = clrRoyalBlue;
+input color         InpMacdSignalLineColor     = clrGoldenrod;
+input int           InpMacdLineWidth           = 2;
+input int           InpMacdSignalLineWidth     = 2;
+input color         InpMacdHistColorPosIncrease= clrLimeGreen;
+input color         InpMacdHistColorPosDecrease= clrMaroon;
+input color         InpMacdHistColorNegDecrease= clrRed;
+input color         InpMacdHistColorNegIncrease= C'0,66,0';
+input int           InpMacdHistogramWidth      = 2;
+input color         InpMacdHistogramSingleColor= clrLimeGreen;
 
 //+------------------------------------------------------------------+
 //| SEGÉDFÜGGVÉNYEK (HELPER FUNCTIONS)                               |
@@ -608,6 +629,7 @@ int OnInit()
    // VÁLTOZÁS: Indikátornevek inicializálása
    g_wpr_shortname = "";
    g_smooth_ma_shortname = "";
+   g_macd_shortname = "";
 
    wpr_handle = iWPR(_Symbol, _Period, InpWPRPeriod);
    if(wpr_handle == INVALID_HANDLE) { Print("Error creating WPR handle"); return(INIT_FAILED); }
@@ -663,6 +685,49 @@ int OnInit()
      }
    // --- Simítás Vége ---
 
+   // --- MACD Histogram MC Overlay Létrehozása és Hozzáadása a WPR ablakba ---
+   if(InpShowMacdOverlay)
+     {
+      macd_handle = iCustom(
+         _Symbol,
+         _Period,
+         "MACD Histogram MC",
+         InpMacdFastPeriod,
+         InpMacdSlowPeriod,
+         InpMacdSignalPeriod,
+         InpMacdSignalMethod,
+         (int)InpMacdColorMode,
+         InpMacdAppliedPrice,
+         InpMacdLineColor,
+         InpMacdSignalLineColor,
+         InpMacdLineWidth,
+         InpMacdSignalLineWidth,
+         InpMacdHistColorPosIncrease,
+         InpMacdHistColorPosDecrease,
+         InpMacdHistColorNegDecrease,
+         InpMacdHistColorNegIncrease,
+         InpMacdHistogramWidth,
+         InpMacdHistogramSingleColor
+      );
+      if(macd_handle == INVALID_HANDLE)
+        {
+         Print("Error creating MACD Histogram MC handle: ", GetLastError());
+         return(INIT_FAILED);
+        }
+
+      // MACD indikátor hozzáadása a WPR külön ablakához (index: 1)
+      if(ChartIndicatorAdd(0, 1, macd_handle))
+        {
+         // A MACD saját skálát használhat, így vizuálisan a WPR felett jelenik meg rétegként
+         g_macd_shortname = ChartIndicatorName(0, 1, (smooth_wpr_handle != INVALID_HANDLE) ? 2 : 1);
+         Print("Added MACD overlay indicator, shortname: ", g_macd_shortname);
+        }
+      else
+        {
+         Print("Failed to add MACD overlay indicator to WPR window! Error: ", GetLastError());
+        }
+     }
+
    if(InpUseEmaFilter)
      {
       ema_handle = iMA(_Symbol, _Period, InpEmaPeriod, 0, MODE_EMA, PRICE_CLOSE);
@@ -701,6 +766,13 @@ void OnDeinit(const int reason) // VÁLTOZÁS: Takarítás ChartIndicatorDelete-
         { Print("Failed to delete Smooth MA indicator: ", g_smooth_ma_shortname); }
       else { Print("Deleted Smooth MA indicator: ", g_smooth_ma_shortname); }
      }
+   // MACD overlay törlése, ha hozzá lett adva
+   if(g_macd_shortname != "")
+     {
+      if(!ChartIndicatorDelete(0, 1, g_macd_shortname))
+        { Print("Failed to delete MACD overlay indicator: ", g_macd_shortname); }
+      else { Print("Deleted MACD overlay indicator: ", g_macd_shortname); }
+     }
    // Majd az eredeti WPR-t töröljük, ha létezik (volt neve)
    if(g_wpr_shortname != "")
      {
@@ -714,6 +786,7 @@ void OnDeinit(const int reason) // VÁLTOZÁS: Takarítás ChartIndicatorDelete-
    if(smooth_wpr_handle != INVALID_HANDLE) IndicatorRelease(smooth_wpr_handle);
    if(ema_handle != INVALID_HANDLE) IndicatorRelease(ema_handle);
    if(atr_handle != INVALID_HANDLE) IndicatorRelease(atr_handle);
+   if(macd_handle != INVALID_HANDLE) IndicatorRelease(macd_handle);
 
    // Pozíciók zárása, ha az EA-t eltávolítják (kapcsoló nélkül)
    if(reason == REASON_REMOVE)

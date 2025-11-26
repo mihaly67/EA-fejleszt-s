@@ -19,7 +19,7 @@
 ----------------------------------------------------------------------*/
 //#include <MovingAverages.mqh>
 #include <MovingAverages.mqh>
-#property indicator_separate_window
+#property indicator_chart_window
 #property indicator_buffers 6
 #property indicator_plots   3
 //--- indicator plots
@@ -46,12 +46,22 @@ enum colorswitch                                         // use single or multi-
   };
 
 //--- input parameters
-input int                  InpFastEMA=7;                // Fast EMA period
-input int                  InpSlowEMA=28;                // Slow EMA period
-input int                  InpSignalMA=9;                // Signal MA period
-input ENUM_MA_METHOD       InpAppliedSignalMA=MODE_SMA;  // Applied MA method for signal line
-input colorswitch          InpUseMultiColor=MultiColor;  // Use multi-color or single-color histogram
-input ENUM_APPLIED_PRICE   InpAppliedPrice=PRICE_CLOSE;  // Applied price
+input int                  InpFastEMA=8;                  // Fast EMA period
+input int                  InpSlowEMA=17;                 // Slow EMA period
+input int                  InpSignalMA=9;                 // Signal MA period
+input ENUM_MA_METHOD       InpAppliedSignalMA=MODE_SMA;   // Applied MA method for signal line
+input colorswitch          InpUseMultiColor=MultiColor;   // Use multi-color or single-color histogram
+input ENUM_APPLIED_PRICE   InpAppliedPrice=PRICE_CLOSE;   // Applied price
+input color                InpMacdLineColor=RoyalBlue;    // MACD line color
+input color                InpSignalLineColor=Goldenrod;  // Signal line color
+input int                  InpMacdLineWidth=2;            // MACD line width
+input int                  InpSignalLineWidth=2;          // Signal line width
+input color                InpHistColorPosIncrease=LimeGreen;     // Histogram color: positive & rising
+input color                InpHistColorPosDecrease=C'83,0,0';     // Histogram color: positive & falling
+input color                InpHistColorNegDecrease=Red;           // Histogram color: negative & falling
+input color                InpHistColorNegIncrease=C'0,66,0';     // Histogram color: negative & rising
+input int                  InpHistogramWidth=2;           // Histogram column width
+input color                InpHistSingleColor=LimeGreen;  // Histogram single-color mode
 //--- indicator buffers
 double                     ExtMacdBuffer[];
 double                     ExtSignalBuffer[];
@@ -94,6 +104,26 @@ void OnInit()
 
 //--- name for indicator
    IndicatorSetString(INDICATOR_SHORTNAME,"MACD("+string(InpFastEMA)+","+string(InpSlowEMA)+","+string(InpSignalMA)+")");
+
+//--- apply runtime styling so an EA can tune colors and widths
+   PlotIndexSetInteger(0,PLOT_LINE_COLOR,0,InpMacdLineColor);
+   PlotIndexSetInteger(1,PLOT_LINE_COLOR,0,InpSignalLineColor);
+   PlotIndexSetInteger(2,PLOT_LINE_COLOR,0,InpHistColorPosIncrease);
+   PlotIndexSetInteger(2,PLOT_LINE_COLOR,1,InpHistColorPosDecrease);
+   PlotIndexSetInteger(2,PLOT_LINE_COLOR,2,InpHistColorNegDecrease);
+   PlotIndexSetInteger(2,PLOT_LINE_COLOR,3,InpHistColorNegIncrease);
+
+   if(InpUseMultiColor==SingleColor)
+     {
+      PlotIndexSetInteger(2,PLOT_LINE_COLOR,0,InpHistSingleColor);
+      PlotIndexSetInteger(2,PLOT_LINE_COLOR,1,InpHistSingleColor);
+      PlotIndexSetInteger(2,PLOT_LINE_COLOR,2,InpHistSingleColor);
+      PlotIndexSetInteger(2,PLOT_LINE_COLOR,3,InpHistSingleColor);
+     }
+
+   PlotIndexSetInteger(0,PLOT_LINE_WIDTH,InpMacdLineWidth);
+   PlotIndexSetInteger(1,PLOT_LINE_WIDTH,InpSignalLineWidth);
+   PlotIndexSetInteger(2,PLOT_LINE_WIDTH,InpHistogramWidth);
 
 //--- get MA handles
    ExtFastMaHandle=iMA(NULL,0,InpFastEMA,0,MODE_EMA,InpAppliedPrice);
