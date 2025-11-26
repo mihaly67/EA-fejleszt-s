@@ -124,6 +124,9 @@ input bool          InpShowMacdOverlay         = true;
 input int           InpMacdFastPeriod          = 12;
 input int           InpMacdSlowPeriod          = 26;
 input int           InpMacdSignalPeriod        = 9;
+input ENUM_MA_METHOD InpMacdSignalMaMethod     = MODE_SMA;
+input bool          InpMacdUseMultiColor       = true;
+input ENUM_APPLIED_PRICE InpMacdAppliedPrice   = PRICE_CLOSE;
 
 //+------------------------------------------------------------------+
 //| SEGÉDFÜGGVÉNYEK (HELPER FUNCTIONS)                               |
@@ -674,7 +677,17 @@ int OnInit()
    // --- MACD Overlay Létrehozása és Hozzáadása a WPR ablakba ---
    if(InpShowMacdOverlay)
      {
-      macd_handle = iMACD(_Symbol, _Period, InpMacdFastPeriod, InpMacdSlowPeriod, InpMacdSignalPeriod, PRICE_CLOSE);
+      macd_handle = iCustom(
+         _Symbol,
+         _Period,
+         "MACD Histogram MC",
+         InpMacdFastPeriod,
+         InpMacdSlowPeriod,
+         InpMacdSignalPeriod,
+         InpMacdSignalMaMethod,
+         (InpMacdUseMultiColor ? 0 : 1),
+         InpMacdAppliedPrice
+      );
       if(macd_handle == INVALID_HANDLE)
         {
          Print("Error creating MACD handle: ", GetLastError());
