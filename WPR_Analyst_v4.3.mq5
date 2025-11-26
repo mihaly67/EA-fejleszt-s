@@ -7,6 +7,7 @@
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
 #property version   "4.3"
+#property tester_indicator "MACD Histogram MC"
 
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
@@ -700,8 +701,11 @@ int OnInit()
       if(ChartIndicatorAdd(0, 1, macd_handle))
         {
          // A MACD saját skálát használhat, így vizuálisan a WPR felett jelenik meg rétegként
-         g_macd_shortname = ChartIndicatorName(0, 1, (smooth_wpr_handle != INVALID_HANDLE) ? 2 : 1);
-         Print("Added MACD overlay indicator, shortname: ", g_macd_shortname);
+         int macd_index = ChartIndicatorsTotal(0, 1) - 1; // mindig az utolsóként hozzáadott MACD
+         g_macd_shortname = ChartIndicatorName(0, 1, macd_index);
+         int macd_plots   = (int)IndicatorGetInteger(macd_handle, INDICATOR_PLOTS);
+         Print("Added MACD overlay indicator, shortname: ", g_macd_shortname,
+               ", plots detected: ", macd_plots, " (várt: 3 a két görbéhez és a színes hisztogramhoz)");
         }
       else
         {
