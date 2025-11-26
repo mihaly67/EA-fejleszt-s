@@ -121,8 +121,10 @@ input int           InpTrailingStopTriggerPoints= 120;
 input int           InpTrailingStopDistancePoints= 80;
 input group "MACD Overlay"
 input bool          InpShowMacdOverlay         = true;
-input int           InpMacdFastPeriod          = 12;
-input int           InpMacdSlowPeriod          = 26;
+// Alapértelmezésként a MACD Histogram MC eredeti paramétereit használjuk,
+// hogy a két görbe és a színezett hisztogram pontosan megegyezzen az indikátorral.
+input int           InpMacdFastPeriod          = 7;
+input int           InpMacdSlowPeriod          = 28;
 input int           InpMacdSignalPeriod        = 9;
 input ENUM_MA_METHOD InpMacdSignalMaMethod     = MODE_SMA;
 input bool          InpMacdUseMultiColor       = true;
