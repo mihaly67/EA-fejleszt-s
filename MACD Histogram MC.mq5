@@ -19,7 +19,7 @@
 ----------------------------------------------------------------------*/
 //#include <MovingAverages.mqh>
 #include <MovingAverages.mqh>
-#property indicator_chart_window
+#property indicator_separate_window
 #property indicator_buffers 6
 #property indicator_plots   3
 //--- indicator plots
@@ -38,6 +38,7 @@
 #property indicator_label1  "MACD"
 #property indicator_label2  "Signal"
 #property indicator_label3  "Histogram"
+#property tester_indicator "MACD Histogram MC"
 //--- enum variables
 enum colorswitch                                         // use single or multi-color display of Histogram
   {
