@@ -1,0 +1,925 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="x-dns-prefetch-control" content="on">
+
+  <meta name="robots" content="max-snippet:250,max-image-preview:large">
+  <meta name="description" content="Today, we use the MQL5 Standard Library to build custom signal classes and let the MQL5 Wizard assemble a professional Expert Advisor for us. This approach simplifies development so that even beginner programmers can create robust EAs without in-depth coding knowledge, focusing instead on tuning inputs and optimizing performance. Join this discussion as we explore the process step by step.">
+  <meta property="og:url" content="https://www.mql5.com/en/articles/20266">
+  <meta property="og:title" content="The MQL5 Standard Library Explorer (Part 4): Custom Signal Library">
+  <meta property="og:description" content="Today, we use the MQL5 Standard Library to build custom signal classes and let the MQL5 Wizard assemble a professional Expert Advisor for us. This approach simplifies development so that even beginner programmers can create robust EAs without in-depth coding knowledge, focusing instead on tuning inputs and optimizing performance. Join this discussion as we explore the process step by step.">
+      <meta property="og:image" content="https://c.mql5.com/2/183/20266-the-mql5-standard-library-explorer-part-4-custom-signal-library_1200x628__2.jpg">
+      <meta property="og:image:secure_url" content="https://c.mql5.com/2/183/20266-the-mql5-standard-library-explorer-part-4-custom-signal-library_1200x628__2.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2025-11-27T10:25:54.7583092Z">
+  <meta property="article:author" content="https://www.mql5.com/en/users/billionaire2024">
+  <meta property="article:section" content="MetaTrader 5">
+  <meta property="article:tag" content="Examples">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@mql5com">
+  <meta name="twitter:image" content="https://c.mql5.com/2/183/20266-the-mql5-standard-library-explorer-part-4-custom-signal-library_1200x628__2.jpg">
+  <meta name="theme-color" content="#4a76b8">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="msapplication-config" content="none">
+  <meta name="referrer" content="no-referrer-when-downgrade">
+  <meta property="qc:admins" content="36367170677651456375">
+  <meta property="wb:webmaster" content="073d7690269bcd81">
+  <link rel="shortcut icon" href="https://c.mql5.com/i/favicon4.ico">
+  <link rel="dns-prefetch" href="https://c.mql5.com">
+  <link href="https://c.mql5.com/styles/core.fad34c848ba7d98f6c8f9fdc9c13736a.css" type="text/css" rel="stylesheet" media="all">
+  <link href="https://c.mql5.com/styles/all.f5bbcd38b25f2cfbf68249d7ffdbfaba.css" type="text/css" rel="stylesheet" media="all">
+  <link rel="preload" href="https://c.mql5.com/styles/chat.0e624e155e0815a7edf5d716c75e4c2a.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://c.mql5.com/styles/chat.0e624e155e0815a7edf5d716c75e4c2a.css" type="text/css" rel="stylesheet" media="all"></noscript>
+  <link href="https://c.mql5.com/styles/articles.5b583cbf5538b3c5ac59cacbc4446a1e.css" type="text/css" rel="stylesheet" media="all">
+  <link href="/en/articles/rss" rel="alternate" type="application/rss+xml" title="Articles on the development and application of MetaTrader 5 trading robots and technical indicators">
+  <link rel="canonical" href="https://www.mql5.com/en/articles/20266">
+  <link rel="alternate" hreflang="en" href="https://www.mql5.com/en/articles/20266">
+  <title>The MQL5 Standard Library Explorer (Part 4): Custom Signal Library - MQL5 Articles</title>
+
+
+
+<script type="text/javascript">
+  !function(){window.mqGlobal={};var t=!1,n=!1,e=[],o=[],i=[];function d(t){var n;for(n=0;n<t.length;n+=1)t[n]()}function c(){t||(t=!0,d(e),d(o),o=[],e=[])}function a(){c(),n||(n=!0,d(i),i=[])}if(mqGlobal.AddOnReady=function(n,i){t?n(document):i?e.push(n):o.push(n)},mqGlobal.AddOnLoad=function(t){n?t(document):i.push(t)},mqGlobal.AddOnActiveWindowChange=function(t){this._onvisibility||(this._onvisibility=[]),this._onvisibility[this._onvisibility.length]=t},document.addEventListener)document.addEventListener("DOMContentLoaded",c,!1),window.addEventListener("load",a,!1);else if(document.attachEvent&&(document.attachEvent("onreadystatechange",(function(){switch(document.readyState){case"interactive":c();break;case"complete":a()}})),window.attachEvent("onload",a),document.documentElement.doScroll&&window==window.top)){!function n(){if(!t&&document.body)try{document.documentElement.doScroll("left"),c()}catch(t){setTimeout(n,0)}}()}}();
+  mqGlobal.CookieDomain = ".mql5.com";
+  mqGlobal.Language = 'en';
+  mqGlobal.IsMobile = false;
+  mqGlobal.ClearRteStorage = function (e) { if (window.GStorage || (window.GStorage = globalStorage()), window.GStorage.supported) try { var o = e; window.GStorage.getItem("rte_autosave_uid", function (e, t) { t == o && (window.GStorage.removeItem("rte_autosave_text"), window.GStorage.removeItem("rte_autosave_date"), window.GStorage.removeItem("rte_autosave_uid")) }) } catch (e) { } };
+</script>  <script type="text/javascript">
+	mqGlobal.AddOnReady(function(){window.siteUpdates = new SiteUpdates('/en/updates',10,'en',[1,21],1764506224,0);});
+	</script>
+
+  
+
+    <script src="https://c.mql5.com/js/all.794f844db8fe2cee0ccf9b292ed898e1.js" type="text/javascript" defer="defer"></script>
+  <script src="https://c.mql5.com/js/vendor.b809b348045a1ca28cda0f89d01711db.js" type="text/javascript" defer="defer"></script>
+  <script src="https://c.mql5.com/js/chat.17ac7de8ab325d93bdcdb78f6051fb90.js" type="text/javascript" defer="defer"></script>
+  <script src="https://c.mql5.com/js/articles.0b0633eafc3082b19addeeea47a59af4.js" type="text/javascript" defer="defer"></script>
+
+
+</head>
+
+<body id="cover" class="cover">
+
+
+  <nav class="head">
+    <a href="https://www.mql5.com" class="head__logo" title="MQL5 - Language of trade strategies built-in the MetaTrader 5 client terminal"></a>
+      <div class="head__content">
+        <div class="main-menu" id="mainmenu">
+          
+                    <ul class="main-menu__top-level" id="menuTopLevel">
+                    <li><a href="/en/forum" data-fz-event="MQL5+Menu+Forum">Forum</a></li>
+                    <li><a href="/en/market" data-fz-event="MQL5+Menu+Market">Market</a></li>
+                    <li><a href="/en/signals" data-fz-event="MQL5+Menu+Signals">Signals</a></li>
+                    <li><a href="/en/job" data-fz-event="MQL5+Menu+Job">Freelance</a></li>
+                    <li><a href="/en/vps" data-fz-event="MQL5+Menu+VPS">VPS</a></li>
+                    <li><a href="/en/quotes/overview" data-fz-event="MQL5+Menu+Overview">Quotes</a></li>
+                  </ul><ul class="main-menu__second-level" id="menuSecondLevel">
+                    <li class="main-menu__selected"><a href="/en/articles" data-fz-event="MQL5+Menu+Articles"><img src="https://c.mql5.com/i/menu/icon-articles4.svg" alt="" width="16" height="16"/>Articles</a></li>
+                    <li><a href="/en/code" data-fz-event="MQL5+Menu+CodeBase"><img src="https://c.mql5.com/i/menu/icon-code4.svg" alt="" width="16" height="16"/>CodeBase</a></li>
+                    <li><a href="https://forge.mql5.io/?lang=en" target="_blank" rel="noopener" data-fz-event="MQL5+Menu+AlgoForge"><img src="https://c.mql5.com/i/menu/icon-algoforge4.svg" alt="" width="16" height="16"/>Algo Forge</a></li>
+                    <li><a href="/en/docs" data-fz-event="MQL5+Menu+Docs"><img src="https://c.mql5.com/i/menu/icon-docs4.svg" alt="" width="16" height="16"/>Documentation</a></li>
+                    <li><a href="/en/book" data-fz-event="MQL5+Menu+Book"><img src="https://c.mql5.com/i/menu/icon-book4.svg" alt="" width="16" height="16"/>AlgoBook</a></li>
+                    <li><a href="/en/neurobook" data-fz-event="MQL5+Menu+Neurobook"><img src="https://c.mql5.com/i/menu/icon-neurobook4.svg" alt="" width="16" height="16"/>NeuroBook</a></li>
+                    <li><a href="/en/economic-calendar" data-fz-event="MQL5+Menu+Economic+Calendar"><img src="https://c.mql5.com/i/menu/icon-economic-calendar4.svg" alt="" width="16" height="16"/>Calendar</a></li>
+                    <li><a href="https://web.metatrader.app/terminal?mode=demo&lang=en" target="_blank" rel="nofollow noopener" data-fz-event="MQL5+Menu+Trading"><img src="https://c.mql5.com/i/menu/icon-trading4.svg" alt="" width="16" height="16"/>WebTerminal</a></li>
+                    <li class="main-menu__mobile"><a href="/en/users/deszkmihaly67">Profile</a></li>
+                    <li class="main-menu__mobile"><a href="/en/about">About</a></li>
+                    <li class="main-menu__second-tools"><a rel="noopener" href="https://www.mql5.com/en/articles/625?utm_source=www.mql5.com&utm_campaign=download" title="Get the latest version of the trading platform for free" class="button-mt" data-vars-fz="MetaTrader+5+Desktop+Download+Submenu"><img width="18" height="18" src="https://c.mql5.com/i/sidebar/download.svg" alt="" loading="lazy">Download MetaTrader 5</a></li>
+                    </ul>
+        </div>
+          <div class="main-menu__active">
+            <a id="mainMenuSelected" href="#">
+              <span class="main-menu__primary">Articles</span><span class="main-menu__secondary">Sections</span>
+            </a>
+          </div>
+<form action="https://www.mql5.com/en/search" onsubmit="return false;" autocomplete="off" id="headerSearchForm" class="header-search" method="post">
+<button type="button" id="headerSearchButton" title="Search" class="header-search__button"></button><div class="header-search__input"><input name="keyword" type="text" enterkeyhint="search" title="Enter search text" placeholder="Search" id="headerSearchKeyword"/><label for="headerSearchKeyword" class="header-search__placeholder">Type <span>/</span> to search:  @user, $symbol, ...</label><button id="headerSearchSubmit" class="header-search__submit"></button></div><button type="button" id="headerSearchClean" title="Close" class="header-search__clean"></button></form>        <input class="blurHandler" id="mainMenuBlurHandler" type="checkbox">
+      </div>
+      <div class="head__toolbar" id="headerToolbar">
+          <div class="container notifications-toolbar">
+            <nav>
+              <ul id="privateAreaMessages" class="notifications-box">
+                <li class="notify-item notify-mobile"><a class="link-notify static link-notify_message-mobile" href="/en/users/deszkmihaly67/messages" id="notifyMessagesMobile" title="Messages"><i class="notify-icon notify-icon_messages"></i></a></li>
+                <li class="notify-item notify-total">
+                <ul class="notify-total__list" id="notifyTotalList">
+<li class="notify-item notify-desktop"><a class="link-notify link-notify_message" href="/en/users/deszkmihaly67/messages" id="notifyMessages" title="Messages"><i class="notify-icon notify-icon_messages"></i></a></li>
+<script type="application/json" id="dragAndDrop" data-type="translate">{
+  "zoomIn": "zoom in",
+  "zoomOut": "zoom out",
+  "dragAndDrop": "Upload",
+  "errorInvalidExtension": "Invalid extension",
+  "invalidImageSize": "Invalid image size",
+  "invalidImageType": "Invalid image format"
+}</script>
+<script type="application/json" id="lightBoxTranslates" data-type="translate">{
+  "lightBox": {
+    "collapse": "Collapse",
+    "showOriginal": "Show original",
+    "errorLoading": "Unable to download attachment",
+    "next": "Next",
+    "previous": "Previous",
+    "linkToImg": "Link to the image",
+    "linkToVideo": "Link to the video",
+    "save": "Save",
+    "close": "Close"
+  }
+}</script>
+    
+</ul></li>
+
+              </ul>
+            </nav>
+          </div>
+        <div class="toggle-button" id="sidebarToggleButton">
+          <i></i>
+        </div>
+
+        <div class="group-menu" id="groupMenu">
+            <div class="container profileToolbar">
+              <nav>
+                <ul id="profile" class="profile-box"><li class="userLinkContainer" id="userLinkContainer"><a href="/en/users/deszkmihaly67/news" class="userlink" id="userlink" title=""><img src="https://c.mql5.com/avatar/avatar_na2_micro.png" alt="" loading="lazy" width="29" height="29"><span class="firstname">Mih&#225;ly</span> <span class="lastname">Deszk</span></a><ul class="userLinkMenu user-link-menu" id="userLinkMenu" >
+<li class="messages delimiter user-link-menu__item_with-counter user-link-menu__item"><a href="/en/users/deszkmihaly67/messages"><span>Messages</span><span class="user-link-menu__counter" id="counterMessagesMenu"></span></a></li>
+<li class="news user-link-menu__item"><a href="/en/users/deszkmihaly67/news"><span>News feed</span></a></li>
+<li class="profile user-link-menu__item_with-counter user-link-menu__item"><a href="/en/users/deszkmihaly67"><span>Profile</span><span title="Friend requests" class="user-link-menu__counter" id="counterOfferedFriendMenu"></span></a></li>
+<li class="favorites user-link-menu__item"><a href="/en/users/deszkmihaly67/favorites"><span>Favorites</span></a></li>
+<li class="topup delimiter user-link-menu__item"><a href="/en/users/deszkmihaly67/accounting/topup"><span>Top up MQL5 Services</span></a></li>
+<li class="chooseout user-link-menu__item"><a href="/en/users/deszkmihaly67/accounting/chooseout"><span>Withdraw from account</span></a></li>
+<li class="settings delimiter user-link-menu__item"><a href="/en/users/deszkmihaly67/edit"><span>Settings</span></a></li>
+<li class="logout delimiter"><a href="/en/auth_logout" onclick="doPost(event,'/en/auth_logout','de4e6983d75a9a5889fa84f09252851c'); return false;"><span>Logout</span></a></li>
+</ul></li></ul>
+              </nav>
+            </div>
+
+
+          <div class="container lang-menu-container">
+            <div id="langMenuContainer" class="lang-menu">
+              <input class="blurHandler" id="langmenuBlurHandler" type="checkbox">
+              <nav>
+                <ul class="lang-menu__list" id="langmenu">
+                  <li class="lang-menu__list-item lang-menu__list-item_selected"><a href="/en/articles" aria-label="English (English)"><i class="icons-languages icons-languages_en"></i><span>English</span></a></li>
+<li class="lang-menu__list-item"><a href="/ru/articles" aria-label="Русский (Russian)"><i class="icons-languages icons-languages_ru"></i><span>Русский</span></a></li>
+<li class="lang-menu__list-item"><a href="/zh/articles" aria-label="中文 (Chinese)"><i class="icons-languages icons-languages_zh"></i><span>中文</span></a></li>
+<li class="lang-menu__list-item"><a href="/es/articles" aria-label="Español (Spanish)"><i class="icons-languages icons-languages_es"></i><span>Español</span></a></li>
+<li class="lang-menu__list-item"><a href="/pt/articles" aria-label="Português (Portuguese)"><i class="icons-languages icons-languages_pt"></i><span>Português</span></a></li>
+<li class="lang-menu__list-item"><a href="/ja/articles" aria-label="日本語 (Japanese)"><i class="icons-languages icons-languages_ja"></i><span>日本語</span></a></li>
+<li class="lang-menu__list-item"><a href="/de/articles" aria-label="Deutsch (German)"><i class="icons-languages icons-languages_de"></i><span>Deutsch</span></a></li>
+<li class="lang-menu__list-item"><a href="/ko/articles" aria-label="한국어 (Korean)"><i class="icons-languages icons-languages_ko"></i><span>한국어</span></a></li>
+<li class="lang-menu__list-item"><a href="/fr/articles" aria-label="Français (French)"><i class="icons-languages icons-languages_fr"></i><span>Français</span></a></li>
+<li class="lang-menu__list-item"><a href="/it/articles" aria-label="Italiano (Italian)"><i class="icons-languages icons-languages_it"></i><span>Italiano</span></a></li>
+<li class="lang-menu__list-item"><a href="/tr/articles" aria-label="Türkçe (Turkish)"><i class="icons-languages icons-languages_tr"></i><span>Türkçe</span></a></li>
+
+                </ul>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+  </nav>
+
+<div id='bfogggabsofabcpxuzmgaibarmaxasdrj' class="r4a1bvi22c6rx0xey g9z0qx14h"></div>
+
+  <div id="left-sidebar-selector" class="left-sidebar__selector left-sidebar__selector_padding">
+    <div class="left-sidebar__title">
+MetaTrader 5 /     Examples
+    </div>
+    <i class="icons-ux icons-ux_arrow-down-black"></i>
+  </div>
+  <div class="articles-container block-with-sidebar">
+    <aside class="left-sidebar left-sidebar_270" id="left-sidebar">
+      
+  <ul class="tree-menu-ul"><li class="tree-menu__item tree-menu__item_selected"><a class="tree-menu__link" href="/en/articles/examples"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/examples.svg" alt="" loading="lazy"/>Examples</a><ul class="tree-menu__list tree-menu__list_nested"><li class="tree-menu__item"><a class="tree-menu__link" href="/en/articles/examples_indicators"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/examples_indicators.svg" alt="" loading="lazy"/>Indicators</a></li><li class="tree-menu__item"><a class="tree-menu__link" href="/en/articles/examples_experts"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/examples_experts.svg" alt="" loading="lazy"/>Experts</a></li></ul></li><li class="tree-menu__item"><a class="tree-menu__link" href="/en/articles/strategy_tester"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/strategy_tester.svg" alt="" loading="lazy"/>Tester</a></li><li class="tree-menu__item"><a class="tree-menu__link" href="/en/articles/trading"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/trading.svg" alt="" loading="lazy"/>Trading</a></li><li class="tree-menu__item"><a class="tree-menu__link" href="/en/articles/trading_systems"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/trading_systems.svg" alt="" loading="lazy"/>Trading systems</a></li><li class="tree-menu__item"><a class="tree-menu__link" href="/en/articles/integration"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/integration.svg" alt="" loading="lazy"/>Integration</a></li><li class="tree-menu__item"><a class="tree-menu__link" href="/en/articles/indicators"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/indicator.svg" alt="" loading="lazy"/>Indicators</a></li><li class="tree-menu__item"><a class="tree-menu__link" href="/en/articles/expert_advisors"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/expert.svg" alt="" loading="lazy"/>Expert Advisors</a></li><li class="tree-menu__item"><a class="tree-menu__link" href="/en/articles/statistics"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/statistics.svg" alt="" loading="lazy"/>Statistics and analysis</a></li><li class="tree-menu__item"><a class="tree-menu__link" href="/en/articles/machine_learning"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/machine_learning.svg" alt="" loading="lazy"/>Machine learning</a></li><li class="tree-menu__item"><a class="tree-menu__link" href="/en/articles/interviews"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/interviews.svg" alt="" loading="lazy"/>Interviews</a></li></ul><ul class="tree-menu-ul"><li class="tree-menu__item"><a class="tree-menu__link" href="/en/articles/my"><img class="tree-menu__icon" width="20" height="20" src="https://c.mql5.com/i/sidebar/articles.svg" alt="" loading="lazy"/>My own</a></li></ul>
+  
+
+    <div class="hints-panel">
+      <div class="hints-panel__item">
+        <i class="icons-hints icons-hints_like"></i>
+        <div class="hints-panel__content">
+          Do you like the article?<br>
+          Share it with others —<br>post a <a href="https://www.mql5.com/en/articles/20266" target="_blank">link</a> to it!
+        </div>
+      </div>
+
+      <div class="hints-panel__item">
+        <i class="icons-hints icons-hints_tg-square icons-hints_24px"></i><div class="hints-panel__content">
+Find us on <a href="https://t.me/mql5dev" target="_blank" rel="nofollow">Telegram</a>!<br> Join our fan page</div>
+      </div>
+
+      <div class="hints-panel__item">
+        <i class="icons-hints icons-hints_mt-5"></i>
+        <div class="hints-panel__content">
+          Use new possibilities of <a href="https://download.mql5.com/cdn/web/metaquotes.ltd/mt5/mt5setup.exe?utm_source=www.mql5.com&utm_campaign=download" data-fz-event="MetaTrader+5+Desktop+Download+Article"  rel="nofollow">MetaTrader 5</a>
+        </div>
+      </div>
+    </div>
+<div id='vgckrufggwxdtfscpyalmenexmvhljduja' class="rnhyip6vynqcl5p06 g9z0qx14h"></div>      <div class="similar-author-articles ui">
+        <h4 class="similar-author-articles__title">Similar articles</h4>
+        <ul class="similar-author-articles__list">
+            <li>
+              <a href="/en/articles/15730" data-fz-event="MQL5+Article+Similar+Article">From Basic to Intermediate: Struct (I)</a>
+            </li>
+            <li>
+              <a href="/en/articles/12621" data-fz-event="MQL5+Article+Similar+Article">Market Simulation (Part 07): Sockets (I)</a>
+            </li>
+            <li>
+              <a href="/en/articles/20387" data-fz-event="MQL5+Article+Similar+Article">Price Action Analysis Toolkit Development (Part 52): Master Market Structure with Multi-Timeframe Visual Analysis</a>
+            </li>
+            <li>
+              <a href="/en/articles/17803" data-fz-event="MQL5+Article+Similar+Article">Table and Header Classes based on a table model in MQL5: Applying the MVC concept</a>
+            </li>
+        </ul>
+      </div>
+    <div class="freelance-hint">
+      <img src="https://c.mql5.com/i/articles/icon_freelance.svg" width="24" height="24" loading="lazy" />
+      <div class="freelance-hint__text">
+        Use the ideas from this article<br>to order your own robot<br>on Freelance
+      </div>
+        <a target="_blank" class="button button_blue-gray-border" title="Go to Freelance" href="/en/job/new" data-fz-event="MQL5+Article+New+Job">Go to Freelance</a>
+    </div>
+
+    </aside>
+    <article class="content-with-sidebar articles-content splashed">
+      
+
+
+  <header class="article-header article-header_light" style="background-color: rgb(55,46,47)">
+    <section class="article-tools-panel">
+        
+      <div class="article-tools-panel__item">
+        <a href="#pocket" title="Pocket allows you to insert a complete content description to the appropriate comment" onclick="return Pocket.Add(this,'en',2,1,20266);" class="article-tools-panel__rounded">
+          <i class="article-pocket-icon"></i>
+        </a>
+      </div>
+      <div class="article-tools-panel__item">
+        <a href="/en/articles/20266?print=" target="_blank" class="article-tools-panel__rounded" rel="nofollow" title="Printer friendly version">
+          <i class="article-print-icon"></i>
+        </a>
+      </div>
+
+          <span class="article-tools-panel__button-area ui">
+            <a class="button button_blue button_with-icon" href="/en/articles/new">
+              <i class="icons-buttons icons-buttons_add-article"></i>Add a new article
+            </a>
+          </span>
+    </section>
+    <section class="article-header__image-box">
+        <img class="article-header__image-preview" loading="lazy" width="32" height="16" alt="preview" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAsICAoIBwsKCQoNDAsNERwSEQ8PESIZGhQcKSQrKigkJyctMkA3LTA9MCcnOEw5PUNFSElIKzZPVU5GVEBHSEX/2wBDAQwNDREPESESEiFFLicuRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUX/wAARCAAQACADASIAAhEBAxEB/8QAFwABAQEBAAAAAAAAAAAAAAAABQMEB//EAB8QAAICAQQDAAAAAAAAAAAAAAECAAMEERIhUTEyQf/EABUBAQEAAAAAAAAAAAAAAAAAAAMC/8QAGREAAgMBAAAAAAAAAAAAAAAAAAECESEx/9oADAMBAAIRAxEAPwDnmNVq/AilNIAB5A7hNTMD1NYuIHsZD6MoqsFgcdF4XVu4bkVo1pO0SLZDD7ItkOT5ipguOn//2Q==">
+      <div class="article-header__gradient" style="background: linear-gradient(90deg, rgba(55,46,47, 1) 0%, rgba(55,46,47, 0.72) 8.31%, rgba(55,46,47, 0) 17.1%), linear-gradient(270deg, rgba(55,46,47, 1) 0%, rgba(55,46,47, 0.72) 8.06%, rgba(55,46,47, 0) 16.59%), linear-gradient(0deg, rgba(55,46,47, 1) 8.26%, rgba(55,46,47, 0.8) 65%, rgba(55,46,47, 0) 100%);"></div>
+        <picture>
+          <source srcset="https://c.mql5.com/2/183/20266-the-mql5-standard-library-explorer-part-4-custom-signal-library_600x314__2.jpg, https://c.mql5.com/2/183/20266-the-mql5-standard-library-explorer-part-4-custom-signal-library_1200x628__2.jpg 2x" media="(min-width:700px)">
+          <img class="article-header__image" loading="lazy" width="600" height="314" srcset="https://c.mql5.com/2/183/20266-the-mql5-standard-library-explorer-part-4-custom-signal-library_300x157__2.jpg, https://c.mql5.com/2/183/20266-the-mql5-standard-library-explorer-part-4-custom-signal-library_600x314__2.jpg 2x" src="https://c.mql5.com/2/183/20266-the-mql5-standard-library-explorer-part-4-custom-signal-library_600x314__2.jpg" alt="The MQL5 Standard Library Explorer (Part 4): Custom Signal Library" onerror="this.style.display='none';">
+        </picture>
+    </section>
+    <section class="article-header__content">
+      <h1>The MQL5 Standard Library Explorer (Part 4): Custom Signal Library</h1>
+      <div class="article-header__info">
+        <a href="/en/articles/mt5">MetaTrader 5</a>
+          &mdash;
+          <a href="/en/articles/mt5/examples">Examples</a>
+        | <time datetime="2025-11-27T10:25Z" title="10:25" datetime-type="datetime">27 November 2025, 10:25</time>
+      </div>
+      <div class="article-header__indicators">
+        <span title="Views">
+          <img src="https://c.mql5.com/i/icons.svg#views-white-usage" width="20" height="20" alt="" />
+          692
+        </span>
+        <span title="Comments">
+          <img src="https://c.mql5.com/i/icons.svg#comments-white-usage" width="20" height="20" alt="" />
+          0
+        </span>
+      </div>
+      <div class="article-header__author">
+          <div class="article-header__avatar">
+            <img src="https://c.mql5.com/avatar/2025/3/67df27c6-2936.png" srcset="https://c.mql5.com/avatar/2025/3/67df27c6-2936_big.png 2x" data-user-login="Billionaire2024" title="Clemence Benjamin" alt="Clemence Benjamin" loading="lazy" width="60" height="60">
+          </div>
+<a class="author" href="/en/users/billionaire2024" data-user-login="Billionaire2024">Clemence Benjamin</a>      </div>
+    </section>
+  </header>
+
+    <div class="content">
+      <div class="inner">
+        <h3 id="para1">Contents</h3><p></p><ul><li><a href="/en/articles/20266#para2">Introduction</a></li><li><a href="/en/articles/20266#para3">Implementation</a></li><li><a href="/en/articles/20266#para4">Testing</a></li><li><a href="/en/articles/20266#para5">Conclusion</a></li></ul><h3 id="para2"><br/><br/>Introduction</h3><p>The development of sophisticated Expert Advisors is achievable through the <a href="/en/book/intro/mql_wizard" target="_blank">MQL5 Wizard</a> even with limited programming experience. The default Signal library contains numerous pre-built signals that can be optimized to produce exceptional trading performance. In this comprehensive exploration, we embarked on creating custom signals to transform trading ideas into fully functional Expert Advisors compatible with the MQL5 Wizard framework. This article documents our journey from initial concept to final implementation, highlighting the challenges, solutions, and valuable insights gained throughout the process.</p><p><u>The MQL5 Wizard Advantage</u></p><p>The MQL5 Wizard represents a paradigm shift in algorithmic trading development, offering several key benefits:</p><p>1. Rapid Prototyping Capabilities</p><ul><li>Accelerated Development: Generate complete Expert Advisors in minutes rather than weeks.</li><li>Standardized Architecture: Ensure code consistency and maintainability</li><li>Modular Design: Easily swap and combine different trading components</li><li>Built-in Risk Management: Integrate professional money management from inception.</li></ul><p></p><p>2. Pre-Optimized Components</p><p>The Wizard provides access to extensively tested modules, including:</p><ul><li>multiple signal generation systems</li><li>various trailing stop mechanisms,</li><li>diverse money management strategies,</li><li>comprehensive risk management protocols.</li></ul><p>Thinking more deeply about this topic, I decided to compile a table showing how two different types of developers can benefit from the MQL5 Wizard. See the table below.</p><table cellspacing="0" cellpadding="2" width="100%" class="standart"><thead><tr><th colspan="3">Benefits of MQL5 Wizard and Signal Library for Different Developer Types</th></tr><tr><th width="8%">#</th><th width="46%">Developer with Zero Programming Knowledge</th><th width="46%">Developer with Good Programming Skills</th></tr></thead><tbody><tr><td>1</td><td><u>Instant EA Creation</u><br/>Generate complete Expert Advisors in minutes without writing any code through intuitive point-and-click interface</td><td><u>Rapid Prototyping</u><br/>Quickly test trading ideas by generating complete EA framework, then customize and extend with advanced programming</td></tr><tr><td>2</td><td><u>Pre-Built Signal Library</u><br/>Access dozens of professionally-coded technical indicators and trading strategies without understanding implementation details</td><td><u>Extensible Architecture</u><br/>Leverage well-designed base classes and interfaces to create custom signals while maintaining compatibility with Wizard framework</td></tr><tr><td>3</td><td><u>Built-in Risk Management</u><br/>Automatically integrate professional money management, trailing stops, and position sizing without coding expertise</td><td><u>Code Generation &amp; Standards</u><br/>Generate boilerplate code following MQL5 best practices, reducing development time and ensuring code quality</td></tr><tr><td>4</td><td><u>Visual Strategy Builder</u><br/>Combine multiple signals with drag-and-drop simplicity and immediately see parameter effects on strategy performance</td><td><u>Modular Component System</u><br/>Create reusable signal modules that can be easily shared, tested, and combined in different strategy configurations</td></tr><tr><td>5</td><td><u>Error-Free Implementation</u><br/>Avoid common programming mistakes with pre-tested, validated trading components and automatic error handling</td><td><u>Advanced Debugging Framework</u><br/>Utilize built-in debugging capabilities and standardized logging to quickly identify and resolve issues.</td></tr><tr><td>6</td><td><u>Learning Platform</u><br/>Study generated code to understand proper EA structure and gradually learn MQL5 programming concepts</td><td><u>Testing Infrastructure</u><br/>Access comprehensive back-testing and optimization tools with minimal setup time for strategy validation</td></tr><tr><td>7</td><td><u>Parameter Optimization</u><br/>Easily optimize trading strategies through visual interface without understanding complex optimization algorithms</td><td><u>Performance Benchmarking</u><br/>Compare custom signals against built-in library using standardized testing protocols and metrics</td></tr><tr><td>8</td><td><u>Strategy Validation</u><br/>Quickly test multiple signal combinations and filter settings to find profitable configurations through systematic exploration</td><td><u>Custom Integration Points</u><br/>Extend Wizard functionality by hooking into initialization, tick processing, and trade execution events</td></tr></tbody></table><p><u>Conceptualizing Custom Signals</u></p><p>The default signal list is mainly built from the terminal’s standard indicators. In today’s project, we want to go the extra mile. Most traders are already familiar with candlestick names and patterns, so it becomes easier to grasp the concepts we are about to use. Our task is to build a signal class based on candlestick patterns, with the goal of detecting specific price action formations and generating trading signals accordingly. After creating this class, we will integrate it into an Expert Advisor using the MQL5 Wizard, then study the generated code and its behavior in the Strategy Tester. Successful trading systems often combine multiple confirmation factors rather than relying on a single indicator, and this approach takes us closer to that ideal.</p><p style="text-align:center;"><img width="606" height="493" src="https://c.mql5.com/2/183/MetaEditor64_rD8aZwlaip.png" loading="lazy" title="List of available signal" alt="List of available signal" style="vertical-align:middle;"/></p><p style="text-align:center;"><span class="small">List of available signal modules</span></p><p><br/></p><h3 id="para3">Implementation</h3><p><u>Creating Custom Signals for MQL5 Wizard</u></p><p>Our implementation journey followed a logical progression, but we encountered a critical hurdle right from the start. When I created my first custom signal class, it compiled successfully but didn't appear in the MQL5 Wizard's list of available signals for selection. This required specific adjustments to make the signal visible and selectable alongside the pre-built options.</p><p><u>The Class Structure</u></p><p>When creating custom trading signals for the MQL5 Wizard, we start by establishing the fundamental class structure that forms the backbone of our candlestick pattern recognition system. This class inherits from the powerful <a href="/en/docs/standardlibrary/expertclasses/expertbaseclasses/cexpertsignal" target="_blank">CExpertSignal</a> base class, which provides all the essential functionality needed to integrate with the MQL5 Wizard framework. Think of this as building upon a proven foundation—we get all the sophisticated signal processing capabilities while focusing our efforts on the unique candlestick pattern logic that makes our trading strategy special.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| MyCandlePatternSignal.mqh&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//| Custom Signal based on Candlestick Patterns&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="preprocessor">#include </span>&lt;Expert\ExpertSignal.mqh&gt;
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| Class CMyCandlePatternSignal&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="keyword">class</span> CMyCandlePatternSignal : <span class="keyword">public</span> CExpertSignal
+{</pre><p>Notice how we include ExpertSignal.mqh—this is absolutely crucial because it provides the base class functionality that the MQL5 Wizard expects. Without this include, our class wouldn't compile properly, much less work within the Wizard framework.</p><p><u>Designing Your Trading Parameters: Member Variables</u></p><p>Every successful trading system needs configurable parameters, and our candlestick signal class is no exception. We declare two types of member variables: pattern weights that determine how strongly each candlestick formation influences our trading decisions, and detection parameters that fine-tune how we identify these patterns in market data. This separation allows traders to adjust both the sensitivity of pattern detection and the confidence level of each signal independently.</p><pre class="code"><span class="keyword">protected</span>:
+&nbsp;&nbsp; <span class="comment">//--- Pattern weights</span>
+&nbsp;&nbsp; <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; m_pattern_doji;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Doji pattern weight</span>
+&nbsp;&nbsp; <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; m_pattern_engulfing;&nbsp;&nbsp; <span class="comment">// Engulfing pattern weight&nbsp;&nbsp;</span>
+&nbsp;&nbsp; <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; m_pattern_hammer;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Hammer/Hanging man weight</span>
+&nbsp;&nbsp; <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; m_pattern_morning_star;<span class="comment">// Morning/Evening star weight</span>
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="comment">//--- Detection parameters</span>
+&nbsp;&nbsp; <span class="keyword">double</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;m_doji_threshold;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Doji body threshold</span>
+&nbsp;&nbsp; <span class="keyword">double</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;m_engulfing_ratio;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment">// Engulfing size ratio</span></pre><p>The protected access modifier ensures these variables are accessible within our class hierarchy but hidden from external code, maintaining good object-oriented design principles while keeping our trading logic secure.</p><p><u>Creating the Control Panel: Public Interface Methods</u></p><p>To make our signal configurable within the MQL5 Wizard, we need to provide public methods that allow traders to adjust our parameters. These setter methods act as the control panel for our trading signal—each one corresponds to an input parameter that will appear in the Expert Advisor's settings when generated by the Wizard. The beauty of this design is that we're building a user-friendly interface without any extra GUI programming!</p><pre class="code"><span class="keyword">public</span>:
+&nbsp;&nbsp; <span class="comment">//--- Constructor</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CMyCandlePatternSignal(<span class="keyword">void</span>);
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="comment">//--- Methods for setting parameters</span>
+&nbsp;&nbsp; <span class="keyword">void</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PatternDoji(<span class="keyword">int</span> <span class="keyword">value</span>)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ m_pattern_doji=<span class="keyword">value</span>; }
+&nbsp;&nbsp; <span class="keyword">void</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PatternEngulfing(<span class="keyword">int</span> <span class="keyword">value</span>)&nbsp;&nbsp; { m_pattern_engulfing=<span class="keyword">value</span>; }
+&nbsp;&nbsp; <span class="keyword">void</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PatternHammer(<span class="keyword">int</span> <span class="keyword">value</span>)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ m_pattern_hammer=<span class="keyword">value</span>; }
+&nbsp;&nbsp; <span class="keyword">void</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PatternMorningStar(<span class="keyword">int</span> <span class="keyword">value</span>) { m_pattern_morning_star=<span class="keyword">value</span>; }
+&nbsp;&nbsp; <span class="keyword">void</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DojiThreshold(<span class="keyword">double</span> <span class="keyword">value</span>)&nbsp;&nbsp; { m_doji_threshold=<span class="keyword">value</span>; }
+&nbsp;&nbsp; <span class="keyword">void</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EngulfingRatio(<span class="keyword">double</span> <span class="keyword">value</span>)&nbsp;&nbsp;{ m_engulfing_ratio=<span class="keyword">value</span>; }</pre><p>These inline setter methods are efficient and straightforward—they directly assign values to our member variables. When the MQL5 Wizard generates an Expert Advisor from our signal, it will automatically create input parameters that call these methods.</p><p><u>Defining the Brain of Our System: Core Functionality</u></p><p>The protected section of our class declaration is where we define the core intelligence of our trading signal. Here we declare the pattern detection methods that identify specific candlestick formations and the crucial signal generation methods that the MQL5 Wizard calls to make trading decisions. This is where our unique trading logic lives—the methods that transform raw price data into actionable trading signals.</p><pre class="code"><span class="keyword">protected</span>:
+&nbsp;&nbsp; <span class="comment">//--- Candlestick pattern detection methods</span>
+&nbsp;&nbsp; <span class="keyword">bool</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;IsDoji(<span class="keyword">int</span> idx);
+&nbsp;&nbsp; <span class="keyword">bool</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;IsBullishEngulfing(<span class="keyword">int</span> idx);
+&nbsp;&nbsp; <span class="keyword">bool</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;IsBearishEngulfing(<span class="keyword">int</span> idx);
+&nbsp;&nbsp; <span class="keyword">bool</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;IsHammer(<span class="keyword">int</span> idx);
+&nbsp;&nbsp; <span class="keyword">bool</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;IsShootingStar(<span class="keyword">int</span> idx);
+&nbsp;&nbsp; <span class="keyword">bool</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;IsMorningStar(<span class="keyword">int</span> idx);
+&nbsp;&nbsp; <span class="keyword">bool</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;IsEveningStar(<span class="keyword">int</span> idx);
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="comment">//--- Main signal generation methods</span>
+&nbsp;&nbsp; <span class="keyword">virtual</span> <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LongCondition(<span class="keyword">void</span>);
+&nbsp;&nbsp; <span class="keyword">virtual</span> <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCondition(<span class="keyword">void</span>);
+};</pre><p>The virtual keyword before LongCondition() and ShortCondition() indicates that we're overriding methods from the base CExpertSignal class. These are the methods the MQL5 Wizard framework calls to determine when to enter long and short positions.</p><p><u>Setting Up Default Values: The Constructor</u></p><p>Every class needs proper initialization, and our constructor is where we set sensible default values for all our trading parameters. This initialization list ensures our signal starts with reasonable settings that have proven effective for candlestick pattern trading. The m_used_series assignment is particularly important—it tells the framework which price data we need access to for our calculations.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| Constructor&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+CMyCandlePatternSignal::CMyCandlePatternSignal(<span class="keyword">void</span>) : 
+&nbsp;&nbsp; m_pattern_doji(<span class="number">60</span>),
+&nbsp;&nbsp; m_pattern_engulfing(<span class="number">80</span>),
+&nbsp;&nbsp; m_pattern_hammer(<span class="number">70</span>),
+&nbsp;&nbsp; m_pattern_morning_star(<span class="number">90</span>),
+&nbsp;&nbsp; m_doji_threshold(<span class="number">0.1</span>),
+&nbsp;&nbsp; m_engulfing_ratio(<span class="number">1.5</span>)
+{
+&nbsp;&nbsp; m_used_series=USE_SERIES_OPEN+USE_SERIES_HIGH+USE_SERIES_LOW+USE_SERIES_CLOSE;
+}</pre><p>The m_used_series assignment is absolutely vital—without it, our signal won't have access to the Open, High, Low, and Close price data needed for candlestick analysis. This is a common oversight that can lead to confusing errors when the signal tries to access price data that hasn't been initialized.</p><p><u>Implementing Pattern Recognition: Doji Detection</u></p><p>The doji pattern represents market indecision, occurring when the opening and closing prices are virtually equal. Our detection method calculates the candle's body size relative to its total range, using a configurable threshold to determine what constitutes a "small" body. This mathematical approach ensures consistent pattern recognition across different instruments and market conditions.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| Check if candle is Doji&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="keyword">bool</span> CMyCandlePatternSignal::IsDoji(<span class="keyword">int</span> idx)
+{
+&nbsp;&nbsp; <span class="keyword">double</span> open = m_open.GetData(idx);
+&nbsp;&nbsp; <span class="keyword">double</span> close = m_close.GetData(idx);
+&nbsp;&nbsp; <span class="keyword">double</span> high = m_high.GetData(idx);
+&nbsp;&nbsp; <span class="keyword">double</span> low = m_low.GetData(idx);
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="keyword">double</span> body_size = <span class="functions">MathAbs</span>(close - open);
+&nbsp;&nbsp; <span class="keyword">double</span> range = high - low;
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="comment">// Doji: very small body relative to range</span>
+&nbsp;&nbsp; <span class="keyword">if</span>(range &gt; <span class="number">0</span> &amp;&amp; body_size &lt;= range * m_doji_threshold)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> <span class="macro">true</span>;
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="keyword">return</span> <span class="macro">false</span>;
+}</pre><p>Notice how we use m_doji_threshold to make our detection adaptive. A value of 0.1 means the body must be 10% or less of the total candle range. This parameter allows traders to adjust sensitivity based on market volatility—lower values for more precise doji detection, higher values for more frequent signals.</p><p><u>Capturing Market Reversals: Engulfing Patterns</u></p><p>Engulfing patterns are powerful reversal signals that occur when a candle completely "engulfs" the previous candle's body. Our implementation carefully checks multiple conditions: the direction of both candles, the engulfing relationship, and the size difference using our configurable ratio. This multi-layered verification ensures we only identify high-quality engulfing patterns.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| Check for Bullish Engulfing pattern&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="keyword">bool</span> CMyCandlePatternSignal::IsBullishEngulfing(<span class="keyword">int</span> idx)
+{
+&nbsp;&nbsp; <span class="keyword">double</span> prev_open = m_open.GetData(idx+<span class="number">1</span>);
+&nbsp;&nbsp; <span class="keyword">double</span> prev_close = m_close.GetData(idx+<span class="number">1</span>);
+&nbsp;&nbsp; <span class="keyword">double</span> curr_open = m_open.GetData(idx);
+&nbsp;&nbsp; <span class="keyword">double</span> curr_close = m_close.GetData(idx);
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="comment">// Previous candle must be bearish</span>
+&nbsp;&nbsp; <span class="keyword">if</span>(prev_close &gt;= prev_open) <span class="keyword">return</span> <span class="macro">false</span>;
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="comment">// Current candle must be bullish</span>
+&nbsp;&nbsp; <span class="keyword">if</span>(curr_close &lt;= curr_open) <span class="keyword">return</span> <span class="macro">false</span>;
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="comment">// Current body must engulf previous body</span>
+&nbsp;&nbsp; <span class="keyword">if</span>(curr_open &lt; prev_close &amp;&amp; curr_close &gt; prev_open)
+&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">double</span> prev_body = <span class="functions">MathAbs</span>(prev_close - prev_open);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">double</span> curr_body = <span class="functions">MathAbs</span>(curr_close - curr_open);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Current body should be significantly larger</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>(curr_body &gt;= prev_body * m_engulfing_ratio)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="keyword">return</span> <span class="macro">true</span>;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="keyword">return</span> <span class="macro">false</span>;
+}</pre><p>The engulfing pattern represents a dramatic shift in market sentiment. The previous candle shows one side in control, but the engulfing candle demonstrates the opposite side overwhelming them. Our m_engulfing_ratio parameter ensures the new momentum is strong enough to be significant.</p><p><u>Identifying Precision Tools: Hammer and Shooting Star</u></p><p>Hammer and Shooting Star patterns are excellent for pinpointing potential reversal points. These patterns have small bodies with long shadows, indicating rejection of higher or lower prices. Our implementation uses precise ratios to distinguish genuine reversal patterns from ordinary candles with extended wicks.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| Check for Hammer pattern (bullish reversal)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="keyword">bool</span> CMyCandlePatternSignal::IsHammer(<span class="keyword">int</span> idx)
+{
+&nbsp;&nbsp; <span class="keyword">double</span> open = m_open.GetData(idx);
+&nbsp;&nbsp; <span class="keyword">double</span> close = m_close.GetData(idx);
+&nbsp;&nbsp; <span class="keyword">double</span> high = m_high.GetData(idx);
+&nbsp;&nbsp; <span class="keyword">double</span> low = m_low.GetData(idx);
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="keyword">double</span> body_size = <span class="functions">MathAbs</span>(close - open);
+&nbsp;&nbsp; <span class="keyword">double</span> lower_shadow = <span class="functions">MathMin</span>(open, close) - low;
+&nbsp;&nbsp; <span class="keyword">double</span> upper_shadow = high - <span class="functions">MathMax</span>(open, close);
+&nbsp;&nbsp; <span class="keyword">double</span> range = high - low;
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="keyword">if</span>(range &lt;= <span class="number">0</span>) <span class="keyword">return</span> <span class="macro">false</span>;
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="comment">// Hammer: small body, long lower shadow, little to no upper shadow</span>
+&nbsp;&nbsp; <span class="keyword">bool</span> is_small_body = body_size &lt;= range * <span class="number">0.3</span>;
+&nbsp;&nbsp; <span class="keyword">bool</span> is_long_lower_shadow = lower_shadow &gt;= body_size * <span class="number">2.0</span>;
+&nbsp;&nbsp; <span class="keyword">bool</span> is_small_upper_shadow = upper_shadow &lt;= body_size * <span class="number">0.5</span>;
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="keyword">return</span> (is_small_body &amp;&amp; is_long_lower_shadow &amp;&amp; is_small_upper_shadow);
+}</pre><p>The hammer pattern tells a story of sellers pushing prices lower during the period, but buyers recovering most of the losses by the close. This creates a long lower shadow that indicates potential bullish reversal. Our three-condition check ensures we only identify high-probability hammer formations.</p><p><u>Making Trading Decisions: Signal Generation</u></p><p>The LongCondition() and ShortCondition() methods are where everything comes together—these are the decision-making engines that the MQL5 Wizard calls to generate actual trading signals. Using a weighted voting system, each pattern contributes its confidence level to the final decision, with the total needing to exceed the Wizard's threshold for a trade to execute.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| "Long" condition (BUY signals)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="keyword">int</span> CMyCandlePatternSignal::LongCondition(<span class="keyword">void</span>)
+{
+&nbsp;&nbsp; <span class="keyword">int</span> result=<span class="number">0</span>;
+&nbsp;&nbsp; <span class="keyword">int</span> idx=StartIndex();
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="comment">//--- Pattern 0: Bullish Engulfing</span>
+&nbsp;&nbsp; <span class="keyword">if</span>(IsBullishEngulfing(idx))
+&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>(IS_PATTERN_USAGE(<span class="number">0</span>))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; result += m_pattern_engulfing;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="comment">//--- Pattern 1: Hammer</span>
+&nbsp;&nbsp; <span class="keyword">if</span>(IsHammer(idx))
+&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>(IS_PATTERN_USAGE(<span class="number">1</span>))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; result += m_pattern_hammer;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="comment">//--- Pattern 2: Doji at support (potential reversal)</span>
+&nbsp;&nbsp; <span class="keyword">if</span>(IsDoji(idx))
+&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// You could add additional logic here to check if at support</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>(IS_PATTERN_USAGE(<span class="number">2</span>))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; result += m_pattern_doji;
+&nbsp;&nbsp; }
+&nbsp;&nbsp; 
+&nbsp;&nbsp; <span class="keyword">return</span>(result);
+}</pre><p>The IS_PATTERN_USAGE() macro is incredibly powerful—it allows traders to enable or disable individual patterns without changing the code. This means our signal can adapt to different market conditions by focusing on the most relevant patterns for the current environment.</p><p><u>Why Our Signal Remained Hidden</u></p><p>Despite having a perfectly functional and well-structured candlestick pattern recognition class, you might have encountered a frustrating reality: it doesn't appear in the MQL5 Wizard's signal selection list. This happens because the Wizard doesn't automatically scan for any class that inherits from CExpertSignal—it specifically looks for classes with a special identification header.</p><p>The MQL5 Wizard uses a metadata system to identify available signals. Without the proper wizard description header, our class is like an unlisted phone number—functionally complete but impossible to find through normal channels. The Wizard needs explicit instructions about how to display our signal, what parameters to expose, and how to integrate it into the Expert Advisor generation process.</p><p>In the next section, we'll transform our invisible signal into a fully integrated Wizard component by adding the crucial metadata header that makes it discoverable and configurable within the MQL5 development environment. This small addition will bridge the gap between our sophisticated pattern recognition logic and the user-friendly Wizard interface that makes MQL5 development accessible to traders of all experience levels.</p><p><b>Unlocking Wizard Compatibility: The Secret Sauce for MQL5 Signal Integration</b></p><p><u>Wizard Description Header</u></p><p>Imagine you've built a sophisticated trading signal, but it's like having a luxury car with no keys—functionally perfect but unusable. The wizard description header is that set of keys that unlocks compatibility with the MQL5 Wizard. This special comment block acts as a handshake between your custom code and the wizard's interface, providing all the metadata needed to display, configure, and integrate your signal seamlessly.</p><pre class="code"><span class="comment">// wizard description start</span>
+<span class="comment">//+--------------------------------------------------------------------------------------------------------------+</span>
+<span class="comment">//| Description of the class&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                                            &nbsp;&nbsp;&nbsp; |</span>
+<span class="comment">//| Title=Signals of candlestick patterns&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//| Type=SignalAdvanced&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//| Name=Candlestick Patterns&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//| ShortName=Candle&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</span>
+<span class="comment">//| Class=CMyCandlePatternSignal&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                                            &nbsp;&nbsp;&nbsp; |</span>
+<span class="comment">//| Page=signal_candle_pattern&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                                            &nbsp;&nbsp;&nbsp;&nbsp; |</span>
+<span class="comment">//| Parameter=PatternDoji,int,60,Weight for Doji pattern&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                                            &nbsp;&nbsp; |</span>
+<span class="comment">//| Parameter=PatternEngulfing,int,80,Weight for Engulfing pattern&nbsp;&nbsp;                                             |</span>
+<span class="comment">//| Parameter=PatternHammer,int,70,Weight for Hammer pattern&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                                             |</span>
+<span class="comment">//| Parameter=PatternMorningStar,int,90,Weight for Morning Star pattern                                          |</span>
+<span class="comment">//| Parameter=DojiThreshold,double,0.1,Doji body threshold (relative to range)                                   |</span>
+<span class="comment">//| Parameter=EngulfingRatio,double,1.5,Engulfing ratio (current body must be at least this times previous body) |</span>
+<span class="comment">//+--------------------------------------------------------------------------------------------------------------+</span>
+<span class="comment">// wizard description end</span></pre><p>This isn't just any comment—it's a structured data format that the MQL5 Wizard actively scans for when populating its signal library. Without this exact format, your signal remains invisible no matter how well-coded it might be.</p><p><u>Understanding the Wizard Directives</u></p><p>Each directive in the wizard description serves a specific purpose, acting like fields on an identification card that the wizard uses to understand and categorize your signal. The title is what users see in the selection list, Type categorizes your signal for proper handling, while name and shortName become part of the generated expert advisor's code structure.</p><pre class="code"><span class="comment">//| Title=Signals of candlestick patterns&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//| Type=SignalAdvanced&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//| Name=Candlestick Patterns&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//| ShortName=Candle&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</span>
+<span class="comment">//| Class=CMyCandlePatternSignal&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</span></pre><p>The Type=SignalAdvanced directive is crucial—it tells the Wizard that this is a sophisticated signal using the weighted voting system. Never change this unless you're creating a different type of trading module.</p><p><u>Parameter Magic: Transforming Code into User-Friendly Inputs</u></p><p>The most powerful aspect of wizard compatibility is how it transforms your class's setter methods into user-friendly input parameters. Each parameter directive corresponds to one of your public setter methods, automatically generating the appropriate input controls in the EA's settings panel.</p><pre class="code"><span class="comment">//| Parameter=PatternDoji,int,60,Weight for Doji pattern&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</span>
+<span class="comment">//| Parameter=PatternEngulfing,int,80,Weight for Engulfing pattern&nbsp;&nbsp; |</span>
+<span class="comment">//| Parameter=PatternHammer,int,70,Weight for Hammer pattern&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</span></pre><p>Parameter Syntax Breakdown:</p><ul><li>Name: Must exactly match your setter method name (without the "Pattern" prefix)</li><li>Type: The data type (int, double, string, etc.)</li><li>Default Value: The initial value that appears in the Wizard.</li><li>Description: Help text that guides users on parameter usage</li><li>File Structure and Naming: The Organizational Key</li></ul><p></p><p>Proper file organization is the final piece of the compatibility puzzle. The MQL5 Wizard expects signal files to follow specific naming conventions and reside in precisely the right directory location. This structured approach ensures consistency across the entire MQL5 ecosystem.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SignalCandlePattern.mqh |</span>
+<span class="comment">//|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Copyright 2025, Clemence Benjamin&nbsp;&nbsp;|</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="preprocessor">#include </span>&lt;Expert\ExpertSignal.mqh&gt;</pre><p>Essential Requirements:</p><ul><li>Location: Must be in <i>MQL5/Include/Expert/Signal/</i></li><li>File Naming: Should follow the Signal[YourSignalName].mqh pattern.</li><li>Class Naming: Should match the class directive in the wizard description.</li><li>Include Statement: Must include <i>ExpertSignal.mqh </i>for base functionality</li></ul><p></p><p><u>The Complete Integration: How It All Works Together</u></p><p>When you've correctly implemented wizard compatibility, the transformation is remarkable. Your signal becomes a first-class citizen in the MQL5 Wizard ecosystem, appearing alongside all the built-in signals with the same level of integration and user experience.</p><p>What Users Experience:</p><ul><li>Discovery: Your signal appears in the alphabetically sorted signal list.</li><li>Configuration: All parameters display with helpful descriptions and default values</li><li>Integration: The wizard automatically generates proper initialization code.</li><li>Combination: Your signal can be mixed and matched with other signals</li></ul><p></p><p><u>Critical Success Factors for Wizard Compatibility</u></p><p>1<u>. Exact Directive Formatting</u></p><p>The wizard description must use precise formatting with no deviations. The <i>// </i>wizard description start and <i>// </i>wizard description end markers are non-negotiable, and each directive must be on its own line with proper syntax.</p><p><u>2. Parameter-Method Consistency</u></p><p>Every parameter directive must have a corresponding public setter method in your class. The wizard generates code that calls these methods, so any mismatch will cause compilation errors in the generated EA.</p><p><u>3. File Location Precision</u></p><p>Your signal file must reside in the exact correct directory. The wizard only scans <i>MQL5/Include/Expert/Signal/</i> for compatible signals, so even a slight deviation in file location will render your signal invisible.</p><p><u>4. MetaEditor Restart Requirement</u></p><p>After creating or modifying a signal file, you must restart MetaEditor for the wizard to detect the changes. The wizard scans for available signals during startup, so new signals won't appear until the next launch.</p><p><u>Testing Your Wizard Compatibility</u></p><p>Once you've implemented the wizard description header, verify your success with these steps:</p><ol><li>Restart MetaEditor to refresh the signal cache</li><li>Launch MQL5 Wizard and create a new Expert Advisor</li><li>Click "Add" in the Signals section</li><li>Look for your signal in the alphabetical list</li><li>Select your signal and verify all parameters appear correctly</li></ol><p></p><p><u>The Transformation Complete</u></p><p>With wizard compatibility properly implemented, your custom candlestick pattern signal transforms from an invisible class file into a fully integrated trading component. Users can now discover your signal, configure its parameters through an intuitive interface, and combine it with other signals to create sophisticated trading systems—all without ever seeing a line of code.</p><p>This compatibility layer represents the bridge between sophisticated programming and accessible trading strategy development, embodying the MQL5 philosophy of making advanced trading automation available to everyone, regardless of their programming expertise.</p><p>Once compatibility has been handled, it’s time to generate our Expert Advisor. In the next few steps, we’ll walk through the process, examine the code produced by the Wizard.</p><ol><li>Launch the MQL5 Wizard (Create new document, Ctrl + N in MetaEditor 5)</li><li>Set Expert Advisor properties</li><li>Add and configure the candlestick signal</li><li>Select the trailing stop module</li><li>Configure money management</li></ol><p style="text-align:center;"><img width="606" height="493" src="https://c.mql5.com/2/183/MetaEditor64_olOWFI56RP.gif" loading="lazy" title="Launch the Wizard." alt="Launch the Wizard." style="vertical-align:middle;"/></p><p style="text-align:center;"><span class="small">Launching the wizard</span></p><p><b>Understanding the Wizard's Blueprint: The Generated EA Structure</b></p><p>The MQL5 Wizard has just transformed our custom candlestick signal into a complete, functional Expert Advisor. This generated code represents a sophisticated trading framework that handles all the complex aspects of automated trading while leaving the strategic decisions to our signal logic. Let's break down this professional-grade architecture and understand how each component contributes to a robust trading system.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Expert Candlestick Wizard.mq5 |</span>
+<span class="comment">//|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Copyright 2025, MetaQuotes Ltd. |</span>
+<span class="comment">//|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; https://www.mql5.com |</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="preprocessor">#property </span><span class="macro">copyright</span> <span class="string">"Copyright 2025, MetaQuotes Ltd."</span>
+<span class="preprocessor">#property </span><span class="macro">link</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"https://www.mql5.com"</span>
+<span class="preprocessor">#property </span><span class="macro">version</span>&nbsp;&nbsp; <span class="string">"1.00"</span></pre><p>These property declarations establish the EA's identity and version control. While they seem simple, they're crucial for professional distribution and tracking different versions of your trading system.</p><p><u>The Expert Framework: Professional-Grade Architecture</u></p><p>The Wizard generates code that leverages MQL5's sophisticated Expert framework, which provides a standardized architecture for all trading operations. This framework handles the complex aspects of order management, event processing, and error handling so we can focus on our trading strategy.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| Include&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="preprocessor">#include </span>&lt;Expert\Expert.mqh&gt;
+<span class="comment">//--- available signals</span>
+<span class="preprocessor">#include </span>&lt;Expert\Signal\SignalCandlePattern.mqh&gt;
+<span class="comment">//--- available trailing</span>
+<span class="preprocessor">#include </span>&lt;Expert\Trailing\TrailingParabolicSAR.mqh&gt;
+<span class="comment">//--- available money management</span>
+<span class="preprocessor">#include </span>&lt;Expert\Money\MoneySizeOptimized.mqh&gt;</pre><p>The Wizard follows a component-based architecture where signals, money management, and trailing stops are separate modules. This allows for incredible flexibility—you can easily swap out any component without affecting the others.</p><p><u>Configuration Interface: User-Friendly Input Parameters</u></p><p>The input parameters section transforms our technical trading concepts into accessible settings that any trader can understand and adjust. This is where the Wizard truly shines—it automatically creates a comprehensive configuration interface based on our signal class's parameters.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| Inputs&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//--- inputs for expert</span>
+<span class="keyword">input</span> <span class="keyword">string</span> Expert_Title&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class="string">"Candlestick Wizard"</span>; <span class="comment">// Document name</span>
+<span class="keyword">ulong</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Expert_MagicNumber&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class="number">964602383</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//</span>
+<span class="keyword">bool</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Expert_EveryTick&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class="macro">false</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//</span>
+<span class="comment">//--- inputs for main signal</span>
+<span class="keyword">input</span> <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;Signal_ThresholdOpen&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class="number">10</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment">// Signal threshold value to open [0...100]</span>
+<span class="keyword">input</span> <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;Signal_ThresholdClose&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =<span class="number">10</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment">// Signal threshold value to close [0...100]</span>
+<span class="keyword">input</span> <span class="keyword">double</span> Signal_PriceLevel&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =<span class="number">0.0</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Price level to execute a deal</span>
+<span class="keyword">input</span> <span class="keyword">double</span> Signal_StopLevel&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class="number">50.0</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment">// Stop Loss level (in points)</span>
+<span class="keyword">input</span> <span class="keyword">double</span> Signal_TakeLevel&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class="number">50.0</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment">// Take Profit level (in points)</span>
+<span class="keyword">input</span> <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;Signal_Expiration&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =<span class="number">4</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Expiration of pending orders (in bars)</span></pre><p>Notice how the wizard sets sensible default values. The threshold of 10 means our candlestick patterns need to generate at least 10 "votes" to trigger a trade. These defaults provide a safe starting point for testing.</p><p><u>Signal-Specific Configuration: Our Custom Parameters</u></p><p>This is where our custom candlestick signal parameters appear, automatically generated from the wizard description header we created earlier. Each parameter corresponds directly to the setter methods in our signal class.</p><pre class="code"><span class="keyword">input</span> <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;Signal_Candle_PatternDoji&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =<span class="number">60</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment">// Candlestick Patterns(60,80,...) Weight for Doji pattern</span>
+<span class="keyword">input</span> <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;Signal_Candle_PatternEngulfing&nbsp;&nbsp;&nbsp;&nbsp;=<span class="number">80</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment">// Candlestick Patterns(60,80,...) Weight for Engulfing pattern</span>
+<span class="keyword">input</span> <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;Signal_Candle_PatternHammer&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =<span class="number">70</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment">// Candlestick Patterns(60,80,...) Weight for Hammer pattern</span>
+<span class="keyword">input</span> <span class="keyword">int</span>&nbsp;&nbsp;&nbsp;&nbsp;Signal_Candle_PatternMorningStar&nbsp;&nbsp;=<span class="number">90</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment">// Candlestick Patterns(60,80,...) Weight for Morning Star pattern</span>
+<span class="keyword">input</span> <span class="keyword">double</span> Signal_Candle_DojiThreshold&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =<span class="number">0.1</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Candlestick Patterns(60,80,...) Doji body threshold (relative to range)</span>
+<span class="keyword">input</span> <span class="keyword">double</span> Signal_Candle_EngulfingRatio&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class="number">1.5</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Candlestick Patterns(60,80,...) Engulfing ratio (current body must be at least this times previ</span>
+<span class="keyword">input</span> <span class="keyword">double</span> Signal_Candle_Weight&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class="number">1.0</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Candlestick Patterns(60,80,...) Weight [0...1.0]</span></pre><p>The weights reflect the relative strength of each pattern—engulfing patterns (80) are considered stronger signals than hammers (70), while Morning Stars (90) are the most significant. This weighting system allows for sophisticated signal prioritization.</p><p><u>Risk Management Integration: Professional Trading Components</u></p><p>The wizard doesn't just stop at signal generation—it integrates comprehensive risk management through trailing stops and money management modules. This transforms our simple signal into a complete trading system.</p><pre class="code"><span class="comment">//--- inputs for trailing</span>
+<span class="keyword">input</span> <span class="keyword">double</span> Trailing_ParabolicSAR_Step&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class="number">0.02</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment">// Speed increment</span>
+<span class="keyword">input</span> <span class="keyword">double</span> Trailing_ParabolicSAR_Maximum&nbsp;&nbsp;&nbsp;&nbsp; =<span class="number">0.2</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Maximum rate</span>
+<span class="comment">//--- inputs for money</span>
+<span class="keyword">input</span> <span class="keyword">double</span> Money_SizeOptimized_DecreaseFactor=<span class="number">3.0</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Decrease factor</span>
+<span class="keyword">input</span> <span class="keyword">double</span> Money_SizeOptimized_Percent&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =<span class="number">10.0</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="comment">// Percent</span></pre><p>The Parabolic SAR trailing stop will automatically protect profits by moving stop losses as the trade moves in our favor. The money management system ensures we never risk more than a percentage of our account on any single trade.</p><p><u>Core Expert Object</u></p><p>At the heart of every wizard-generated EA is the CExpert object—a sophisticated trading engine that coordinates all components and handles the complex logic of trade execution, monitoring, and management.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| Global expert object&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+CExpert ExtExpert;</pre><p>This single object manages the entire trading process, from receiving market data through our signal, to executing trades, to managing open positions with trailing stops and proper money management.</p><p><u>Initialization Mastery: Building the Trading System</u></p><p>The OnInit() function is where our trading system comes to life. This carefully orchestrated sequence ensures all components are properly initialized, configured, and validated before any trading begins.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| Initialization function of the expert&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="keyword">int</span> <span class="functions">OnInit</span>()
+&nbsp;&nbsp;{
+<span class="comment">//--- Initializing expert</span>
+&nbsp;&nbsp; <span class="keyword">if</span>(!ExtExpert.Init(<span class="functions">Symbol</span>(),<span class="functions">Period</span>(),Expert_EveryTick,Expert_MagicNumber))
+&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//--- failed</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="functions">printf</span>(<span class="keyword">__FUNCTION__</span>+<span class="string">": error initializing expert"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ExtExpert.Deinit();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span>(<span class="macro">INIT_FAILED</span>);
+&nbsp;&nbsp;&nbsp;&nbsp; }</pre><p>Notice the comprehensive error checking at every step. If any component fails to initialize, the EA gracefully shuts down and reports the specific error. This prevents trading with incomplete or misconfigured systems.</p><p><u>Signal Creation and Configuration: Bringing Our Strategy to Life</u></p><p>This section creates and configures our custom candlestick signal, transforming the input parameters into a live trading strategy. The wizard automatically generates the exact code needed to instantiate and configure our signal class.</p><pre class="code"><span class="comment">//--- Creating signal</span>
+&nbsp;&nbsp; CExpertSignal *signal=<span class="keyword">new</span> CExpertSignal;
+&nbsp;&nbsp; <span class="keyword">if</span>(signal==<span class="macro">NULL</span>)
+&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//--- failed</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="functions">printf</span>(<span class="keyword">__FUNCTION__</span>+<span class="string">": error creating signal"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ExtExpert.Deinit();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span>(<span class="macro">INIT_FAILED</span>);
+&nbsp;&nbsp;&nbsp;&nbsp; }
+<span class="comment">//---</span>
+&nbsp;&nbsp; ExtExpert.InitSignal(signal);
+&nbsp;&nbsp; signal.ThresholdOpen(Signal_ThresholdOpen);
+&nbsp;&nbsp; signal.ThresholdClose(Signal_ThresholdClose);
+&nbsp;&nbsp; signal.PriceLevel(Signal_PriceLevel);
+&nbsp;&nbsp; signal.StopLevel(Signal_StopLevel);
+&nbsp;&nbsp; signal.TakeLevel(Signal_TakeLevel);
+&nbsp;&nbsp; signal.Expiration(Signal_Expiration);</pre><p>The base CExpertSignal object provides the voting infrastructure that our custom signal will use. The threshold, stop, and take levels configure how signals are converted into actual trading decisions.</p><p><u>Custom Signal Integration: Our Candlestick Patterns Take Center Stage</u></p><p>This is where our custom candlestick signal gets integrated into the trading system. The Wizard creates an instance of our specific signal class and configures it with all the parameters we defined.</p><pre class="code"><span class="comment">//--- Creating filter CMyCandlePatternSignal</span>
+&nbsp;&nbsp; CMyCandlePatternSignal *filter0=<span class="keyword">new</span> CMyCandlePatternSignal;
+&nbsp;&nbsp; <span class="keyword">if</span>(filter0==<span class="macro">NULL</span>)
+&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//--- failed</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="functions">printf</span>(<span class="keyword">__FUNCTION__</span>+<span class="string">": error creating filter0"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ExtExpert.Deinit();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span>(<span class="macro">INIT_FAILED</span>);
+&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp; signal.AddFilter(filter0);
+<span class="comment">//--- Set filter parameters</span>
+&nbsp;&nbsp; filter0.PatternDoji(Signal_Candle_PatternDoji);
+&nbsp;&nbsp; filter0.PatternEngulfing(Signal_Candle_PatternEngulfing);
+&nbsp;&nbsp; filter0.PatternHammer(Signal_Candle_PatternHammer);
+&nbsp;&nbsp; filter0.PatternMorningStar(Signal_Candle_PatternMorningStar);
+&nbsp;&nbsp; filter0.DojiThreshold(Signal_Candle_DojiThreshold);
+&nbsp;&nbsp; filter0.EngulfingRatio(Signal_Candle_EngulfingRatio);
+&nbsp;&nbsp; filter0.Weight(Signal_Candle_Weight);</pre><p>The "filter0" naming convention reveals a powerful feature—the Wizard can combine multiple signals. We could add filter1, filter2, etc., each with different trading strategies that work together.</p><p><u>Complete System Integration: Risk Management Components</u></p><p>The initialization continues by adding professional trailing stops and money management, creating a complete, production-ready trading system that manages both entry signals and risk control.</p><pre class="code"><span class="comment">//--- Creation of trailing object</span>
+&nbsp;&nbsp; CTrailingPSAR *trailing=<span class="keyword">new</span> CTrailingPSAR;
+&nbsp;&nbsp; <span class="keyword">if</span>(trailing==<span class="macro">NULL</span>)
+&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//--- failed</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="functions">printf</span>(<span class="keyword">__FUNCTION__</span>+<span class="string">": error creating trailing"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ExtExpert.Deinit();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span>(<span class="macro">INIT_FAILED</span>);
+&nbsp;&nbsp;&nbsp;&nbsp; }
+<span class="comment">//--- Add trailing to expert (will be deleted automatically))</span>
+&nbsp;&nbsp; <span class="keyword">if</span>(!ExtExpert.InitTrailing(trailing))
+&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//--- failed</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="functions">printf</span>(<span class="keyword">__FUNCTION__</span>+<span class="string">": error initializing trailing"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ExtExpert.Deinit();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span>(<span class="macro">INIT_FAILED</span>);
+&nbsp;&nbsp;&nbsp;&nbsp; }
+<span class="comment">//--- Set trailing parameters</span>
+&nbsp;&nbsp; trailing.Step(Trailing_ParabolicSAR_Step);
+&nbsp;&nbsp; trailing.Maximum(Trailing_ParabolicSAR_Maximum);</pre><p>The Parabolic SAR trailing stop will dynamically adjust stop losses based on price movement, locking in profits while giving trades room to develop.</p><p><u>Money Management: Professional Position Sizing</u></p><p>No professional trading system is complete without proper money management. The Wizard integrates sophisticated position sizing that adapts to account size and market conditions.</p><pre class="code"><span class="comment">//--- Creation of money object</span>
+&nbsp;&nbsp; CMoneySizeOptimized *money=<span class="keyword">new</span> CMoneySizeOptimized;
+&nbsp;&nbsp; <span class="keyword">if</span>(money==<span class="macro">NULL</span>)
+&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//--- failed</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="functions">printf</span>(<span class="keyword">__FUNCTION__</span>+<span class="string">": error creating money"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ExtExpert.Deinit();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span>(<span class="macro">INIT_FAILED</span>);
+&nbsp;&nbsp;&nbsp;&nbsp; }
+<span class="comment">//--- Add money to expert (will be deleted automatically))</span>
+&nbsp;&nbsp; <span class="keyword">if</span>(!ExtExpert.InitMoney(money))
+&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//--- failed</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="functions">printf</span>(<span class="keyword">__FUNCTION__</span>+<span class="string">": error initializing money"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ExtExpert.Deinit();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span>(<span class="macro">INIT_FAILED</span>);
+&nbsp;&nbsp;&nbsp;&nbsp; }
+<span class="comment">//--- Set money parameters</span>
+&nbsp;&nbsp; money.DecreaseFactor(Money_SizeOptimized_DecreaseFactor);
+&nbsp;&nbsp; money.Percent(Money_SizeOptimized_Percent);</pre><p>The optimized money management system calculates position sizes based on account equity, ensuring consistent risk exposure regardless of account size.</p><p><u>System Validation and Indicator Initialization</u></p><p>Before the EA begins trading, it performs comprehensive validation and prepares all necessary technical indicators. This ensures the system is completely ready for live market conditions.</p><pre class="code"><span class="comment">//--- Check all trading objects parameters</span>
+&nbsp;&nbsp; <span class="keyword">if</span>(!ExtExpert.ValidationSettings())
+&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//--- failed</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ExtExpert.Deinit();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span>(<span class="macro">INIT_FAILED</span>);
+&nbsp;&nbsp;&nbsp;&nbsp; }
+<span class="comment">//--- Tuning of all necessary indicators</span>
+&nbsp;&nbsp; <span class="keyword">if</span>(!ExtExpert.InitIndicators())
+&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">//--- failed</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="functions">printf</span>(<span class="keyword">__FUNCTION__</span>+<span class="string">": error initializing indicators"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ExtExpert.Deinit();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span>(<span class="macro">INIT_FAILED</span>);
+&nbsp;&nbsp;&nbsp;&nbsp; }
+<span class="comment">//--- ok</span>
+&nbsp;&nbsp; <span class="keyword">return</span>(<span class="macro">INIT_SUCCEEDED</span>);
+&nbsp;&nbsp;}</pre><p>The validation process confirms that all components are properly configured and compatible. The indicator initialization ensures all technical analysis tools are ready for real-time data processing.</p><p><u>Event-Driven Architecture: Efficient Market Processing</u></p><p>The Wizard generates an event-driven architecture that efficiently processes market events without unnecessary CPU usage. This ensures optimal performance even during high-volatility periods.</p><pre class="code"><span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| Deinitialization function of the expert&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="keyword">void</span> <span class="functions">OnDeinit</span>(<span class="keyword">const</span> <span class="keyword">int</span> reason)
+&nbsp;&nbsp;{
+&nbsp;&nbsp; ExtExpert.Deinit();
+&nbsp;&nbsp;}
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| "Tick" event handler function&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="keyword">void</span> <span class="functions">OnTick</span>()
+&nbsp;&nbsp;{
+&nbsp;&nbsp; ExtExpert.<span class="functions">OnTick</span>();
+&nbsp;&nbsp;}
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| "Trade" event handler function&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="keyword">void</span> <span class="functions">OnTrade</span>()
+&nbsp;&nbsp;{
+&nbsp;&nbsp; ExtExpert.<span class="functions">OnTrade</span>();
+&nbsp;&nbsp;}
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="comment">//| "Timer" event handler function&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</span>
+<span class="comment">//+------------------------------------------------------------------+</span>
+<span class="keyword">void</span> <span class="functions">OnTimer</span>()
+&nbsp;&nbsp;{
+&nbsp;&nbsp; ExtExpert.<span class="functions">OnTimer</span>();
+&nbsp;&nbsp;}
+<span class="comment">//+------------------------------------------------------------------+</span></pre><p>By delegating all event processing to the CExpert framework, the EA ensures professional-grade performance and reliability. The framework handles tick processing, trade events, and timer events with optimized efficiency.</p><p><u>The Generated EA Assessment: Strengths and Improvement Opportunities</u></p><p>What's Excellent:</p><ul><li>Professional architecture with proper error handling</li><li>Comprehensive risk management integration</li><li>Modular design allowing easy component swapping</li><li>Event-driven efficiency</li><li>Production-ready validation and initialization</li></ul><p></p><p>Areas for Enhancement:</p><ul><li>Limited debugging and logging capabilities</li><li>Basic error messages without context</li><li>No performance tracking or statistics</li><li>Missing trade confirmation and validation</li><li>No market condition adaptivity</li></ul><h3 id="para4"><br/><br/>Testing</h3><p>After successfully generating our Expert Advisor through the MQL5 Wizard, the crucial next step was to validate its performance and trading behavior in the Strategy Tester. This testing phase served as the ultimate proof-of-concept, demonstrating that our custom candlestick signal could successfully identify trading opportunities and execute orders in simulated market conditions.</p><p>Testing Objectives Achieved:</p><ul><li>Order Execution: Confirmed the EA can successfully place both BUY and SELL orders</li><li>Signal Accuracy: Verified candlestick patterns trigger appropriate trading decisions</li><li>Risk Management: Observed trailing stops dynamically adjusting to protect profits</li><li>System Stability: Ensured the EA operates without errors across different market conditions</li></ul><p></p><p>The animated demonstration clearly shows our EA in action—placing trades based on candlestick pattern recognition while the Parabolic SAR trailing stops actively manage risk by progressively locking in profits as trades move in our favor.</p><p style="text-align:center;"><img width="633" height="626" src="https://c.mql5.com/2/183/metatester64_PBOqzB4S45.gif" loading="lazy" title="Strategy Tester" alt="Strategy Tester" style="vertical-align:middle;"/></p><p style="text-align:center;"><span class="small">Testing the generated EA</span></p><br/><h3 id="para5">Conclusion</h3><p>Our development journey from a simple candlestick pattern concept to a fully functional Expert Advisor shows how the MQL5 Wizard has transformed algorithmic trading development. By mastering Wizard compatibility and understanding the generated architecture, we unlock the ability to create sophisticated trading systems with much greater efficiency.</p><p>Professional-grade algorithmic trading is now accessible to developers at almost any skill level. The MQL5 Wizard bridges the gap between trading expertise and programming knowledge, allowing traders to focus on strategy logic while the framework takes care of most low-level implementation details.</p><p>This exploration has produced a working Expert Advisor and a clear roadmap for continuous improvement and professional growth in algorithmic trading. The foundation we’ve built can be extended endlessly—from basic pattern recognition to adaptive, multi-strategy systems capable of handling complex market conditions. From here, the next step is to optimize the strategy and its settings to achieve better profitability. Additional filters can be integrated to screen signals and select only the highest-quality trades.</p><p>We all value profitability, but in most EA development it is healthier to focus first on correctness: making sure the EA executes orders exactly according to the rules. Profitability then becomes an optimization stage once the logic is stable and reliable.</p><p>The journey from concept to code is complete, but the path to trading mastery continues—with stronger tools and a profound understanding of how to build increasingly sophisticated and profitable trading systems. The source file table is shown below, and the files are attached at the end of the article so you can download them and have fun experimenting. Until the next publication, stay tuned—and you are welcome to share your thoughts in the comments.</p><h3><br/><br/>Attachments</h3><table cellspacing="0" cellpadding="3" width="100%" class="standart"><thead><tr><th>Source File</th><th>Description:</th></tr></thead><tbody><tr><td><a title=".mqh" href="/en/articles/download/20266/210691/SignalCandlePattern.mqh" target="_blank">SignalCandlePattern.mqh</a><br/></td><td><u>Custom Signal Class</u><br/>Contains the complete implementation of our candlestick pattern recognition system. This file defines the CMyCandlePatternSignal class that inherits from CExpertSignal, including pattern detection methods for Doji, Engulfing, Hammer, Shooting Star, and other candlestick formations. Features wizard-compatible description header for seamless MQL5 Wizard integration.</td></tr><tr><td><a title=".mq5" href="/en/articles/download/20266/210691/Expert_Candlestick_Wizard.mq5" target="_blank">Expert Candlestick Wizard.mq5</a></td><td><u>Generated Expert Advisor</u><br/>Complete trading robot automatically generated by MQL5 Wizard using our custom signal class. Includes integrated risk management with Parabolic SAR trailing stops, optimized money management, and professional error handling. Ready for compilation and deployment in MetaTrader 5 platform.</td></tr></tbody></table>
+      </div>
+<div id="cb_20266" class="attachBlock">
+  <strong>Attached files</strong> |
+  <div class="grouped-attachments-help">
+    <a title="Download all attachments in the single ZIP archive" href="/en/articles/download/20266.zip">
+      <i class="attach-icon attach-icon_zip"></i>Download ZIP
+    </a>
+  </div>
+    <div class="attachItem">
+      <a title="Download SignalCandlePattern.mqh" href="/en/articles/download/20266/SignalCandlePattern.mqh"><i class="attach-icon attach-icon_mqh"></i>SignalCandlePattern.mqh</a>
+      <span class="attachSize">(10.06 KB)</span>
+    </div>
+    <div class="attachItem">
+      <a title="Download Expert Candlestick Wizard.mq5" href="/en/articles/download/20266/Expert_Candlestick_Wizard.mq5"><i class="attach-icon attach-icon_mq5"></i>Expert Candlestick Wizard.mq5</a>
+      <span class="attachSize">(8.19 KB)</span>
+    </div>
+</div>
+    </div>
+
+  <div class="copyright">
+    <p><strong>Warning:</strong> All rights to these materials are reserved by MetaQuotes Ltd. Copying or reprinting of these materials in whole or in part is prohibited.</p>
+      <p>This article was written by a user of the site and reflects their personal views. MetaQuotes Ltd is not responsible for the accuracy of the information presented, nor for any consequences resulting from the use of the solutions, strategies or recommendations described.</p>
+  </div>
+
+
+
+  <div class="other-author-articles ui">
+    <h4 class="other-author-articles__title">Other articles by this author</h4>
+    <ul class="other-author-articles__list">
+        <li>
+          <a href="/en/articles/20160" data-fz-event="MQL5+Article+From+Author+Article">From Novice to Expert: Predictive Price Pathways</a>
+        </li>
+        <li>
+          <a href="/en/articles/20037" data-fz-event="MQL5+Article+From+Author+Article">From Novice to Expert: Time Filtered Trading</a>
+        </li>
+        <li>
+          <a href="/en/articles/20005" data-fz-event="MQL5+Article+From+Author+Article">From Novice to Expert: Forex Market Periods</a>
+        </li>
+        <li>
+          <a href="/en/articles/20041" data-fz-event="MQL5+Article+From+Author+Article">The MQL5 Standard Library Explorer (Part 3): Expert Standard Deviation Channel</a>
+        </li>
+        <li>
+          <a href="/en/articles/19919" data-fz-event="MQL5+Article+From+Author+Article">From Novice to Expert: Revealing the Candlestick Shadows (Wicks)</a>
+        </li>
+        <li>
+          <a href="/en/articles/19918" data-fz-event="MQL5+Article+From+Author+Article">From Novice to Expert: Parameter Control Utility</a>
+        </li>
+    </ul>
+  </div>
+
+
+  <div class="article__last-comments" id="articleAdditional">
+    
+
+<div class="comments-preview">
+    <div class="title">
+      <span></span><b>
+ <a href="/en/forum/500823">Go to discussion</a>
+      </b>
+    </div>
+    <div>
+        
+    </div>
+
+  
+</div>
+
+  </div>
+
+
+    <div class="articles-bottom-list">
+        <div class="articles-bottom-list__row">
+          <div class="articles-bottom-list__column">
+              <div class="articles-bottom-list__item">
+                <img alt="Introduction to MQL5 (Part 29): Mastering API and WebRequest Function in MQL5 (III)" src="https://c.mql5.com/2/183/20375-introduction-to-mql5-part-29-logo__1.png" loading="lazy" width="60" height="60" class="articles-bottom-list__avatar">
+                <a href="/en/articles/20375" data-fz-event="MQL5+Article+Next+Article" class="articles-bottom-list__title">Introduction to MQL5 (Part 29): Mastering API and WebRequest Function in MQL5 (III)</a>
+                <div class="articles-bottom-list__desc">In this article, we continue mastering API and WebRequest in MQL5 by retrieving candlestick data from an external source. We focus on splitting the server response, cleaning the data, and extracting essential elements such as opening time and OHLC values for multiple daily candles, preparing the data for further analysis.</div>
+              </div>
+          </div>
+          <div class="articles-bottom-list__column">
+              <div class="articles-bottom-list__item">
+                <img alt="From Basic to Intermediate: Struct (I)" src="https://c.mql5.com/2/117/Do_b8sico_ao_intermediario_Struct_I___LOGO.png" loading="lazy" width="60" height="60" class="articles-bottom-list__avatar">
+                <a href="/en/articles/15730" data-fz-event="MQL5+Article+Next+Article" class="articles-bottom-list__title">From Basic to Intermediate: Struct (I)</a>
+                <div class="articles-bottom-list__desc">Today we will begin to study structures in a simpler, more practical, and comfortable way. Structures are among the foundations of programming, whether they are structured or not. I know many people think of structures as just collections of data, but I assure you that they are much more than just structures. And here we will begin to explore this new universe in the most didactic way.</div>
+              </div>
+          </div>
+        </div>
+        <div class="articles-bottom-list__row">
+          <div class="articles-bottom-list__column">
+              <div class="articles-bottom-list__item">
+                <img alt="Price Action Analysis Toolkit Development (Part 53): Pattern Density Heatmap for Support and Resistance Zone Discovery" src="https://c.mql5.com/2/183/20390-price-action-analysis-toolkit-logo.png" loading="lazy" width="60" height="60" class="articles-bottom-list__avatar">
+                <a href="/en/articles/20390" data-fz-event="MQL5+Article+Next+Article" class="articles-bottom-list__title">Price Action Analysis Toolkit Development (Part 53): Pattern Density Heatmap for Support and Resistance Zone Discovery</a>
+                <div class="articles-bottom-list__desc">This article introduces the Pattern Density Heatmap, a price‑action mapping tool that transforms repeated candlestick pattern detections into statistically significant support and resistance zones. Rather than treating each signal in isolation, the EA aggregates detections into fixed price bins, scores their density with optional recency weighting, and confirms levels against higher‑timeframe data. The resulting heatmap reveals where the market has historically reacted—levels that can be used proactively for trade timing, risk management, and strategy confidence across any trading style.</div>
+              </div>
+          </div>
+          <div class="articles-bottom-list__column">
+              <div class="articles-bottom-list__item">
+                <img alt="Automating Trading Strategies in MQL5 (Part 42): Session-Based Opening Range Breakout (ORB) System" src="https://c.mql5.com/2/183/20339-automating-trading-strategies-logo.png" loading="lazy" width="60" height="60" class="articles-bottom-list__avatar">
+                <a href="/en/articles/20339" data-fz-event="MQL5+Article+Next+Article" class="articles-bottom-list__title">Automating Trading Strategies in MQL5 (Part 42): Session-Based Opening Range Breakout (ORB) System</a>
+                <div class="articles-bottom-list__desc">In this article, we create a fully customizable session-based Opening Range Breakout (ORB) system in MQL5 that lets us set any desired session start time and range duration, automatically calculates the high and low of that opening period, and trades only confirmed breakouts in the direction of the move.</div>
+              </div>
+          </div>
+        </div>
+    </div>
+
+<div class="clear-fix"></div>
+
+<div id='wdausxxqrpvhekbwjrjlhqjghyhesrqqau' class="r26nklh8wss4ljjhz r26nklh8wss4ljjhz_articles-view g9z0qx14h"></div>
+    
+
+    
+
+
+    </article>
+  </div>
+
+
+
+<div aria-hidden="true" class="footer  desktop" id="footer">
+  <ul class="links  links_desktop">
+      <li id="navFooterCommunity">
+        <b>MQL5.community</b>
+        <nav>
+          <ul>
+            <li><a href="https://web.metatrader.app/terminal?mode=demo&amp;lang=en" target="_blank" rel="nofollow noopener" data-fz-event="MQL5+Footer+Trading">Online trading / WebTerminal</a></li>
+            <li><a href="/en/code" data-fz-event="MQL5+Footer+CodeBase">Free technical indicators and robots</a></li>
+            <li><a href="/en/articles" data-fz-event="MQL5+Footer+Articles">Articles about programming and trading</a></li>
+            <li><a href="/en/job" data-fz-event="MQL5+Footer+Job">Order trading robots on the Freelance</a></li>
+            <li><a href="/en/market" data-fz-event="MQL5+Footer+Market">Market of Expert Advisors and applications&#x9;</a></li>
+            <li><a href="/en/signals" data-fz-event="MQL5+Footer+Signals">Follow forex signals</a></li>
+            <li><a href="/en/vps" data-fz-event="MQL5+Footer+VPS">Low latency forex VPS</a></li>
+            <li><a href="/en/forum" data-fz-event="MQL5+Footer+Forum">Traders forum</a></li>
+            <li><a href="/en/blogs" data-fz-event="MQL5+Footer+Blogs">Trading blogs</a></li>
+            <li><a rel="nofollow" href="/en/charts" data-fz-event="MQL5+Footer+Charts">Charts</a></li>
+          </ul>
+        </nav>
+      </li>
+      <li id="navFooterMt5">
+        <b>MetaTrader 5</b>
+        <nav>
+          <ul>
+            <li><a rel="nofollow noopener" href="https://www.metatrader5.com" data-fz-event="MQL5+Footer+MetaTrader+5"><span class="nobr">MetaTrader 5</span> Trading Platform</a></li>
+            <li><a rel="nofollow noopener" href="https://www.metatrader5.com/en/releasenotes" data-fz-event="MQL5+Footer+MetaTrader+5"><span class="nobr">MetaTrader 5</span> latest updates</a></li>
+            <li><a rel="nofollow noopener" href="https://www.metatrader5.com/en/news" data-fz-event="MQL5+Footer+MetaTrader+5">News, implementations and technology</a></li>
+            <li><a rel="nofollow noopener" href="https://www.metatrader5.com/en/terminal/help" data-fz-event="MQL5+Footer+MetaTrader+5"><span class="nobr">MetaTrader 5</span> User Manual</a></li>
+            <li><a href="/en/docs" data-fz-event="MQL5+Footer+Docs">MQL5 language of trading strategies</a></li>
+            <li><a rel="nofollow noopener" href="https://cloud.mql5.com" data-fz-event="MQL5+Footer+Cloud">MQL5 Cloud Network</a></li>
+            <li><a rel="noopener" href="https://forge.mql5.io/?lang=en" data-fz-event="MQL5+Footer+Forge" target="_blank">MQL5 Algo Forge</a></li>
+              <li><a rel="nofollow noopener" href="https://download.mql5.com/cdn/web/metaquotes.ltd/mt5/mt5setup.exe?utm_source=www.mql5.com&amp;utm_campaign=download" data-fz-event="MetaTrader+5+Desktop+Download+Footer">Download <span class="nobr">MetaTrader 5</span></a></li>
+              <li><a rel="nofollow noopener" href="https://www.metatrader5.com/en/terminal/help/start_advanced/installation" data-fz-event="MQL5+Footer+MetaTrader+5">Install Platform</a></li>
+              <li><a rel="nofollow noopener" href="https://www.metatrader5.com/en/terminal/help/start_advanced/deinstallation" data-fz-event="MQL5+Footer+MetaTrader+5">Uninstall Platform</a></li>
+          </ul>
+        </nav>
+
+      </li>
+    <li id="navFooterWebsite">
+        <b >Website</b>
+        <nav>
+          <ul>
+            <li><a rel="nofollow" href="/en/about" data-fz-event="MQL5+Footer+About">About</a></li>
+              <li><a href="/en/wall" data-fz-event="MQL5+Footer+Wall">Timeline</a></li>
+            <li><a rel="nofollow" href="/en/about/terms" data-fz-event="MQL5+Footer+About">Terms and Conditions</a></li>
+            <li><a rel="nofollow" href="/en/about/autopayments" data-fz-event="MQL5+Footer+About">Recurring Payment Agreement</a></li>
+            <li><a rel="nofollow" href="/en/about/agencyagreement" data-fz-event="MQL5+Footer+About">Agency Agreement – Offer</a></li>
+            <li><a rel="nofollow" href="/en/about/privacy" data-fz-event="MQL5+Footer+About">Privacy and Data Protection Policy</a></li>
+            <li><a rel="nofollow" href="/en/about/cookies" data-fz-event="MQL5+Footer+About">Cookies Policy</a></li>
+            <li>
+                <a rel="nofollow" href="/en/contact" data-fz-event="MQL5+Footer+Contacts">Contacts and requests</a>
+            </li>
+          </ul>
+        </nav>
+    </li>
+
+      <li>
+        <div class="footer__products">
+            <div class="footer__product">
+              <a target="_blank" rel="nofollow noopener" href="https://www.metatrader5.com" class="footer__product-name">MetaTrader 5</a>
+              <div class="footer__product-links">
+              <a rel="nofollow noopener" href="https://download.mql5.com/cdn/web/metaquotes.ltd/mt5/mt5setup.exe?utm_source=www.mql5.com&amp;utm_campaign=download" class="icon windows" data-fz-event="MetaTrader+5+Desktop+Download+Footer"><div class="footer__product-link-hint footer__product-link-hint-short">Download MetaTrader 5 for Windows</div></a>
+              <a rel="nofollow noopener" href="https://download.mql5.com/cdn/web/metaquotes.ltd/mt5/MetaTrader5.pkg.zip?utm_source=www.mql5.com&amp;utm_campaign=download" class="icon macos" data-fz-event="MetaTrader+5+Desktop+Download+Footer"><div class="footer__product-link-hint footer__product-link-hint-short">Download MetaTrader 5 for MacOS</div></a>
+              <a rel="nofollow noopener" href="https://www.mql5.com/en/articles/625?utm_source=www.mql5.com&amp;utm_campaign=download" class="icon linux" data-fz-event="MetaTrader+5+Desktop+Download+Footer"><div class="footer__product-link-hint footer__product-link-hint-short">Download MetaTrader 5 for Linux</div></a>
+              <a rel="nofollow noopener" href="https://web.metatrader.app/terminal?mode=demo&amp;lang=en" class="icon web"><div  class="footer__product-link-hint footer__product-link-hint-short">Open MetaTrader 5 WebTerminal</div></a>
+              <a rel="nofollow noopener" href="https://download.mql5.com/cdn/mobile/mt5/ios?utm_source=www.mql5.com&amp;utm_campaign=install.metaquotes&amp;hl=en" class="icon ios" data-fz-event="MetaTrader+5+iOS+Download+Footer"><div class="footer__product-link-hint" style="background-image: url(https://c.mql5.com/qr/j1YndT0ELP9.png)">Scan to install from App Store</div></a>
+              <a rel="nofollow noopener" href="https://download.mql5.com/cdn/mobile/mt5/android?utm_source=www.mql5.com&amp;utm_campaign=install.metaquotes&amp;hl=en" class="icon android" data-fz-event="MetaTrader+5+Android+Download+Footer"><div class="footer__product-link-hint" style="background-image: url(https://c.mql5.com/qr/kLq7f3IjZ79.png)">Scan to install from Google Play</div></a>
+              <a rel="nofollow noopener" href="https://download.mql5.com/cdn/mobile/mt5/android/app-gallery?utm_source=www.mql5.com&amp;utm_campaign=install.metaquotes" class="icon huawei" data-fz-event="MetaTrader+5+Android+Download+Footer"><div class="footer__product-link-hint" style="background-image: url(https://c.mql5.com/qr/ZgFlSvLLbPn.png)">Scan to install from Huawei AppGallery</div></a>
+              <a rel="nofollow noopener" href="https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/metatrader5.apk?utm_source=www.mql5.com&amp;utm_campaign=install.metaquotes" class="icon ark" data-fz-event="MetaTrader+5+Android+Download+Footer"><div class="footer__product-link-hint" style="background-image: url(https://c.mql5.com/qr/Lwmc2V3KIPA.png)">Scan to get Android APK file</div></a>
+              </div>
+            </div>
+            <div>
+              <div class="footer__product">
+                <a target="_blank" rel="nofollow noopener" href="https://www.metatrader5.com/en/news/2270" class="footer__product-name">MQL5 Channels</a>
+                <div class="footer__product-links">
+                <a rel="nofollow noopener" href="https://download.mql5.com/cdn/mobile/mql5.channels/ios?utm_source=www.mql5.com&amp;utm_campaign=download&amp;hl=en" class="icon ios" data-fz-event="MQL5+Channels+iOS+Download+Footer"><div class="footer__product-link-hint" style="background-image: url(https://c.mql5.com/qr/bZWf3CH-YUJ.png)">Scan to install from App Store</div></a>
+                <a rel="nofollow noopener" href="https://download.mql5.com/cdn/mobile/mql5.channels/android?utm_source=www.mql5.com&amp;utm_campaign=download&amp;hl=en" class="icon android" data-fz-event="MQL5+Channels+Android+Download+Footer"><div class="footer__product-link-hint" style="background-image: url(https://c.mql5.com/qr/3DvQEZrJjjS.png)">Scan to install from Google Play</div></a>
+                <a rel="nofollow noopener" href="https://download.mql5.com/cdn/mobile/mql5.channels/android/app-gallery?utm_source=www.mql5.com&amp;utm_campaign=download" class="icon huawei" data-fz-event="MQL5+Channels+Android+Download+Footer"><div class="footer__product-link-hint" style="background-image: url(https://c.mql5.com/qr/S7GLL6gia6p.png)">Scan to install from Huawei AppGallery</div></a>
+                <a rel="nofollow noopener" href="https://download.mql5.com/cdn/web/metaquotes.software.corp/mql5channels/mql5channels.apk?utm_source=www.mql5.com&amp;utm_campaign=download" class="icon ark" data-fz-event="MQL5+Channels+Android+Download+Footer"><div class="footer__product-link-hint" style="background-image: url(https://c.mql5.com/qr/GavZeMoJbi7.png)">Scan to get Android APK file</div></a>
+                </div>
+              </div>
+              <div class="footer__product">
+                <a target="_blank" rel="nofollow noopener" href="https://www.tradays.com/en/download?utm_source=www.mql5.com&amp;utm_campaign=download" data-fz-event="MQL5+Footer+Download+Tradays" class="footer__product-name">Economic Calendar</a>
+                <div class="footer__product-links">
+                <a rel="nofollow noopener" href="https://download.mql5.com/cdn/mobile/tradays/ios?utm_source=www.mql5.com&amp;utm_campaign=download&amp;hl=en" class="icon ios" data-fz-event="Tradays+iOS+Download+Footer"><div class="footer__product-link-hint" style="background-image: url(https://c.mql5.com/qr/CA1pc8ZTZxp.png)">Scan to install from App Store</div></a>
+                <a rel="nofollow noopener" href="https://download.mql5.com/cdn/mobile/tradays/android?utm_source=www.mql5.com&amp;utm_campaign=download&amp;hl=en" class="icon android" data-fz-event="Tradays+Android+Download+Footer"><div class="footer__product-link-hint" style="background-image: url(https://c.mql5.com/qr/BR4u5sNJgnA.png)">Scan to install from Google Play</div></a>
+                <a rel="nofollow noopener" href="https://download.mql5.com/cdn/mobile/tradays/android/app-gallery?utm_source=www.mql5.com&amp;utm_campaign=download" class="icon huawei" data-fz-event="Tradays+Android+Download+Footer"><div class="footer__product-link-hint" style="background-image: url(https://c.mql5.com/qr/CDbwhhgyysd.png)">Scan to install from Huawei AppGallery</div></a>
+                <a rel="nofollow noopener" href="https://download.mql5.com/cdn/web/metaquotes.software.corp/tradays/tradays.apk?utm_source=www.mql5.com&amp;utm_campaign=download" class="icon ark" data-fz-event="Tradays+Android+Download+Footer"><div class="footer__product-link-hint" style="background-image: url(https://c.mql5.com/qr/VGWFy3By-09.png)">Scan to get Android APK file</div></a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer__networks">
+            <div class="footer__networks-list">
+            <a href="https://www.facebook.com/mql5.community/" target="_blank" rel="nofollow" title="Facebook"><i class="icons-networks icons-networks_fb"></i></a><a href="https://t.me/mql5dev" target="_blank" rel="nofollow" title="Telegram"><i class="icons-networks icons-networks_tg"></i></a><a href="https://x.com/mql5com" target="_blank" rel="nofollow" title="X (Twitter)"><i class="icons-networks icons-networks_tw"></i></a>
+            </div>
+            <span>Follow us on socials for top articles and CodeBase updates</span>
+          </div>
+  
+        <div class="footer__other">
+          <div class="footer__not-a-broker">Not a broker, no real trading accounts</div>
+          <div class="copyright">35 Dodekanisou str, Germasogeia, 4043,&nbsp;Limassol,&nbsp;Cyprus</div>
+          <div class="copyright">Copyright 2000-2025, <span class="nobr">MetaQuotes Ltd</span></div>
+        </div>
+      </li>
+  </ul>
+</div>
+
+
+
+<div class="shadow-layer" id="layer"></div>
+
+
+
+<script type='text/javascript'>
+		(function (a, e, f, g, b, c, d) { a[b] || (a.FintezaCoreObject = b, a[b] = a[b] || function () { (a[b].q = a[b].q || []).push(arguments) }, a[b].l = 1 * new Date, c = e.createElement(f), d = e.getElementsByTagName(f)[0], c.async = !0, c.defer = !0, c.src = g, d && d.parentNode && d.parentNode.insertBefore(c, d)) })
+      (window, document, "script", "/ff/core.js", "fz");
+		window.fz("register", "website", {
+      id: "sqjxkxkswybhifrohpyooonwgbvsfzmayq",
+			trackLinks: true
+		});
+        mqGlobal.AddOnReady(function () { Mql5Cookie.init('mql5.com', '6428434430243088515'); });
+mqGlobal.AddOnReady(function(){if(!window.Pocket){window.Pocket=new PocketManager();}});mqGlobal.AddOnReady(function(){if(!window.translateManager){window.translateManager=new Translate(undefined,'Error: failed to translate. Please try again later.');}if(document.querySelectorAll){var translateElements=document.querySelectorAll(".translateMenu");if(translateElements){var i=0,count=translateElements.length;for(i;i<count;i++){(function(i){var contentid=dataset(translateElements[i],"contentid"),sourcelang=dataset(translateElements[i],"sourcelang"),targetlang=dataset(translateElements[i],"targetlang"),moduleid=parseInt(dataset(translateElements[i],"moduleid")),typeid=parseInt(dataset(translateElements[i],"typeid")),entityid=parseInt(dataset(translateElements[i],"entityid"));Core.AddHandler(translateElements[i],"mouseover",function(){return translateManager.SetMenu(this,contentid,sourcelang,targetlang,moduleid,typeid,entityid);});})(i);}}}});function FriendsShort(title){this.showFriendWindow=function(linkObj,userLogin,fullName,worksAt,rating,imagePath,country,position,website){var container=createElement(null,"DIV",{className:"friendInfoContainer ui complaint-window"});var leftContainer=createElement(container,"DIV",{className:"leftContainer"});var avatarBlock=createElement(leftContainer,"DIV",{className:"user"});createElement(avatarBlock,"IMG",{src:imagePath,width:"60",height:"60",title:fullName,loading:"lazy"});var ratingBlock=createElement(avatarBlock,"SPAN",{className:"rating"});ratingBlock.innerHTML=rating;var detailsContainer=createElement(container,"DIV",{className:"detailsContainer"});var nameBlock=createElement(detailsContainer,"P",{className:"name"});nameBlock.innerHTML=fullName;var worksBlock=createElement(detailsContainer,"P",{className:"works"});if(position!=""||worksAt!="")worksBlock.innerHTML+="Works: ";if(position!="")worksBlock.innerText+=position;if(worksAt!=""){if(position!="")worksBlock.innerHTML+=" ";worksBlock.innerText+="at ";if(website!=""){createElement(worksBlock,"A",{target:"_blank",href:website}).innerText=worksAt;}}var livesBlock=createElement(detailsContainer,"P",{className:"lives"});if(country!="")livesBlock.innerHTML="Lives: "+country;createElement(container,"DIV",{className:"splitter"});var operationsContainer=createElement(container,"DIV",{className:"complaint-window__item complaint-window__btns"});createElement(operationsContainer,"button",{className:"button button_green",innerText:"Add",onclick:function(){addFriendRequest(linkObj,userLogin);}});var initialWidth=360;var initialHeight=105;window.Dialog.show(title,container,initialWidth,initialHeight,function(){Dialog.hide();},null,false,null,false,'fixed');};function addFriendRequest(linkObj,friendLogin){Ajax.post('/en/users/deszkmihaly67/friends',{user:friendLogin,act:"add",__signature:'73ed34dd80f1354583477a6683443311'},false,{onready:function(){linkObj.parentNode.style.display="none";Dialog.hide();}});};}window.friendShort=new FriendsShort('Do you want to add user to friends?');window.fz("show","wdausxxqrpvhekbwjrjlhqjghyhesrqqau");window.mqGlobal.AddOnLoad(function(){window.fpush('MQL5+Article+Open');Articles.CheckOnScrollDown();});mqGlobal.AddOnLoad(function(){window.tooltipUserInfo.init();});mqGlobal.AddOnReady(function(){{window.initHeaderSearch('','https://www.mql5.com/en/search');}});</script><script type="text/javascript">mqGlobal.AddOnReady(function(){window.initSuggestions("headerSearchKeyword","en","https://search.mql5.com/api/query","https://www.mql5.com/en/users_search/suggestion");});mqGlobal.AddOnReady(function(){var localization={"friendsHeader":"Friends","newMessageHeader":"Add new message","userToLabel":"Part of the user's name or login","gotoMessages":"Go to messages list","gotoMessage":"Go to chat","otherUsersHeader":"Other users","returnToList":"Return to messages list (ESC)","closeChat":"Close chat","attachedFilesHeader":"Attached files","attachFileTitle":"Attach file","sendMessageTitle":"Reply","expandWindow":"Expand chat window","minimizeWindow":"Reduce chat window","searchUserPlaceholder":"Part of the user's name or login","searchChannelPlaceholder":"Channels","errorOccuredMessage":"An error occurred. Please try again later.","systemYouInvited":"You have been invited to chat {0}","systemUserInvited":"{0} invited {1}","systemChatUserLeft":"{0} left the chat","systemChatUserRemoved":"{0} removed {1} from chat","systemChannelUserRemoved":"{0} removed {1} from channel","systemChannelPublic":"{0} made the channel public","systemChannelPrivate":"{0} made the channel private","systemChatLimited":"{0} made the chat limited","systemChatUnlimited":"{0} made the chat not limited","systemChatClosed":"{0} closed the chat","systemChannelClosed":"Channel is now closed","systemChatReopened":"{0} reopened the chat","systemChannelReopened":"Channel reopened","systemChatRename":"{0} changed the chat name to {1}","systemChannelRename":"Channel name changed to {0}","systemChatCreate":"{0} created the chat {1}","systemChannelCreate":"Channel {0} created","systemChatPrivate":"{0} made the chat private","systemChatPublic":"{0} made the chat public","subscribe":"Subscribe","unsubscribe":"Unsubscribe","ofSubscribers":"{0} subscribers","ofUsers":"{0} members","messages":"Messages","users":"Users","channels":"Channels","unreadMessages":"Unread messages","deleteChat":"delete","deleteChatConfirm":"Are you sure want to delete chat?","allChats":"All chats","privateChats":"Private chats","groupChats":"Group chats","allChatsShort":"All","privateChatsShort":"Private","groupChatsShort":"Groups","recommendedChannels":"Recommended channels","members":"Members","popularChannels":"Popular channels","startChat":"Start a chat","createChannel":"Create a channel","createGroup":"Create a group","searchPlaceholder":"Enter part of a name or login of a person you want to chat with","en":"English","ru":"Русский","de":"Deutsch","es":"Español","pt":"Português","ja":"日本語","zh":"中文","ar":"العربية","tr":"Türkçe","it":"Italiano","ko":"한국어","fr":"Français","foundEmpty":"Your search did not match any documents","close":"Close","chatNamePlaceholder":"Set a short and clear name","channelCreation":"Creating a channel","image":"Image","fileDesc":"JPG, GIF or PNG image","chatDesc":"Description","channelDescPlaceholder":"Add a clear channel description","links":"Links","linksPlaceholder":"Comma-separated list of links","channelLanguage":"Channel language","addMembers":"Add members","selectedMembers":"{0} members selected","append":"Add","groupCreation":"Creating a group","publicChannel":"Public channel","privateChannel":"Private channel","publicChannelDesc":"Any user is able to find the channel and subscribe to it","privateChannelDesc":"The channel is available to invited users only","urlChannel":"Channel link","channelAvatar":"Channel avatar","selectFile":"Select a file","delete":"delete","channel":"Channel","group":"Group chat","edit":"edit","editing":"Editing","inviteLinkExists":"This link name is already in use, please set another one","save":"Save","publicChat":"Public chat","privateChat":"Private chat","publicChatDesc":"Any user is able to find and join the chat","privateChatDesc":"The chat is available to invited users only","open":"Open","chatLanguage":"Chat language","isLimited":"Regular chat users can add new members","emptyAddMember":"To add new members, use the search","mql5Members":"MQL5 members","friends":"Friends","friendAddToChat":"Add to friends","friendAddToChatNote":"Add the user as a friend. You can see activity of your friends on the website and communicate with them easily.","admin":"Administrator","owner":"Owner","moderator":"Moderator","notSupportedWebsoket":"WebSocket is not supported by this browser.","cancel":"Cancel","deletion":"Deletion","deletionTextChannel":"Do you really want to delete the {0} channel?","deletionTextGroup":"Do you really want to delete the {0} group?","deleteUpper":"Delete","block":"-","unblock":"-","emptyChatsList":'<p>You have no chats.</p><p>Please use the search or create a new chat on the <a href="{0}">messages</a> page</p>',"deletedAccount":"Deleted account","other":"Other","groupDescPlaceholder":"Add a clear chat description","widgetErrorOccured":"An error occurred. Please try again later.","pleaseUploadAvatar":"Please upload the chat avatar","pleaseUploadAvatarChannel":"Please upload the channel avatar","countParticipants":"{0} participants","countFollower":"{0} followers","info":"Info","errorImageEx":"The image does not meet the requirements. The image format should be JPG, GIF or PNG","user":"User","update":"Update","permissions":"Permissions","reader":"Reader","postMessages":"Post messages","read":"Read","canWriteMessages":"The user can write messages","adminDesc":"Administrator permissions allow the user to: <ul> <li>grant any permissions to users</li> <li>remove any users</li> <li>delete messages</li> <li>edit chat / channel information</li> <li>close chat / channel</li> </ul>","moderatorDesc":"Moderator permissions allow the user to: <ul> <li>grant users permissions lower than moderator</li> <li>remove users with lower permissions</li> <li>delete messages</li> </ul>","urlChannelDesc":"Only letters, numbers, minus and underscore are allowed. The minimum length is {0} symbols, a letter should come first","chatNotFound":'<h3>Chat not found</h3> <p><a href="{0}" onclick="{1}" class="{2}">Main chat page</a></p>',"collapse":"Collapse","showOriginal":"Show original","errorLoading":"Unable to download attachment","next":"Next","previous":"Previous","linkToImg":"Link to the image","linkToVideo":"Link to the video","search":"Search","chats":"Chats","subscribed":"Subscribed","add":"Send","message":"Message","emptyMessageError":"Message cannot be empty","longMessageError":"The message should not exceed {0} characters","invalidType":"Incorrect file type","deleteAllMessagesFromConfirm":"Do you really want to delete all messages from {0}?","complaint":"complain","abuse":"Abuse","advert":"Advertisement","spam":"Spam","complaintTitle":"Complaint","complaintOther":"Other","complaintError":"Error ocured. Try send complaint later.","complaintSuccess":"Your complaint has been successfully sent!","complaintLength":"The length must range from {0} to {1} characters.","characters":"characters","comment":"Comment","complaintContains":"Message contains","back":"Back","new":"New","my":"My","popular":"Popular","recommended":"Recommended","unsubscribeConfirmChannel":"Do you really want to leave the {0} channel?","unsubscribeConfirmGroup":"Do you really want to leave the {0} group?","chatEdit":"Edit","writer":"Author","avatarErrorSize":"The image size should be at least {0}x{1} pixels","friendWaitingPair":"You'll be able to start a chat once the user confirms your friend request","emptyChatsListShort":'<p>You have no chats.</p><p>Please use the search or create a new chat</p>',"errorUserNonChatablePrivacyFriends":"The user has enabled incoming personal messages from friends only","privacyOnlyFriendsWithName":"{0} has enabled incoming personal messages from friends only","zoomIn":"zoom in","zoomOut":"zoom out","friendWaitingPairWithName":"You'll be able to start a chat once {0} confirms your friend request","dragAndDrop":"Upload","reportSpam":"Report spam","addingMembers":"Adding members","you":"You","commentAuthor":"Comment author","notAllowedAdd":"Users {0} have disabled the ability to add them to groups and channels","replyMessage":"Reply","editMembers":"Edit members","membersCount":"Members ({0})","searchMembers":"Searching for members","errorUserNotFound":"User not found","membersList":"List of members","urlGroup":"Group URL","usefulLinks":"Useful links","copied":"Copied","type":"Type","management":"Management","closeGroup":"Close group","closeChannel":"Close channel","openGroup":"Open group","openChannel":"Open channel","maxNumberFiles":"Maximum number of attached files: {0}","noMessagesYet":"No messages here yet. Send a message to start a chat.","upload":"Upload","addUsefulLinks":"Add useful links:","nameNSymbols":"Name (up to {0} characters)","descNSymbols":"Description (up to {0} characters)","isLimitedShort":"Users are able to add members","created":"Created","deleted":"Deleted","join":"Join","leaveGroup":"Leave group","notifications":"Notifications","mute":"Mute","unmute":"Unmute","andMoreMembers":"and {0} more members","retry":"Retry","verified":"Verified","blockUser":"Block user","unblockUser":"Unblock user","errorUserBannedAnotherUser":"Cannot send message. This user has blocked you.","warningUserBlocked":"You have blocked this user. They cannot send you messages.",};var chatSettings={'mode':'prod','complaintKey':"799440a20a35c28b4dea6425bcc9c797",'userId':"0CBDAB0100000000",'userLogin':'deszkmihaly67','language':'en','playSounds':true,'accessLevel':0,'friendlyHosts':[".gov.uk",".wikipedia.org",".zerohedge.com",".metatrader4.com",".metatrader5.com",".mql4.com",".mql5.com",".mql5.com",".mql5.dev",".metaquotes.net",".teamwox.com",".forex-tsd.com",".finteza.com",".adp.com",".bakerhughes.com",".bankofcanada.ca",".bankofengland.co.uk",".bba.org.uk",".boj.or.jp",".brc.org.uk",".cao.go.jp",".chicagofed.org",".cmhc-schl.gc.ca",".conference-board.org",".consilium.europa.eu",".customs.go.jp",".dallasfed.org",".ec.europa.eu",".ecb.europa.eu",".halifax.co.uk",".iea.org",".imf.org",".instituteforsupplymanagement.org",".ivey.uwo.ca",".kansascityfed.org",".markiteconomics.com",".meti.go.jp",".mhlw.go.jp",".mni-indicators.com",".mof.go.jp",".nahb.org",".nar.realtor",".newyorkfed.org",".niesr.ac.uk",".opec.org",".parliament.uk",".philadelphiafed.org",".rics.org",".stat.go.jp",".statcan.gc.ca",".us.spindices.com",".zew.de",".youtube.com",".lst.to",".tradays.com",".linkedin.com"],'readonly':false,'type':0,'token':'9fc8ede567806705cd720df5646c86ab3b57ea8f6933cae134857958f3dfe5b8b113ef017b93894176e63f4b978b903fabda780436e605bb9f9aed54cb5a96bf5e09bba26aa912b8ecb3486eef59ecb817b9b23315f30d4a4cc2eb128e36bb148e58711e748c89fb99a5144340436092','url':'msg1.mql5.com','servers':['msg1.mql5.com'],'version':28,'uniq':"6428434430243088515",'localization':localization,};window.initChatWidget(chatSettings);});if(!window.dateToTextLocalization)window.dateToTextLocalization={'m1':'{0} minute ago','m2':'{0} minutes ago','m3':'{0} minutes ago','h1':'{0} hour ago','h2':'{0} hours ago','h3':'{0} hours ago','lang':'en'};window.fz("show","bfogggabsofabcpxuzmgaibarmaxasdrj");window.fz("show","vgckrufggwxdtfscpyalmenexmvhljduja");							if (typeof Attach !== "undefined")
+			Attach.setAcceptFilter(".zip, .txt, .log, .mqh, .ex5, .mq5, .mq4, .mqproj, .ex4, .mt5, .set, .tpl, .cl, .py, .sqlite, .csv, .ini, .ipynb, .onnx, .gif, .png, .jpg, .jpeg, .mp4, .webm");
+	</script>
+
+<script type="application/ld&#x2B;json">
+		[
+			{
+				"@context": "https://schema.org",
+				"@type": "Organization",
+				"url": "https://www.mql5.com",
+				"logo": "https://c.mql5.com/i/community/logo_mql5-2.png",
+				"sameAs": [
+					"https://www.facebook.com/mql5.community",
+					"https://www.x.com/mql5com",
+					"https://www.youtube.com/user/MetaQuotesOfficial"
+				 ]
+			}
+		
+, 
+{"@context":"https://schema.org","@type":"ItemList","itemListElement":[{"@type":"SiteNavigationElement","position":1,"name":"Forum","description":"Discussions of trading strategies and algorithmic trading. MQL5.community  the largest forex forum","url":"https://www.mql5.com/en/forum","children":[]},{"@type":"SiteNavigationElement","position":2,"name":"Market","description":"MetaTrader Market - a Market of trading robots, indicators, trading books and magazines","url":"https://www.mql5.com/en/market","children":[]},{"@type":"SiteNavigationElement","position":3,"name":"Signals","description":"Social trading, copy trading and account monitoring with MetaTrader - Trading Signals on MQL5.com","url":"https://www.mql5.com/en/signals","children":[]},{"@type":"SiteNavigationElement","position":4,"name":"Freelance","description":"Order trading robots, technical indicators and algorithmic trading applications. Forex jobs. Freelance on MQL5.com. Hire MetaTrader experts and specialists","url":"https://www.mql5.com/en/job","children":[]},{"@type":"SiteNavigationElement","position":5,"name":"Quotes","description":"","url":"https://www.mql5.com/en/quotes/overview","children":[]},{"@type":"SiteNavigationElement","position":6,"name":"WebTerminal","description":"WebTerminal for the MetaTrader trading platform. Online forex trading.","url":"https://web.metatrader.app/terminal?mode=demo","children":[]},{"@type":"SiteNavigationElement","position":7,"name":"Calendar","description":"","url":"https://www.mql5.com/en/economic-calendar","children":[]},{"@type":"SiteNavigationElement","position":8,"name":"VPS","description":"","url":"https://www.mql5.com/en/vps","children":[]},{"@type":"SiteNavigationElement","position":9,"name":"Articles","description":"","url":"https://www.mql5.com/en/articles","children":[]},{"@type":"SiteNavigationElement","position":10,"name":"CodeBase","description":"Download trading robots, technical indicators and scripts with source code - MQL5 Code Base for MetaTrader 5","url":"https://www.mql5.com/en/code","children":[]},{"@type":"SiteNavigationElement","position":11,"name":"Algo Forge","description":"","url":"https://forge.mql5.io","children":[]},{"@type":"SiteNavigationElement","position":12,"name":"Documentation","description":"MetaQuotes Language 5 (MQL5) Reference - Documentation on MQL5.com","url":"https://www.mql5.com/en/docs","children":[]}]}		
+,
+{"@context":"https://schema.org","@type":"TechArticle","mainEntityOfPage":{"@type":"WebPage","@id":"https://www.mql5.com/en/articles/20266"},"headline":"The MQL5 Standard Library Explorer (Part 4): Custom Signal Library","image":["https://c.mql5.com/2/183/MetaEditor64_rD8aZwlaip.png","https://c.mql5.com/2/183/MetaEditor64_olOWFI56RP.gif","https://c.mql5.com/2/183/metatester64_PBOqzB4S45.gif"],"datePublished":"2025-11-27T10:25:54+00:00Z","dateModified":"2025-11-26T10:33:44+00:00Z","author":{"@type":"Person","name":"Clemence Benjamin","url":"https://www.mql5.com/en/users/billionaire2024"},"publisher":{"@type":"Organization","name":"MQL5 Community","url":"https://www.mql5.com","logo":{"@type":"ImageObject","url":"https://c.mql5.com/i/community/logo_mql5-2.png"}},"description":"Today, we use the MQL5 Standard Library to build custom signal classes and let the MQL5 Wizard assemble a professional Expert Advisor for us. This approach simplifies development so that even beginner programmers can create robust EAs without in-depth coding knowledge, focusing instead on tuning inputs and optimizing performance. Join this discussion as we explore the process step by step."}
+,
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":"https://www.mql5.com/en/articles","name":"Articles"},{"@type":"ListItem","position":2,"item":"https://www.mql5.com/en/articles/mt5","name":"MetaTrader 5"},{"@type":"ListItem","position":3,"item":"https://www.mql5.com/en/articles/mt5/examples","name":"Examples"}]}
+
+		]
+	</script>
+</body>
+</html>
