@@ -3,16 +3,45 @@ import os
 import zipfile
 import glob
 import re
+import json
+import shutil
 from bs4 import BeautifulSoup
 
 # --- CONFIGURATION ---
-INPUT_DIR = "Res/Articles/Raw/Jules cikk és fájl letöltés" # Change this to your folder
-OUTPUT_DIR = "Res/Articles/Processed"
+INPUT_DIR = "Res/Articles/Raw/Jules cikk és fájl letöltés"
+OUTPUT_DIR = "Res/Articles/Processed_Structured"
 
 def ensure_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
+# --- INTELLIGENT CLASSIFICATION ---
+def categorize_article(title):
+    t = title.lower()
+    if "machine learning" in t or "neural network" in t or " python " in t or " ai " in t:
+        return "Machine_Learning_AI"
+    if "strategy" in t or "system" in t or "trading" in t:
+        return "Trading_Strategies"
+    if "indicator" in t or "oscillat" in t:
+        return "Indicators"
+    if "standard library" in t or "library" in t:
+        return "Standard_Library"
+    if "visualization" in t or "gui" in t or "panel" in t or "dashboard" in t:
+        return "GUI_Visualization"
+    return "General_MQL5"
+
+def detect_series(title):
+    # Matches: "Title (Part 4)" or "Title Part 4" or "Title (4)" or "Title I" (Roman not handled yet, assume digit)
+    match = re.search(r'[\(\s](Part\s*)?(\d+)[\)\:]', title, re.IGNORECASE)
+    if match:
+        part_num = int(match.group(2))
+        # Remove the part string to get the base series name
+        # This is rough but useful for grouping
+        series_name = re.sub(r'[\(\s]Part\s*\d+[\)\:]', '', title).strip()
+        return series_name, part_num
+    return None, None
+
+# --- EXTRACTION LOGIC ---
 def extract_text_from_html(html_path):
     try:
         with open(html_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -23,21 +52,17 @@ def extract_text_from_html(html_path):
         title_tag = soup.find('h1') or soup.find('title')
         if title_tag:
             title = title_tag.get_text(strip=True)
+            # Remove "- MQL5 Articles" suffix if present
+            title = title.replace("- MQL5 Articles", "").strip()
 
         # 2. Body Processing
-        # We iterate over paragraphs and code blocks to preserve flow
         content = []
-
-        # This is a heuristic. MQL5 articles usually have a main div.
-        # We'll target the common class or ID.
         article_body = soup.find('div', id='articleContent') or \
                        soup.find('div', class_='text') or \
                        soup.find('div', class_='content') or \
                        soup.find('div', itemprop='articleBody')
 
         if not article_body:
-            # Fallback: Look for the first H1 and take its parent,
-            # hoping the parent is the content wrapper.
             first_h1 = soup.find('h1')
             if first_h1:
                 article_body = first_h1.parent
@@ -50,7 +75,6 @@ def extract_text_from_html(html_path):
             elif element.name == 'p':
                 content.append(element.get_text(strip=True))
             elif element.name in ['pre', 'code']:
-                # Code block
                 code_text = element.get_text()
                 content.append(f"\n```\n{code_text}\n```\n")
             elif element.name in ['ul', 'ol']:
@@ -68,7 +92,6 @@ def extract_code_from_zip(zip_path):
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(temp_extract_path)
 
-        # Walk through extracted files
         for root, dirs, files in os.walk(temp_extract_path):
             for file in files:
                 if file.endswith(('.mq5', '.mqh', '.py', '.cpp', '.h', '.csv', '.txt')):
@@ -76,76 +99,98 @@ def extract_code_from_zip(zip_path):
                     try:
                         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                             c = f.read()
-                            # Clean up path for display
                             rel_path = os.path.relpath(file_path, temp_extract_path)
                             code_contents.append(f"\n\n--- FILE: {rel_path} ---\n\n{c}")
                     except:
                         pass
-
-        # Cleanup (Optional: keep or delete. Deleting to save space)
-        # shutil.rmtree(temp_extract_path) # Need import shutil
     except Exception as e:
         code_contents.append(f"\n[Error extracting zip: {e}]")
+    finally:
+        if os.path.exists(temp_extract_path):
+            try:
+                shutil.rmtree(temp_extract_path)
+            except:
+                pass
 
     return "".join(code_contents)
 
 def process_single_article(html_file):
     base_name = os.path.splitext(os.path.basename(html_file))[0]
-    # Assume zip has format: article_ID__ID.zip or similar
-    # The user provided example: article_20266.html -> article_20266__20266.zip
-
-    # Try to find matching zip
-    # Strategy: Look for zip files that contain the ID number from the HTML filename
     article_id_match = re.search(r'(\d+)', base_name)
     zip_file = None
+    article_id = "?"
 
     if article_id_match:
         article_id = article_id_match.group(1)
-        # Look for zip containing this ID
         input_dir = os.path.dirname(html_file)
+        # Match pattern article_ID__ID.zip OR just article_ID.zip
         candidates = glob.glob(os.path.join(input_dir, f"*{article_id}*.zip"))
         if candidates:
-            zip_file = candidates[0] # Pick the first match
+            zip_file = candidates[0]
 
-    print(f"Processing: {base_name} (ID: {article_id if article_id_match else '?'})")
+    print(f"Processing: {base_name} (ID: {article_id})")
 
-    # 1. Extract Text
+    # 1. Extract Content
     title, text_content = extract_text_from_html(html_file)
 
-    # 2. Extract Code (if zip exists)
+    # 2. Extract Code
     code_content = ""
     if zip_file:
         print(f"  Found Zip: {os.path.basename(zip_file)}")
         code_content = extract_code_from_zip(zip_file)
-    else:
-        print("  No matching zip found.")
 
-    # 3. Combine
-    full_content = f"TITLE: {title}\n\n=== ARTICLE TEXT ===\n\n{text_content}\n\n=== ATTACHED CODEBASE ===\n{code_content}"
+    # 3. Intelligent Metadata
+    category = categorize_article(title)
+    series_name, part_num = detect_series(title)
 
-    # 4. Save
-    output_path = os.path.join(OUTPUT_DIR, f"processed_{base_name}.txt")
+    metadata = {
+        "id": article_id,
+        "title": title,
+        "category": category,
+        "series": series_name,
+        "part": part_num,
+        "filename": base_name
+    }
+
+    # 4. Construct Output
+    # We add a JSON header line for easy parsing by the Vectorizer
+    json_header = json.dumps(metadata, ensure_ascii=False)
+
+    full_content = f"METADATA_JSON: {json_header}\n\n" \
+                   f"TITLE: {title}\n" \
+                   f"CATEGORY: {category}\n" \
+                   f"SERIES: {series_name if series_name else 'None'} (Part {part_num if part_num else 'N/A'})\n\n" \
+                   f"=== ARTICLE TEXT ===\n\n{text_content}\n\n" \
+                   f"=== ATTACHED CODEBASE ===\n{code_content}"
+
+    # 5. Save to Category Subfolder
+    target_folder = os.path.join(OUTPUT_DIR, category)
+    ensure_dir(target_folder)
+
+    # Filename: If series, maybe prefix?
+    # For now, keep ID but put in folder.
+    # Optional: "Part_04_Article_20266.txt" to sort by name?
+    # Let's keep it simple: "article_20266.txt"
+    output_filename = f"processed_{base_name}.txt"
+    output_path = os.path.join(target_folder, output_filename)
+
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(full_content)
 
     print(f"  Saved to: {output_path}")
 
 def main():
-    ensure_dir(OUTPUT_DIR)
-
-    # Find all HTML files
-    html_files = glob.glob(os.path.join(INPUT_DIR, "*.html"))
-
-    if not html_files:
-        print(f"No .html files found in {INPUT_DIR}")
+    if not os.path.exists(INPUT_DIR):
+        print(f"Input directory not found: {INPUT_DIR}")
         return
 
+    html_files = glob.glob(os.path.join(INPUT_DIR, "*.html"))
     print(f"Found {len(html_files)} articles to process.")
 
     for html in html_files:
         process_single_article(html)
 
-    print("\nProcessing Complete.")
+    print("\nProcessing Complete. Check folder: " + OUTPUT_DIR)
 
 if __name__ == "__main__":
     main()

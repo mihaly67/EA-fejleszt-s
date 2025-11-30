@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                   Volatility_Trend_Showcase.mq5 |
 //|                             Copyright 2024, Gemini & User Collaboration |
-//|                                       Verzió: 1.0 (Concept 2)    |
+//|                                       Verzió: 1.1 (Fix Indexing) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.00"
+#property version   "1.01"
 #property indicator_separate_window
 #property indicator_buffers 4
 #property indicator_plots   1
@@ -58,8 +58,6 @@ int OnInit()
       return(INIT_FAILED);
      }
 
-   // Create Bollinger Bands ON the MACD indicator handle
-   // Note: iBands applied to a handle uses the 0-th buffer of that indicator (MACD Main Line)
    hBands = iBands(_Symbol, _Period, InpBandsPeriod, 0, InpBandsDev, hMACD);
 
    if(hBands == INVALID_HANDLE)
@@ -93,32 +91,31 @@ int OnCalculate(const int rates_total,
 
    // Source Data Buffers
    double macd_main[], macd_sig[];
-   double band_upper[], band_lower[], band_mid[]; // Mid unused but needed for copy
+   double band_upper[], band_lower[], band_mid[];
 
-   // Copy MACD Data
+   // --- FIX: Reverse Indexing Alignment ---
+   ArraySetAsSeries(macd_main, true);
+   ArraySetAsSeries(band_upper, true);
+   ArraySetAsSeries(band_lower, true);
+
    if(CopyBuffer(hMACD, 0, 0, to_copy, macd_main) < to_copy) return 0;
-   // We only need Main for the bands logic, but Signal is good for extra logic if needed later
-
-   // Copy Bands Data (Calculated on MACD)
    if(CopyBuffer(hBands, 1, 0, to_copy, band_upper) < to_copy) return 0; // Buffer 1 is UPPER
    if(CopyBuffer(hBands, 2, 0, to_copy, band_lower) < to_copy) return 0; // Buffer 2 is LOWER
 
    // Main Loop
    for(int i = 0; i < to_copy; i++)
      {
-      int idx = start + i;
+      int idx = start + i; // Index in global buffers (0=Oldest)
+      int shift = rates_total - 1 - idx; // Index in local series buffers (0=Newest)
 
-      double m_val = macd_main[i];
-      double upper = band_upper[i];
-      double lower = band_lower[i];
+      if (shift >= to_copy || shift < 0) continue;
+
+      double m_val = macd_main[shift];
+      double upper = band_upper[shift];
+      double lower = band_lower[shift];
 
       // Histogram Value is simply the MACD value itself, but colored
       HistBuffer[idx] = m_val;
-
-      // Logic:
-      // Breakout ABOVE Upper Band -> Bullish (Lime)
-      // Breakout BELOW Lower Band -> Bearish (Red)
-      // Inside Bands -> Noise (Gray)
 
       if (m_val > upper)
          ColorBuffer[idx] = 1.0; // Lime
