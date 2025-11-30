@@ -5,6 +5,7 @@ import glob
 import re
 import json
 import shutil
+import chardet
 from bs4 import BeautifulSoup
 
 # --- CONFIGURATION ---
@@ -14,6 +15,34 @@ OUTPUT_DIR = "Res/Articles/Processed_Structured"
 def ensure_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
+
+def read_file_content(file_path):
+    """Robust file reader handling various encodings"""
+    try:
+        # Try UTF-8 first (fastest)
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except UnicodeDecodeError:
+        try:
+            # Detect encoding
+            with open(file_path, 'rb') as f:
+                raw_data = f.read(10000) # Read enough for detection
+
+            result = chardet.detect(raw_data)
+            encoding = result['encoding']
+
+            if encoding:
+                with open(file_path, 'r', encoding=encoding, errors='replace') as f:
+                    return f.read()
+        except:
+            pass
+
+    # Fallback to Latin-1/Replace
+    try:
+        with open(file_path, 'r', encoding='latin-1', errors='replace') as f:
+            return f.read()
+    except Exception as e:
+        return f"[Read Error: {e}]"
 
 # --- INTELLIGENT CLASSIFICATION ---
 def categorize_article(title):
@@ -44,8 +73,8 @@ def detect_series(title):
 # --- EXTRACTION LOGIC ---
 def extract_text_from_html(html_path):
     try:
-        with open(html_path, 'r', encoding='utf-8', errors='ignore') as f:
-            soup = BeautifulSoup(f, 'html.parser')
+        html_content = read_file_content(html_path)
+        soup = BeautifulSoup(html_content, 'html.parser')
 
         # 1. Title
         title = "Unknown Title"
@@ -97,10 +126,9 @@ def extract_code_from_zip(zip_path):
                 if file.endswith(('.mq5', '.mqh', '.py', '.cpp', '.h', '.csv', '.txt')):
                     file_path = os.path.join(root, file)
                     try:
-                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                            c = f.read()
-                            rel_path = os.path.relpath(file_path, temp_extract_path)
-                            code_contents.append(f"\n\n--- FILE: {rel_path} ---\n\n{c}")
+                        c = read_file_content(file_path)
+                        rel_path = os.path.relpath(file_path, temp_extract_path)
+                        code_contents.append(f"\n\n--- FILE: {rel_path} ---\n\n{c}")
                     except:
                         pass
     except Exception as e:
