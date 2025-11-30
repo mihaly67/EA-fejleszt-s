@@ -14,10 +14,16 @@ except ImportError:
 def main():
     print("--- RAG Diagnosztika Inditasa ---")
     try:
-        # Suppress standard output during loading to keep the report clean,
-        # or just let it run to show progress. The user asked for a diagnostic,
-        # so seeing the loading logs is fine.
-        docs, model = load_resources()
+        # Update: load_resources now returns 3 values (docs, model, bm25)
+        docs, model, bm25 = load_resources()
+    except ValueError:
+        # Fallback for backward compatibility if the file wasn't updated correctly
+        try:
+             docs, model = load_resources()
+             print("Figyelem: Regi load_resources szignatura detektalva.")
+        except:
+             print("Hiba: Nem sikerult a load_resources hivas.")
+             return
     except SystemExit:
         print("Hiba: A betoltes soran a script kilepett (valoszinu ures adatbazis).")
         return
