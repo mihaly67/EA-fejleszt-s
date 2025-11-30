@@ -1,0 +1,21 @@
+[UGYNOK v3]: Memoria es Indexek betoltese...
+[UGYNOK v3]: Kesz. 242584 dokumentum betoltve.
+
+--- MELYFURO KUTATAS (v3.0) INDITASA ---
+Kerdes: 'MACD hybrid scalping noise filter zero lag'
+============================================================
+[UGYNOK v3]: Melyseg 0: Kutatas erre: 'MACD hybrid scalping noise filter zero lag'
+[UGYNOK v3]: Memoria es Indexek betoltese...
+[UGYNOK v3]: Kesz. 242584 dokumentum betoltve.
+
+--- MELYFURO KUTATAS (v3.0) INDITASA ---
+Kerdes: 'Advanced MACD visualization histogram color'
+============================================================
+[UGYNOK v3]: Melyseg 0: Kutatas erre: 'Advanced MACD visualization histogram color'
+[UGYNOK v3]: Memoria es Indexek betoltese...
+[UGYNOK v3]: Kesz. 242584 dokumentum betoltve.
+
+--- MELYFURO KUTATAS (v3.0) INDITASA ---
+Kerdes: 'MACD usage in Expert Advisors scalping strategy'
+============================================================
+[UGYNOK v3]: Melyseg 0: Kutatas erre: 'MACD usage in Expert Advisors scalping strategy'

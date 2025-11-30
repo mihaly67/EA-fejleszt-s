@@ -1,0 +1,340 @@
+[UGYNOK v3]: Memoria es Indexek betoltese...
+[UGYNOK v3]: Kesz. 242584 dokumentum betoltve.
+
+--- MELYFURO KUTATAS (v3.0) INDITASA ---
+Kerdes: 'market regime detection trend filter'
+============================================================
+[UGYNOK v3]: Melyseg 0: Kutatas erre: 'market regime detection trend filter'
+[UGYNOK v3]:    -> Uj szal: MQL5 function OnInit
+   [UGYNOK v3]: Melyseg 1: Kutatas erre: 'MQL5 function OnInit'
+   [UGYNOK v3]:    -> Uj szal: MQL5 function Point
+      [UGYNOK v3]: Melyseg 2: Kutatas erre: 'MQL5 function Point'
+
+============================================================
+OSSZEGYUJTOTT TUDASHALO (15 csomopont)
+============================================================
+
+[GYOKER | KOD | mql5.txt] (Score: 0.50)
+Kontextus: market regime detection trend filter
+------------------------------------------------------------
+The price has crossed the indicator upwards (the Open
+                                        price of the analyzed bar is below the indicator and the Close price is
+                                 above the indicator) and the indicator falls (weak signal for a roll-back
+
+                                    · Moving  Average  crossover. The  price  has  crossed  the  indicator
+                                 downwards (the Open price of the analyzed bar is above the indicator and
+                                    the Close price is below the indicator) and the indicator  falls (strong
+
+6158 Standard Library
+
+                                    · Formed breakout. The upper shadow of the bar has crossed the indicator
+                                      (the Open and Close prices of the analyzed bar are below the indicator,
+                                and the High price is above the indicator) and the indicator falls (weak
+                                        signal for a roll-back from the indicator line). No   objections   to   The price is above the indicator. No   objections   to   The price is below the indicator. 6159 Standard Library
+
+            PeriodMA                Period of averaging of the indicator. Shift                       Shift of the indicator along the time axis (in bars). 6160 Standard Library
+
+       Signals of the Intraday Time Filter
+
+            This module is based on the assumption that the efficiency of market models changes in time. Using
+             this module, you can filter signals received from the other modules by hour and days of week. It allows
+            increasing the quality of generated signals due to cutting off the unfavorable time periods. The
+          mechanism of making trade decisions on the basis of signals of the modules is described in a separate
+
+             Signal Type              Description of Conditions
+
+             For buying             No signals. For selling             No signals. No objec...
+
+[GYOKER | KOD | TarantellaV1.37.mq5] (Score: 0.47)
+Kontextus: market regime detection trend filter
+------------------------------------------------------------
+oints)
+input int          ModifyThrottleSeconds= 2;         // Order modify cooldown (seconds)
+input group "Trend Filters"
+input bool         UseADX_Filter        = true;      // Enable ADX trend strength filter
+input int          ADX_Period          = 14;        // ADX period (14-21 recommended)
+input double       ADX_Threshold        = 25.0;      // Minimum trend strength (25+ = strong)
+input ENUM_TIMEFRAMES TrendTimeframe   = PERIOD_D1; // Trend confirmation timeframe
+input bool         UseADX_FilterForHedge= true;     // Enable ADX trend filter for hedge trades
+input bool         UseTrendFilterForHedge= true;    // Enable trend filter for hedge trades
+input bool         UseTrendFilterForMain= true;     // Enable trend filter for main trades
+input ENUM_TREND_METHOD TrendMethod    = TREND_MA; // Trend method: MA or MACD
+input int          MAPeriod             = 50;        // MA period (bars)
+input ENUM_MA_METHOD MAMethod          = MODE_EMA;  // MA calculation method...
+
+[GYOKER | KOD | Trend detection index (of averages).mq5] (Score: 0.46)
+Kontextus: market regime detection trend filter
+------------------------------------------------------------
+r_width3  0
+//
+//---
+//
+input int                inpPeriod     = 15;            // Period
+input int                inpAvgPeriod  = 5;             // Pre-smoothing period
+input ENUM_MA_METHOD     inpAvgMethod  = MODE_LWMA;     // Pre-smoothing method
+input ENUM_APPLIED_PRICE inpPrice      = PRICE_CLOSE;   // Price
+double valu[],vald[],fup[],fdn[],avg[];
+string ª_maNames[] = {"SMA","EMA","SMMA","LWMA"};
+int    ª_avgHandle,ª_maPeriod,ª_periodx2;
+//------------------------------------------------------------------
+// Custom indicator initialization function
+//------------------------------------------------------------------
+int OnInit()
+{
+   //
+   //---
+   //
+         SetIndexBuffer(0,fup ,INDICATOR_DATA);
+         SetIndexBuffer(1,fdn ,INDICATOR_DATA);
+         SetIndexBuffer(2,valu,INDICATOR_DATA);
+         SetIndexBuffer(3,vald,INDICATOR_DATA);
+         SetIndexBuffer(4,avg ,INDICATOR_CALCULATIONS);...
+
+  [AG | ELMELET | mql5.txt] (Score: 0.72)
+  Kontextus: MQL5 function OnInit
+------------------------------------------------------------
+  · The language offers the implicit type cast (even from string to a number). · Local variables are not initialized automatically (except for strings). · Common local arrays are automatically deleted. Special Functions init, start and deinit
+
+            The MQL4 language contained only three predefined functions that could be used in the indicator,
+               script or Expert Advisor (not taking into account the include files *.mqh and library files). In MQL5
+             there are no such functions, but there are their analogues. The  table shows  the approximate
+             correspondence of functions. MQL4                                MQL5
+
+                  init                                               OnInit
+
+                start                                          OnStart
+
+                deinit                                          OnDeinit
+
+             Functions OnInit and OnDeinit perform the same role as init and deinit in MQL4 - they are designed to
+              locate the code, which must be performed during initialization and deinitialization of mql5 programs. You can either just rename these functions accordingly, or leave them as they are, but add calls of
+             these functions in corresponding places. init();
+
+  6765 Moving from MQL4
+
+                deinit();
+
+            The start function is replaced by OnStart only in scripts. In Expert Advisors and indicators it should be
+            renamed to OnTick and OnCalculate, respectively. The code that is to be executed during a mql5
+            program operation should be located in these three functions:
+
+             mql5-program                             main function
+
+                 script                                          OnStart
+
+                indicator                                        OnCalculate
+
+               Expert Advisor                                OnTick
+
+                  If the indicator or script code does not contain the main function, or the function name differs from
+    ...
+
+  [AG | KOD | mql5.txt] (Score: 0.72)
+  Kontextus: MQL5 function OnInit
+------------------------------------------------------------
+  int digits = Digits();
+
+                Print("Number of decimal digits for the current chart symbol: ", digits);
+
+                Number of decimal digits for the current chart symbol: 5
+
+  1886 Checkup
+
+         Point
+
+             Returns the point size of the current symbol in the quote currency. double  Point();
+
+             The value of the _Point variable which stores the point size of the current symbol in the quote
+                currency. double point = Point();
+
+                Print("Point size of the current symbol in the quote currency: ", DoubleToString(po
+
+                Point size of the current symbol in the quote currency: 0.00001
+
+  1887 Event Handling
+
+        Event Handling
+
+            The MQL5 language provides handling of certain predefined events. The functions for handling these
+             events should be defined in an MQL5 program: function name, return type, a set of parameters (if
+             any) and their types should strictly correspond to the description of an event handling function. The client terminal event handler uses the return and parameter types to identify functions processing
+            an event. If a certain function has some parameters or a return type not corresponding to the
+              descriptions below, such a function cannot be used for handling an event. Function                     Description
+
+               OnStart                   The function  is  called when the Start event occurs to perform
+                                               actions set in the script
+
+               OnInit                    The function is called in indicators and EAs when the Init event
+                                              occurs to initialize a launched MQL5 program
+
+               OnDeinit                  The function is called in indicators and EAs when the Deinit event
+                                              occurs to de-initialize a launched MQL5 program
+
+              OnTick                    The function is called in EAs when the NewTick...
+
+  [AG | KOD | mql5.txt] (Score: 0.72)
+  Kontextus: MQL5 function OnInit
+------------------------------------------------------------
+  · Precedence of operators like in C + +. · The language offers the implicit type cast (even from string to a number). · Local variables are not initialized automatically (except for strings). · Common local arrays are automatically deleted. Special Functions init, start and deinit
+
+            The MQL4 language contained only three predefined functions that could be used in the indicator,
+               script or Expert Advisor (not taking into account the include files *.mqh and library files). In MQL5
+             there are no such functions, but there are their analogues. The  table shows  the approximate
+             correspondence of functions. MQL4                                MQL5
+
+                  init                                               OnInit
+
+                start                                          OnStart
+
+                deinit                                          OnDeinit
+
+             Functions OnInit and OnDeinit perform the same role as init and deinit in MQL4 - they are designed to
+              locate the code, which must be performed during initialization and deinitialization of mql5 programs. You can either just rename these functions accordingly, or leave them as they are, but add calls of
+             these functions in corresponding places. init();
+
+  6765 Moving from MQL4
+
+                deinit();
+
+            The start function is replaced by OnStart only in scripts. In Expert Advisors and indicators it should be
+            renamed to OnTick and OnCalculate, respectively. The code that is to be executed during a mql5
+            program operation should be located in these three functions:
+
+             mql5-program                             main function
+
+                 script                                          OnStart
+
+                indicator                                        OnCalculate
+
+               Expert Advisor                                OnTick
+
+                  If the indicator or script code does not contain the main funct...
+
+    [AG | ELMELET | mql5.txt] (Score: 0.66)
+    Kontextus: MQL5 function Point
+------------------------------------------------------------
+    Unlike Expert Advisors, indicators and scripts, services are not bound to a specific chart. Therefore,
+                  Period() returns 0 for a service. ENUM_TIMEFRAMES period    = Period();
+
+                  string          timeframe = StringSubstr(EnumToString(period), 7);
+
+                  PrintFormat("Current chart timeframe: %s\nTimeframe value: %s (%d)",
+
+                              timeframe, EnumToString(period), period);
+
+                  Current chart timeframe: H4
+
+                  Timeframe value: PERIOD_H4 (16388)
+
+                 PeriodSeconds, Chart timeframes, Date and Time, Visibility of objects
+
+    1885 Checkup
+
+            Digits
+
+               Returns the number of decimal digits determining the accuracy of price of the current chart symbol. int  Digits();
+
+               The value of the _Digits variable which stores the number of decimal digits determining the
+                 accuracy of price of the current chart symbol. int digits = Digits();
+
+                  Print("Number of decimal digits for the current chart symbol: ", digits);
+
+                  Number of decimal digits for the current chart symbol: 5
+
+    1886 Checkup
+
+           Point
+
+               Returns the point size of the current symbol in the quote currency. double  Point();
+
+               The value of the _Point variable which stores the point size of the current symbol in the quote
+                  currency. double point = Point();
+
+                  Print("Point size of the current symbol in the quote currency: ", DoubleToString(po
+
+                  Point size of the current symbol in the quote currency: 0.00001
+
+    1887 Event Handling
+
+          Event Handling
+
+              The MQL5 language provides handling of certain predefined events. The functions for handling these
+               events should be defined in an MQL5 program: function name, return type, a set of parameters (if
+               any) and their types should strictly correspond to the description of an event handling function. The client terminal event handler uses the return and parameter t...
+
+    [AG | ELMELET | mql5book.txt] (Score: 0.64)
+    Kontextus: MQL5 function Point
+------------------------------------------------------------
+    Suppose we have a DoMath function that performs lengthy calculations (probably, it
+     is implemented in a separate library). In terms of user interface convenience and friendliness, it would
+     be great to show the user a progress indication. For this purpose, you can define a special type of
+     function pointer for notifications about the percentage of work completed (ProgressCallback), and add a
+     parameter of this type to the DoMath function. In the DoMath code, you should periodically call the
+     passed function:
+
+        typedef void (*ProgressCallback)(const float percent);
+
+        void DoMath(double &bigdata[], ProgressCallback callback)
+           const int N = 1000000;
+           for(int i = 0; i < N; ++i)
+              if(i % 10000 == 0 && callback != NULL)
+                 callback(i * 100.0f / N);
+
+     Then the calling code can define the required callback function, pass a pointer to it to DoMath and
+     receive updates as the calculation progresses. void MyCallback(const float percent)
+           Print(percent);
+
+           double data[] = {0};
+           DoMath(data, MyCallback);
+
+     Function pointers work only with custom functions defined in MQL5. They cannot point to built-in
+     functions of the MQL5 API. §H3§2.8.11 Inlining§/H3§
+
+     In order to improve code efficiency, modern compilers often use the following trick. When generating
+     executable code, some function calls are replaced directly by the function body (its statements). This
+     technique is called inlining. This speeds up the operation by avoiding the overhead associated with the
+     organization of the call and return from the function. From a programmer's point of view, inlining
+     doesn't change anything. MQL5 supports inlining by default. If necessary, it can be disabled, but only in code profiling mode....
+
+    [AG | KOD | mql5book.txt] (Score: 0.63)
+    Kontextus: MQL5 function Point
+------------------------------------------------------------
+    A pointer type defined with typedef can be returned from functions, for example:
+
+        Calc generator(ushort type)
+           switch(type)
+              case '+': return plus;
+              case '-': return minus;
+           return NULL;
+
+     In addition, the type of function pointers is often used for callback functions (callback, see
+     FuncCallback.mq5). Suppose we have a DoMath function that performs lengthy calculations (probably, it
+     is implemented in a separate library). In terms of user interface convenience and friendliness, it would
+     be great to show the user a progress indication. For this purpose, you can define a special type of
+     function pointer for notifications about the percentage of work completed (ProgressCallback), and add a
+     parameter of this type to the DoMath function. In the DoMath code, you should periodically call the
+     passed function:
+
+        typedef void (*ProgressCallback)(const float percent);
+
+        void DoMath(double &bigdata[], ProgressCallback callback)
+           const int N = 1000000;
+           for(int i = 0; i < N; ++i)
+              if(i % 10000 == 0 && callback != NULL)
+                 callback(i * 100.0f / N);
+
+     Then the calling code can define the required callback function, pass a pointer to it to DoMath and
+     receive updates as the calculation progresses. void MyCallback(const float percent)
+           Print(percent);
+
+           double data[] = {0};
+           DoMath(data, MyCallback);
+
+     Function pointers work only with custom functions defined in MQL5. They cannot point to built-in
+     functions of the MQL5 API. §H3§2.8.11 Inlining§/H3§
+
+     In order to improve code efficiency, modern compilers often use the following trick. When generating
+     executable code, some function calls are replaced directly by the function body (its statements). This
+     technique is called inlining. This speeds up the operation by avoiding the overhead associated with the
+     organization of the call and return from the function. From a programmer's point of view, inlining
+     doesn't change anything. MQL5 suppor...
