@@ -12,7 +12,7 @@ from sentence_transformers import SentenceTransformer
 from rank_bm25 import BM25Okapi
 from sklearn.metrics.pairwise import cosine_similarity
 
-# --- KONFIGURACIO v3.1 (Optimized Cache + Dedup) ---
+# --- KONFIGURACIO v3.1 (Optimized Cache + Dedup + Visible Recursion) ---
 MODEL_NAME = 'all-mpnet-base-v2'
 MAX_DEPTH = 3
 BRANCHING_FACTOR = 3
@@ -117,10 +117,19 @@ def hybrid_search(query, docs, model, bm25, top_k=TOP_K):
 
 def extract_concepts(text):
     concepts = set()
-    includes = re.findall(r'#include <(.*?)>', text)
+    # Improved Regex for Includes (handles "file.mqh" and <file.mqh>)
+    includes = re.findall(r'#include\s*[<"](.*?)[>"]', text)
     for inc in includes:
         clean = inc.replace('\\', ' ').replace('.mqh', '')
-        concepts.add(f"MQL5 {clean} source code")
+        if len(clean) > 2:
+            concepts.add(f"MQL5 {clean} source code")
+
+    # Classes (standard C+ClassName pattern)
+    classes = re.findall(r'\bC[A-Z][a-zA-Z0-9]+\b', text)
+    for cls in classes:
+        if cls != "CArrayDouble" and cls != "CObject": # Skip basics
+            concepts.add(f"MQL5 class {cls} definition")
+
     return list(concepts)
 
 def recursive_search(query, docs, model, bm25, depth=0, visited=None):
@@ -145,7 +154,7 @@ def recursive_search(query, docs, model, bm25, depth=0, visited=None):
             new_concepts = extract_concepts(content)
             for concept in new_concepts[:BRANCHING_FACTOR]:
                 if concept.lower() not in visited:
-                    # log(f"   -> Uj szal: {concept}", depth)
+                    log(f"   -> Uj szal: {concept}", depth) # UNCOMMENTED
                     sub = recursive_search(concept, docs, model, bm25, depth + 1, visited)
                     all_findings.extend(sub)
     return all_findings
@@ -157,9 +166,6 @@ def is_duplicate(content, seen_contents, threshold=0.8):
     # Gyors hash check
     h = hash(content[:500]) # Csak az elso 500 karaktert nezzuk
     if h in seen_contents: return True
-
-    # Ha nincs hash egyezes, de gyanus, lehet SequenceMatcher (de lassu)
-    # Most megelegszunk a hash-el es azzal, hogy a TALALATOK listaban szurunk
     return False
 
 # --- FUNKCIO 3: OSSZESZERELES ---
