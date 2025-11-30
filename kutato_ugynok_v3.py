@@ -12,7 +12,7 @@ from sentence_transformers import SentenceTransformer
 from rank_bm25 import BM25Okapi
 from sklearn.metrics.pairwise import cosine_similarity
 
-# --- KONFIGURACIO v3.1 (Optimized Cache + Dedup + Visible Recursion) ---
+# --- KONFIGURACIO v3.2 (Optimized + Dedup + Noise Filter) ---
 MODEL_NAME = 'all-mpnet-base-v2'
 MAX_DEPTH = 3
 BRANCHING_FACTOR = 3
@@ -21,7 +21,7 @@ CACHE_FILE = 'rag_cache.pkl'
 
 def log(msg, depth=0):
     indent = "   " * depth
-    print(f"{indent}[UGYNOK v3.1]: {msg}")
+    print(f"{indent}[UGYNOK v3.2]: {msg}")
 
 def load_resources():
     # 1. Probaljuk betolteni a cache-bol
@@ -92,18 +92,15 @@ def load_resources():
 
 # --- FUNKCIO 1: KERESES (Deep Search) ---
 def hybrid_search(query, docs, model, bm25, top_k=TOP_K):
-    # 1. BM25 (Kulcsszo kereses - MOST MAR GYORS)
     tokenized_query = query.lower().split()
     bm25_scores = bm25.get_scores(tokenized_query)
 
-    # Csak a legjobb 50-et vesszuk a re-rankinghez (gyorsitas)
-    cand_idx = np.argsort(bm25_scores)[::-1][:50]
+    cand_idx = np.argsort(bm25_scores)[::-1][:100] # Increased candidate pool slightly for better filtering
     candidates = [docs[i] for i in cand_idx if bm25_scores[i] > 0]
 
     if not candidates:
         return []
 
-    # 2. Szemantikus Re-ranking (BERT)
     query_vec = model.encode([query])
     cand_txt = [c['search_text'] for c in candidates]
     cand_vecs = model.encode(cand_txt)
@@ -113,24 +110,49 @@ def hybrid_search(query, docs, model, bm25, top_k=TOP_K):
     results = [{'doc': candidates[i], 'score': sim_scores[i]} for i in range(len(sim_scores))]
     results.sort(key=lambda x: x['score'], reverse=True)
 
-    return results[:top_k]
+    # Itt mar nem vagjuk le TOP_K-ra, mert a szures (is_junk) meg hatravan!
+    return results
 
 def extract_concepts(text):
     concepts = set()
-    # Improved Regex for Includes (handles "file.mqh" and <file.mqh>)
     includes = re.findall(r'#include\s*[<"](.*?)[>"]', text)
     for inc in includes:
         clean = inc.replace('\\', ' ').replace('.mqh', '')
         if len(clean) > 2:
             concepts.add(f"MQL5 {clean} source code")
 
-    # Classes (standard C+ClassName pattern)
     classes = re.findall(r'\bC[A-Z][a-zA-Z0-9]+\b', text)
     for cls in classes:
-        if cls != "CArrayDouble" and cls != "CObject": # Skip basics
+        if cls != "CArrayDouble" and cls != "CObject":
             concepts.add(f"MQL5 class {cls} definition")
 
     return list(concepts)
+
+# --- FUNKCIO 2: ZAJSZURES (NOISE FILTER) ---
+def clean_text(text):
+    # Remove formatting artifacts like §H3§...§/H3§
+    cleaned = re.sub(r'§.*?§', '', text)
+    return cleaned.strip()
+
+def is_junk_content(doc):
+    text = doc.get('content') or doc.get('text') or ""
+    filename = doc.get('final_filename', '').lower()
+
+    # 1. Absolute Garbage
+    if not text or len(text) < 50: return True # Too short
+
+    # 2. Table of Contents / Index
+    if "table of contents" in text.lower(): return True
+    if "index of functions" in text.lower(): return True
+    if "copyright" in text.lower() and len(text) < 200: return True # Short copyright notices
+
+    # 3. Boilerplate Headers (Specific to this dataset)
+    if text.strip().startswith("Standard Library") and len(text) < 300: return True
+
+    # 4. Too many artifacts (bad parsing)
+    if text.count('§') > 10: return True
+
+    return False
 
 def recursive_search(query, docs, model, bm25, depth=0, visited=None):
     if visited is None: visited = set()
@@ -145,30 +167,39 @@ def recursive_search(query, docs, model, bm25, depth=0, visited=None):
     hits = hybrid_search(query, docs, model, bm25)
     all_findings = []
 
+    valid_hits_count = 0
     for hit in hits:
         doc = hit['doc']
+
+        # --- NOISE FILTERING ---
+        if is_junk_content(doc):
+            continue
+
         all_findings.append({'depth': depth, 'query': query, 'doc': doc, 'score': hit['score']})
+        valid_hits_count += 1
+
+        if valid_hits_count >= TOP_K: # Only process top K *valid* hits
+            break
 
         if depth < MAX_DEPTH - 1:
-            content = doc.get('content') or doc.get('text') or ""
+            content = clean_text(doc.get('content') or doc.get('text') or "")
             new_concepts = extract_concepts(content)
             for concept in new_concepts[:BRANCHING_FACTOR]:
                 if concept.lower() not in visited:
-                    log(f"   -> Uj szal: {concept}", depth) # UNCOMMENTED
+                    log(f"   -> Uj szal: {concept}", depth)
                     sub = recursive_search(concept, docs, model, bm25, depth + 1, visited)
                     all_findings.extend(sub)
+
     return all_findings
 
-# --- FUNKCIO 2: DEDUPLIKACIO ---
-def is_duplicate(content, seen_contents, threshold=0.8):
-    # Egyszeru string similarity ellenorzes
-    if not content: return False
-    # Gyors hash check
-    h = hash(content[:500]) # Csak az elso 500 karaktert nezzuk
+# --- FUNKCIO 3: DEDUPLIKACIO ---
+def is_duplicate(content, seen_contents):
+    # Hash alapu dedup
+    h = hash(content[:500])
     if h in seen_contents: return True
     return False
 
-# --- FUNKCIO 3: OSSZESZERELES ---
+# --- FUNKCIO 4: OSSZESZERELES ---
 def read_full_file(filename_query, docs):
     print(f"--- FAJL OSSZEALLITASA: '{filename_query}' ---")
     parts = [d for d in docs if filename_query.lower() in d['final_filename'].lower()]
@@ -208,7 +239,7 @@ def main():
         read_full_file(query, docs)
         return
 
-    print(f"\n--- MELYFURO KUTATAS (v3.1 Optimized) INDITASA ---")
+    print(f"\n--- MELYFURO KUTATAS (v3.2 Noise Filtered) INDITASA ---")
     print(f"Kerdes: '{query}'")
     print("="*60)
 
@@ -218,7 +249,7 @@ def main():
     print(f"OSSZEGYUJTOTT TUDASHALO ({len(results)} csomopont)")
     print("="*60)
 
-    # Eredmenyek szurese (Deduplikacio)
+    # Eredmenyek szurese (Deduplikacio + Clean Text)
     seen_sigs = set()
     unique_results = []
 
@@ -226,14 +257,19 @@ def main():
     results.sort(key=lambda x: x['score'], reverse=True)
 
     for res in results:
-        content = res['doc'].get('content') or res['doc'].get('text') or ""
-        # Signature: elso 100 karakter + fajlnev
-        sig = (content[:100] + res['doc'].get('final_filename', '')).strip()
+        raw_content = res['doc'].get('content') or res['doc'].get('text') or ""
+        cleaned = clean_text(raw_content)
+
+        # Signature
+        sig = (cleaned[:100] + res['doc'].get('final_filename', '')).strip()
 
         if sig in seen_sigs:
             continue
 
         seen_sigs.add(sig)
+
+        # Update doc content with cleaned version for display
+        res['cleaned_content'] = cleaned
         unique_results.append(res)
 
     # Megjelenites
@@ -246,7 +282,7 @@ def main():
         print(f"\n{indent}[{marker} | {stype} | {fname}] (Score: {res['score']:.2f})")
         print(f"{indent}Kontextus: {res['query']}")
         print("-" * 60)
-        display_text = (res['doc'].get('content') or "")[:2000].replace('\n', f'\n{indent}')
+        display_text = res['cleaned_content'][:2000].replace('\n', f'\n{indent}')
         print(f"{indent}{display_text}...")
 
 if __name__ == "__main__":
