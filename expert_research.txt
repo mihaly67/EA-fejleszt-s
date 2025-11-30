@@ -1,0 +1,74 @@
+[UGYNOK v3]: Memoria es Indexek betoltese...
+[UGYNOK v3]: Kesz. 242584 dokumentum betoltve.
+
+--- MELYFURO KUTATAS (v3.0) INDITASA ---
+Kerdes: 'stochastic RSI hybrid combination'
+============================================================
+[UGYNOK v3]: Melyseg 0: Kutatas erre: 'stochastic RSI hybrid combination'
+
+============================================================
+OSSZEGYUJTOTT TUDASHALO (5 csomopont)
+============================================================
+
+[GYOKER | KOD | Expert_RSI_Stochastic_MA.mq5] (Score: 0.48)
+Kontextus: stochastic RSI hybrid combination
+------------------------------------------------------------
+CE_CLOSE;                // RSi applied price
+input int                  RSI_up_level         = 80;                         // level up - RSi
+input int                  RSI_dn_level         = 20;                         // level down - RSi
+input string               nameInd2             = "________Stochastic______"; // Stochastic
+input int                  STh_K_period         = 6;                          // K period
+input int                  STh_D_period         = 3;                          // D period
+input int                  STh_slowing          = 3;                          // slowing
+input ENUM_MA_METHOD       STh_method           = MODE_SMA;                   // Stochastic type of smoothing
+input ENUM_STO_PRICE       STh_price_field      = STO_LOWHIGH;                // Stochastic calculation method
+input int                  STh_up_level         = 70;                         // level up - Stochastic...
+
+[GYOKER | KOD | MTF_Stochastic_RSI.mq5] (Score: 0.44)
+Kontextus: stochastic RSI hybrid combination
+------------------------------------------------------------
+
+  {
+   DRAW_MODE_STEPS,  // Steps
+   DRAW_MODE_SLOPE   // Slope
+  };
+//--- input parameters
+input uint              InpPeriodK     =  14;               // Stochastic %K period
+input uint              InpPeriodD     =  3;                // Stochastic %D period
+input uint              InpSlowing     =  5;                // Stochastic slowing
+input uint              InpPeriodRSI   =  14;               // RSI period
+input double            InpOverbought  =  80.0;             // Overbought
+input double            InpOversold    =  20.0;             // Oversold
+input ENUM_DRAW_MODE    InpDrawMode    =  DRAW_MODE_STEPS;  // Drawing mode
+input ENUM_TIMEFRAMES   InpTimeframe1  =  PERIOD_H1;        // First Stochastic RSI timeframe
+input ENUM_TIMEFRAMES   InpTimeframe2  =  PERIOD_H4;        // Second Stochastic RSI timeframe
+input ENUM_TIMEFRAMES   InpTimeframe3  =  PERIOD_D1;        // Third Stochastic RSI timeframe
+//--- indicator buffers
+double         BufferSK1[];...
+
+[GYOKER | KOD | Stoch_RSI.mq5] (Score: 0.43)
+Kontextus: stochastic RSI hybrid combination
+------------------------------------------------------------
+//|                                                    Stoch_RSI.mq5 |
+//|                        Copyright 2018, MetaQuotes Software Corp. |
+//|                                                 https://mql5.com |
+#property link      "https://mql5.com"
+#property version   "1.00"
+#property description "Adaptable Stochastic RSI indicator"
+#property indicator_separate_window
+#property indicator_buffers 4
+#property indicator_plots   2
+//--- plot K
+#property indicator_label1  "Slow %K"
+#property indicator_type1   DRAW_LINE
+#property indicator_color1  clrGreen
+#property indicator_style1  STYLE_SOLID
+#property indicator_width1  1
+//--- plot D
+#property indicator_label2  "Slow %D"
+#property indicator_type2   DRAW_LINE
+#property indicator_color2  clrRed
+#property indicator_style2  STYLE_SOLID
+#property indicator_width2  1
+//--- input parameters
+input uint                 InpPeriodRSI      =  14;            // RSI Period...
