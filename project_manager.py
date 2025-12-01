@@ -51,63 +51,96 @@ class ProjectManager:
                     self.execute_project(full_path)
 
                     # Sikeres vegrehajtas utan archivalas
-                    shutil.move(full_path, os.path.join(ARCHIVE_DIR, current_file))
-                    print(f"[MŰSZAKVEZETŐ]: Megbízás teljesítve. Akták archiválva.")
+                    if os.path.exists(full_path): # Csak ha meg ott van
+                        shutil.move(full_path, os.path.join(ARCHIVE_DIR, current_file))
+                        print(f"[MŰSZAKVEZETŐ]: Megbízás teljesítve. Akták archiválva.")
 
                 except Exception as e:
                     print(f"[MŰSZAKVEZETŐ]: KRITIKUS HIBA a '{current_file}' feldolgozása közben: {e}")
-                    # Hiba eseten is atmozgatjuk, hogy ne blokkolja a sort (vagy .err kiterjesztessel?)
-                    error_dest = os.path.join(ARCHIVE_DIR, current_file + ".error")
-                    shutil.move(full_path, error_dest)
+                    # Hiba eseten is atmozgatjuk
+                    if os.path.exists(full_path):
+                        error_dest = os.path.join(ARCHIVE_DIR, current_file + ".error")
+                        shutil.move(full_path, error_dest)
 
             # Pihenes a kovetkezo ellenorzesig
             time.sleep(POLL_INTERVAL)
 
     def execute_project(self, project_file):
-        """Egy konkrét projektfájl végrehajtása."""
+        """Egy konkrét projektfájl végrehajtása (Resume támogatással)."""
         with open(project_file, 'r', encoding='utf-8') as f:
             project_data = json.load(f)
 
         project_name = project_data.get("project_name", "Névtelen_Projekt")
         tasks = project_data.get("tasks", [])
 
-        # Jelentes fajl elokeszitese
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_filename = f"{project_name.replace(' ', '_')}_{timestamp}.txt"
-        report_path = os.path.join(REPORT_DIR, report_filename)
+        # --- PROGRESS BETOLTES ---
+        progress_file = project_file + ".progress"
+        completed_ids = []
+        report_path = ""
 
-        self.log(f"--- PROJEKT START: {project_name} ---", report_path, mode='w')
-        self.log(f"Időpont: {timestamp}", report_path)
+        if os.path.exists(progress_file):
+            try:
+                with open(progress_file, 'r') as pf:
+                    prog_data = json.load(pf)
+                    completed_ids = prog_data.get("completed_ids", [])
+                    report_path = prog_data.get("report_path", "")
+                    print(f"[MŰSZAKVEZETŐ]: Korábbi állapot helyreállítva. Kész feladatok: {completed_ids}")
+            except:
+                print("[MŰSZAKVEZETŐ]: Hiba a progress fájl olvasásakor. Újrakezdés.")
 
+        # Ha nincs mentett report path vagy nem letezik, ujat csinalunk
+        if not report_path or not os.path.exists(report_path):
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            report_filename = f"{project_name.replace(' ', '_')}_{timestamp}.txt"
+            report_path = os.path.join(REPORT_DIR, report_filename)
+            self.log(f"--- PROJEKT START: {project_name} ---", report_path, mode='w')
+            self.log(f"Időpont: {timestamp}", report_path)
+        else:
+            self.log(f"\n--- PROJEKT FOLYTATÁSA (Resume) ---", report_path, mode='a')
+
+        # --- FELADATOK VEGREHAJTASA ---
         for i, task in enumerate(tasks):
             if os.path.exists(STOP_FILE):
                 self.log("\n[MŰSZAKVEZETŐ]: Vészleállás a feladatok közben!", report_path)
                 return
 
             task_id = task.get("id", i+1)
+            
+            if task_id in completed_ids:
+                print(f"[MŰSZAKVEZETŐ]: Feladat {task_id} már kész. Kihagyás.")
+                continue
+
             description = task.get("description", "Nincs leírás")
-            
             self.log(f"\n=== FELADAT {task_id}: {description} ===", report_path)
-            
+
             if task.get("type") == "research":
                 query = task.get("query")
-                scope = task.get("scope") # ELMELET / KOD / None
+                scope = task.get("scope")
                 depth = task.get("depth", 0)
 
                 self.log(f"[MŰSZAKVEZETŐ]: Kutató kiküldése... (Query: '{query}', Scope: {scope})", report_path)
-
-                # Munkas vegrehajtja
                 results = self.worker.search(query, scope=scope, depth=depth)
-
                 self.log(f"[MŰSZAKVEZETŐ]: Jelentés beérkezett ({len(results)} találat).", report_path)
                 self.write_results(results, report_path)
 
             elif task.get("type") == "manual":
                 self.log(f"[MANUÁLIS]: {task.get('instruction')}", report_path)
 
-            time.sleep(1) # Rövid szünet
+            # --- PROGRESS MENTESE ---
+            completed_ids.append(task_id)
+            with open(progress_file, 'w') as pf:
+                json.dump({
+                    "completed_ids": completed_ids,
+                    "report_path": report_path
+                }, pf)
+
+            time.sleep(1)
 
         self.log("\n--- PROJEKT VÉGE ---", report_path)
+
+        # Takaritas
+        if os.path.exists(progress_file):
+            os.remove(progress_file)
 
     def write_results(self, results, report_path):
         with open(report_path, "a", encoding="utf-8") as f:
@@ -118,14 +151,17 @@ class ProjectManager:
                 content = (doc.get('content') or "")[:1500]
                 f.write(content)
                 f.write("\n" + "=" * 80 + "\n")
+            f.flush()
+            os.fsync(f.fileno())
 
     def log(self, message, report_path, mode='a'):
         print(message)
         with open(report_path, mode, encoding="utf-8") as f:
             f.write(message + "\n")
+            f.flush()
+            os.fsync(f.fileno())
 
 if __name__ == "__main__":
-    # Konyvtarak ellenorzese
     for d in [INBOX_DIR, ARCHIVE_DIR, REPORT_DIR]:
         if not os.path.exists(d):
             os.makedirs(d)
