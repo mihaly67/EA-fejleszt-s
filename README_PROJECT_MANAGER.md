@@ -1,56 +1,40 @@
-# Jules Projekt Menedzser Rendszer (Factory Mode)
+# Jules Projekt Menedzser Rendszer (Factory Mode + Watchdog)
 
-Ez a rendszer egy autonóm "gyárként" működik, ahol a **Műszakvezető** (`project_manager.py`) folyamatosan figyeli a beérkező feladatokat és kiosztja őket a **Munkásoknak** (`kutato.py`).
+Ez a rendszer egy autonóm "gyárként" működik, hibatűrő (self-healing) mechanizmusokkal.
 
-## Hierarchia
-1.  **Főmérnök (Te):** Meghatározod a célokat és feladatfájlokat helyezel az `Inbox`-ba.
-2.  **Műszakvezető:** Folyamatosan fut, feldolgozza az `Inbox`-ot, és jelentést tesz a `Reports`-ba.
-3.  **Munkás:** A RAG tudásbázis (`rag_code`, `rag_theory`) segítségével végrehajtja a kutatást.
+## Komponensek
+1.  **Műszakvezető (`project_manager.py`):** A központi daemon. Figyeli az Inboxot, szervezi a munkát, kezeli a "Resume" (folytatás) logikát.
+2.  **Munkás (`kutato.py`):** Optimalizált RAG keresőmotor.
+3.  **Indító (`start_factory.py`):** Gondoskodik az adatok letöltéséről (/tmp) és a Menedzser helyes indításáról.
+4.  **Őrszem (`watchdog.py`):** Folyamatosan (percenként) ellenőrzi, hogy fut-e a Menedzser. Ha leállt, újraindítja.
 
-## Könyvtárszerkezet
+## Használat (Production)
 
--   `tasks_inbox/`: **Bemenet.** Ide helyezd a JSON feladatfájlokat.
--   `tasks_archive/`: **Archívum.** A Műszakvezető ide mozgatja a feldolgozott fájlokat.
--   `project_reports/`: **Kimenet.** Itt keletkeznek a részletes jelentések (.txt).
-
-## Használat
-
-### 1. A Gyár Indítása (Műszakvezető szolgálatba helyezése)
-A rendszer háttérfolyamatként (daemon) fut:
+### 1. A Rendszer Indítása (Őrszemmel)
+Ezzel az egy paranccsal indítsd el a teljes rendszert:
 
 ```bash
-python project_manager.py &
-```
-*(Javasolt a kimenetet logfájlba irányítani debug célból: `python project_manager.py > manager.log 2>&1 &`)*
-
-### 2. Feladat Kiadása
-Hozz létre egy JSON fájlt a `tasks_inbox/` mappában (pl. `tasks_inbox/uj_kutatas.json`):
-
-```json
-{
-  "project_name": "Piackutatas_MACD",
-  "tasks": [
-    {
-      "id": 1,
-      "type": "research",
-      "description": "MACD stratégiák keresése",
-      "query": "MACD strategy",
-      "scope": "ELMELET",
-      "depth": 0
-    }
-  ]
-}
+python watchdog.py &
 ```
 
-### 3. Eredmény
-A Műszakvezető észleli a fájlt, feldolgozza, és a `project_reports/` mappába menti az eredményt (pl. `Piackutatas_MACD_2023...txt`). A bemeneti fájl átkerül a `tasks_archive/`-ba.
+Ez a szkript:
+1.  Ellenőrzi/Letölti a RAG adatbázist.
+2.  Elindítja a Műszakvezetőt.
+3.  A háttérben marad és őrködik.
+
+### 2. Ellenőrzés
+-   **Logok:** `factory.log` (Menedzser kimenete), `watchdog.log`.
+-   **Folyamat:** `ps aux | grep project_manager`
+
+### 3. Feladat Kiadása
+Ahogy eddig, JSON fájlok a `tasks_inbox/` mappába.
 
 ### 4. Leállítás
-A műszak befejezéséhez hozz létre egy `STOP_MANAGER` nevű fájlt a gyökérkönyvtárban.
 ```bash
 touch STOP_MANAGER
 ```
-A Műszakvezető a következő ciklusban észleli és leáll.
+(Ez leállítja a Menedzsert. Az Őrszem látni fogja, hogy leállt, DE ha a STOP fájl ott van, a Menedzser újraindulás után azonnal kilép, így nem pörög feleslegesen. A teljes leállításhoz érdemes az Őrszemet is leállítani: `pkill -f watchdog.py`.)
 
-## Rendszerkövetelmények
--   A `rag_code` és `rag_theory` mappáknak (vagy `/tmp` megfelelőinek) tartalmazniuk kell az indexelt tudásbázist.
+## Hibatűrés
+-   **Újraindulás:** Ha a Menedzser összeomlik, az Őrszem 60 másodpercen belül újraindítja.
+-   **Folytatás (Resume):** A Menedzser `.progress` fájlokban követi a részfeladatok állapotát. Újrainduláskor onnan folytatja, ahol abbahagyta (nem kezdi elölről a kész feladatokat).
