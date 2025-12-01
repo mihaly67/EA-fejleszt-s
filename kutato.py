@@ -81,7 +81,8 @@ class WorkerAgent:
 
         tokenized_query = query.lower().split()
         bm25_scores = self.bm25.get_scores(tokenized_query)
-        top_n_indices = np.argsort(bm25_scores)[::-1][:min(200, len(bm25_scores))]
+        # Optimalizalas: Csak az elso 50 talalatot vektorizaljuk a sebesseg erdekeben
+        top_n_indices = np.argsort(bm25_scores)[::-1][:min(50, len(bm25_scores))]
         candidates_idx = [i for i in top_n_indices if i in active_docs_idx]
 
         if not candidates_idx: return []

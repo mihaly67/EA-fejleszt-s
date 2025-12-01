@@ -123,6 +123,8 @@ class ProjectManager:
         print(message)
         with open(report_path, mode, encoding="utf-8") as f:
             f.write(message + "\n")
+            f.flush()
+            os.fsync(f.fileno())
 
 if __name__ == "__main__":
     # Konyvtarak ellenorzese
