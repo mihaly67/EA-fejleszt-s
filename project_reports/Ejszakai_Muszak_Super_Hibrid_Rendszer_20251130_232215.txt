@@ -1,0 +1,5 @@
+--- PROJEKT START: Ejszakai_Muszak_Super_Hibrid_Rendszer ---
+Időpont: 20251130_232215
+
+=== FELADAT 1: Hibrid Indikátor Keresés: 4-5 indikátor kombinációja (Skalp M1-M2) ===
+[MŰSZAKVEZETŐ]: Kutató kiküldése... (Query: 'hybrid indicator combination scalping M1 M2 crossover level cross', Scope: KOD)
