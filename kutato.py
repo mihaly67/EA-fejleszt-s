@@ -23,7 +23,7 @@ class WorkerAgent:
         # print("   [MUNKAS]: Memoria betoltese...", file=sys.stderr)
 
         # Modositva: ideiglenes konyvtar hasznalata a sandbox korlatok miatt
-        search_roots = ['/tmp/rag_theory', '/tmp/rag_code', '/tmp/new_knowledge', 'rag_theory', 'rag_code']
+        search_roots = ['/tmp/rag_theory', '/tmp/rag_code', '/tmp/new_knowledge', '/tmp/research_articles', 'rag_theory', 'rag_code']
         raw_docs = []
 
         for root_dir in search_roots:
