@@ -7,6 +7,7 @@
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
 #property version   "4.3"
+#property tester_indicator "MACD Histogram MC"
 
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
@@ -121,9 +122,14 @@ input int           InpTrailingStopTriggerPoints= 120;
 input int           InpTrailingStopDistancePoints= 80;
 input group "MACD Overlay"
 input bool          InpShowMacdOverlay         = true;
-input int           InpMacdFastPeriod          = 12;
-input int           InpMacdSlowPeriod          = 26;
+// Alapértelmezésként a MACD Histogram MC eredeti paramétereit használjuk,
+// hogy a két görbe és a színezett hisztogram pontosan megegyezzen az indikátorral.
+input int           InpMacdFastPeriod          = 7;
+input int           InpMacdSlowPeriod          = 28;
 input int           InpMacdSignalPeriod        = 9;
+input ENUM_MA_METHOD InpMacdSignalMaMethod     = MODE_SMA;
+input bool          InpMacdUseMultiColor       = true;
+input ENUM_APPLIED_PRICE InpMacdAppliedPrice   = PRICE_CLOSE;
 
 //+------------------------------------------------------------------+
 //| SEGÉDFÜGGVÉNYEK (HELPER FUNCTIONS)                               |
@@ -674,7 +680,17 @@ int OnInit()
    // --- MACD Overlay Létrehozása és Hozzáadása a WPR ablakba ---
    if(InpShowMacdOverlay)
      {
-      macd_handle = iMACD(_Symbol, _Period, InpMacdFastPeriod, InpMacdSlowPeriod, InpMacdSignalPeriod, PRICE_CLOSE);
+      macd_handle = iCustom(
+         _Symbol,
+         _Period,
+         "MACD Histogram MC",
+         InpMacdFastPeriod,
+         InpMacdSlowPeriod,
+         InpMacdSignalPeriod,
+         InpMacdSignalMaMethod,
+         (InpMacdUseMultiColor ? 0 : 1),
+         InpMacdAppliedPrice
+      );
       if(macd_handle == INVALID_HANDLE)
         {
          Print("Error creating MACD handle: ", GetLastError());
@@ -685,8 +701,11 @@ int OnInit()
       if(ChartIndicatorAdd(0, 1, macd_handle))
         {
          // A MACD saját skálát használhat, így vizuálisan a WPR felett jelenik meg rétegként
-         g_macd_shortname = ChartIndicatorName(0, 1, (smooth_wpr_handle != INVALID_HANDLE) ? 2 : 1);
-         Print("Added MACD overlay indicator, shortname: ", g_macd_shortname);
+         int macd_index = ChartIndicatorsTotal(0, 1) - 1; // mindig az utolsóként hozzáadott MACD
+         g_macd_shortname = ChartIndicatorName(0, 1, macd_index);
+         int macd_plots   = (int)IndicatorGetInteger(macd_handle, INDICATOR_PLOTS);
+         Print("Added MACD overlay indicator, shortname: ", g_macd_shortname,
+               ", plots detected: ", macd_plots, " (várt: 3 a két görbéhez és a színes hisztogramhoz)");
         }
       else
         {
