@@ -3,3 +3,4 @@ rag_code/
 __pycache__/
 *.zip
 /tmp/
+ALERTS/

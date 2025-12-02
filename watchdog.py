@@ -3,19 +3,31 @@ import os
 import sys
 import time
 import subprocess
+import datetime
 
 PID_FILE = "factory.pid"
 CHECK_INTERVAL = 60 # masodperc
+ALERT_DIR = "ALERTS"
 
 def is_running(pid):
     try:
-        os.kill(pid, 0) # Check signal
+        os.kill(pid, 0)
     except OSError:
         return False
-
-    # Opcionalis: Ellenorizni a folyamat nevet is (/proc/pid/cmdline)
-    # De a sandboxban egyszeru check is eleg
     return True
+
+def create_alert(msg):
+    if not os.path.exists(ALERT_DIR):
+        os.makedirs(ALERT_DIR)
+
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    alert_file = os.path.join(ALERT_DIR, f"RESTART_{timestamp}.log")
+
+    with open(alert_file, "w") as f:
+        f.write(f"WATCHDOG ALERT: {msg}\n")
+        f.write(f"Time: {timestamp}\n")
+
+    print(f"[WATCHDOG]: ALERT letrehozva: {alert_file}")
 
 def main():
     print("[WATCHDOG]: Figyelo szolgalat inditasa...")
@@ -31,10 +43,11 @@ def main():
                 pass
 
         if not running:
-            print(f"[WATCHDOG]: A Manager nem fut! Ujrainditas...")
+            msg = "A Manager leallt! Ujrainditas..."
+            print(f"[WATCHDOG]: {msg}")
+            create_alert(msg)
             subprocess.run([sys.executable, "start_factory.py"])
         else:
-            # print("[WATCHDOG]: A Manager fut.")
             pass
 
         time.sleep(CHECK_INTERVAL)

@@ -14,19 +14,33 @@ ARCHIVE_DIR = "tasks_archive"
 REPORT_DIR = "project_reports"
 STOP_FILE = "STOP_MANAGER"
 POLL_INTERVAL = 5
-BATCH_COOLDOWN = 60
+BASE_COOLDOWN = 60
 
 class ProjectManager:
     def __init__(self):
         pass
 
+    def is_working_hours(self):
+        now = datetime.datetime.now()
+        # Hetkoznap (0=Hetfo ... 4=Pentek) es 00:00 - 17:00 kozott
+        if 0 <= now.weekday() <= 4:
+            if 0 <= now.hour < 17:
+                return True
+        return False
+
     def run_daemon(self):
-        print(f"[MŰSZAKVEZETŐ]: Szolgálatba léptem (Batch Mode). Figyelem a '{INBOX_DIR}' mappát.")
+        print(f"[MŰSZAKVEZETŐ]: Szolgálatba léptem (Smart Batch Mode). Figyelem a '{INBOX_DIR}' mappát.")
 
         while True:
             if os.path.exists(STOP_FILE):
                 print("[MŰSZAKVEZETŐ]: Leállítási parancs érkezett. Műszak vége.")
                 break
+
+            # Muszakellenorzes
+            if not self.is_working_hours():
+                print(f"[MŰSZAKVEZETŐ]: Munkaidőn kívül vagyunk. Alvó mód (10 perc)...")
+                time.sleep(600)
+                continue
 
             task_files = [f for f in os.listdir(INBOX_DIR) if f.endswith('.json')]
             task_files.sort()
@@ -59,7 +73,6 @@ class ProjectManager:
         project_name = project_data.get("project_name", "Névtelen_Projekt")
         tasks = project_data.get("tasks", [])
 
-        # --- PROGRESS KEZELES ---
         progress_file = project_file + ".progress"
         completed_ids = []
         report_path = ""
@@ -74,7 +87,7 @@ class ProjectManager:
                     report_path = prog_data.get("report_path", "")
                     current_task_id = prog_data.get("current_task_id")
                     retry_count = prog_data.get("retry_count", 0)
-                    print(f"[MŰSZAKVEZETŐ]: Korábbi állapot helyreállítva. Kész: {completed_ids}, Hiba ennél: {current_task_id} (Retry: {retry_count})")
+                    print(f"[MŰSZAKVEZETŐ]: Resume: Kész: {completed_ids}, Hiba ennél: {current_task_id} (Retry: {retry_count})")
             except: pass
 
         if not report_path or not os.path.exists(report_path):
@@ -86,22 +99,22 @@ class ProjectManager:
         else:
             self.log(f"\n--- PROJEKT FOLYTATÁSA (Resume) ---", report_path, mode='a')
 
-        # --- FELADATOK ---
         for i, task in enumerate(tasks):
-            if os.path.exists(STOP_FILE):
-                self.log("\n[MŰSZAKVEZETŐ]: Vészleállás!", report_path)
-                return
+            if os.path.exists(STOP_FILE): return
+
+            # Muszakellenorzes feladatok kozott is
+            while not self.is_working_hours():
+                print(f"[MŰSZAKVEZETŐ]: Munkaidő vége. Folytatás holnap...")
+                time.sleep(600)
 
             task_id = task.get("id", i+1)
-            
             if task_id in completed_ids:
                 print(f"[MŰSZAKVEZETŐ]: Feladat {task_id} kész. Kihagyás.")
                 continue
 
-            # Crash Detection & Skip Logic
             if task_id == current_task_id:
                 if retry_count >= 3:
-                    self.log(f"[MŰSZAKVEZETŐ]: FIGYELEM! A feladat {task_id} túl sokszor okozott leállást. KIHAGYÁS.", report_path)
+                    self.log(f"[MŰSZAKVEZETŐ]: A feladat {task_id} túl sokszor okozott leállást. KIHAGYÁS.", report_path)
                     completed_ids.append(task_id)
                     with open(progress_file, 'w') as pf:
                         json.dump({"completed_ids": completed_ids, "report_path": report_path, "current_task_id": None, "retry_count": 0}, pf)
@@ -109,17 +122,13 @@ class ProjectManager:
                 else:
                     print(f"[MŰSZAKVEZETŐ]: Újrapróbálkozás ({retry_count + 1}/3)...")
 
-            # Progress mentese (Indulas elott)
             with open(progress_file, 'w') as pf:
-                json.dump({
-                    "completed_ids": completed_ids,
-                    "report_path": report_path,
-                    "current_task_id": task_id,
-                    "retry_count": retry_count + 1 if task_id == current_task_id else 1
-                }, pf)
+                json.dump({"completed_ids": completed_ids, "report_path": report_path, "current_task_id": task_id, "retry_count": retry_count + 1 if task_id == current_task_id else 1}, pf)
 
             description = task.get("description", "Nincs leírás")
             self.log(f"\n=== FELADAT {task_id}: {description} ===", report_path)
+
+            result_count = 0 # Adaptive coolinghoz
 
             if task.get("type") == "research":
                 query = task.get("query")
@@ -128,44 +137,39 @@ class ProjectManager:
 
                 self.log(f"[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: '{query}'", report_path)
 
-                cmd = [sys.executable, "kutato.py",
-                       "--query", query,
-                       "--scope", scope,
-                       "--depth", str(depth),
-                       "--output", "json"]
+                cmd = [sys.executable, "kutato.py", "--query", query, "--scope", scope, "--depth", str(depth), "--output", "json"]
 
                 try:
                     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-
                     if proc.returncode == 0:
                         try:
                             results = json.loads(proc.stdout)
-                            self.log(f"[MŰSZAKVEZETŐ]: Eredmény beérkezett ({len(results)} találat).", report_path)
+                            result_count = len(results)
+                            self.log(f"[MŰSZAKVEZETŐ]: Eredmény beérkezett ({result_count} találat).", report_path)
                             self.write_results(results, report_path)
                         except json.JSONDecodeError:
-                            self.log(f"[MŰSZAKVEZETŐ]: HIBA - A kutató nem JSON-t küldött!\nRaw: {proc.stdout[:200]}...", report_path)
+                            self.log(f"[MŰSZAKVEZETŐ]: HIBA - JSON hiba.", report_path)
                     else:
-                        self.log(f"[MŰSZAKVEZETŐ]: HIBA - A kutató hibával tért vissza (Code: {proc.returncode})\nStderr: {proc.stderr}", report_path)
-
+                        self.log(f"[MŰSZAKVEZETŐ]: HIBA - Subprocess hiba (Code: {proc.returncode})", report_path)
                 except subprocess.TimeoutExpired:
-                     self.log(f"[MŰSZAKVEZETŐ]: HIBA - A kutatás túllépte az időkeretet (Timeout)!", report_path)
+                     self.log(f"[MŰSZAKVEZETŐ]: HIBA - Timeout!", report_path)
 
             elif task.get("type") == "manual":
                 self.log(f"[MANUÁLIS]: {task.get('instruction')}", report_path)
 
-            # --- PROGRESS MENTESE (SIKER) ---
             completed_ids.append(task_id)
             with open(progress_file, 'w') as pf:
-                json.dump({
-                    "completed_ids": completed_ids,
-                    "report_path": report_path,
-                    "current_task_id": None,
-                    "retry_count": 0
-                }, pf)
+                json.dump({"completed_ids": completed_ids, "report_path": report_path, "current_task_id": None, "retry_count": 0}, pf)
+
+            # --- ADAPTIVE COOLING ---
+            # Alap piheno (60s) + (Talalatok szama * 5s)
+            cooldown = BASE_COOLDOWN + (result_count * 5)
+            # Max piheno 10 perc (600s)
+            cooldown = min(cooldown, 600)
 
             if i < len(tasks) - 1:
-                print(f"[MŰSZAKVEZETŐ]: Pihenőidő ({BATCH_COOLDOWN} mp)...")
-                time.sleep(BATCH_COOLDOWN)
+                print(f"[MŰSZAKVEZETŐ]: Adaptív pihenő: {cooldown} másodperc (Terhelés: {result_count} tétel)...")
+                time.sleep(cooldown)
 
         self.log("\n--- PROJEKT VÉGE ---", report_path)
         if os.path.exists(progress_file): os.remove(progress_file)
@@ -177,7 +181,6 @@ class ProjectManager:
                 stype = res.get('type') or res.get('doc', {}).get('source_type') or '?'
                 score = res.get('score', 0)
                 content = res.get('content') or res.get('doc', {}).get('content') or ''
-
                 f.write(f"\n> TALÁLAT (Score: {score:.2f}) [{stype}] {fname}\n")
                 f.write("-" * 80 + "\n")
                 f.write(content[:2000])
