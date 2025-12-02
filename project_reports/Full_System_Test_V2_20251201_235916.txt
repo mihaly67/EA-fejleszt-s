@@ -162,3 +162,13 @@ return S;
 }
 
 ================================================================================
+
+--- PROJEKT FOLYTATÁSA (Resume) ---
+
+=== FELADAT 2: Hybrid Indikátor Stratégiák (EA31337 osztályok) ===
+[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: 'EA31337 hybrid strategy indicator'
+
+--- PROJEKT FOLYTATÁSA (Resume) ---
+
+=== FELADAT 2: Hybrid Indikátor Stratégiák (EA31337 osztályok) ===
+[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: 'EA31337 hybrid strategy indicator'
