@@ -8,64 +8,67 @@ import numpy as np
 import faiss
 import difflib
 import pickle
+import time
+import argparse
 from sentence_transformers import SentenceTransformer
 from rank_bm25 import BM25Okapi
 from sklearn.metrics.pairwise import cosine_similarity
 
-# --- KONFIGURACIO v3.2 (Optimized + Dedup + Noise Filter) ---
+# --- KONFIGURACIO v3.3 (Heavy Worker + Load Aware) ---
 MODEL_NAME = 'all-mpnet-base-v2'
 MAX_DEPTH = 3
 BRANCHING_FACTOR = 3
 TOP_K = 5
-CACHE_FILE = 'rag_cache.pkl'
+CACHE_FILE = '/tmp/rag_cache_v3.pkl' # TMP-be mentjuk
 
 def log(msg, depth=0):
     indent = "   " * depth
-    print(f"{indent}[UGYNOK v3.2]: {msg}")
+    # Csak stderr-re irunk, hogy a stdout tiszta JSON maradhasson
+    sys.stderr.write(f"{indent}[HEAVY WORKER]: {msg}\n")
+
+def check_system_load():
+    try:
+        load = os.getloadavg()[0]
+        # Ha a terheles magas (pl. > 3.0 4 magon), pihenunk
+        if load > 3.0:
+            log(f"Magas terheles ({load:.2f}). Pihenes...")
+            time.sleep(5)
+    except: pass
 
 def load_resources():
-    # 1. Probaljuk betolteni a cache-bol
     if os.path.exists(CACHE_FILE):
-        log("Gyorstarr (cache) betoltese...")
+        log("Gyorstar betoltese...")
         try:
             with open(CACHE_FILE, 'rb') as f:
                 data = pickle.load(f)
-            # Ellenorizzuk a strukturat
             if 'docs' in data and 'bm25' in data:
-                log(f"Cache betoltve: {len(data['docs'])} dokumentum.")
-                model = SentenceTransformer(MODEL_NAME) # A modelt nem cache-eljuk (tul nagy/bonyolult)
+                model = SentenceTransformer(MODEL_NAME)
                 return data['docs'], model, data['bm25']
         except Exception as e:
-            log(f"Hiba a cache betoltesekor ({e}), ujraepites...")
+            log(f"Cache hiba: {e}")
 
-    # 2. Ha nincs cache, epitjuk elorol
-    log("Adatbazis epitese JSON fajlokbol...")
+    log("Adatbazis epitese...")
     docs = []
-    search_roots = ['rag_theory', 'rag_code', '.', 'rag_data', 'rag_data_codebase_ultimate', 'rag_data_theory_rich']
+    # Uj eleresi utak
+    search_roots = ['/tmp/rag_theory', '/tmp/rag_code', '/tmp/new_knowledge', '/tmp/research_articles']
 
     for root_dir in search_roots:
         if not os.path.exists(root_dir): continue
         for root, dirs, files in os.walk(root_dir):
             for file in files:
                 if file.endswith('_adatok.json') or file.endswith('.json'):
-                    if "package" in file or "lock" in file: continue
                     try:
                         path = os.path.join(root, file)
                         with open(path, 'r', encoding='utf-8') as f:
                             chunk = json.load(f)
-                            stype = 'ELMELET' if 'theory' in root_dir else 'KOD'
-                            if 'code' in root_dir: stype = 'KOD'
-
+                            stype = 'KOD' if 'code' in root_dir or 'knowledge' in root_dir else 'ELMELET'
                             for d in chunk:
                                 d['source_type'] = stype
                                 d['origin_file'] = file
-                                d['final_filename'] = d.get('filename') or d.get('source') or 'ISMERETLEN'
-
-                                # Content elokeszitese kereseshez
-                                txt = d.get('search_content') or d.get('content') or d.get('text') or ''
+                                d['final_filename'] = d.get('filename') or d.get('source') or '?'
+                                txt = d.get('search_content') or d.get('content') or ''
                                 d['search_text'] = txt
                                 d['tokenized_text'] = txt.lower().split()
-
                                 docs.append(d)
                     except: pass
 
@@ -73,44 +76,35 @@ def load_resources():
         log("KRITIKUS HIBA: Ures adatbazis!")
         sys.exit(1)
 
-    # 3. BM25 Index epitese (Ez a lassu resz!)
-    log("BM25 Index epitese (ez eltarthat egy darabig)...")
+    log("BM25 Index epitese...")
     corpus = [d['tokenized_text'] for d in docs]
     bm25 = BM25Okapi(corpus)
 
-    # 4. Cache mentes
-    log(f"Cache mentese: {CACHE_FILE}...")
     try:
         with open(CACHE_FILE, 'wb') as f:
             pickle.dump({'docs': docs, 'bm25': bm25}, f)
-    except Exception as e:
-        log(f"Nem sikerult menteni a cache-t: {e}")
+    except: pass
 
     model = SentenceTransformer(MODEL_NAME)
-    log(f"Kesz. {len(docs)} dokumentum betoltve.")
     return docs, model, bm25
 
-# --- FUNKCIO 1: KERESES (Deep Search) ---
-def hybrid_search(query, docs, model, bm25, top_k=TOP_K):
+def hybrid_search(query, docs, model, bm25):
     tokenized_query = query.lower().split()
     bm25_scores = bm25.get_scores(tokenized_query)
 
-    cand_idx = np.argsort(bm25_scores)[::-1][:100] # Increased candidate pool slightly for better filtering
+    # Kisebb pool a sebesseg miatt, de a Heavy Workernek tobb ido jut
+    cand_idx = np.argsort(bm25_scores)[::-1][:100]
     candidates = [docs[i] for i in cand_idx if bm25_scores[i] > 0]
 
-    if not candidates:
-        return []
+    if not candidates: return []
 
     query_vec = model.encode([query])
     cand_txt = [c['search_text'] for c in candidates]
     cand_vecs = model.encode(cand_txt)
 
     sim_scores = cosine_similarity(query_vec, cand_vecs)[0]
-
     results = [{'doc': candidates[i], 'score': sim_scores[i]} for i in range(len(sim_scores))]
     results.sort(key=lambda x: x['score'], reverse=True)
-
-    # Itt mar nem vagjuk le TOP_K-ra, mert a szures (is_junk) meg hatravan!
     return results
 
 def extract_concepts(text):
@@ -118,43 +112,12 @@ def extract_concepts(text):
     includes = re.findall(r'#include\s*[<"](.*?)[>"]', text)
     for inc in includes:
         clean = inc.replace('\\', ' ').replace('.mqh', '')
-        if len(clean) > 2:
-            concepts.add(f"MQL5 {clean} source code")
-
-    classes = re.findall(r'\bC[A-Z][a-zA-Z0-9]+\b', text)
-    for cls in classes:
-        if cls != "CArrayDouble" and cls != "CObject":
-            concepts.add(f"MQL5 class {cls} definition")
-
+        if len(clean) > 2: concepts.add(f"MQL5 {clean}")
     return list(concepts)
 
-# --- FUNKCIO 2: ZAJSZURES (NOISE FILTER) ---
-def clean_text(text):
-    # Remove formatting artifacts like §H3§...§/H3§
-    cleaned = re.sub(r'§.*?§', '', text)
-    return cleaned.strip()
-
-def is_junk_content(doc):
-    text = doc.get('content') or doc.get('text') or ""
-    filename = doc.get('final_filename', '').lower()
-
-    # 1. Absolute Garbage
-    if not text or len(text) < 50: return True # Too short
-
-    # 2. Table of Contents / Index
-    if "table of contents" in text.lower(): return True
-    if "index of functions" in text.lower(): return True
-    if "copyright" in text.lower() and len(text) < 200: return True # Short copyright notices
-
-    # 3. Boilerplate Headers (Specific to this dataset)
-    if text.strip().startswith("Standard Library") and len(text) < 300: return True
-
-    # 4. Too many artifacts (bad parsing)
-    if text.count('§') > 10: return True
-
-    return False
-
 def recursive_search(query, docs, model, bm25, depth=0, visited=None):
+    check_system_load() # Load Awareness
+
     if visited is None: visited = set()
     q_sig = query.lower().strip()
     if q_sig in visited: return []
@@ -162,128 +125,59 @@ def recursive_search(query, docs, model, bm25, depth=0, visited=None):
 
     if depth >= MAX_DEPTH: return []
 
-    log(f"Melyseg {depth}: Kutatas erre: '{query}'", depth)
-
+    log(f"Melyseg {depth}: '{query}'", depth)
     hits = hybrid_search(query, docs, model, bm25)
     all_findings = []
 
-    valid_hits_count = 0
+    valid_count = 0
     for hit in hits:
         doc = hit['doc']
-
-        # --- NOISE FILTERING ---
-        if is_junk_content(doc):
-            continue
-
-        all_findings.append({'depth': depth, 'query': query, 'doc': doc, 'score': hit['score']})
-        valid_hits_count += 1
-
-        if valid_hits_count >= TOP_K: # Only process top K *valid* hits
-            break
+        all_findings.append({'doc': doc, 'score': float(hit['score']), 'depth': depth, 'query': query})
+        valid_count += 1
+        if valid_count >= TOP_K: break
 
         if depth < MAX_DEPTH - 1:
-            content = clean_text(doc.get('content') or doc.get('text') or "")
-            new_concepts = extract_concepts(content)
-            for concept in new_concepts[:BRANCHING_FACTOR]:
+            content = doc.get('content') or ""
+            concepts = extract_concepts(content)
+            for concept in concepts[:BRANCHING_FACTOR]:
                 if concept.lower() not in visited:
-                    log(f"   -> Uj szal: {concept}", depth)
                     sub = recursive_search(concept, docs, model, bm25, depth + 1, visited)
                     all_findings.extend(sub)
-
     return all_findings
 
-# --- FUNKCIO 3: DEDUPLIKACIO ---
-def is_duplicate(content, seen_contents):
-    # Hash alapu dedup
-    h = hash(content[:500])
-    if h in seen_contents: return True
-    return False
-
-# --- FUNKCIO 4: OSSZESZERELES ---
-def read_full_file(filename_query, docs):
-    print(f"--- FAJL OSSZEALLITASA: '{filename_query}' ---")
-    parts = [d for d in docs if filename_query.lower() in d['final_filename'].lower()]
-
-    if not parts:
-        print("HIBA: Nem talaltam ilyen nevu fajlt az adatbazisban.")
-        return
-
-    try: parts.sort(key=lambda x: int(x.get('part', 1)))
-    except: pass
-
-    print(f"MEGTALALVA: {parts[0]['final_filename']} ({len(parts)} darab)")
-    print("=" * 60)
-    full_content = "".join([p.get('content', '') + "\n" for p in parts])
-    print(full_content)
-    print("=" * 60)
-
-# --- FO PROGRAM ---
 def main():
-    if len(sys.argv) < 3:
-        print("Hasznalat:")
-        print("  1. Kereses: python kutato_ugynok_v3.py search \"keresoszavak\"")
-        print("  2. Olvasas: python kutato_ugynok_v3.py read \"Experts/MyEA.mq5\"")
-        sys.exit(1)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--query', required=True)
+    parser.add_argument('--scope', default='ALL') # Nem hasznaljuk meg, de a factory kuldi
+    parser.add_argument('--depth', type=int, default=MAX_DEPTH) # Override allowed
+    parser.add_argument('--output', choices=['json', 'text'], default='text')
+    # A tobbi factory argumentumot (action, target_dir) figyelmen kivul hagyjuk vagy bovithetnenk
+    args, unknown = parser.parse_known_args()
 
-    action = sys.argv[1]
-    query = ' '.join(sys.argv[2:])
+    global MAX_DEPTH
+    MAX_DEPTH = args.depth
 
-    try:
-        # Load resources (with caching!)
-        docs, model, bm25 = load_resources()
-    except Exception as e:
-        print(f"Hiba: {e}")
-        sys.exit(1)
+    docs, model, bm25 = load_resources()
 
-    if action == 'read':
-        read_full_file(query, docs)
-        return
+    results = recursive_search(args.query, docs, model, bm25)
 
-    print(f"\n--- MELYFURO KUTATAS (v3.2 Noise Filtered) INDITASA ---")
-    print(f"Kerdes: '{query}'")
-    print("="*60)
-
-    results = recursive_search(query, docs, model, bm25)
-
-    print("\n" + "="*60)
-    print(f"OSSZEGYUJTOTT TUDASHALO ({len(results)} csomopont)")
-    print("="*60)
-
-    # Eredmenyek szurese (Deduplikacio + Clean Text)
-    seen_sigs = set()
+    # Deduplikacio es rendezes
     unique_results = []
-
-    # Sorbarendezes score szerint
+    seen = set()
     results.sort(key=lambda x: x['score'], reverse=True)
 
-    for res in results:
-        raw_content = res['doc'].get('content') or res['doc'].get('text') or ""
-        cleaned = clean_text(raw_content)
+    for r in results:
+        fname = r['doc'].get('final_filename', '')
+        if fname not in seen:
+            seen.add(fname)
+            unique_results.append(r)
+            if len(unique_results) >= 20: break # Max limit
 
-        # Signature
-        sig = (cleaned[:100] + res['doc'].get('final_filename', '')).strip()
-
-        if sig in seen_sigs:
-            continue
-
-        seen_sigs.add(sig)
-
-        # Update doc content with cleaned version for display
-        res['cleaned_content'] = cleaned
-        unique_results.append(res)
-
-    # Megjelenites
-    for res in unique_results[:10]: # Max 10 egyedi talalat
-        indent = "  " * res['depth']
-        marker = "GYOKER" if res['depth'] == 0 else "AG"
-        stype = res['doc'].get('source_type', 'RAG')
-        fname = res['doc'].get('final_filename', '?')
-
-        print(f"\n{indent}[{marker} | {stype} | {fname}] (Score: {res['score']:.2f})")
-        print(f"{indent}Kontextus: {res['query']}")
-        print("-" * 60)
-        display_text = res['cleaned_content'][:2000].replace('\n', f'\n{indent}')
-        print(f"{indent}{display_text}...")
+    if args.output == 'json':
+        print(json.dumps(unique_results, indent=2))
+    else:
+        for r in unique_results:
+            print(f"[{r['doc'].get('source_type')}] {r['doc'].get('final_filename')} ({r['score']:.2f})")
 
 if __name__ == "__main__":
     main()

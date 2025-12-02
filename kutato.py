@@ -20,12 +20,8 @@ class WorkerAgent:
 
     def load_resources(self):
         if self.loaded: return
-        # print("   [MUNKAS]: Memoria betoltese...", file=sys.stderr)
-
-        # Modositva: ideiglenes konyvtar hasznalata a sandbox korlatok miatt
         search_roots = ['/tmp/rag_theory', '/tmp/rag_code', '/tmp/new_knowledge', '/tmp/research_articles', 'rag_theory', 'rag_code']
         raw_docs = []
-
         for root_dir in search_roots:
             if not os.path.exists(root_dir): continue
             for root, dirs, files in os.walk(root_dir):
@@ -70,6 +66,34 @@ class WorkerAgent:
         final_results.sort(key=lambda x: x['score'], reverse=True)
         return final_results[:TOP_K_FINAL]
 
+    def produce(self, query, output_dir, scope=None):
+        if not self.loaded: self.load_resources()
+        if not os.path.exists(output_dir): os.makedirs(output_dir)
+
+        results = self.search(query, scope, depth=0)
+        produced_files = []
+
+        for res in results:
+            doc = res['doc']
+            filename = doc.get('final_filename') or 'unknown.mq5'
+            # Sanitize
+            filename = re.sub(r'[\\/*?:"<>|]', "_", filename)
+
+            base, ext = os.path.splitext(filename)
+            counter = 1
+            dest_path = os.path.join(output_dir, filename)
+            while os.path.exists(dest_path):
+                dest_path = os.path.join(output_dir, f"{base}_{counter}{ext}")
+                counter += 1
+
+            content = doc.get('content') or ""
+            with open(dest_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            produced_files.append(os.path.basename(dest_path))
+
+        return produced_files
+
     def _hybrid_search(self, query, scope, limit=10):
         active_docs_idx = []
         if scope:
@@ -81,7 +105,6 @@ class WorkerAgent:
 
         tokenized_query = query.lower().split()
         bm25_scores = self.bm25.get_scores(tokenized_query)
-        # Optimalizalas: Csak az elso 50 talalatot vektorizaljuk a sebesseg erdekeben
         top_n_indices = np.argsort(bm25_scores)[::-1][:min(50, len(bm25_scores))]
         candidates_idx = [i for i in top_n_indices if i in active_docs_idx]
 
@@ -111,9 +134,17 @@ def main():
     parser.add_argument('--scope', choices=['ELMELET', 'KOD'], help='Szures: ELMELET vagy KOD')
     parser.add_argument('--depth', type=int, default=0, help='Keresesi melyseg')
     parser.add_argument('--output', choices=['json', 'text'], default='text')
+    parser.add_argument('--action', choices=['search', 'produce'], default='search')
+    parser.add_argument('--target_dir', default='factory_output/components')
     args = parser.parse_args()
 
     agent = WorkerAgent()
+
+    if args.action == 'produce':
+        files = agent.produce(args.query, args.target_dir, args.scope)
+        print(json.dumps({"produced": files}, indent=2))
+        return
+
     results = agent.search(args.query, args.scope, args.depth)
 
     if args.output == 'json':
