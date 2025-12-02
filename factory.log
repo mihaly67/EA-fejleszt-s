@@ -1,0 +1,24 @@
+[MŰSZAKVEZETŐ]: Szolgálatba léptem (Batch Mode). Figyelem a 'tasks_inbox' mappát.
+[MŰSZAKVEZETŐ]: Új megbízás érkezett: trading_assistant_batch.json
+--- PROJEKT START (Batch Mode): Trading_Assistant_Batch_01 ---
+Időpont: 20251201_235338
+
+=== FELADAT 1: MQL5 Matematikai és Statisztikai Könyvtárak (Alglib, Fuzzy) ===
+[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: 'MQL5 math library alglib fuzzy statistics'
+[MŰSZAKVEZETŐ]: Eredmény beérkezett (0 találat).
+[MŰSZAKVEZETŐ]: Pihenőidő (60 mp)...
+
+=== FELADAT 2: Piaci Rezsim Detektálás (Trend vs Range, ADX, Volatilitás) ===
+[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: 'market regime detection ADX ATR volatility filter'
+[MŰSZAKVEZETŐ]: Eredmény beérkezett (5 találat).
+[MŰSZAKVEZETŐ]: Pihenőidő (60 mp)...
+
+=== FELADAT 3: Kereskedelmi Asszisztens Dashboard (GUI Panel) ===
+[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: 'trading dashboard panel graphical interface CAppDialog'
+[MŰSZAKVEZETŐ]: Szolgálatba léptem (Batch Mode). Figyelem a 'tasks_inbox' mappát.
+[MŰSZAKVEZETŐ]: Új megbízás érkezett: full_system_test_v2.json
+--- PROJEKT START (Batch Mode): Full_System_Test_V2 ---
+Időpont: 20251201_235916
+
+=== FELADAT 1: Deep Learning és Matematikai Könyvtárak (LSTM, Dense Layer) ===
+[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: 'DeepLearning mqh LSTM layer dense layer math'

@@ -1,0 +1,29 @@
+{
+  "project_name": "Full_System_Test_V2",
+  "tasks": [
+    {
+      "id": 1,
+      "type": "research",
+      "description": "Deep Learning és Matematikai Könyvtárak (LSTM, Dense Layer)",
+      "query": "DeepLearning mqh LSTM layer dense layer math",
+      "scope": "KOD",
+      "depth": 1
+    },
+    {
+      "id": 2,
+      "type": "research",
+      "description": "Hybrid Indikátor Stratégiák (EA31337 osztályok)",
+      "query": "EA31337 hybrid strategy indicator",
+      "scope": "KOD",
+      "depth": 1
+    },
+    {
+      "id": 3,
+      "type": "research",
+      "description": "Trading Dashboard (Panel GUI)",
+      "query": "trading dashboard CAppDialog panel",
+      "scope": "KOD",
+      "depth": 0
+    }
+  ]
+}
