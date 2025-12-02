@@ -134,10 +134,16 @@ class ProjectManager:
                 query = task.get("query")
                 scope = task.get("scope") or "KOD"
                 depth = task.get("depth", 0)
+                worker_type = task.get("worker", "standard")
 
-                self.log(f"[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: '{query}'", report_path)
+                worker_script = "kutato.py"
+                if worker_type == "heavy":
+                    worker_script = "kutato_ugynok_v3.py"
+                    self.log(f"[MŰSZAKVEZETŐ]: NEHÉZFIÚ (Heavy Worker) indítása... Query: '{query}'", report_path)
+                else:
+                    self.log(f"[MŰSZAKVEZETŐ]: Kutató indítása (Standard)... Query: '{query}'", report_path)
 
-                cmd = [sys.executable, "kutato.py", "--query", query, "--scope", scope, "--depth", str(depth), "--output", "json"]
+                cmd = [sys.executable, worker_script, "--query", query, "--scope", scope, "--depth", str(depth), "--output", "json"]
 
                 try:
                     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
@@ -153,6 +159,29 @@ class ProjectManager:
                         self.log(f"[MŰSZAKVEZETŐ]: HIBA - Subprocess hiba (Code: {proc.returncode})", report_path)
                 except subprocess.TimeoutExpired:
                      self.log(f"[MŰSZAKVEZETŐ]: HIBA - Timeout!", report_path)
+
+            elif task.get("type") == "production":
+                query = task.get("query")
+                scope = task.get("scope") or "KOD"
+
+                self.log(f"[MŰSZAKVEZETŐ]: GYÁRTÁS indítása... Alkatrész: '{query}'", report_path)
+
+                cmd = [sys.executable, "kutato.py", "--action", "produce", "--query", query, "--scope", scope, "--target_dir", "factory_output/components"]
+
+                try:
+                    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+                    if proc.returncode == 0:
+                        try:
+                            resp = json.loads(proc.stdout)
+                            files = resp.get("produced", [])
+                            result_count = len(files)
+                            self.log(f"[MŰSZAKVEZETŐ]: Gyártás kész. ({result_count} db). Fájlok: {files}", report_path)
+                        except json.JSONDecodeError:
+                            self.log(f"[MŰSZAKVEZETŐ]: HIBA - JSON hiba a gyártásnál.", report_path)
+                    else:
+                        self.log(f"[MŰSZAKVEZETŐ]: HIBA - Gyártási hiba (Code: {proc.returncode})", report_path)
+                except subprocess.TimeoutExpired:
+                     self.log(f"[MŰSZAKVEZETŐ]: HIBA - Gyártás Timeout!", report_path)
 
             elif task.get("type") == "manual":
                 self.log(f"[MANUÁLIS]: {task.get('instruction')}", report_path)

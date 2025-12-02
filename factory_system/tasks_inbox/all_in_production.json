@@ -1,0 +1,33 @@
+{
+  "project_name": "All_In_Production_Run",
+  "tasks": [
+    {
+      "id": 1,
+      "type": "production",
+      "description": "GYÁRTÁS: Hibrid Indikátorok (EA31337, Cikkek)",
+      "query": "hybrid indicator strategy EA31337 article",
+      "scope": "KOD"
+    },
+    {
+      "id": 2,
+      "type": "production",
+      "description": "GYÁRTÁS: Profit Menedzsment (Trailing, Spread)",
+      "query": "profit management trailing stop spread risk reward",
+      "scope": "KOD"
+    },
+    {
+      "id": 3,
+      "type": "production",
+      "description": "GYÁRTÁS: Dashboard és GUI",
+      "query": "trading dashboard CAppDialog panel interface",
+      "scope": "KOD"
+    },
+    {
+      "id": 4,
+      "type": "production",
+      "description": "GYÁRTÁS: Matematika és Statisztika",
+      "query": "math statistics library alglib fuzzy",
+      "scope": "KOD"
+    }
+  ]
+}
