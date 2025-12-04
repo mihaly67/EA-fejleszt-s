@@ -1,71 +1,60 @@
 //+------------------------------------------------------------------+
-//|                                     Momentum_Trinity_Showcase.mq5|
-//|                             Copyright 2024, Gemini & User Collaboration |
-//|                                       Verzió: 1.0 (Concept 1)    |
+//|                                    Momentum_Trinity_Showcase.mq5 |
+//|                                  Copyright 2024, MetaQuotes Ltd. |
+//|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
-#property copyright "Copyright 2024, Gemini & User Collaboration"
+#property copyright "Copyright 2024, MetaQuotes Ltd."
 #property link      "https://www.mql5.com"
 #property version   "1.00"
 #property indicator_separate_window
-#property indicator_buffers 2
+#property indicator_buffers 4
 #property indicator_plots   1
 
-//--- Plot settings
-#property indicator_label1  "Momentum Trinity"
-#property indicator_type1   DRAW_COLOR_LINE
-#property indicator_color1  clrGray, clrLime, clrRed
+//--- plot TrinitySignal
+#property indicator_label1  "TrinityPulse"
+#property indicator_type1   DRAW_HISTOGRAM
+#property indicator_color1  clrLimeGreen
 #property indicator_style1  STYLE_SOLID
 #property indicator_width1  2
 
 //--- Input parameters
-input int      InpWPRPeriod   = 14;    // WPR Period
-input int      InpRSIPeriod   = 14;    // RSI Period
-input int      InpStochK      = 5;     // Stochastic K
-input int      InpStochD      = 3;     // Stochastic D
-input int      InpStochSlowing= 3;     // Stochastic Slowing
-input double   InpOverbought  = 70.0;  // Overbought Level (Combined)
-input double   InpOversold    = 30.0;  // Oversold Level (Combined)
+input int      InpPeriod      = 14;       // Common Period
 
-//--- Indicator Buffers
-double         TrinityBuffer[];
-double         ColorBuffer[];
+//--- Indicator buffers
+double         TrinityBuffer[]; // 1 = Buy, -1 = Sell, 0 = Neutral
+double         RSIBuffer[];
+double         StochBuffer[];
+double         MFIBuffer[];
 
-//--- Indicator Handles
-int            hWPR;
+//--- Global Handles
 int            hRSI;
 int            hStoch;
+int            hMFI;
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
 //+------------------------------------------------------------------+
 int OnInit()
   {
-//--- Indicator buffers mapping
-   SetIndexBuffer(0, TrinityBuffer, INDICATOR_DATA);
-   SetIndexBuffer(1, ColorBuffer, INDICATOR_COLOR_INDEX);
+   SetIndexBuffer(0,TrinityBuffer,INDICATOR_DATA);
+   SetIndexBuffer(1,RSIBuffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(2,StochBuffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(3,MFIBuffer,INDICATOR_CALCULATIONS);
 
-//--- Plot settings
-   PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, EMPTY_VALUE);
-   PlotIndexSetString(0, PLOT_LABEL, "Trinity Score");
+   ArraySetAsSeries(TrinityBuffer, true);
+   ArraySetAsSeries(RSIBuffer, true);
+   ArraySetAsSeries(StochBuffer, true);
+   ArraySetAsSeries(MFIBuffer, true);
 
-//--- Fixed Levels
-   IndicatorSetInteger(INDICATOR_LEVELS, 2);
-   IndicatorSetDouble(INDICATOR_LEVELVALUE, 0, InpOversold);
-   IndicatorSetDouble(INDICATOR_LEVELVALUE, 1, InpOverbought);
+   IndicatorSetString(INDICATOR_SHORTNAME,"Momentum Trinity ("+string(InpPeriod)+")");
 
-//--- Create Indicator Handles
-   hWPR = iWPR(_Symbol, _Period, InpWPRPeriod);
-   hRSI = iRSI(_Symbol, _Period, InpRSIPeriod, PRICE_CLOSE);
-   hStoch = iStochastic(_Symbol, _Period, InpStochK, InpStochD, InpStochSlowing, MODE_SMA, STO_LOWHIGH);
-
-   if(hWPR == INVALID_HANDLE || hRSI == INVALID_HANDLE || hStoch == INVALID_HANDLE)
-     {
-      Print("Error creating indicator handles!");
-      return(INIT_FAILED);
-     }
+   hRSI   = iRSI(_Symbol, _Period, InpPeriod, PRICE_CLOSE);
+   hStoch = iStochastic(_Symbol, _Period, InpPeriod, 3, 3, MODE_SMA, STO_LOWHIGH);
+   hMFI   = iMFI(_Symbol, _Period, InpPeriod, VOLUME_TICK);
 
    return(INIT_SUCCEEDED);
   }
+
 //+------------------------------------------------------------------+
 //| Custom indicator iteration function                              |
 //+------------------------------------------------------------------+
@@ -80,70 +69,36 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
   {
-   int start;
-   if(prev_calculated == 0) start = 0;
-   else start = prev_calculated - 1;
+   if(rates_total < InpPeriod) return(0);
 
-   //--- Buffers for source indicators
-   double wpr_vals[], rsi_vals[], stoch_vals[];
-   ArraySetAsSeries(wpr_vals, true); // Not strictly necessary if we copy by index, but good habit
-   ArraySetAsSeries(rsi_vals, true);
-   ArraySetAsSeries(stoch_vals, true);
+   int to_copy = (prev_calculated > 0) ? rates_total - prev_calculated + 1 : rates_total;
 
-   // We need to calculate for the range [start ... rates_total-1]
-   // But CopyBuffer uses 'count' and 'start_pos'.
-   // It's easier to copy specific chunks or just loop carefully.
-   // Let's loop and copy 1-by-1 or small chunks? No, batch copy is better.
+   if(CopyBuffer(hRSI, 0, 0, to_copy, RSIBuffer) <= 0) return(0);
+   if(CopyBuffer(hStoch, 0, 0, to_copy, StochBuffer) <= 0) return(0);
+   if(CopyBuffer(hMFI, 0, 0, to_copy, MFIBuffer) <= 0) return(0);
 
-   // Calculate number of bars to process
-   int to_copy = rates_total - start;
-   if (to_copy <= 0) return prev_calculated;
+   int limit = (prev_calculated > 0) ? rates_total - prev_calculated : rates_total - 1;
 
-   double wpr[], rsi[], stoch[];
-
-   // Copy data from indicators
-   if(CopyBuffer(hWPR, 0, 0, to_copy, wpr) < to_copy) return 0;
-   if(CopyBuffer(hRSI, 0, 0, to_copy, rsi) < to_copy) return 0;
-   if(CopyBuffer(hStoch, 0, 0, to_copy, stoch) < to_copy) return 0;
-
-   // Main Loop
-   for(int i = 0; i < to_copy; i++)
+   for(int i = limit; i >= 0; i--)
      {
-      // Calculate buffer index (relative to the whole chart)
-      int idx = start + i;
+      bool rsiBuy = (RSIBuffer[i] < 30);
+      bool rsiSell = (RSIBuffer[i] > 70);
 
-      // 1. WPR: -100 to 0. Add 100 to get 0-100.
-      double wpr_norm = wpr[i] + 100.0;
+      bool stochBuy = (StochBuffer[i] < 20);
+      bool stochSell = (StochBuffer[i] > 80);
 
-      // 2. RSI: 0-100.
-      double rsi_norm = rsi[i];
+      bool mfiBuy = (MFIBuffer[i] < 20);
+      bool mfiSell = (MFIBuffer[i] > 80);
 
-      // 3. Stoch: 0-100.
-      double stoch_norm = stoch[i];
-
-      // Average
-      double trinity = (wpr_norm + rsi_norm + stoch_norm) / 3.0;
-      TrinityBuffer[idx] = trinity;
-
-      // Color Logic
-      // 0: Gray (Neutral), 1: Lime (Bullish Agreement), 2: Red (Bearish Agreement)
-      if (trinity > InpOverbought)
-         ColorBuffer[idx] = 1.0; // Lime (Overbought zone - potentially strong trend or reversal, lets call it 'Hot' zone)
-      else if (trinity < InpOversold)
-         ColorBuffer[idx] = 2.0; // Red (Oversold zone)
+      // Trinity Logic: ALL must agree for a signal
+      if(rsiBuy && stochBuy && mfiBuy)
+         TrinityBuffer[i] = 1.0; // Strong Buy Pulse
+      else if(rsiSell && stochSell && mfiSell)
+         TrinityBuffer[i] = -1.0; // Strong Sell Pulse
       else
-         ColorBuffer[idx] = 0.0; // Gray
+         TrinityBuffer[i] = 0.0;
      }
 
    return(rates_total);
-  }
-//+------------------------------------------------------------------+
-//| Indicator deinitialization function                              |
-//+------------------------------------------------------------------+
-void OnDeinit(const int reason)
-  {
-   IndicatorRelease(hWPR);
-   IndicatorRelease(hRSI);
-   IndicatorRelease(hStoch);
   }
 //+------------------------------------------------------------------+
