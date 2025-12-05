@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Chat UI Performance Booster & Cleaner (Safe Mode)
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  Optimizes chat performance using content-visibility (lazy render), and provides tools to clean cookies/storage without breaking the app.
 // @author       Jules
 // @match        *://*/*
@@ -32,11 +32,15 @@
         /* Floating Panel Style */
         #jules-panel {
             position: fixed;
-            top: 10px;
-            right: 120px;
-            z-index: 9999;
+            bottom: 20px;
+            left: 20px;
+            z-index: 2147483647; /* Max Z-Index to stay on top */
             display: flex;
             gap: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 8px;
+            border: 2px solid #555;
         }
         .jules-btn {
             background: #444;
@@ -149,6 +153,12 @@
         cleanBtn.textContent = '🧹 Nuke Cookies';
         cleanBtn.onclick = clearBrowserData;
 
+        // Status Text
+        const status = document.createElement('span');
+        status.textContent = '🟢 Jules Active';
+        status.style.cssText = 'color: #0f0; font-size: 10px; align-self: center; font-weight: bold; margin-left: 5px;';
+
+        panel.appendChild(status);
         panel.appendChild(hideBtn);
         panel.appendChild(cleanBtn);
         document.body.appendChild(panel);
