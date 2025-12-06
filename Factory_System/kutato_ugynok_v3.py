@@ -14,7 +14,24 @@ from sentence_transformers import SentenceTransformer
 from rank_bm25 import BM25Okapi
 from sklearn.metrics.pairwise import cosine_similarity
 
-# --- KONFIGURACIO v4.0 (Universal Heavy Worker) ---
+# --- LANGCHAIN COMPATIBILITY ---
+try:
+    from langchain_community.docstore.in_memory import InMemoryDocstore
+    from langchain.schema import Document
+except ImportError:
+    # Minimal mock classes if langchain is missing but needed for pickle loading
+    class Document:
+        def __init__(self, page_content, metadata=None):
+            self.page_content = page_content
+            self.metadata = metadata or {}
+
+    class InMemoryDocstore:
+        def __init__(self, _dict=None):
+            self._dict = _dict or {}
+        def search(self, _id):
+            return self._dict.get(_id)
+
+# --- KONFIGURACIO v4.1 (LangChain Compatible) ---
 MODELS = {
     'mpnet': 'all-mpnet-base-v2',
     'minilm': 'all-MiniLM-L6-v2'
@@ -40,21 +57,46 @@ def check_system_load():
 def load_resources(model_key='mpnet'):
     cache_file = CACHE_FILE_MINILM if model_key == 'minilm' else CACHE_FILE_MPNET
 
-    # 1. PRE-BUILT MQL5 INDEX (Special case for MiniLM)
+    # 1. PRE-BUILT MQL5 INDEX (LangChain Pickle + FAISS)
     if model_key == 'minilm' and os.path.exists('rag_mql5_dev/index.pkl'):
-        log("MQL5 Dev index (Pre-built) betoltese...")
+        log("MQL5 Dev index (LangChain Pickle) betoltese...")
         try:
             with open('rag_mql5_dev/index.pkl', 'rb') as f:
-                data = pickle.load(f)
-            docs = data['docs']
+                # LangChain saves (docstore, index_to_docstore_id)
+                store, index_to_docstore_id = pickle.load(f)
 
-            # BM25 betoltes vagy epites
-            if 'bm25' in data:
-                bm25 = data['bm25']
-            else:
-                log("BM25 ujraepitese...")
-                corpus = [(d.get('search_content') or d.get('content') or '').lower().split() for d in docs]
-                bm25 = BM25Okapi(corpus)
+            # Convert LangChain docstore to simple list for our usage
+            docs = []
+            # index_to_docstore_id maps integer ID (from FAISS) to UUID (in docstore)
+            # We need to maintain the order corresponding to FAISS IDs 0, 1, 2...
+
+            # Find max ID to know size
+            max_id = max(index_to_docstore_id.keys())
+
+            for i in range(max_id + 1):
+                if i in index_to_docstore_id:
+                    uuid = index_to_docstore_id[i]
+                    doc_obj = store.search(uuid)
+                    if doc_obj:
+                        d = {
+                            'content': doc_obj.page_content,
+                            'search_content': doc_obj.page_content, # Use content for search too
+                            'final_filename': doc_obj.metadata.get('source', 'unknown'),
+                            'source_type': 'MQL5_DEV',
+                            'metadata': doc_obj.metadata
+                        }
+                        docs.append(d)
+                    else:
+                        docs.append({'content': '', 'source_type': 'EMPTY'}) # Placeholder
+                else:
+                    docs.append({'content': '', 'source_type': 'EMPTY'}) # Placeholder
+
+            log(f"Konvertalt dokumentumok szama: {len(docs)}")
+
+            # BM25 epitese (Mert a LangChain indexben nincs benne)
+            log("BM25 index epitese on-the-fly...")
+            corpus = [(d.get('content') or '').lower().split() for d in docs]
+            bm25 = BM25Okapi(corpus)
 
             model = SentenceTransformer(MODELS['minilm'])
 
@@ -65,9 +107,11 @@ def load_resources(model_key='mpnet'):
 
             return docs, model, bm25, faiss_index
         except Exception as e:
-            log(f"Hiba a pre-built index betoltesekor: {e}")
+            log(f"Hiba a pre-built LangChain index betoltesekor: {e}")
+            import traceback
+            traceback.print_exc()
 
-    # 2. JSON/Cache Load
+    # 2. JSON/Cache Load (Fallback)
     if os.path.exists(cache_file):
         log("Gyorstar betoltese...")
         try:
@@ -79,9 +123,9 @@ def load_resources(model_key='mpnet'):
         except Exception as e:
             log(f"Cache hiba: {e}")
 
-    log("Adatbazis epitese...")
+    log("Adatbazis epitese (JSON Scan)...")
     docs = []
-    search_roots = ['rag_theory', 'rag_code', 'rag_mql5_dev']
+    search_roots = ['rag_theory', 'rag_code'] # MQL5 dev removed from scan if failed above
 
     for root_dir in search_roots:
         if not os.path.exists(root_dir): continue
@@ -95,7 +139,6 @@ def load_resources(model_key='mpnet'):
                             stype = 'UNKNOWN'
                             if 'code' in root_dir or 'knowledge' in root_dir: stype = 'KOD'
                             elif 'theory' in root_dir: stype = 'ELMELET'
-                            elif 'mql5' in root_dir: stype = 'MQL5_DEV'
 
                             for d in chunk:
                                 d['source_type'] = stype
@@ -131,10 +174,7 @@ def hybrid_search(query, docs, model, bm25, faiss_index=None):
     cand_idx = np.argsort(bm25_scores)[::-1][:100]
     candidates = [docs[i] for i in cand_idx if bm25_scores[i] > 0]
 
-    if not candidates and faiss_index:
-        # Ha csak vektorban van talalat
-        pass
-    elif not candidates:
+    if not candidates and not faiss_index:
         return []
 
     # Vector Search
@@ -143,10 +183,16 @@ def hybrid_search(query, docs, model, bm25, faiss_index=None):
     results = []
 
     if faiss_index:
+        # LangChain FAISS strategy:
+        # Search returns distances (D) and indices (I)
         D, I = faiss_index.search(q_vec, TOP_K * 2)
         for j, idx in enumerate(I[0]):
             if idx != -1 and idx < len(docs):
-                 results.append({'doc': docs[idx], 'score': 1.0 / (1.0 + D[0][j])})
+                 # Combine with BM25 if applicable, or just vector score
+                 # LangChain uses L2 distance usually.
+                 # Convert L2 to similarity: 1 / (1 + distance)
+                 score = 1.0 / (1.0 + D[0][j])
+                 results.append({'doc': docs[idx], 'score': score})
     else:
         cand_txt = [c['search_text'] for c in candidates]
         cand_vecs = model.encode(cand_txt)
@@ -226,6 +272,8 @@ def main():
     else:
         for r in unique_results:
             print(f"[{r['doc'].get('source_type')}] {r['doc'].get('final_filename')} ({r['score']:.2f})")
+            if args.output == 'text':
+                print(f"   Excerpt: {(r['doc'].get('content') or '')[:200]}...\n")
 
 if __name__ == "__main__":
     main()
