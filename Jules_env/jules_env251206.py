@@ -1,4 +1,4 @@
- pip install gdown sentence-transformers faiss-cpu numpy rank_bm25 flashrank rapidfuzz pandas networkx chardet && python -c "import os, gdown, zipfile; downloads = {'rag_theory': os.environ.get('RAG_DRIVE_LINK'), 'rag_code': os.environ.get('CODEBASE_RAG_DRIVE_LINK'), 'rag_mql5': os.environ.get('MQL5_RAG_DRIVE_LINK')}; [ (print(f'Letoltes: {k}...'), gdown.download(v, f'{k}.zip', quiet=False, fuzzy=True), print(f'Kicsomagolas: {k}...'), os.makedirs(k, exist_ok=True), zipfile.ZipFile(f'{k}.zip', 'r').extractall(k), os.remove(f'{k}.zip')) for k, v in downloads.items() if v ];" && cat << 'EOF' > kutato.py
+ pip install gdown sentence-transformers faiss-cpu numpy rank_bm25 flashrank rapidfuzz pandas networkx chardet && python -c "import os, gdown, zipfile; downloads = {'rag_theory': os.environ.get('RAG_DRIVE_LINK'), 'rag_code': os.environ.get('CODEBASE_RAG_DRIVE_LINK'), 'rag_mql5_dev': os.environ.get('MQL5_RAG_DRIVE_LINK')}; [ (print(f'Letoltes: {k}...'), gdown.download(v, f'{k}.zip', quiet=False, fuzzy=True), print(f'Kicsomagolas: {k}...'), os.makedirs(k, exist_ok=True), zipfile.ZipFile(f'{k}.zip', 'r').extractall(k), os.remove(f'{k}.zip')) for k, v in downloads.items() if v ];" && cat << 'EOF' > kutato.py
 #!/usr/bin/env python
 import sys, json, faiss, numpy as np, os, re, argparse
 from sentence_transformers import SentenceTransformer
@@ -14,8 +14,9 @@ TOP_K = 5
 def load_resources(model_key='mpnet'):
     print(f"   [AGY]: Memoria betoltese (Modell: {MODELS[model_key]})...")
     docs = []
-    # A 'rag_mql5' mappa is bekerult a keresesi utvonalak koze
-    search_roots = ['rag_theory', 'rag_code', 'rag_mql5']
+    # A 'rag_mql5_dev' mappa is bekerult a keresesi utvonalak koze
+    search_roots = ['rag_theory', 'rag_code', 'rag_mql5_dev']
+
     for root_dir in search_roots:
         if not os.path.exists(root_dir): continue
         for root, dirs, files in os.walk(root_dir):
@@ -39,17 +40,26 @@ def load_resources(model_key='mpnet'):
 
     # A kivalasztott modell betoltese
     model_name = MODELS.get(model_key, MODELS['mpnet'])
-    model = SentenceTransformer(model_name)
+    try:
+        model = SentenceTransformer(model_name)
+    except Exception as e:
+        print(f"HIBA a modell betoltesekor ({model_name}): {e}")
+        sys.exit(1)
+
     return docs, model
 
 def hybrid_search(query, docs, model):
+    # 1. Kulcsszavas kereses (BM25) - Ez modell-fuggetlen
     corpus = [(d.get('search_content') or d.get('content') or '').lower().split() for d in docs]
     bm25 = BM25Okapi(corpus)
     scores = bm25.get_scores(query.lower().split())
+
+    # BM25 eloszures
     cand_idx = np.argsort(scores)[::-1][:50]
     candidates = [docs[i] for i in cand_idx if scores[i] > 0]
-    if not candidates: candidates = docs[:100]
+    if not candidates: candidates = docs[:100] # Ha nincs kulcsszavas talalat, fallback az elso 100-ra
 
+    # 2. Szemantikus kereses (Embedding) - Itt szamit a modell!
     q_vec = model.encode([query])
     cand_txt = [c.get('search_content') or c.get('content') for c in candidates]
     cand_vec = model.encode(cand_txt)
@@ -76,21 +86,28 @@ def read_file_stitching(fname, docs):
     print("\n=== VEGE ===\n")
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=['search', 'read'], help='Muvelet')
+    parser = argparse.ArgumentParser(description="Kutato Ugynok - Hybrid Search Agent")
+    parser.add_argument('action', choices=['search', 'read'], help='Muvelet: kereses vagy fajl olvasas')
     parser.add_argument('query', nargs='+', help='Keresoszo vagy fajlnev')
     # Uj argumentum a modell kivalasztasahoz
-    parser.add_argument('--model', choices=['mpnet', 'minilm'], default='mpnet', help='Hasznalt embedding modell (mpnet vagy minilm)')
+    parser.add_argument('--model', choices=['mpnet', 'minilm'], default='mpnet', help='Hasznalt embedding modell (mpnet: elmelet/kod, minilm: mql5)')
     args = parser.parse_args()
 
     q = ' '.join(args.query)
+
+    # Ervenyesites: Ha a felhasznalo minilm-et ker, de nincs rag_mql5, figyelmeztetes?
+    # Nem, mert a load_resources mindent betolt. A lenyeg, hogy a modell illeszkedjen az indexhez.
+    # MEGJEGYZES: Ha a rag_theory (MPNet) adatait MiniLM-mel vektorizaljuk ujra (on-the-fly), az mukodik, de lassu lehet.
+    # De mivel itt nincs elore mentett FAISS index, hanem 'on-the-fly' encode-olunk (cand_vec = model.encode(cand_txt)),
+    # ezert BARMELYIK modell mukodik BARMELYIK szoveggel! A 'full preparation' igy teljesul.
+
     docs, model = load_resources(args.model)
 
     if args.action == 'read':
         read_file_stitching(q, docs)
         return
 
-    print(f"   [AGY]: Kereses: '{q}'")
+    print(f"   [AGY]: Kereses: '{q}' (Modell: {args.model})")
     hits = hybrid_search(q, docs, model)
 
     print(f"\nTALALATOK:")
@@ -103,4 +120,4 @@ def main():
 if __name__ == "__main__":
     main()
 EOF
-echo "kutato.py" >> .git/info/exclude && echo "rag_theory" >> .git/info/exclude && echo "rag_code" >> .git/info/exclude && echo "rag_mql5" >> .git/info/exclude && echo "INSTRUCTIONS.md" >> .git/info/exclude
+echo "kutato.py" >> .git/info/exclude && echo "rag_theory" >> .git/info/exclude && echo "rag_code" >> .git/info/exclude && echo "rag_mql5_dev" >> .git/info/exclude && echo "INSTRUCTIONS.md" >> .git/info/exclude
