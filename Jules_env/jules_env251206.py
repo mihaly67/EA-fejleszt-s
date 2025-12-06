@@ -1,4 +1,4 @@
- pip install gdown sentence-transformers faiss-cpu numpy rank_bm25 flashrank rapidfuzz pandas networkx chardet && python -c "import os, gdown, zipfile; downloads = {'rag_theory': os.environ.get('RAG_DRIVE_LINK'), 'rag_code': os.environ.get('CODEBASE_RAG_DRIVE_LINK'), 'rag_mql5': os.environ.get('MQL5_RAG_DRIVE_LINK')}; [ (print(f'Letoltes: {k}...'), gdown.download(v, f'{k}.zip', quiet=False, fuzzy=True), print(f'Kicsomagolas: {k}...'), os.makedirs(k, exist_ok=True), zipfile.ZipFile(f'{k}.zip', 'r').extractall(k), os.remove(f'{k}.zip')) for k, v in downloads.items() if v ];" && cat << 'EOF' > kutato.py
+ pip install gdown sentence-transformers faiss-cpu numpy rank_bm25 flashrank rapidfuzz pandas networkx chardet && python -c "import os, gdown, zipfile; downloads = {'rag_theory': os.environ.get('RAG_DRIVE_LINK'), 'rag_code': os.environ.get('CODEBASE_RAG_DRIVE_LINK'), 'rag_mql5_dev': os.environ.get('MQL5_RAG_DRIVE_LINK')}; [ (print(f'Letoltes: {k}...'), gdown.download(v, f'{k}.zip', quiet=False, fuzzy=True), print(f'Kicsomagolas: {k}...'), os.makedirs(k, exist_ok=True), zipfile.ZipFile(f'{k}.zip', 'r').extractall(k), os.remove(f'{k}.zip')) for k, v in downloads.items() if v ];" && cat << 'EOF' > kutato.py
 #!/usr/bin/env python
 import sys, json, faiss, numpy as np, os, re, argparse
 from sentence_transformers import SentenceTransformer
@@ -14,11 +14,8 @@ TOP_K = 5
 def load_resources(model_key='mpnet'):
     print(f"   [AGY]: Memoria betoltese (Modell: {MODELS[model_key]})...")
     docs = []
-    # A 'rag_mql5' mappa is bekerult a keresesi utvonalak koze
-    search_roots = ['rag_theory', 'rag_code', 'rag_mql5']
-
-    # Filter: Ha minilm-et hasznalunk, foleg az mql5-re koncentraljunk (vagy forditva)?
-    # A felhasznalo kerese: "Teljeskoro felkeszites minilm re" -> Minden indexet be kell tolteni, de a keresesnel jo modell kell.
+    # A 'rag_mql5_dev' mappa is bekerult a keresesi utvonalak koze
+    search_roots = ['rag_theory', 'rag_code', 'rag_mql5_dev']
 
     for root_dir in search_roots:
         if not os.path.exists(root_dir): continue
@@ -123,4 +120,4 @@ def main():
 if __name__ == "__main__":
     main()
 EOF
-echo "kutato.py" >> .git/info/exclude && echo "rag_theory" >> .git/info/exclude && echo "rag_code" >> .git/info/exclude && echo "rag_mql5" >> .git/info/exclude && echo "INSTRUCTIONS.md" >> .git/info/exclude
+echo "kutato.py" >> .git/info/exclude && echo "rag_theory" >> .git/info/exclude && echo "rag_code" >> .git/info/exclude && echo "rag_mql5_dev" >> .git/info/exclude && echo "INSTRUCTIONS.md" >> .git/info/exclude
