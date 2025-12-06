@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Chat UI Performance Booster & Cleaner (Safe Mode)
+// @name         Chat UI Performance Booster & Cleaner (Manual Mode)
 // @namespace    http://tampermonkey.net/
-// @version      2.2
-// @description  Optimizes chat performance using content-visibility (lazy render), and provides tools to clean cookies/storage without breaking the app.
+// @version      3.0
+// @description  Manual tools to fix lag: "Hide Old Msgs" (display:none) and "Nuke Cookies". No auto-CSS to prevent layout thrashing.
 // @author       Jules
 // @match        *://*/*
 // @grant        GM_addStyle
@@ -12,21 +12,14 @@
     'use strict';
 
     // CONFIGURATION
-    const OLD_MESSAGE_THRESHOLD = 20; // Keep last 20 messages visible
+    const OLD_MESSAGE_THRESHOLD = 15; // Keep last 15 messages visible
 
-    console.log("🚀 Chat Optimizer v2.2 (Robust Mode) Loaded");
+    console.log("🚀 Chat Optimizer v3.0 (Manual Mode) Loaded");
 
     function initJulesTools() {
         try {
-            // 1. CSS OPTIMIZATION - The "Lazy Render" approach
-            // Use GM_addStyle for reliable injection where available
+            // 1. BASIC UI STYLING (No performance CSS, just the panel)
             const css = `
-                /* Generic Message Containers */
-                article, div[class*="message"], div[class*="bubble"], .text-base {
-                    content-visibility: auto;
-                    contain-intrinsic-size: 100px 500px;
-                }
-
                 /* Floating Panel Style */
                 #jules-panel {
                     position: fixed;
@@ -35,11 +28,12 @@
                     z-index: 2147483647;
                     display: flex;
                     gap: 10px;
-                    background: rgba(0, 0, 0, 0.8); /* Darker background */
+                    background: rgba(0, 0, 0, 0.85);
                     padding: 8px;
                     border-radius: 8px;
-                    border: 1px solid #666;
+                    border: 1px solid #777;
                     font-family: sans-serif;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
                 }
                 .jules-btn {
                     background: #444;
@@ -50,67 +44,65 @@
                     cursor: pointer;
                     font-weight: bold;
                     font-size: 12px;
+                    transition: background 0.2s;
                 }
-                .jules-btn:hover { opacity: 1; background: #555; }
-                .jules-btn.danger { background: #d93025; border-color: #b31414; }
+                .jules-btn:hover { background: #666; }
+                .jules-btn.danger { background: #a50e0e; border-color: #ff3333; }
+                .jules-btn.success { background: #2d7d32; border-color: #4caf50; }
             `;
 
             if (typeof GM_addStyle !== 'undefined') {
                 GM_addStyle(css);
             } else {
-                // Fallback for environments without GM_addStyle
                 const style = document.createElement('style');
                 style.textContent = css;
                 document.head.appendChild(style);
             }
 
             createPanel();
-            console.log("✅ Jules Panel Injected Successfully");
+            console.log("✅ Jules Panel Injected (Passive Mode)");
 
         } catch (e) {
             console.error("❌ Jules Script Error:", e);
         }
     }
 
-    // 2. COOKIE & STORAGE CLEANER
+    // 2. COOKIE CLEANER
     function clearBrowserData() {
-        if (!confirm("Biztosan törölni akarod a Cookie-kat és a LocalStorage-ot ezen az oldalon? Ez kiléptethet!")) return;
-
-        // Clear LocalStorage
+        if (!confirm("Vigyázz! Ez törli a sütiket és újratölti az oldalt. Folytatod?")) return;
         localStorage.clear();
-
-        // Clear SessionStorage
         sessionStorage.clear();
-
-        // Clear Cookies (Attempt)
         document.cookie.split(";").forEach((c) => {
             document.cookie = c
                 .replace(/^ +/, "")
                 .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
         });
-
-        showToast("🧹 Cookies & Storage Cleaned! Reloading...");
-        setTimeout(() => location.reload(), 1500);
+        showToast("🧹 Tisztítás kész! Újratöltés...");
+        setTimeout(() => location.reload(), 1000);
     }
 
-    // 3. SAFE DOM "HIDING" (Virtual Scroll Lite)
+    // 3. MANUAL HIDE (The safe fix)
     function hideOldMessages() {
-        const scrollContainers = document.querySelectorAll('main, div[class*="scroll"], div[class*="conversation"]');
+        // Broad selectors to catch common chat layouts
+        const scrollContainers = document.querySelectorAll('main, div[class*="scroll"], div[class*="conversation"], div[role="presentation"]');
         let hiddenCount = 0;
 
         scrollContainers.forEach(container => {
+            // Get direct children that look like messages
             const children = Array.from(container.children).filter(el =>
                 !el.tagName.match(/SCRIPT|STYLE|LINK/) &&
-                !el.className.includes('sidebar') &&
-                el.id !== 'jules-panel'
+                el.id !== 'jules-panel' &&
+                el.offsetHeight > 0 // Only count visible items
             );
 
             const count = children.length;
             if (count > OLD_MESSAGE_THRESHOLD) {
                 const toHide = count - OLD_MESSAGE_THRESHOLD;
                 for (let i = 0; i < toHide; i++) {
+                    // Safe Hiding: display: none
+                    // This removes it from the layout calculation entirely, fixing the "Reflow" lag.
                     if (children[i].style.display !== 'none') {
-                        children[i].style.display = 'none'; // Safe hide
+                        children[i].style.display = 'none';
                         hiddenCount++;
                     }
                 }
@@ -118,23 +110,24 @@
         });
 
         if (hiddenCount > 0) {
-            showToast(`Performance: Hidden ${hiddenCount} old items.`);
+            showToast(`🙈 Elrejtve: ${hiddenCount} régi üzenet.`);
         } else {
-            showToast("Nothing to hide.");
+            showToast("Nincs mit elrejteni (vagy nem találom a konténert).");
         }
     }
 
-    // 4. UI HELPER (Toast)
+    // 4. UI HELPER
     function showToast(msg) {
         let toast = document.getElementById('jules-toast');
         if (!toast) {
             toast = document.createElement('div');
             toast.id = 'jules-toast';
             toast.style.cssText = `
-                position: fixed; top: 60px; right: 120px;
-                background: #333; color: #fff; padding: 8px 12px;
-                border-radius: 4px; z-index: 10000; font-size: 12px;
+                position: fixed; top: 20px; left: 20px;
+                background: #333; color: #fff; padding: 10px 15px;
+                border-radius: 4px; z-index: 2147483647; font-size: 14px;
                 pointer-events: none; opacity: 0; transition: opacity 0.3s;
+                border: 1px solid #fff;
             `;
             document.body.appendChild(toast);
         }
@@ -143,27 +136,30 @@
         setTimeout(() => toast.style.opacity = '0', 3000);
     }
 
-    // 5. CREATE PANEL
+    // 5. PANEL CREATION
     function createPanel() {
         if (document.getElementById('jules-panel')) return;
 
         const panel = document.createElement('div');
         panel.id = 'jules-panel';
 
+        // Hide Button
         const hideBtn = document.createElement('button');
-        hideBtn.className = 'jules-btn';
-        hideBtn.textContent = '🙈 Hide Old Msgs';
+        hideBtn.className = 'jules-btn success';
+        hideBtn.innerHTML = '🙈 Hide Old (Fix Lag)';
+        hideBtn.title = "A régi üzenetek elrejtése (display:none). Ez megszünteti a laggot.";
         hideBtn.onclick = hideOldMessages;
 
+        // Clean Button
         const cleanBtn = document.createElement('button');
         cleanBtn.className = 'jules-btn danger';
-        cleanBtn.textContent = '🧹 Nuke Cookies';
+        cleanBtn.innerHTML = '🧹 Nuke Cookies';
         cleanBtn.onclick = clearBrowserData;
 
-        // Status Text
+        // Status
         const status = document.createElement('span');
-        status.textContent = '🟢 Active';
-        status.style.cssText = 'color: #0f0; font-size: 10px; align-self: center; font-weight: bold; margin-left: 5px; margin-right: 5px;';
+        status.textContent = 'Active (Manual)';
+        status.style.cssText = 'color: #ccc; font-size: 10px; align-self: center; margin: 0 5px;';
 
         panel.appendChild(status);
         panel.appendChild(hideBtn);
@@ -171,11 +167,11 @@
         document.body.appendChild(panel);
     }
 
-    // Initialize with delay/check to be safe
+    // Initialize (Wait for Load)
     if (document.readyState === "complete" || document.readyState === "interactive") {
-        setTimeout(initJulesTools, 1000);
+        setTimeout(initJulesTools, 1500);
     } else {
-        window.addEventListener('load', () => setTimeout(initJulesTools, 1000));
+        window.addEventListener('load', () => setTimeout(initJulesTools, 1500));
     }
 
 })();
