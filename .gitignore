@@ -4,3 +4,12 @@ __pycache__/
 *.zip
 /tmp/
 ALERTS/
+
+downloaded_content/
+rag_mql5_dev/
+rag_theory/
+rag_code/
+*.zip
+*.db
+*.index
+*.pkl
