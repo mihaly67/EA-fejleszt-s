@@ -1,0 +1,23 @@
+[MQL5_DEV] article_3040.html (Score: 0.60)
+------------------------------------------------------------
+All codes will be written by MQL5 and will be tested on MT5.      Note that there are many strategies that can be used to filter generated signals based on any strategy, even by using the moving average itself which is the subject of this article. So, the objective of this article to share with you some of Moving Average Strategies and how to design an algorithmic trading system to let you know and open your eyes on what you can do and how could you develop your trading strategy. Now, let us go ...
+
+
+[MQL5_DEV] article_13406.html (Score: 0.60)
+------------------------------------------------------------
+The article allows using the codes as Copy-Paste.         Adaptive Moving Average   Adaptive Moving Average (AMA) technical indicator is used for constructing a moving average with low sensitivity to price series noises and is characterized by the minimal lag for trend detection. This indicator was developed and described by Perry Kaufman in his book "Smarter Trading".   One of disadvantages of different smoothing algorithms for price series is that accidental price leaps can result in the appea...
+
+
+[MQL5_DEV] article_8699.html (Score: 0.58)
+------------------------------------------------------------
+Strategy     Let's use the strategy implemented in the standard "Examples\Moving Average" EA.    A position is opened if:     There are no positions and  The candle crosses the Moving Average with its body (Open — on one side of the МА, Close — on the other.)    A position is closed if:      There is an open position and  The candle crosses the MA in the opposite direction to the opening.           Adding indicator data   The distinguishing feature of calculating using spreadsheets is that subto...
+
+
+[MQL5_DEV] article_9207.html (Score: 0.57)
+------------------------------------------------------------
+In this chart, the moving average and the exponential moving average approach each other after 120-130 iterations and then the deviation is minimal (so that it can be neglected). In addition, the exponential moving average graph is smoother. EMA can be calculated by knowing the previous value of the function and the current element of the sequence. Let us view the formula for the exponential moving average.     ,   where      m is the batch size,  i is an iteration.    It took a little more iter...
+
+
+[MQL5_DEV] article_10592.html (Score: 0.57)
+------------------------------------------------------------
+The CCI is calculated in the following steps:        Get Typical Price (TP):        TP = (High + Low + Close)/3               Get Simple Moving Average of TP:            SMA of TP = Sum of TP/n         Get Mean deviation:          Mean Deviation = Sum of Abs(TP-SMA)/n           Get CCI:          CCI =  (TP-SMA of TP)/(0.015*Mean Deviation)        Now, let us take an example to apply this calculation:   Suppose, we have the following data for an instrument for a period of 14 days:      Days  High...
