@@ -322,9 +322,9 @@ download_and_extract() {
 }
 
 echo "[BOOTSTRAP] Downloading RAG databases..."
-download_and_extract "rag_mql5" "1luBkNTptLkdJsYs_mHHgRyDwSijgC5NA" "rag_mql5" "MQL5_DEV_knowledgebase.db"
-download_and_extract "rag_theory" "1UZgIItTO5a-Kspzdg2MozvqqiF16f3H3" "rag_theory" "theory_knowledgebase.db"
-download_and_extract "rag_code" "1OM_4ucQj40PvWPRBajC6faMXktCvdRZq" "rag_code" "code_knowledgebase.db"
+download_and_extract "rag_mql5" "1gMumIUSdXuUlHJuymbWE8GwAd5K7ruSy" "rag_mql5" "MQL5_DEV_knowledgebase.db"
+download_and_extract "rag_theory" "1T0etzQc1bdT89X67sa3zMbuZNZWM-Anv" "rag_theory" "theory_knowledgebase.db"
+download_and_extract "rag_code" "1CmoE49YTc_-dxyn4EiYyIDHINENeT5KI" "rag_code" "code_knowledgebase.db"
 
 echo "[BOOTSTRAP] Environment setup complete! You are ready to work."
 exit 0
