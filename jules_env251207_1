@@ -303,7 +303,7 @@ if __name__ == "__main__":
 EOF
 
 # 4. Download RAGs
-# Helper function for download and extraction with robust directory handling
+# Helper function for download and extraction with "Search and Hoist" logic
 download_and_extract() {
     NAME=$1
     ID=$2
@@ -320,12 +320,13 @@ download_and_extract() {
 
     # Clean target
     rm -rf "$TARGET_DIR"
+    mkdir -p "$TARGET_DIR"
 
     # Download
     echo "   -> Downloading zip..."
     gdown --fuzzy "$ID" -O "${NAME}.zip"
 
-    # Extract to temporary directory to handle folder structure ambiguity
+    # Extract to temporary directory
     TMP_DIR="_tmp_extract_${NAME}"
     rm -rf "$TMP_DIR"
     mkdir -p "$TMP_DIR"
@@ -333,16 +334,30 @@ download_and_extract() {
     echo "   -> Extracting..."
     unzip -q "${NAME}.zip" -d "$TMP_DIR"
 
-    # Logic: Move content to TARGET_DIR
-    # Case 1: Zip contains a single folder named $NAME (e.g., rag_code/file.db)
-    if [ -d "$TMP_DIR/$NAME" ]; then
-        echo "   -> Detected nested folder structure. Moving..."
-        mv "$TMP_DIR/$NAME" "$TARGET_DIR"
-    else
-        # Case 2: Zip contains flat files (e.g., file.db directly)
-        echo "   -> Detected flat file structure. Moving..."
-        mv "$TMP_DIR" "$TARGET_DIR"
+    # "Search and Hoist" Logic:
+    # Find the CHECK_FILE anywhere inside TMP_DIR
+    FOUND_PATH=$(find "$TMP_DIR" -name "$CHECK_FILE" | head -n 1)
+
+    if [ -z "$FOUND_PATH" ]; then
+        echo "   -> ERROR: $CHECK_FILE not found in archive!"
+        ls -R "$TMP_DIR"
+        exit 1
     fi
+
+    echo "   -> Found $CHECK_FILE at: $FOUND_PATH"
+
+    # Get the directory containing the file
+    SOURCE_DIR=$(dirname "$FOUND_PATH")
+
+    echo "   -> Hoisting content from $SOURCE_DIR to $TARGET_DIR..."
+    # Move content. We use cp -r then rm to handle 'mv' complaining about subdirectory into parent
+    # Or just use mv. Since TARGET_DIR is empty (we just made it), it should be safe.
+    # Note: If SOURCE_DIR is TMP_DIR, we move files. If SOURCE_DIR is subdir, we move files.
+
+    # Using dotglob to include hidden files if any
+    shopt -s dotglob
+    mv "$SOURCE_DIR"/* "$TARGET_DIR"/
+    shopt -u dotglob
 
     # Cleanup
     rm "${NAME}.zip"
@@ -352,8 +367,7 @@ download_and_extract() {
     if [ -f "$TARGET_DIR/$CHECK_FILE" ]; then
         echo "   -> Success! $NAME ready."
     else
-        echo "   -> ERROR: $NAME setup failed. Expected file $CHECK_FILE not found in $TARGET_DIR."
-        # List contents for debug
+        echo "   -> ERROR: $NAME setup verification failed."
         ls -F "$TARGET_DIR"
         exit 1
     fi
