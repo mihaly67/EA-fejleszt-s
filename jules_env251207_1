@@ -19,8 +19,8 @@ fi
 $PIP_CMD install faiss-cpu sentence-transformers gdown
 
 # 2. Create Directory Structure
-echo "[BOOTSTRAP] Creating directory structure..."
-mkdir -p Factory_System Knowledge_Base Browser_Tools Profit_Management Showcase_Indicators rag_mql5 rag_theory rag_code
+echo "[BOOTSTRAP] Creating base directory structure..."
+mkdir -p Factory_System Knowledge_Base Browser_Tools Profit_Management Showcase_Indicators
 
 # 3. Restore Tools
 echo "[BOOTSTRAP] Restoring kutato.py (Unified Search Tool)..."
@@ -303,21 +303,59 @@ if __name__ == "__main__":
 EOF
 
 # 4. Download RAGs
-# Helper function for download and extraction
+# Helper function for download and extraction with robust directory handling
 download_and_extract() {
     NAME=$1
     ID=$2
-    DIR=$3
+    TARGET_DIR=$3
     CHECK_FILE=$4
 
-    if [ -f "$DIR/$CHECK_FILE" ]; then
-        echo "[BOOTSTRAP] $NAME already exists. Skipping."
+    echo "[BOOTSTRAP] Processing $NAME..."
+
+    # Check if exists
+    if [ -f "$TARGET_DIR/$CHECK_FILE" ]; then
+        echo "   -> $NAME already exists. Skipping."
+        return
+    fi
+
+    # Clean target
+    rm -rf "$TARGET_DIR"
+
+    # Download
+    echo "   -> Downloading zip..."
+    gdown --fuzzy "$ID" -O "${NAME}.zip"
+
+    # Extract to temporary directory to handle folder structure ambiguity
+    TMP_DIR="_tmp_extract_${NAME}"
+    rm -rf "$TMP_DIR"
+    mkdir -p "$TMP_DIR"
+
+    echo "   -> Extracting..."
+    unzip -q "${NAME}.zip" -d "$TMP_DIR"
+
+    # Logic: Move content to TARGET_DIR
+    # Case 1: Zip contains a single folder named $NAME (e.g., rag_code/file.db)
+    if [ -d "$TMP_DIR/$NAME" ]; then
+        echo "   -> Detected nested folder structure. Moving..."
+        mv "$TMP_DIR/$NAME" "$TARGET_DIR"
     else
-        echo "[BOOTSTRAP] Downloading $NAME..."
-        gdown --fuzzy "$ID" -O "${NAME}.zip"
-        echo "[BOOTSTRAP] Extracting $NAME..."
-        unzip -o "${NAME}.zip" -d "$DIR"
-        rm "${NAME}.zip"
+        # Case 2: Zip contains flat files (e.g., file.db directly)
+        echo "   -> Detected flat file structure. Moving..."
+        mv "$TMP_DIR" "$TARGET_DIR"
+    fi
+
+    # Cleanup
+    rm "${NAME}.zip"
+    rm -rf "$TMP_DIR"
+
+    # Verification
+    if [ -f "$TARGET_DIR/$CHECK_FILE" ]; then
+        echo "   -> Success! $NAME ready."
+    else
+        echo "   -> ERROR: $NAME setup failed. Expected file $CHECK_FILE not found in $TARGET_DIR."
+        # List contents for debug
+        ls -F "$TARGET_DIR"
+        exit 1
     fi
 }
 
