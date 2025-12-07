@@ -1,47 +1,31 @@
+#!/bin/bash
+set -e
+
+echo "Jules Environment Setup Script v251207_1 (Bash)"
+echo "------------------------------------------------"
+
+# 1. Install Dependencies
+echo "[BOOTSTRAP] Installing Python dependencies..."
+# Check if pip is available, else use pip3
+PIP_CMD="pip"
+if ! command -v pip &> /dev/null; then
+    if command -v pip3 &> /dev/null; then
+        PIP_CMD="pip3"
+    else
+        echo "Error: pip not found."
+        exit 1
+    fi
+fi
+$PIP_CMD install faiss-cpu sentence-transformers gdown
+
+# 2. Create Directory Structure
+echo "[BOOTSTRAP] Creating directory structure..."
+mkdir -p Factory_System Knowledge_Base Browser_Tools Profit_Management Showcase_Indicators rag_mql5 rag_theory rag_code
+
+# 3. Restore Tools
+echo "[BOOTSTRAP] Restoring kutato.py (Unified Search Tool)..."
+cat << 'EOF' > kutato.py
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-Jules Environment Setup Script v251207_1
-----------------------------------------
-Autonomous bootstrap script to set up the entire development environment.
-- Installs dependencies.
-- Downloads and extracts RAG knowledge bases (MQL5 Dev, Theory, Code).
-- Recreates essential tools (kutato.py, kutato_ugynok_v3.py).
-- Ensures directory structure.
-"""
-
-import os
-import sys
-import subprocess
-import shutil
-import time
-
-# --- CONFIGURATION ---
-RAG_LINKS = {
-    'rag_mql5': 'https://drive.google.com/uc?id=1luBkNTptLkdJsYs_mHHgRyDwSijgC5NA', # Converted from view?usp to uc?id
-    'rag_theory': 'https://drive.google.com/uc?id=1UZgIItTO5a-Kspzdg2MozvqqiF16f3H3',
-    'rag_code': 'https://drive.google.com/uc?id=1OM_4ucQj40PvWPRBajC6faMXktCvdRZq'
-}
-
-REQUIRED_DIRS = [
-    'Factory_System',
-    'Knowledge_Base',
-    'Browser_Tools',
-    'Profit_Management',
-    'Showcase_Indicators',
-    'rag_mql5',
-    'rag_theory',
-    'rag_code'
-]
-
-DEPENDENCIES = [
-    'faiss-cpu',
-    'sentence-transformers',
-    'gdown'
-]
-
-# --- EMBEDDED TOOLS ---
-KUTATO_PY_CONTENT = r'''#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 Kutato modul - Unified RAG Search Tool
@@ -187,9 +171,11 @@ def main():
 
 if __name__ == "__main__":
     main()
-'''
+EOF
 
-KUTATO_UGYNOK_CONTENT = r'''#!/usr/bin/env python
+echo "[BOOTSTRAP] Restoring Factory_System/kutato_ugynok_v3.py (Agent)..."
+cat << 'EOF' > Factory_System/kutato_ugynok_v3.py
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import sys
 import json
@@ -314,84 +300,31 @@ def main():
 
 if __name__ == "__main__":
     main()
-'''
+EOF
 
-def log(msg):
-    print(f"[BOOTSTRAP] {msg}")
+# 4. Download RAGs
+# Helper function for download and extraction
+download_and_extract() {
+    NAME=$1
+    ID=$2
+    DIR=$3
+    CHECK_FILE=$4
 
-def run_cmd(cmd):
-    try:
-        subprocess.check_call(cmd, shell=True)
-    except subprocess.CalledProcessError as e:
-        log(f"ERROR: Command failed: {cmd}")
-        sys.exit(1)
+    if [ -f "$DIR/$CHECK_FILE" ]; then
+        echo "[BOOTSTRAP] $NAME already exists. Skipping."
+    else
+        echo "[BOOTSTRAP] Downloading $NAME..."
+        gdown --fuzzy "$ID" -O "${NAME}.zip"
+        echo "[BOOTSTRAP] Extracting $NAME..."
+        unzip -o "${NAME}.zip" -d "$DIR"
+        rm "${NAME}.zip"
+    fi
+}
 
-def install_dependencies():
-    log("Installing Python dependencies...")
-    run_cmd(f"{sys.executable} -m pip install {' '.join(DEPENDENCIES)}")
+echo "[BOOTSTRAP] Downloading RAG databases..."
+download_and_extract "rag_mql5" "1luBkNTptLkdJsYs_mHHgRyDwSijgC5NA" "rag_mql5" "MQL5_DEV_knowledgebase.db"
+download_and_extract "rag_theory" "1UZgIItTO5a-Kspzdg2MozvqqiF16f3H3" "rag_theory" "theory_knowledgebase.db"
+download_and_extract "rag_code" "1OM_4ucQj40PvWPRBajC6faMXktCvdRZq" "rag_code" "code_knowledgebase.db"
 
-def setup_directories():
-    log("Verifying directory structure...")
-    for d in REQUIRED_DIRS:
-        if not os.path.exists(d):
-            os.makedirs(d)
-            log(f"Created: {d}")
-
-def restore_tools():
-    log("Restoring tool scripts...")
-
-    # kutato.py
-    with open('kutato.py', 'w', encoding='utf-8') as f:
-        f.write(KUTATO_PY_CONTENT)
-    log("Restored: kutato.py")
-
-    # kutato_ugynok_v3.py
-    ugynok_path = os.path.join('Factory_System', 'kutato_ugynok_v3.py')
-    with open(ugynok_path, 'w', encoding='utf-8') as f:
-        f.write(KUTATO_UGYNOK_CONTENT)
-    log(f"Restored: {ugynok_path}")
-
-def download_rag(name, link, target_dir):
-    # Check if DB exists to skip download
-    # Assumption: zip contains .db or .index
-    # We check if the target dir is populated with expected files
-    if name == 'rag_mql5':
-        check_file = os.path.join(target_dir, 'MQL5_DEV_knowledgebase.db')
-    elif name == 'rag_theory':
-        check_file = os.path.join(target_dir, 'theory_knowledgebase.db')
-    elif name == 'rag_code':
-        check_file = os.path.join(target_dir, 'code_knowledgebase.db')
-    else:
-        check_file = None
-
-    if check_file and os.path.exists(check_file):
-        log(f"RAG {name} already exists at {check_file}. Skipping download.")
-        return
-
-    log(f"Downloading {name}...")
-    zip_path = f"{name}.zip"
-
-    # Using gdown
-    run_cmd(f"gdown --fuzzy '{link}' -O {zip_path}")
-
-    log(f"Extracting {name}...")
-    run_cmd(f"unzip -o {zip_path} -d {target_dir}")
-
-    if os.path.exists(zip_path):
-        os.remove(zip_path)
-    log(f"Cleaned up {zip_path}")
-
-def main():
-    log("Starting environment setup...")
-
-    install_dependencies()
-    setup_directories()
-    restore_tools()
-
-    for name, link in RAG_LINKS.items():
-        download_rag(name, link, name)
-
-    log("Environment setup complete! You are ready to work.")
-
-if __name__ == "__main__":
-    main()
+echo "[BOOTSTRAP] Environment setup complete! You are ready to work."
+exit 0
