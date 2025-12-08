@@ -13,3 +13,7 @@ rag_code/
 *.db
 *.index
 *.pkl
+rag_mql5/
+rag_mql5_big/
+rag_theory/
+rag_code/
