@@ -9,6 +9,7 @@
 
 #include "..\Showcase_Indicators\MarketRegimeDetector.mqh"
 #include "..\Profit_Management\TickVolatility.mqh"
+#include "Environment\Environment.mqh"
 
 //+------------------------------------------------------------------+
 //| Enum: Assistant Advice                                           |
@@ -35,6 +36,7 @@ private:
    // Components
    CMarketRegimeDetector *m_regime;
    CTickVolatility       *m_tick_vol;
+   CEnvironment          *m_env;
 
    // State
    double                 m_conviction_score; // -100 to +100
@@ -54,7 +56,7 @@ public:
                     ~CTradingAssistant(void);
 
    // Initialization
-   bool              Init(string symbol, ENUM_TIMEFRAMES period);
+   bool              Init(string symbol, ENUM_TIMEFRAMES period, CEnvironment *env);
 
    // Main Tick Loop
    void              OnTick(double current_bid);
@@ -89,8 +91,9 @@ CTradingAssistant::~CTradingAssistant(void)
 //+------------------------------------------------------------------+
 //| Init                                                             |
 //+------------------------------------------------------------------+
-bool CTradingAssistant::Init(string symbol, ENUM_TIMEFRAMES period)
+bool CTradingAssistant::Init(string symbol, ENUM_TIMEFRAMES period, CEnvironment *env)
   {
+   m_env = env;
    // Init Regime Detector
    if(!m_regime->Init(symbol, period)) return false;
 
@@ -125,11 +128,22 @@ void CTradingAssistant::OnTick(double current_bid)
                         (score_mom * m_weight_momentum) +
                         (score_vol * m_weight_volatility);
 
+   // 5. Environment Filter (The "Organism" logic)
+   if(m_env != NULL)
+     {
+      if(!m_env->IsSafeToTrade())
+        {
+         // If environment is unsafe (News, Rollover), Force Neutral/Block
+         // Penalty logic: reduce conviction to near 0
+         m_conviction_score = 0.0;
+        }
+     }
+
    // Clamp -100 to 100
    if(m_conviction_score > 100) m_conviction_score = 100;
    if(m_conviction_score < -100) m_conviction_score = -100;
 
-   // 5. Determine Advice
+   // 6. Determine Advice
    if(m_conviction_score > 75) m_current_advice = ADVICE_BUY_STRONG;
    else if(m_conviction_score > 25) m_current_advice = ADVICE_BUY_WEAK;
    else if(m_conviction_score < -75) m_current_advice = ADVICE_SELL_STRONG;

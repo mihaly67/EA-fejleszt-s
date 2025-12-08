@@ -11,6 +11,7 @@
 //--- Includes
 #include "..\Profit_Management\TradingAssistant.mqh"
 #include "..\Profit_Management\TradingPanel.mqh"
+#include "..\Profit_Management\Environment\Environment.mqh"
 
 //--- Input Parameters
 input int      InpADXPeriod   = 14;    // ADX Period
@@ -19,15 +20,24 @@ input int      InpATRPeriod   = 14;    // ATR Period
 //--- Global Objects
 CTradingAssistant *g_Assistant;
 CTradingPanel     *g_Panel;
+CEnvironment      *g_Env;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
 int OnInit()
   {
+   // 0. Initialize Environment (The Nervous System)
+   g_Env = new CEnvironment();
+   if(!g_Env->Init(_Symbol))
+     {
+      Print("Failed to init Environment");
+      return INIT_FAILED;
+     }
+
    // 1. Initialize Assistant Logic
    g_Assistant = new CTradingAssistant();
-   if(!g_Assistant->Init(_Symbol, _Period))
+   if(!g_Assistant->Init(_Symbol, _Period, g_Env))
      {
       Print("Failed to init Assistant");
       return INIT_FAILED;
@@ -65,6 +75,11 @@ void OnDeinit(const int reason)
      {
       delete g_Assistant;
      }
+
+   if(CheckPointer(g_Env) == POINTER_DYNAMIC)
+     {
+      delete g_Env;
+     }
   }
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
@@ -74,6 +89,9 @@ void OnTick()
    // Get current Bid price
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol, tick)) return;
+
+   // 0. Update Environment
+   if(g_Env != NULL) g_Env->OnTick();
 
    // Feed logic
    g_Assistant->OnTick(tick.bid);
