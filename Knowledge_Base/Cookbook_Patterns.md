@@ -47,6 +47,13 @@ public:
 ```
 *Note: This perfectly aligns with our `Tick_Risk_Model.md`.*
 
+## 2.1 Hybrid Control Pattern (Manual Override)
+Based on Article 12536 and 1979.
+To support manual SL/TP dragging while EA is active:
+1.  **Listen:** `OnTradeTransaction` (specifically `TRADE_TRANSACTION_ORDER_UPDATE` or `TRADE_TRANSACTION_DEAL_ADD`).
+2.  **Detect:** Compare `PositionGetDouble(POSITION_SL)` with the EA's internal `m_last_sl`.
+3.  **Adopt:** If they differ, and the EA didn't just send a request, assume User Override. Update `m_last_sl` and `m_trailing_distance` to match the user's new preference.
+
 ## 3. Custom Indicator Classes
 Standard "Cookbook" approach for encapsulating indicator logic.
 - **Initialize:** In constructor or `Init` method.

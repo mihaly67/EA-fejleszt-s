@@ -7,8 +7,9 @@
 #property link      "https://www.mql5.com"
 #property version   "1.00"
 
-#include <..\Showcase_Indicators\MarketRegimeDetector.mqh>
-#include <..\Profit_Management\TickVolatility.mqh>
+#include "..\Showcase_Indicators\MarketRegimeDetector.mqh"
+#include "..\Profit_Management\TickVolatility.mqh"
+#include "Environment\Environment.mqh"
 
 //+------------------------------------------------------------------+
 //| Enum: Assistant Advice                                           |
@@ -35,6 +36,7 @@ private:
    // Components
    CMarketRegimeDetector *m_regime;
    CTickVolatility       *m_tick_vol;
+   CEnvironment          *m_env;
 
    // State
    double                 m_conviction_score; // -100 to +100
@@ -54,7 +56,7 @@ public:
                     ~CTradingAssistant(void);
 
    // Initialization
-   bool              Init(string symbol, ENUM_TIMEFRAMES period);
+   bool              Init(string symbol, ENUM_TIMEFRAMES period, CEnvironment *env);
 
    // Main Tick Loop
    void              OnTick(double current_bid);
@@ -64,7 +66,7 @@ public:
    string            GetAdviceText(void);
    ENUM_ASSISTANT_ADVICE GetAdvice(void)      { return m_current_advice;   }
    string            GetRegimeText(void);
-   double            GetTickVolatility(void)  { return m_tick_vol.GetStdDev(); }
+   double            GetTickVolatility(void)  { return m_tick_vol->GetStdDev(); }
   };
 //+------------------------------------------------------------------+
 //| Constructor                                                      |
@@ -89,13 +91,14 @@ CTradingAssistant::~CTradingAssistant(void)
 //+------------------------------------------------------------------+
 //| Init                                                             |
 //+------------------------------------------------------------------+
-bool CTradingAssistant::Init(string symbol, ENUM_TIMEFRAMES period)
+bool CTradingAssistant::Init(string symbol, ENUM_TIMEFRAMES period, CEnvironment *env)
   {
+   m_env = env;
    // Init Regime Detector
-   if(!m_regime.Init(symbol, period)) return false;
+   if(!m_regime->Init(symbol, period)) return false;
 
    // Init Tick Volatility (window 1000 ticks)
-   m_tick_vol.Init(1000);
+   m_tick_vol->Init(1000);
 
    return true;
   }
@@ -105,10 +108,10 @@ bool CTradingAssistant::Init(string symbol, ENUM_TIMEFRAMES period)
 void CTradingAssistant::OnTick(double current_bid)
   {
    // 1. Update Volatility
-   m_tick_vol.Update(current_bid);
+   m_tick_vol->Update(current_bid);
 
    // 2. Detect Regime
-   ENUM_MARKET_REGIME current_regime = m_regime.Detect();
+   ENUM_MARKET_REGIME current_regime = m_regime->Detect();
 
    // 3. Calculate Scores
    double score_regime = CalcRegimeScore(current_regime);
@@ -125,11 +128,22 @@ void CTradingAssistant::OnTick(double current_bid)
                         (score_mom * m_weight_momentum) +
                         (score_vol * m_weight_volatility);
 
+   // 5. Environment Filter (The "Organism" logic)
+   if(m_env != NULL)
+     {
+      if(!m_env->IsSafeToTrade())
+        {
+         // If environment is unsafe (News, Rollover), Force Neutral/Block
+         // Penalty logic: reduce conviction to near 0
+         m_conviction_score = 0.0;
+        }
+     }
+
    // Clamp -100 to 100
    if(m_conviction_score > 100) m_conviction_score = 100;
    if(m_conviction_score < -100) m_conviction_score = -100;
 
-   // 5. Determine Advice
+   // 6. Determine Advice
    if(m_conviction_score > 75) m_current_advice = ADVICE_BUY_STRONG;
    else if(m_conviction_score > 25) m_current_advice = ADVICE_BUY_WEAK;
    else if(m_conviction_score < -75) m_current_advice = ADVICE_SELL_STRONG;
@@ -137,7 +151,7 @@ void CTradingAssistant::OnTick(double current_bid)
    else m_current_advice = ADVICE_WAIT;
 
    // Safety Override
-   if(m_tick_vol.GetStdDev() > 0.00050) // High tick noise example (50 points)
+   if(m_tick_vol->GetStdDev() > 0.00050) // High tick noise example (50 points)
      {
       // m_current_advice = ADVICE_WARNING_VOLATILITY;
       // Keep advice but maybe warn? For now let's just stick to score.

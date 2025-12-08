@@ -9,8 +9,9 @@
 #property description "Showcase for Trading Assistant & Dashboard"
 
 //--- Includes
-#include <..\Profit_Management\TradingAssistant.mqh>
-#include <..\Profit_Management\TradingPanel.mqh>
+#include "..\Profit_Management\TradingAssistant.mqh"
+#include "..\Profit_Management\TradingPanel.mqh"
+#include "..\Profit_Management\Environment\Environment.mqh"
 
 //--- Input Parameters
 input int      InpADXPeriod   = 14;    // ADX Period
@@ -19,15 +20,24 @@ input int      InpATRPeriod   = 14;    // ATR Period
 //--- Global Objects
 CTradingAssistant *g_Assistant;
 CTradingPanel     *g_Panel;
+CEnvironment      *g_Env;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
 int OnInit()
   {
+   // 0. Initialize Environment (The Nervous System)
+   g_Env = new CEnvironment();
+   if(!g_Env->Init(_Symbol))
+     {
+      Print("Failed to init Environment");
+      return INIT_FAILED;
+     }
+
    // 1. Initialize Assistant Logic
    g_Assistant = new CTradingAssistant();
-   if(!g_Assistant.Init(_Symbol, _Period))
+   if(!g_Assistant->Init(_Symbol, _Period, g_Env))
      {
       Print("Failed to init Assistant");
       return INIT_FAILED;
@@ -35,12 +45,12 @@ int OnInit()
 
    // 2. Initialize GUI Panel
    g_Panel = new CTradingPanel();
-   if(!g_Panel.Create(0, "WPR_Assistant_Panel", 0, 50, 50, 400, 250))
+   if(!g_Panel->Create(0, "WPR_Assistant_Panel", 0, 50, 50, 400, 250))
      {
       Print("Failed to create Panel");
       return INIT_FAILED;
      }
-   g_Panel.Run(); // Start message loop for panel
+   g_Panel->Run(); // Start message loop for panel
 
    // 3. Set timer for updates
    EventSetTimer(1); // 1 second update rate for GUI
@@ -57,13 +67,18 @@ void OnDeinit(const int reason)
 
    if(CheckPointer(g_Panel) == POINTER_DYNAMIC)
      {
-      g_Panel.Destroy(reason);
+      g_Panel->Destroy(reason);
       delete g_Panel;
      }
 
    if(CheckPointer(g_Assistant) == POINTER_DYNAMIC)
      {
       delete g_Assistant;
+     }
+
+   if(CheckPointer(g_Env) == POINTER_DYNAMIC)
+     {
+      delete g_Env;
      }
   }
 //+------------------------------------------------------------------+
@@ -75,8 +90,11 @@ void OnTick()
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol, tick)) return;
 
+   // 0. Update Environment
+   if(g_Env != NULL) g_Env->OnTick();
+
    // Feed logic
-   g_Assistant.OnTick(tick.bid);
+   g_Assistant->OnTick(tick.bid);
 
    // Note: We update GUI in OnTimer to decouple heavy logic from rendering,
    // but for simple panels, updating here is also fine.
@@ -89,11 +107,11 @@ void OnTimer()
    if(CheckPointer(g_Panel) != POINTER_DYNAMIC) return;
 
    // Refresh Panel Data from Assistant
-   g_Panel.UpdateValues(
-      g_Assistant.GetRegimeText(),
-      g_Assistant.GetAdviceText(),
-      g_Assistant.GetConvictionScore(),
-      g_Assistant.GetTickVolatility()
+   g_Panel->UpdateValues(
+      g_Assistant->GetRegimeText(),
+      g_Assistant->GetAdviceText(),
+      g_Assistant->GetConvictionScore(),
+      g_Assistant->GetTickVolatility()
    );
   }
 //+------------------------------------------------------------------+
@@ -107,7 +125,7 @@ void OnChartEvent(const int id,
    // Pass events to Panel (for clicks, drag, etc)
    if(CheckPointer(g_Panel) == POINTER_DYNAMIC)
      {
-      g_Panel.OnEvent(id, lparam, dparam, sparam);
+      g_Panel->OnEvent(id, lparam, dparam, sparam);
      }
   }
 //+------------------------------------------------------------------+
