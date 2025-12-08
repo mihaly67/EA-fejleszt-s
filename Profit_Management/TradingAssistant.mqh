@@ -7,8 +7,8 @@
 #property link      "https://www.mql5.com"
 #property version   "1.00"
 
-#include <..\Showcase_Indicators\MarketRegimeDetector.mqh>
-#include <..\Profit_Management\TickVolatility.mqh>
+#include "..\Showcase_Indicators\MarketRegimeDetector.mqh"
+#include "..\Profit_Management\TickVolatility.mqh"
 
 //+------------------------------------------------------------------+
 //| Enum: Assistant Advice                                           |
@@ -64,7 +64,7 @@ public:
    string            GetAdviceText(void);
    ENUM_ASSISTANT_ADVICE GetAdvice(void)      { return m_current_advice;   }
    string            GetRegimeText(void);
-   double            GetTickVolatility(void)  { return m_tick_vol.GetStdDev(); }
+   double            GetTickVolatility(void)  { return m_tick_vol->GetStdDev(); }
   };
 //+------------------------------------------------------------------+
 //| Constructor                                                      |
@@ -92,10 +92,10 @@ CTradingAssistant::~CTradingAssistant(void)
 bool CTradingAssistant::Init(string symbol, ENUM_TIMEFRAMES period)
   {
    // Init Regime Detector
-   if(!m_regime.Init(symbol, period)) return false;
+   if(!m_regime->Init(symbol, period)) return false;
 
    // Init Tick Volatility (window 1000 ticks)
-   m_tick_vol.Init(1000);
+   m_tick_vol->Init(1000);
 
    return true;
   }
@@ -105,10 +105,10 @@ bool CTradingAssistant::Init(string symbol, ENUM_TIMEFRAMES period)
 void CTradingAssistant::OnTick(double current_bid)
   {
    // 1. Update Volatility
-   m_tick_vol.Update(current_bid);
+   m_tick_vol->Update(current_bid);
 
    // 2. Detect Regime
-   ENUM_MARKET_REGIME current_regime = m_regime.Detect();
+   ENUM_MARKET_REGIME current_regime = m_regime->Detect();
 
    // 3. Calculate Scores
    double score_regime = CalcRegimeScore(current_regime);
@@ -137,7 +137,7 @@ void CTradingAssistant::OnTick(double current_bid)
    else m_current_advice = ADVICE_WAIT;
 
    // Safety Override
-   if(m_tick_vol.GetStdDev() > 0.00050) // High tick noise example (50 points)
+   if(m_tick_vol->GetStdDev() > 0.00050) // High tick noise example (50 points)
      {
       // m_current_advice = ADVICE_WARNING_VOLATILITY;
       // Keep advice but maybe warn? For now let's just stick to score.
