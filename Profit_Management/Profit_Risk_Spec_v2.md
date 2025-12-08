@@ -25,8 +25,9 @@ The system operates in a **"Cyborg" Mode**:
 - **Min Profit:** `1.5 * AverageSpread`.
     - If `FloatingProfit < MinProfit`, do not trigger "Early Exit" signals (unless Emergency).
 - **Free Running (Max Profit):**
-    - Concept: "Let winners run".
-    - Implementation: Once `Profit > BreakEven_Trigger`, remove hard TP (or move to +Inf). Switch to **Tight Trailing Mode**.
+    - Concept: "Let winners run" but with targets.
+    - Implementation: **Trailing Take Profit**.
+    - Logic: See `Profit_Maximizer_Spec.md`. The TP is actively pushed away (`NewTP = Price + Volatility`) as long as Momentum is strong and Pullback is within `MaxAdverseExcursion` limits.
 
 ### 3.2 Dynamic Trailing Distance
 - User can "pull back" or "tighten" the TS manually.
