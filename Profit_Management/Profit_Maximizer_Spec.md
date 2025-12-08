@@ -23,12 +23,14 @@ The "Free Run" must end if the market turns.
     -   `CurrentProfit = (Price - OpenPrice)`.
     -   If `CurrentProfit > PeakProfit` -> Update `PeakProfit`.
     -   Calculate `Pullback = PeakProfit - CurrentProfit`.
-    -   Calculate `SafePullback = 2.0 * TickSD`.
+    -   Calculate `SafePullback = 2.0 * TickSD` (or `1.0 * ATR` if TickSD unstable).
     -   **Decision:**
-        -   If `Pullback > SafePullback`: **LOCK MODE**. Do not move TP further. Tighten TS.
+        -   If `Pullback > SafePullback`: **LOCK MODE**. Do not move TP further. Tighten TS immediately.
         -   Else If `Dist(Price, TP) < (1.0 * TickSD)`: **EXPAND MODE**. Move TP away (`+10 Points` or similar).
+        -   *Optimization:* Use `CTrade::OrderModify` only if `NewTP` differs significantly (> 1.0 Point) to avoid "Trade Flood".
 
 ## 4. Integration with `ProfitManager`
 - The `CProfitManager` delegates the TP handling to `CProfitMaximizer` when in `MODE_FREE_RUN`.
 - `SmartTrailing` handles the Stop Loss (defensive).
 - `ProfitMaximizer` handles the Take Profit (offensive).
+- **Execution:** Uses standard `CTrade` library for robust error handling (Requotes, Busy Server).
