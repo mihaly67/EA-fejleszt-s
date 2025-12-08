@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, MetaQuotes Ltd."
 #property link      "https://www.mql5.com"
-#property version   "1.00"
+#property version   "1.10"
 
 enum ENUM_SESSION_TYPE
   {
@@ -23,15 +23,18 @@ class CTimeManager
 private:
    int               m_london_open;
    int               m_ny_open;
-   int               m_rollover_start; // e.g., 23
-   int               m_rollover_end;   // e.g., 0
+   int               m_rollover_start;
+   int               m_rollover_end;
 
 public:
                      CTimeManager(void);
                     ~CTimeManager(void);
 
-   // Simple Session Logic (GMT offset handling usually required, simplified here)
+   // Session Logic using Server Time
    ENUM_SESSION_TYPE GetCurrentSession(void);
+
+   // Time Retrieval
+   datetime          GetServerTime(MqlDateTime &dt_struct);
 
    // Safety
    bool              IsRolloverTime(void);
@@ -50,12 +53,21 @@ CTimeManager::~CTimeManager(void)
   {
   }
 //+------------------------------------------------------------------+
+//| Get Correct Server Time                                          |
+//+------------------------------------------------------------------+
+datetime CTimeManager::GetServerTime(MqlDateTime &dt_struct)
+  {
+   // TimeTradeServer is preferred over TimeCurrent for logic checks
+   datetime tm = TimeTradeServer(dt_struct);
+   return tm;
+  }
+//+------------------------------------------------------------------+
 //| Get Session                                                      |
 //+------------------------------------------------------------------+
 ENUM_SESSION_TYPE CTimeManager::GetCurrentSession(void)
   {
    MqlDateTime dt;
-   TimeCurrent(dt);
+   GetServerTime(dt);
 
    if(dt.hour >= m_london_open && dt.hour < m_ny_open) return SESSION_LONDON;
    if(dt.hour >= m_ny_open && dt.hour < 22) return SESSION_NY;
@@ -69,7 +81,7 @@ ENUM_SESSION_TYPE CTimeManager::GetCurrentSession(void)
 bool CTimeManager::IsRolloverTime(void)
   {
    MqlDateTime dt;
-   TimeCurrent(dt);
+   GetServerTime(dt);
 
    // Filter 23:55 to 00:05
    if(dt.hour == 23 && dt.min >= 55) return true;
@@ -83,7 +95,7 @@ bool CTimeManager::IsRolloverTime(void)
 bool CTimeManager::IsFridayClose(void)
   {
    MqlDateTime dt;
-   TimeCurrent(dt);
+   GetServerTime(dt);
 
    if(dt.day_of_week == 5 && dt.hour >= 21) return true;
    return false;

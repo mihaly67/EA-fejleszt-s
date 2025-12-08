@@ -5,9 +5,10 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, MetaQuotes Ltd."
 #property link      "https://www.mql5.com"
-#property version   "1.00"
+#property version   "1.10"
 
 #include "..\Profit_Management\TickVolatility.mqh"
+#include "..\Profit_Management\Environment\BrokerInfo.mqh"
 
 //+------------------------------------------------------------------+
 //| Class: Advanced Risk Manager                                     |
@@ -20,6 +21,7 @@ private:
    double            m_start_day_equity;
 
    CTickVolatility  *m_tick_vol;             // Pointer to shared volatility object
+   CBrokerInfo      *m_broker;               // Pointer to Broker Info
 
 public:
                      CRiskManager(void);
@@ -28,6 +30,7 @@ public:
    // Configuration
    void              Init(double base_risk, double max_dd);
    void              SetTickVolatility(CTickVolatility *tick_vol) { m_tick_vol = tick_vol; }
+   void              SetBrokerInfo(CBrokerInfo *broker)           { m_broker = broker; }
    void              OnNewDay(void);
 
    // Main Calculation
@@ -42,7 +45,8 @@ public:
 CRiskManager::CRiskManager(void) : m_base_risk_percent(1.0),
                                    m_max_daily_dd(5.0),
                                    m_start_day_equity(0.0),
-                                   m_tick_vol(NULL)
+                                   m_tick_vol(NULL),
+                                   m_broker(NULL)
   {
    m_start_day_equity = AccountInfoDouble(ACCOUNT_EQUITY);
   }
@@ -51,7 +55,7 @@ CRiskManager::CRiskManager(void) : m_base_risk_percent(1.0),
 //+------------------------------------------------------------------+
 CRiskManager::~CRiskManager(void)
   {
-   // m_tick_vol is external, do not delete
+   // m_tick_vol, m_broker are external
   }
 //+------------------------------------------------------------------+
 //| Initialization                                                   |
@@ -77,57 +81,64 @@ double CRiskManager::CalculateLotSize(string symbol, double sl_points, double co
    if(!CheckSafety()) return 0.0;
 
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+   double free_margin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
 
    // 1. Adjust Risk % based on Conviction
-   // Base = 1.0%. Strong (>80) = 1.5%. Weak (<50) = 0.5%.
    double adjusted_risk = m_base_risk_percent;
-
    if(conviction_score > 80.0) adjusted_risk *= 1.5;
    else if(conviction_score < 50.0) adjusted_risk *= 0.5;
 
-   // 2. Adjust for Volatility (if available)
-   // If SL is too tight vs Tick Noise, we must enforce minimum SL distance math
-   // effectively reducing lot size for the same risk amount.
-   if(m_tick_vol != NULL)
+   // 2. Adjust for Volatility (Normalization)
+   if(m_tick_vol != NULL && m_broker != NULL)
      {
-      // Fix: Use arrow operator for pointer access
-      double tick_sd_points = m_tick_vol->GetStdDev() / SymbolInfoDouble(symbol, SYMBOL_POINT);
+      double tick_sd_points = m_tick_vol->GetStdDev() / m_broker->GetPoint();
       double min_safe_sl = tick_sd_points * 3.0; // 3 sigma
 
+      // If requested SL is tighter than noise, use noise-based SL for risk calc (Safety)
       if(sl_points < min_safe_sl && sl_points > 0)
         {
-         // User wants tight SL (e.g. 50 pts), but Noise is 30 pts (3sig=90).
-         // Option A: Forbid trade. Option B: Use 90 pts for calculation to reduce lot size.
-         // We choose Option B (Capital Protection).
          sl_points = min_safe_sl;
         }
      }
 
-   if(sl_points <= 0) return 0.0; // Invalid SL
+   if(sl_points <= 0) return 0.0;
 
    // 3. Calculate Money Risk
    double risk_money = equity * (adjusted_risk / 100.0);
 
-   // 4. Convert to Lots
-   double tick_value = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
-   double tick_size  = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
-   double point      = SymbolInfoDouble(symbol, SYMBOL_POINT);
+   // 4. Convert to Lots using Broker Info
+   if(m_broker == NULL) return 0.0; // Broker info required
+
+   double tick_value = m_broker->GetTickValue();
+   double tick_size  = m_broker->GetTickSize();
+   double point      = m_broker->GetPoint();
 
    if(tick_size == 0 || tick_value == 0) return 0.0;
 
    double points_per_tick = tick_size / point;
    double sl_ticks = sl_points / points_per_tick;
 
-   double lot_step = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
    double raw_lots = risk_money / (sl_ticks * tick_value);
 
-   // Normalize
+   // 5. Margin Check (Leverage)
+   // Ensure we have enough free margin. OrderCalcMargin is safer.
+   double required_margin = m_broker->CalculateMargin(ORDER_TYPE_BUY, raw_lots, SymbolInfoDouble(symbol, SYMBOL_ASK));
+
+   // If margin required > X% of Free Margin (e.g. 50% safety buffer), reduce lots.
+   if(required_margin > free_margin * 0.9)
+     {
+      double ratio = (free_margin * 0.9) / required_margin;
+      raw_lots *= ratio;
+     }
+
+   // 6. Normalize to Lot Steps
+   double lot_step = m_broker->GetLotStep();
    double lots = MathFloor(raw_lots / lot_step) * lot_step;
 
-   double min_lot = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
-   double max_lot = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
+   double min_lot = m_broker->GetMinLot();
+   double max_lot = m_broker->GetMaxLot();
 
-   if(lots < min_lot) lots = 0.0; // Too small risk
+   if(lots < min_lot) lots = 0.0;
    if(lots > max_lot) lots = max_lot;
 
    return lots;
