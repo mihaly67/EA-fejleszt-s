@@ -1,7 +1,10 @@
 # Last Session Handover (Deep Design Phase Completed)
 
 ## 1. System Status
-- **Infrastructure:** RAG System (MQL5/Theory/Code) is installed and functional via `setup_rag.sh`.
+- **Infrastructure:** RAG System is managed by `jules_env_optimized_v1`.
+    - **Script:** Downloads, Extracts, Hoists, and Cleans up zips.
+    - **Optimization:** MQL5 is Disk-Based (MMAP), Theory/Code are Memory-Loaded.
+    - **Next Start:** Run `bash jules_env_optimized_v1` to restore environment if needed.
 - **Core Logic (Implemented):**
     - `Environment`: Nervous System (Broker/Time/News) is live.
     - `RiskManager`: Tick-based volatility (Welford) and basic sizing logic are implemented.
