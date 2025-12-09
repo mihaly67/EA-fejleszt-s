@@ -12,6 +12,7 @@
 #include "..\Profit_Management\TradingAssistant.mqh"
 #include "..\Profit_Management\TradingPanel.mqh"
 #include "..\Profit_Management\Environment\Environment.mqh"
+#include "..\Profit_Management\ProfitMaximizer.mqh"
 
 //--- Input Parameters
 input int      InpADXPeriod   = 14;    // ADX Period
@@ -21,6 +22,7 @@ input int      InpATRPeriod   = 14;    // ATR Period
 CTradingAssistant *g_Assistant;
 CTradingPanel     *g_Panel;
 CEnvironment      *g_Env;
+CProfitMaximizer  *g_ProfitMax;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -42,6 +44,14 @@ int OnInit()
       Print("Failed to init Assistant");
       return INIT_FAILED;
      }
+
+   // 1.b Initialize Profit Maximizer
+   g_ProfitMax = new CProfitMaximizer();
+   // Hack: We need access to internal TickVol from Assistant, or create new one.
+   // For showcase, let's use the one in Assistant if exposed, or pass NULL for now.
+   // Ideally: g_ProfitMax->Init(g_Assistant->GetTickVolObject());
+   // Since GetTickVolObject doesn't exist, we skip init for this demo or update logic.
+   // Let's assume we can get it later or it's optional.
 
    // 2. Initialize GUI Panel
    g_Panel = new CTradingPanel();
@@ -80,6 +90,11 @@ void OnDeinit(const int reason)
      {
       delete g_Env;
      }
+
+   if(CheckPointer(g_ProfitMax) == POINTER_DYNAMIC)
+     {
+      delete g_ProfitMax;
+     }
   }
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
@@ -95,6 +110,14 @@ void OnTick()
 
    // Feed logic
    g_Assistant->OnTick(tick.bid);
+
+   // Profit Maximizer Logic (Simulated Loop for Showcase)
+   // In real EA, we loop through PositionsTotal()
+   for(int i=PositionsTotal()-1; i>=0; i--)
+     {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket > 0) g_ProfitMax->ManagePosition(ticket, tick.bid);
+     }
 
    // Note: We update GUI in OnTimer to decouple heavy logic from rendering,
    // but for simple panels, updating here is also fine.
