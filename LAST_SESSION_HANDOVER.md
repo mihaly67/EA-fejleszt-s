@@ -1,31 +1,21 @@
-# Last Session Handover (Deep Design Phase Completed)
+# Last Session Handover (Coding Phase Completed)
 
 ## 1. System Status
-- **Infrastructure:** RAG System is managed by `jules_env_optimized_v1`.
-    - **Script:** Downloads, Extracts, Hoists, and Cleans up zips.
-    - **Optimization:** MQL5 is Disk-Based (MMAP), Theory/Code are Memory-Loaded.
-    - **Next Start:** Run `bash jules_env_optimized_v1` to restore environment if needed.
-- **Core Logic (Implemented):**
-    - `Environment`: Nervous System (Broker/Time/News) is live.
-    - `RiskManager`: Tick-based volatility (Welford) and basic sizing logic are implemented.
-    - `TradingAssistant`: "Brain" and "Panel" (GUI) are connected and running in `Assistant_Showcase.mq5`.
-- **Designs (Ready for Code):**
-    - `Profit_Risk_Spec_v2.md`: Cyborg Mode (Manual Override), Granular Switches.
-    - `Profit_Maximizer_Spec.md`: Trailing Take Profit (Free Running).
-    - `Python_Hybrid_Strategy.md`: "Co-Pilot" architecture (Python math via JSON).
-    - `Dashboard_Controls_Spec.md`: Interactive "Cockpit" design.
+- **Infrastructure:** **Use `jules_env_optimized_v1` to start!**
+    - This script handles the 6GB RAG (Disk-Based) and small RAGs (Memory-Based) optimally.
+    - It auto-cleans zip files to prevent disk exhaustion.
+- **Implemented Features:**
+    - `ProfitMaximizer`: Dynamic TP with Trend Chasing & MAE logic.
+    - `TradingPanel`: Interactive "Cockpit" (Auto/Manual switches).
+    - `RiskManager`: Tick-based volatility sizing & leverage checks.
+    - `Environment`: Broker/Time/News awareness.
+    - `Showcase`: `Assistant_Showcase.mq5` integrates all of the above.
 
 ## 2. Next Session Goals
 **Primary Focus:** **Hybrid Indicators** (Indikátorok vizsgálata).
-- The user explicitly requested to examine/research Hybrid Indicators before proceeding with the implementation of the advanced designs.
-- **Potential Tasks:**
-    - Research best "Hybrid" combinations (e.g., Zero-Lag MA + RSI + Volatility).
-    - Prototype a "Hybrid Signal" class in MQL5 (or Python if Co-Pilot is used).
+- **Research:** Analyze standard indicators (RSI, CCI) vs. their "Hybrid" (Zero-Lag, Adaptive) versions.
+- **Python Co-Pilot:** Implement the Python script (`market_state.json` writer) to support the MQL5 EA with heavy math (scipy).
 
-**Secondary Focus (Backlog):**
-- Implement the "Cyborg" switches (Auto/Manual).
-- Implement the Python Bridge scripts.
-
-## 3. Environment Notes
-- **Timezone:** Budapest (GMT+1/GMT+2) logic is defined in specs but needs configuration in `TimeManager`.
-- **Leverage:** Fallback logic handles 1:1 to 1:500 via Margin Checks.
+## 3. Design Artifacts
+- All specifications (`Profit_Risk_Spec_v2.md`, `Communication_Spec.md`, etc.) are in `Profit_Management/`.
+- Use them as the "Blueprints" for any future expansion.
