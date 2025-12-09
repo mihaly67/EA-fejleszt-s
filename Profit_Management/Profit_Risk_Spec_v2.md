@@ -46,3 +46,8 @@ The system operates in a **"Cyborg" Mode**:
 1.  **Refactor `RiskManager`**: Add switches for SL/TP/TS.
 2.  **Create `ProfitManager`**: Separate class for Exit Logic (MinProfit, BreakEven, Manual Override detection).
 3.  **Update `SmartTrailing`**: Add method `UpdateDistance(double new_dist)` to support overrides.
+
+## 6. Python Hybrid Integration
+- **Co-Pilot:** `CPythonBridge` feeds "Secondary Analysis" into `CProfitManager`.
+- **Logic:** If Python detects "Regime Change" (via Scipy Filter), the EA switches to "Defensive Mode" even if standard indicators lag.
+- **Fail-Safe:** If Python disconnects, EA reverts to internal ADX/ATR logic seamlessly.
