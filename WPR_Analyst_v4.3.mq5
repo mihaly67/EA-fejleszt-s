@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
-//|                                            WPR_Analyst_v4.0.mq5 |
+//|                                            WPR_Analyst_v4.3.mq5 |
 //|                      Copyright 2024, Gemini & User Collaboration |
 //|                             Verzió: New Baseline & Cleanup Fix   |
 //+------------------------------------------------------------------+
@@ -72,6 +72,7 @@ datetime       g_utolso_proba_ido;
 string         g_wpr_shortname = "";
 string         g_smooth_ma_shortname = "";
 string         g_macd_shortname = "";
+bool           g_indicators_layered = false; // Jelzi, hogy megtörtént-e a rétegzés
 //-----------------------------------------------------
 
 //--- Bemeneti Paraméterek ---
@@ -80,8 +81,6 @@ input ulong         InpMagicNumber            = 202433;
 input string        InpEaComment              = "WPR_Analyst_v4.0";
 input ENUM_TRADE_MODE InpTradeMode            = MODE_SEMI_AUTOMATIC;
 input ENUM_EXIT_LOGIC InpExitLogic            = MODE_POINT_BASED;
-// VÁLTOZÁS: InpCleanupOnDeinit kapcsoló eltávolítva
-// input bool          InpCleanupOnDeinit        = true;
 input int           InpUjraProbaIdotullepesSec= 10;
 input group "Panel Settings"
 input int           InpPanelInitialX          = 10;
@@ -618,14 +617,16 @@ int OnInit()
 
    // --- További Inicializálás ---
    g_belepes_fuggoben = false;
-   // VÁLTOZÁS: Indikátornevek inicializálása
+   g_indicators_layered = false; // Reset flag
    g_wpr_shortname = "";
    g_smooth_ma_shortname = "";
    g_macd_shortname = "";
 
    wpr_handle = iWPR(_Symbol, _Period, InpWPRPeriod);
    if(wpr_handle == INVALID_HANDLE) { Print("Error creating WPR handle"); return(INIT_FAILED); }
-   // VÁLTOZÁS: Indikátornév lekérdezése
+
+   // VÁLTOZÁS: Indikátor hozzáadása és név lekérdezése
+   // Az elsődleges indikátort hozzáadjuk azonnal, hogy létrejöjjön az ablak
    if(ChartIndicatorAdd(0, 1, wpr_handle))
      {
       g_wpr_shortname = ChartIndicatorName(0, 1, 0); // 0. indikátor a 1. ablakban
@@ -634,15 +635,13 @@ int OnInit()
    else { Print("Failed to add WPR indicator to chart!"); }
 
 
-   // --- Simított WPR Indikátor Létrehozása és Hozzáadása ---
-   smooth_wpr_handle = INVALID_HANDLE; // Alaphelyzetbe állítás
+   // --- Simított WPR Indikátor Handle Létrehozása (DE NEM HOZZÁADÁSA) ---
+   smooth_wpr_handle = INVALID_HANDLE;
    if(InpWprSmoothingPeriod > 0)
      {
-      // A felhasználói input alapján választjuk ki a megfelelő simítási függvényt
       switch(InpWprSmoothingMethod)
         {
          case SMOOTH_TEMA:
-            // TEMA hívása, ha az van kiválasztva
             smooth_wpr_handle = iTEMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, wpr_handle);
             break;
          case SMOOTH_SMA:
@@ -655,29 +654,11 @@ int OnInit()
             smooth_wpr_handle = iMA(_Symbol, _Period, InpWprSmoothingPeriod, 0, MODE_SMMA, wpr_handle);
             break;
         }
-
-      if(smooth_wpr_handle != INVALID_HANDLE)
-        {
-         // Hozzáadjuk a simított indikátort ugyanahhoz az ablakhoz, mint a WPR-t
-         if(ChartIndicatorAdd(0, 1, smooth_wpr_handle))
-           {
-            // A név lekérdezése a Deinit-hez szükséges
-            g_smooth_ma_shortname = ChartIndicatorName(0, 1, 1); // Index 1, mert ez a második a subwindow-ban
-            Print("Added Smoothed WPR indicator (", EnumToString(InpWprSmoothingMethod), "), shortname: ", g_smooth_ma_shortname);
-           }
-         else
-           {
-            Print("Failed to add Smoothed WPR indicator to chart! Error: ", GetLastError());
-           }
-        }
-      else
-        {
-         Print("Error creating Smoothed WPR handle! Error: ", GetLastError());
-        }
+      if(smooth_wpr_handle == INVALID_HANDLE)
+        { Print("Error creating Smoothed WPR handle! Error: ", GetLastError()); }
      }
-   // --- Simítás Vége ---
 
-   // --- MACD Overlay Létrehozása és Hozzáadása a WPR ablakba ---
+   // --- MACD Handle Létrehozása (DE NEM HOZZÁADÁSA) ---
    if(InpShowMacdOverlay)
      {
       macd_handle = iCustom(
@@ -692,25 +673,7 @@ int OnInit()
          InpMacdAppliedPrice
       );
       if(macd_handle == INVALID_HANDLE)
-        {
-         Print("Error creating MACD handle: ", GetLastError());
-         return(INIT_FAILED);
-        }
-
-      // MACD indikátor hozzáadása a WPR külön ablakához (index: 1)
-      if(ChartIndicatorAdd(0, 1, macd_handle))
-        {
-         // A MACD saját skálát használhat, így vizuálisan a WPR felett jelenik meg rétegként
-         int macd_index = ChartIndicatorsTotal(0, 1) - 1; // mindig az utolsóként hozzáadott MACD
-         g_macd_shortname = ChartIndicatorName(0, 1, macd_index);
-         int macd_plots   = (int)IndicatorGetInteger(macd_handle, INDICATOR_PLOTS);
-         Print("Added MACD overlay indicator, shortname: ", g_macd_shortname,
-               ", plots detected: ", macd_plots, " (várt: 3 a két görbéhez és a színes hisztogramhoz)");
-        }
-      else
-        {
-         Print("Failed to add MACD overlay indicator to WPR window! Error: ", GetLastError());
-        }
+        { Print("Error creating MACD handle: ", GetLastError()); return(INIT_FAILED); }
      }
 
    if(InpUseEmaFilter)
@@ -724,46 +687,132 @@ int OnInit()
      {
       atr_handle = iATR(_Symbol, _Period, InpATRPeriod);
       if(atr_handle == INVALID_HANDLE) { Print("Error creating ATR handle: ", GetLastError()); return(INIT_FAILED); }
-      // ATR-t nem rajzoljuk ki
      }
 
    CreatePanel();
    CreateButtons();
    UpdatePanelStatus();
 
+   // Kereskedési szintek (SL/TP) megjelenítésének kényszerítése
+   ChartSetInteger(0, CHART_SHOW_TRADE_LEVELS, true);
+   ChartRedraw();
+
+   // Start Timer a rétegzéshez (hogy biztosan létezzen a subwindow)
+   EventSetTimer(1);
+
    Print("WPR Analyst v4.3 Initialized.");
    return(INIT_SUCCEEDED);
   }
 //+------------------------------------------------------------------+
-void OnDeinit(const int reason) // VÁLTOZÁS: Takarítás ChartIndicatorDelete-tel
+void OnTimer()
   {
+   // Ez a funkció felelős a másodlagos indikátorok (Smooth WPR, MACD) ráhelyezéséért a WPR ablakra.
+   // Csak egyszer fut le sikeres rétegzés után.
+
+   if(g_indicators_layered)
+     {
+      EventKillTimer();
+      return;
+     }
+
+   // 1. Megpróbáljuk megtalálni a WPR ablakát
+   // Ha a név üres (OnInit-ben nem sikerült), próbáljuk újra lekérni
+   if(g_wpr_shortname == "")
+     {
+      g_wpr_shortname = ChartIndicatorName(0, 1, 0);
+     }
+
+   int wpr_window = -1;
+   if(g_wpr_shortname != "")
+     {
+      wpr_window = ChartWindowFind(0, g_wpr_shortname);
+     }
+   else
+     {
+       // Ha még mindig nincs név, de van 1-es ablak (mert létrehoztuk), akkor feltételezzük, hogy az az.
+       // De biztonságosabb várni a névre.
+       if(ChartWindowFind() > 0) // Ez a főablak subwindow-ját adja? Nem.
+       {
+           // Check if window 1 exists by checking indicator count
+           if(ChartIndicatorsTotal(0, 1) > 0) wpr_window = 1;
+       }
+     }
+
+   if(wpr_window > 0)
+     {
+      bool success = true;
+
+      // 2. Simított WPR hozzáadása
+      if(InpWprSmoothingPeriod > 0 && smooth_wpr_handle != INVALID_HANDLE)
+        {
+         if(ChartIndicatorAdd(0, wpr_window, smooth_wpr_handle))
+           {
+            // Lekérdezzük a nevét a törléshez.
+            // Feltételezzük, hogy ez lesz a következő index. (De a ChartIndicatorName indexelése abszolút az ablakban)
+            // Biztonságosabb iterálni vagy a legutolsót lekérni, de itt egyszerűsítünk.
+            // Általában: WPR=0, Smooth=1, MACD=2 (ha mind van)
+            g_smooth_ma_shortname = ChartIndicatorName(0, wpr_window, 1);
+            Print("Layered Smoothed WPR to window ", wpr_window, ". Name: ", g_smooth_ma_shortname);
+           }
+         else { Print("Failed to layer Smoothed WPR!"); success = false; }
+        }
+
+      // 3. MACD Overlay hozzáadása
+      if(InpShowMacdOverlay && macd_handle != INVALID_HANDLE)
+        {
+         if(ChartIndicatorAdd(0, wpr_window, macd_handle))
+           {
+            // Index becslése
+            int idx = (smooth_wpr_handle != INVALID_HANDLE) ? 2 : 1;
+            g_macd_shortname = ChartIndicatorName(0, wpr_window, idx);
+            Print("Layered MACD Overlay to window ", wpr_window, ". Name: ", g_macd_shortname);
+            Print("NOTE: MACD scale might appear flat due to WPR scale range (-100..0).");
+           }
+         else { Print("Failed to layer MACD Overlay!"); success = false; }
+        }
+
+      if(success)
+        {
+         g_indicators_layered = true;
+         EventKillTimer();
+         Print("Indicator layering completed.");
+        }
+     }
+  }
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+  {
+   EventKillTimer(); // Timer leállítása
+
    Print("Deinitializing EA. Reason code: ", reason);
    g_belepes_fuggoben = false;
    DeletePanelAndButtons();
 
    // --- Indikátorok Törlése a Chartról (MINDEN OnDeinit Esetén) ---
-   // Ez biztosítja, hogy paraméterváltoztatáskor a régi görbék eltűnjenek.
-
    // Először a simított MA-t töröljük, ha létezik (volt neve)
    if(g_smooth_ma_shortname != "")
      {
       if(!ChartIndicatorDelete(0, 1, g_smooth_ma_shortname))
-        { Print("Failed to delete Smooth MA indicator: ", g_smooth_ma_shortname); }
-      else { Print("Deleted Smooth MA indicator: ", g_smooth_ma_shortname); }
+        {
+           // Ha nem találja az 1-es ablakban, próbálja megkeresni
+           int win = ChartWindowFind(0, g_smooth_ma_shortname);
+           if(win > 0) ChartIndicatorDelete(0, win, g_smooth_ma_shortname);
+        }
      }
    // MACD overlay törlése, ha hozzá lett adva
    if(g_macd_shortname != "")
      {
       if(!ChartIndicatorDelete(0, 1, g_macd_shortname))
-        { Print("Failed to delete MACD overlay indicator: ", g_macd_shortname); }
-      else { Print("Deleted MACD overlay indicator: ", g_macd_shortname); }
+        {
+           int win = ChartWindowFind(0, g_macd_shortname);
+           if(win > 0) ChartIndicatorDelete(0, win, g_macd_shortname);
+        }
      }
    // Majd az eredeti WPR-t töröljük, ha létezik (volt neve)
    if(g_wpr_shortname != "")
      {
       if(!ChartIndicatorDelete(0, 1, g_wpr_shortname))
         { Print("Failed to delete WPR indicator: ", g_wpr_shortname); }
-      else { Print("Deleted WPR indicator: ", g_wpr_shortname); }
      }
 
    // Handle-ök felszabadítása továbbra is szükséges
@@ -773,7 +822,6 @@ void OnDeinit(const int reason) // VÁLTOZÁS: Takarítás ChartIndicatorDelete-
    if(atr_handle != INVALID_HANDLE) IndicatorRelease(atr_handle);
    if(macd_handle != INVALID_HANDLE) IndicatorRelease(macd_handle);
 
-   // Pozíciók zárása, ha az EA-t eltávolítják (kapcsoló nélkül)
    if(reason == REASON_REMOVE)
      {
       if(position_info.SelectByMagic(_Symbol, InpMagicNumber))
