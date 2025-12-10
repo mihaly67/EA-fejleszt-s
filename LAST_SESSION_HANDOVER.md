@@ -1,21 +1,18 @@
-# Last Session Handover (Coding Phase Completed)
+# Last Session Handover (Infrastructure Verified)
 
 ## 1. System Status
-- **Infrastructure:** **Use `jules_env_optimized_v1` to start!**
-    - This script handles the 6GB RAG (Disk-Based) and small RAGs (Memory-Based) optimally.
-    - It auto-cleans zip files to prevent disk exhaustion.
+- **Infrastructure:** **READY.**
+    - User confirmed `jules_env_optimized_v1` has successfully run.
+    - **Action for Next Agent:** DO NOT run setup scripts. Assume RAG databases are present or easily restorable with the script if missing.
 - **Implemented Features:**
-    - `ProfitMaximizer`: Dynamic TP with Trend Chasing & MAE logic.
-    - `TradingPanel`: Interactive "Cockpit" (Auto/Manual switches).
-    - `RiskManager`: Tick-based volatility sizing & leverage checks.
-    - `Environment`: Broker/Time/News awareness.
-    - `Showcase`: `Assistant_Showcase.mq5` integrates all of the above.
+    - `ProfitMaximizer` (Trend Chasing), `RiskManager` (Tick Volatility), `TradingPanel` (Cockpit), `Environment`.
+    - `Assistant_Showcase.mq5` is the integration point.
 
 ## 2. Next Session Goals
 **Primary Focus:** **Hybrid Indicators** (Indikátorok vizsgálata).
-- **Research:** Analyze standard indicators (RSI, CCI) vs. their "Hybrid" (Zero-Lag, Adaptive) versions.
-- **Python Co-Pilot:** Implement the Python script (`market_state.json` writer) to support the MQL5 EA with heavy math (scipy).
+- **Research:** Analyze "Super MACD" (FRAMA, BB_MACD) vs. Standard MACD.
+- **Python Co-Pilot:** Design/Implement `market_state_writer.py` for advanced math.
 
-## 3. Design Artifacts
-- All specifications (`Profit_Risk_Spec_v2.md`, `Communication_Spec.md`, etc.) are in `Profit_Management/`.
-- Use them as the "Blueprints" for any future expansion.
+## 3. Critical Context
+- The environment is optimized (Disk-based MMAP for large RAG).
+- All design specs are in `Profit_Management/`.
