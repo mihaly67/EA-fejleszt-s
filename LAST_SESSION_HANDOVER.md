@@ -1,18 +1,19 @@
-# Last Session Handover (Infrastructure Verified)
+# Last Session Handover (Environment Unified)
 
 ## 1. System Status
-- **Infrastructure:** **READY.**
-    - User confirmed `jules_env_optimized_v1` has successfully run.
-    - **Action for Next Agent:** DO NOT run setup scripts. Assume RAG databases are present or easily restorable with the script if missing.
+- **Infrastructure:** **UNIFIED & STABLE.**
+    - All startup scripts (`setup_rag.sh`, `jules_env_*`) are replaced by `restore_environment.py`.
+    - RAG configuration: Theory (RAM), Code/MQL5 (Disk).
+    - Search: `kutato.py` updated to support this architecture.
 - **Implemented Features:**
-    - `ProfitMaximizer` (Trend Chasing), `RiskManager` (Tick Volatility), `TradingPanel` (Cockpit), `Environment`.
-    - `Assistant_Showcase.mq5` is the integration point.
+    - Environment Restoration (One-Click).
+    - `ProfitMaximizer`, `RiskManager`, `TradingPanel` (from previous sessions).
 
 ## 2. Next Session Goals
 **Primary Focus:** **Hybrid Indicators** (Indikátorok vizsgálata).
-- **Research:** Analyze "Super MACD" (FRAMA, BB_MACD) vs. Standard MACD.
-- **Python Co-Pilot:** Design/Implement `market_state_writer.py` for advanced math.
+- **Task:** Create `Super_MACD_Showcase.mq5` using FRAMA (Fractal Adaptive Moving Average) or ZeroLag logic.
+- **Workflow:** Run `python3 restore_environment.py` -> Research FRAMA -> Implement Showcase -> Verify.
 
-## 3. Critical Context
-- The environment is optimized (Disk-based MMAP for large RAG).
-- All design specs are in `Profit_Management/`.
+## 3. Critical Instructions
+- **STARTUP COMMAND:** `python3 restore_environment.py`
+- Do not use old scripts.
