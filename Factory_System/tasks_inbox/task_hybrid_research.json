@@ -1,0 +1,17 @@
+{
+    "id": "task_hybrid_research_001",
+    "type": "research",
+    "priority": "high",
+    "status": "pending",
+    "description": "Deep research on Hybrid Scalping Indicators combining Zero Lag Smoothing (JMA/HMA) with Momentum Oscillators (RSI/MACD).",
+    "queries": [
+        "JMA Jurik Moving Average MQL5 source code",
+        "HMA Hull Moving Average MQL5 source code",
+        "Zero Lag MACD formula MQL5",
+        "Hybrid Oscillator RSI MACD Stochastic",
+        "Scalping indicator no repaint no lag"
+    ],
+    "scope": "MQL5",
+    "depth": 2,
+    "output_dir": "Showcase_Indicators/Hybrid_System_Research"
+}

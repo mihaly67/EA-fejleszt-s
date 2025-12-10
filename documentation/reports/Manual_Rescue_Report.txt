@@ -1,0 +1,211 @@
+=== KERESES: 'hybrid indicator combination' (Scope: KOD, Depth: 0) ===
+
+[KOD] SwingChart.mq5 (Score: 0.38)
+----------------------------------------
+//|                                                   SwingChart.mq5 |
+//|                                  Copyright 2016, André S. Enger. |
+//|                                          andre_enger@hotmail.com |
+#property link      "andre_enger@hotmail.com"
+#property version   "1.0"
+#property description "Gann swingchart and hybrid ZigZag implementation."
+#property indicator_chart_window
+#property indicator_buffers 7
+#property indicator_plots 2
+#property indicator_label1  "Zig Zag"
+#p...
+
+
+[KOD] MT5-CoupleHedgeEA_v3.0.mq5 (Score: 0.25)
+----------------------------------------
+1[6][3]][i]>0)
+                                 ClosePairMinus(HybridGroups_1[6][3],-1,i);
+                              //---
+                              if(TotalOrdersMinus[HybridGroups_1[6][4]][i]>0)
+                                 ClosePairMinus(HybridGroups_1[6][4],-1,i);
+                             }
+                          }
+                       }
+                    }
+                 }
+               //---
+              }
+            //---Close in profit hybrid 2 and...
+
+
+[KOD] MT5-CoupleHedgeEA_v3.0.mq5 (Score: 0.24)
+----------------------------------------
+(i=1; i<=PairsPerGroup; i++)
+                          {
+                           if(TotalOrdersPlus[cnt][i]>0)
+                              ClosePairPlus(cnt,-1,i);
+                           if(TotalOrdersMinus[cnt][i]>0)
+                              ClosePairMinus(cnt,-1,i);
+                          }
+                        //---
+                        ExpertCloseBasketInProfit[cnt]=true;
+                        continue;
+                       }
+                    }
+     ...
+
+
+[KOD] alglib.mqh (Score: 0.19)
+----------------------------------------
+to MinCGOptimize().                            |
+void CAlglib::MinCGSetXRep(CMinCGStateShell &state,bool needxrep)
+  {
+   CMinCG::MinCGSetXRep(state.GetInnerObj(),needxrep);
+  }
+//| This function sets CG algorithm.                                 |
+//| INPUT PARAMETERS:                                                |
+//|     State   -   structure which stores algorithm state           |
+//|     CGType  -   algorithm type:                                  |
+//|                 * -1    a...
+
+
+=== KERESES: 'profit management spread' (Scope: KOD, Depth: 0) ===
+
+[KOD] Multi_Divergence.mq5 (Score: 0.49)
+----------------------------------------
+//|                                          Multi_Divergence_EA.mq5 |
+//|                              Copyright 2025, Le Trung Kien Hoang |
+//|                        https://www.mql5.com/en/users/kienasiy123 |
+#property link      "https://www.mql5.com/en/users/kienasiy123"
+#property version   "1.00"
+#include <Trade\Trade.mqh>
+//--- Input parameters
+input group "=== Risk Management ==="
+input double LotSize = 0.1;                // Lot size
+input int StopLoss = 100;                  /...
+
+
+[KOD] BotCilentoV1.35.mq5 (Score: 0.48)
+----------------------------------------
+fit distance
+   double takeProfitPips = config.takeProfitInPips;
+   if(config.useATRStep && market.atrStepValue > 0 && market.atrStepValue != EMPTY_VALUE)
+      takeProfitPips = market.atrStepValue / market.pipValue * config.stepATRMultiplier;
+// Adjust for spread
+   double spreadCost = market.currentSpreadInPips * market.pipValue;
+// Check buy cycle take profit
+   if(state.buyCycleActive)
+     {
+      double profitPrice = state.averageEntryPrice + (takeProfitPips * market.pipValue + sp...
+
+
+[KOD] Volume Average percent spread mod.mq5 (Score: 0.48)
+----------------------------------------
+//------------------------------------------------------------------
+#property link      "mladenfx@gmail.com"
+#property version   "1.00"
+#property description "Modified version: Divide the output by the spreads value. Spread ratio of 100= full spread influence. Spread ratio of 0= no spread influence. Modified by nickweber86."
+//------------------------------------------------------------------
+//
+// Please consider checking out my indicators on the market @ https://www.mql5.com/en/users/ni...
+
+
+[KOD] Get_Rich_or_Die_Trying_GBP.mq5 (Score: 0.48)
+----------------------------------------
+_margin   = 0,     // fixed margin
+   fixed_risk     = 1,     // fixed risk
+  };
+//--- input parameters
+input string   InpString_0="Trading";           // Trading
+input ushort   InpStopLoss       = 100;         // Stop Loss (in pips)
+input ushort   InpTakeProfit     = 100;         // Take Profit (in pips)
+input ushort   InpTakeProfit2    = 40;          // Take Profit 2 (in pips)
+input ushort   InpTrailingStop   = 30;          // Trailing Stop (in pips)
+input ushort   InpTrailingStep   =...
+
+
+[KOD] DeMarker gaining position volume 2.mq5 (Score: 0.47)
+----------------------------------------
+ENT; // Working timeframe
+input uint                 InpStopLoss             = 150;            // Stop Loss (SL)
+input uint                 InpTakeProfit           = 460;            // Take Profit (TP)
+input ENUM_BAR_CURRENT     InpTrailingBarCurrent   = bar_1;          // Trailing on ...
+input group             "Trailing"
+input uint                 InpTrailingActivate     = 70;             // Trailing activate if profit is >=
+input uint                 InpTrailingStop         = 250;      ...
+
+
+=== KERESES: 'trading panel gui' (Scope: KOD, Depth: 0) ===
+
+[KOD] Binary_Options_Simulated_Trading.mq5 (Score: 0.65)
+----------------------------------------
+_SECONDS)+")");
+        }
+     }
+  }
+//| Draw Trading Panel                                               |
+void PanelCreate()
+  {
+   //Draw panel background
+   int CHART_ID=0; string OBJ_NAME="PanelRectangle",OBJ_CLOCK;
+   if(ObjectFind(CHART_ID,OBJ_NAME)<0) ObjectCreate(CHART_ID,OBJ_NAME,OBJ_RECTANGLE_LABEL,0,0,0);
+   ObjectSetInteger(CHART_ID,OBJ_NAME,OBJPROP_FILL,true);
+   ObjectSetInteger(CHART_ID,OBJ_NAME,OBJPROP_BGCOLOR,C'10,10,10');
+   ObjectSetInteger(CHART_ID,OBJ_NAME,OBJPR...
+
+
+[KOD] Market Watch Panel.mq5 (Score: 0.62)
+----------------------------------------
+//|                                          Market Watch Panel.mq5  |
+//|                                  Copyright © 2024, Long Tien Tu. |
+//|                                                                  |
+#property description "Market Watch Panel: A custom panel for real-time monitoring of symbol current prices with easy symbol stacking and filtering for a streamlined trading experience."
+#property strict
+#property version   "1.00"
+#include <Controls\Defines.mqh>
+#include <Control...
+
+
+[KOD] Binary_Options_Simulated_Trading.mq5 (Score: 0.58)
+----------------------------------------
+jectSetInteger(CHART_ID,OBJ_NAME,OBJPROP_YSIZE,120);
+   ObjectSetInteger(CHART_ID,OBJ_NAME,OBJPROP_BACK,false);
+   ObjectSetInteger(CHART_ID,OBJ_NAME,OBJPROP_SELECTABLE,false);
+   ObjectSetInteger(CHART_ID,OBJ_NAME,OBJPROP_SELECTED,false);
+   ObjectSetInteger(CHART_ID,OBJ_NAME,OBJPROP_HIDDEN,true);
+   //Draw panel title
+   OBJ_NAME="PanelTitle";
+   if(ObjectFind(CHART_ID,OBJ_NAME)<0) ObjectCreate(CHART_ID,OBJ_NAME,OBJ_LABEL,0,0,0);
+   ObjectSetInteger(CHART_ID,OBJ_NAME,OBJPROP_CORNER,COR...
+
+
+[KOD] mult_panel.mq5 (Score: 0.58)
+----------------------------------------
+//****** Project (expert): mult_panel.mq5
+//|                The code generated MasterWindows Copyright DC2008 |
+//|                              http://www.mql5.com/ru/users/dc2008 |
+#property link          "http://www.mql5.com/ru/users/dc2008"
+#property version       "1.00"
+#property description   "Multicurrency trading panel (program-joke:) or a game system"
+//--- Connect class files
+#include <Trade\Trade.mqh>
+#include <ClassWin.mqh>
+#include <Arrays\ArrayString.mqh>
+//--- Переменны...
+
+
+[KOD] Maximum Trade Volume.mq5 (Score: 0.56)
+----------------------------------------
+lse);
+//--- create dependent controls
+   if(!CreatePanel())
+      return(false);
+//--- succeed
+   return(true);
+  }
+//| Create the "CPanel"                                              |
+bool CControlsDialog::CreatePanel(void)
+  {
+//--- coordinates
+   int x1 = 5;
+   int y1 = 5;
+   int x2 = 230;
+   int y2 = 40;
+//--- create panel
+   if(!my_white_border.Create(0, ExtDialog.Name() + "MyWhiteBorder", m_subwin, x1, y1, x2, y2))
+      return(false);
+   if(!my_white_border.ColorBackgr...

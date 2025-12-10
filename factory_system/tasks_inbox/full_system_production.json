@@ -1,0 +1,26 @@
+{
+  "project_name": "Full_System_Production_Run",
+  "tasks": [
+    {
+      "id": 1,
+      "type": "production",
+      "description": "GYÁRTÁS: Deep Learning Könyvtárak (LSTM, Dense)",
+      "query": "DeepLearning mqh LSTM layer dense layer math",
+      "scope": "KOD"
+    },
+    {
+      "id": 2,
+      "type": "production",
+      "description": "GYÁRTÁS: Hibrid Indikátor Alkatrészek",
+      "query": "hybrid indicator strategy EA31337",
+      "scope": "KOD"
+    },
+    {
+      "id": 3,
+      "type": "production",
+      "description": "GYÁRTÁS: Dashboard GUI Elemek",
+      "query": "trading dashboard CAppDialog panel",
+      "scope": "KOD"
+    }
+  ]
+}

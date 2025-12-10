@@ -1,0 +1,29 @@
+{
+  "project_name": "Trading_Assistant_Batch_01",
+  "tasks": [
+    {
+      "id": 1,
+      "type": "research",
+      "description": "MQL5 Matematikai és Statisztikai Könyvtárak (Alglib, Fuzzy)",
+      "query": "MQL5 math library alglib fuzzy statistics",
+      "scope": "KOD",
+      "depth": 1
+    },
+    {
+      "id": 2,
+      "type": "research",
+      "description": "Piaci Rezsim Detektálás (Trend vs Range, ADX, Volatilitás)",
+      "query": "market regime detection ADX ATR volatility filter",
+      "scope": "ELMELET",
+      "depth": 1
+    },
+    {
+      "id": 3,
+      "type": "research",
+      "description": "Kereskedelmi Asszisztens Dashboard (GUI Panel)",
+      "query": "trading dashboard panel graphical interface CAppDialog",
+      "scope": "KOD",
+      "depth": 1
+    }
+  ]
+}

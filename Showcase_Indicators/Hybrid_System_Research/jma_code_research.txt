@@ -1,0 +1,23 @@
+[MQL5_DEV] article_7041.html (Score: 0.60)
+------------------------------------------------------------
+The MQL5 method simply calls the methods reading the ratio data from  the symbol properties and writing it to the appropriate structure variables. The result of returning all the methods is summed and returned  to the calling program. The methods are to be discussed below.   For MQL4, all structure fields are simply set to zero.    The method of initializing the fields of the margin ratios property structures:    [CODE START] //+------------------------------------------------------------------+...
+
+
+[MQL5_DEV] article_13738.html (Score: 0.60)
+------------------------------------------------------------
+void OnStart()   {     /* In many programming languages, including MQL5     a semicolon “;” is used to indicate the end of a statement.    It is a crucial element for the compiler to understand the structure of the program.    */       } [CODE END]  The compiler completely ignores everything between the /* and */    Comments play a crucial role in making your code readable and understandable. They aid not only in your own understanding but also in anyone else who may read or collaborate on your ...
+
+
+[MQL5_DEV] article_1572.html (Score: 0.59)
+------------------------------------------------------------
+This article considers only the simplest ways of protection, but nevertheless they can effectively protect your developments. Going back to what I wrote in the beginning of this article, I can say the same thing that I've wrote in the conclusion of my very first license FairWare: The author have helped you, by writing programs that you may never have been invented or written by yourself. Now - its your turn to help the author, as you can :-) .  The source code of MQLEnigma may contain some logic...
+
+
+[MQL5_DEV] article_5417.html (Score: 0.59)
+------------------------------------------------------------
+[CODE END]    If we take a closer look, we will notice that we have to use a separate string for creating an object for objects of different types, whereas in MQL4, one string is enough for all objects. This is also the case with object properties. In MQL4, we used one property creation string per its type (string, real or integer). In MQL5, every property requires a separate string of its creation.    Combining languages. Let's use the conditional compilation, so that the EA applies the necessa...
+
+
+[MQL5_DEV] article_15473.html (Score: 0.59)
+------------------------------------------------------------
+When you run the above code 05, you will see what is shown in the image below.       Figure 05   Well then, now you might be asking yourself: How is this possible? This sort of thing doesn't make much sense. But here, dear reader, I'm just having a bit of fun with the same code we've been examining since the beginning of this article. There's absolutely no reason for panic or despair.    The key detail is that, unlike what most people usually do, here we're pushing the limits of concepts that ar...
