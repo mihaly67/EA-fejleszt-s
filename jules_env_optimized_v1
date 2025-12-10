@@ -1,0 +1,82 @@
+# --- 1. LÉPÉS: GIT RESET (ÓVATOSAN) ---
+git update-index --assume-unchanged kutato.py > /dev/null 2>&1
+
+# --- 2. LÉPÉS: NÉMA TELEPÍTÉS ---
+echo "⏳ Környezet és függőségek ellenőrzése..."
+pip install -q gdown sentence-transformers faiss-cpu numpy
+
+# --- 3. LÉPÉS: AUTOMATA RENDSZERÉPÍTŐ ---
+python3 -c "
+import os, gdown, zipfile, shutil, warnings, logging, sqlite3, sys
+
+# NÉMA ÜZEMMÓD
+warnings.filterwarnings('ignore')
+logging.getLogger('sentence_transformers').setLevel(logging.ERROR)
+
+# LINK DEFINÍCIÓK
+LINKS = {
+    'THEORY': 'https://drive.google.com/file/d/1T0etzQc1bdT89X67sa3zMbuZNZWM-Anv/view?usp=sharing',
+    'CODE':   'https://drive.google.com/file/d/1CmoE49YTc_-dxyn4EiYyIDHINENeT5KI/view?usp=drive_link',
+    'MQL5':   'https://drive.google.com/file/d/1gMumIUSdXuUlHJuymbWE8GwAd5K7ruSy/view?usp=sharing'
+}
+
+# --- KONFIGURÁCIÓ ---
+# MQL5: Disk-Only (MMAP), Theory/Code: Memory-Loaded
+DATABASES = {
+    'THEORY_RAG':   {'link': LINKS['THEORY'], 'zip': 'THEORY_RAG.zip',   'dir': 'rag_theory',   'mode': 'MEMORY'},
+    'CODEBASE_RAG': {'link': LINKS['CODE'],   'zip': 'CODEBASE_RAG.zip',   'dir': 'rag_code',     'mode': 'MEMORY'},
+    'MQL5_DEV_RAG': {'link': LINKS['MQL5'],   'zip': 'MQL5_DEV_RAG.zip',   'dir': 'rag_mql5',     'mode': 'DISK'}
+}
+
+print('\n⬇️  RAG ADATBÁZISOK SZINKRONIZÁLÁSA...')
+
+def search_and_hoist(target_dir):
+    # Megkeressük hol van a .db fájl és felhozzuk a gyökérbe
+    db_file = None
+    for root, dirs, files in os.walk(target_dir):
+        for f in files:
+            if f.endswith('.db'):
+                db_file = os.path.join(root, f)
+                break
+        if db_file: break
+
+    if db_file:
+        source_dir = os.path.dirname(db_file)
+        if source_dir != target_dir:
+            # Minden fájlt felmozgatunk
+            for item in os.listdir(source_dir):
+                shutil.move(os.path.join(source_dir, item), target_dir)
+            # Üres mappák törlése
+            # shutil.rmtree(source_dir) # Óvatosan, lehet hogy nem üres a szülő
+
+for key, config in DATABASES.items():
+    if os.path.exists(config['dir']) and os.listdir(config['dir']):
+        print(f'   ✅ {key}: Már telepítve. (Kihagyás)')
+        continue
+
+    try:
+        print(f'   📥 Letöltés: {key} ...')
+        # Google Drive link konverzió (ID kinyerés)
+        file_id = config['link'].split('/d/')[1].split('/')[0]
+        gdown.download(id=file_id, output=config['zip'], quiet=True, fuzzy=True)
+
+        if os.path.exists(config['dir']): shutil.rmtree(config['dir'])
+        os.makedirs(config['dir'], exist_ok=True)
+
+        print(f'   📦 Kicsomagolás: {key} ...')
+        with zipfile.ZipFile(config['zip'], 'r') as z:
+            z.extractall(config['dir'])
+
+        # Hoist Logic (Mert a zipben lehet egy almappa)
+        search_and_hoist(config['dir'])
+
+        if os.path.exists(config['zip']): os.remove(config['zip'])
+        print(f'   ✨ {key} KÉSZ.')
+    except Exception as e:
+        print(f'   ❌ HIBA ({key}): {e}')
+
+print('\n🚀 RENDSZER KÉSZ. A RAG adatbázisok a helyükön.')
+"
+
+# --- 4. LÉPÉS: GIT IGNORÁLÁS ---
+for d in rag_theory rag_code rag_mql5; do echo "$d" >> .git/info/exclude; done

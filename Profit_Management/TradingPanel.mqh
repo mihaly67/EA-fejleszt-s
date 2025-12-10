@@ -33,6 +33,14 @@ private:
    CLabel            m_lbl_score;
    CLabel            m_lbl_volatility;
 
+   // Cockpit Controls
+   CButton           m_btn_mode;       // Auto / Manual
+   CButton           m_btn_sl_auto;    // SL Auto/Man
+   CButton           m_btn_tp_auto;    // TP Auto/Man
+   CButton           m_btn_risk_up;    // Risk +
+   CButton           m_btn_risk_down;  // Risk -
+   CLabel            m_lbl_risk;       // Risk Display
+
    CButton           m_btn_close_all;
 
 public:
@@ -102,8 +110,37 @@ bool CTradingPanel::Create(const long chart, const string name, const int subwin
    m_lbl_volatility.Text("Tick Vol: 0.00000");
    Add(m_lbl_volatility);
 
-   // 7. Close All Button
+   // --- Cockpit Controls ---
    row = 5;
+   int col_width = (x2-x1-MARGIN_LEFT*2) / 3;
+
+   // Mode Toggle
+   if(!m_btn_mode.Create(chart, name+"Mode", subwin, MARGIN_LEFT, MARGIN_TOP + (row*ROW_HEIGHT), MARGIN_LEFT+col_width, MARGIN_TOP + (row*ROW_HEIGHT)+ROW_HEIGHT)) return false;
+   m_btn_mode.Text("MODE: AUTO");
+   m_btn_mode.ColorBackground(clrGreen);
+   Add(m_btn_mode);
+
+   // SL Toggle
+   if(!m_btn_sl_auto.Create(chart, name+"SLMode", subwin, MARGIN_LEFT+col_width+5, MARGIN_TOP + (row*ROW_HEIGHT), MARGIN_LEFT+col_width*2, MARGIN_TOP + (row*ROW_HEIGHT)+ROW_HEIGHT)) return false;
+   m_btn_sl_auto.Text("SL: AUTO");
+   Add(m_btn_sl_auto);
+
+   // Risk Control
+   row = 6;
+   if(!m_lbl_risk.Create(chart, name+"RiskLbl", subwin, MARGIN_LEFT, MARGIN_TOP + (row*ROW_HEIGHT), MARGIN_LEFT+col_width, MARGIN_TOP + (row*ROW_HEIGHT)+ROW_HEIGHT)) return false;
+   m_lbl_risk.Text("Risk: 1.0%");
+   Add(m_lbl_risk);
+
+   if(!m_btn_risk_up.Create(chart, name+"RiskUp", subwin, MARGIN_LEFT+col_width+5, MARGIN_TOP + (row*ROW_HEIGHT), MARGIN_LEFT+col_width+40, MARGIN_TOP + (row*ROW_HEIGHT)+ROW_HEIGHT)) return false;
+   m_btn_risk_up.Text("+");
+   Add(m_btn_risk_up);
+
+   if(!m_btn_risk_down.Create(chart, name+"RiskDn", subwin, MARGIN_LEFT+col_width+45, MARGIN_TOP + (row*ROW_HEIGHT), MARGIN_LEFT+col_width+80, MARGIN_TOP + (row*ROW_HEIGHT)+ROW_HEIGHT)) return false;
+   m_btn_risk_down.Text("-");
+   Add(m_btn_risk_down);
+
+   // 7. Close All Button
+   row = 7;
    if(!m_btn_close_all.Create(chart, name+"BtnClose", subwin, MARGIN_LEFT, MARGIN_TOP + (row*ROW_HEIGHT) + 10, x2-x1-MARGIN_LEFT, MARGIN_TOP + (row*ROW_HEIGHT)+ROW_HEIGHT + 10)) return false;
    m_btn_close_all.Text("CLOSE ALL POSITIONS");
    m_btn_close_all.ColorBackground(clrRed);
@@ -135,11 +172,10 @@ bool CTradingPanel::OnEvent(const int id, const long &lparam, const double &dpar
    // Process button clicks
    if(id == CHARTEVENT_OBJECT_CLICK)
      {
-      if(sparam == m_btn_close_all.Name())
-        {
-         OnClickCloseAll();
-         return true;
-        }
+      if(sparam == m_btn_close_all.Name()) { OnClickCloseAll(); return true; }
+      if(sparam == m_btn_mode.Name())      { ToggleMode(); return true; }
+      if(sparam == m_btn_risk_up.Name())   { AdjustRisk(0.5); return true; }
+      if(sparam == m_btn_risk_down.Name()) { AdjustRisk(-0.5); return true; }
      }
 
    return CAppDialog::OnEvent(id, lparam, dparam, sparam);
@@ -150,7 +186,22 @@ bool CTradingPanel::OnEvent(const int id, const long &lparam, const double &dpar
 void CTradingPanel::OnClickCloseAll(void)
   {
    Print("User requested CLOSE ALL POSITIONS via Dashboard.");
-   // Here we would call the Profit Management module to liquidate
-   // e.g. CProfitManager::CloseAll();
+  }
+
+void CTradingPanel::ToggleMode(void)
+  {
+   static bool is_auto = true;
+   is_auto = !is_auto;
+   m_btn_mode.Text(is_auto ? "MODE: AUTO" : "MODE: MANUAL");
+   m_btn_mode.ColorBackground(is_auto ? clrGreen : clrOrange);
+  }
+
+void CTradingPanel::AdjustRisk(double delta)
+  {
+   static double risk = 1.0;
+   risk += delta;
+   if(risk < 0.5) risk = 0.5;
+   if(risk > 10.0) risk = 10.0;
+   m_lbl_risk.Text(StringFormat("Risk: %.1f%%", risk));
   }
 //+------------------------------------------------------------------+
