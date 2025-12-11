@@ -1,43 +1,54 @@
-# SYSTEM ARCHITECTURE & KNOWLEDGE BASE
+# SYSTEM ARCHITECTURE & CAPABILITIES
 
-**Version:** 1.0 (Consolidated)
+**Version:** 2.0 (Modular Core)
 **Date:** 2025
-**Scope:** WPR Analyst EA & Infrastructure
+**Status:** **ACTIVE REFERENCE**
 
-## 1. Core Application: `WPR_Analyst_v4.3.mq5`
-*   **Role:** The stable, production-grade Expert Advisor.
-*   **Signal Logic:** Williams Percent Range (WPR) with Trend/Filter overlay (EMA/MACD).
-*   **Execution Mode:**
-    *   **Semi-Automatic:** Manual buttons on Panel (`Buy`, `Sell`, `Close`) with auto-risk calculation.
-    *   **Automatic:** Signal-based entry (State Machine with Retry Logic).
-*   **Critical Modules:**
-    *   **Risk Manager (`RiskManager.mqh`):** Calculates Lot Size based on Margin % or Risk %. Enforces ATR-based or Point-based SL/TP.
-    *   **Trading Panel (`TradingPanel.mqh` / Embedded):** GUI for manual control and status display.
-    *   **Profit Maximizer (`ProfitMaximizer.mqh`):** Advanced exit logic (Trend Chasing, BreakEven, Smart Trailing).
+## 1. The Core System (Modular Architecture)
+The true capabilities of the system are defined by the modular components located in `Profit_Management/`. This is the "Architect" of the system.
 
-## 2. Infrastructure & Environment
-*   **Startup Script:** `restore_environment.py` (Python).
-    *   **Function:** Automatically checks, downloads, and configures the RAG databases (`rag_theory`, `rag_code`, `rag_mql5_dev`) from Google Drive.
-    *   **Optimization:** Loads `rag_theory` into RAM, keeps others on Disk (SQLite/MMAP) to save memory.
-*   **Search Engine:** `kutato.py`.
-    *   **Function:** Unified search tool used by Agents to query the RAG databases.
-*   **Protocol:** `AGENTS.md`.
-    *   **Mandate:** Strict, professional, verification-first behavior. No cynicism.
+### A. Trading Assistant (`TradingAssistant.mqh`)
+*   **Role:** The Central Brain.
+*   **Capabilities:**
+    *   **Signal Synthesis:** Combines multiple inputs (Strategy, Environment, Risk) to make trading decisions.
+    *   **Conviction Scoring:** Calculates a weighted score (0-100%) for trade setups based on Market Regime (40%), Momentum (30%), etc.
+    *   **State Management:** Tracks the current state of the trade (Entry, Managing, Exit).
 
-## 3. Future / Experimental Concepts
-*   **Python Bridge (Concept):**
-    *   **Goal:** Zero-Phase Filtering (DSP) using Python's `scipy` to remove lag from indicators (MACD/WPR).
-    *   **Status:** Previous implementation ("Colombo") was rejected due to complexity/lag issues.
-    *   **Direction:** Valid requirement for future, but requires a robust, low-latency implementation (likely Socket or optimized Shared File).
-*   **Hybrid Indicators:**
-    *   **Goal:** Combining multiple signals (Momentum + Trend + Volatility).
-    *   **Lesson:** Avoid "chaotic" mathematical models (like unstable FRAMA). Prefer robust, standard indicators (WPR, Stoch) enhanced by DSP.
+### B. Risk Manager (`RiskManager.mqh`)
+*   **Role:** Capital Protection & Sizing.
+*   **Capabilities:**
+    *   **Dynamic Sizing:** Calculates Lot Size based on Risk % or Margin %.
+    *   **Tick Volatility:** Adapts Stop Loss distances to real-time market noise (TickSD).
+    *   **Safety Checks:** Prevents over-leveraging and trading during unsafe conditions.
 
-## 4. File Structure (Key Locations)
-*   `/`: Root. Contains EA (`WPR_Analyst_v4.3.mq5`), Scripts (`restore_environment.py`, `kutato.py`), Protocol (`AGENTS.md`).
-*   `Profit_Management/`: Design Specifications (`*.md`) and Logic Classes (`*.mqh`).
-*   `Showcase_Indicators/`: Prototyping area for new indicators.
-*   `rag_*/`: Knowledge Base directories (Ignored by Git).
+### C. Environment (`Environment/` folder)
+*   **Role:** Situational Awareness.
+*   **Capabilities:**
+    *   **Time Manager:** Handles session times (London, NY), DST, and rollover avoidance.
+    *   **Broker Info:** Normalizes instrument properties (Point vs Pip, Lot Steps).
+    *   **News Watcher:** (Planned) Filters trades during high-impact news.
+
+### D. Profit Maximizer (`ProfitMaximizer.mqh` & `Trailings.mqh`)
+*   **Role:** Exit Optimization.
+*   **Capabilities:**
+    *   **Trend Chasing:** Dynamically adjusts Take Profit to "ride" the trend.
+    *   **Smart Trailing:** Uses ATR, AMA, or Tick Volatility to trail stops without premature knockouts.
+    *   **BreakEven:** Secures profit at defined thresholds.
+
+### E. Trading Panel (`TradingPanel.mqh`)
+*   **Role:** Human-Machine Interface (Cockpit).
+*   **Capabilities:**
+    *   **Manual Override:** Buttons for immediate Buy/Sell/Close.
+    *   **Status Display:** Shows P/L, Balance, and current Algorithm State.
+    *   **Cockpit Controls:** Granular toggles for Auto/Manual modes.
+
+## 2. Infrastructure
+*   **`restore_environment.py`:** The Unified Startup Script. Ensures RAG databases (Theory/Code) are ready.
+*   **`kutato.py`:** The Deep Research Tool.
+
+## 3. Deprecated / Excluded
+*   `WPR_Analyst_*.mq5`: **OBSOLETE.** Do not use as reference logic.
+*   `Colombo_*`: Experimental/Failed prototypes.
 
 ---
-*This document serves as the primary source of truth for the system architecture.*
+*This architecture defines the actual capabilities of the Jules Trading System.*
