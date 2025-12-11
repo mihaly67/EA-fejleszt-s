@@ -6,6 +6,7 @@ import sqlite3
 import logging
 import warnings
 import subprocess
+import json
 
 # --- AUTO-INSTALL DEPENDENCIES ---
 try:
@@ -83,6 +84,73 @@ def hoist_files(target_dir, check_file):
 
     return True
 
+def report_hardware_status():
+    print("\n📊 === HARDWARE STATUS REPORT ===")
+
+    # Disk Usage
+    total, used, free = shutil.disk_usage(".")
+    print(f"💾 Disk Usage: Used: {used // (2**30)} GB / Total: {total // (2**30)} GB (Free: {free // (2**30)} GB)")
+
+    # RAM Usage (Linux specific)
+    try:
+        with open('/proc/meminfo', 'r') as f:
+            mem_info = {}
+            for line in f:
+                parts = line.split(':')
+                if len(parts) == 2:
+                    mem_info[parts[0].strip()] = int(parts[1].strip().split()[0])
+
+            total_ram = mem_info.get('MemTotal', 0) / 1024
+            available_ram = mem_info.get('MemAvailable', 0) / 1024
+            used_ram = total_ram - available_ram
+            print(f"🧠 RAM Usage: Used: {used_ram:.2f} MB / Total: {total_ram:.2f} MB (Available: {available_ram:.2f} MB)")
+
+    except FileNotFoundError:
+        print("⚠️ Could not read /proc/meminfo (Not Linux?)")
+    except Exception as e:
+        print(f"⚠️ Error reading RAM info: {e}")
+
+def verify_rag_functionality():
+    print("\n🔎 === RAG FUNCTIONALITY TEST ===")
+
+    if not os.path.exists("kutato.py"):
+        print("❌ CRITICAL: 'kutato.py' not found! Cannot verify RAG.")
+        return
+
+    test_query = "MQL5 custom indicator"
+    print(f"🧪 Running test query: '{test_query}'...")
+
+    try:
+        # Run kutato.py with --json flag to get structured output
+        result = subprocess.run(
+            [sys.executable, "kutato.py", test_query, "--json"],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        if result.returncode == 0:
+            print("✅ RAG Search Successful!")
+            try:
+                data = json.loads(result.stdout)
+                if isinstance(data, list) and len(data) > 0:
+                     print(f"✅ Output validates knowledge retrieval ({len(data)} hits found).")
+                else:
+                     print("⚠️ Search ran but returned no results or unexpected format.")
+            except json.JSONDecodeError:
+                print("⚠️ Output is not valid JSON.")
+
+            # Print a snippet of the output for verification
+            print(f"📄 Output Snippet:\n{result.stdout[:300]}...")
+        else:
+            print(f"❌ RAG Search Failed with code {result.returncode}")
+            print(f"❌ Error Output:\n{result.stderr}")
+
+    except subprocess.TimeoutExpired:
+        print("❌ RAG Search Timed Out (Possible performance issue or hang).")
+    except Exception as e:
+        print(f"❌ Error running RAG test: {e}")
+
 def restore_environment():
     setup_logger()
     print("=== ENVIRONMENT RESTORE & VERIFICATION ===")
@@ -155,6 +223,12 @@ def restore_environment():
     if os.path.exists("rag_mql5") and not os.path.exists("rag_mql5_dev"):
         print("🔄 Renaming legacy 'rag_mql5' to 'rag_mql5_dev'...")
         os.rename("rag_mql5", "rag_mql5_dev")
+
+    # 5. Hardware Report
+    report_hardware_status()
+
+    # 6. Functional Test
+    verify_rag_functionality()
 
     print("\n🚀 Environment Restore Complete. Ready for work.")
 
