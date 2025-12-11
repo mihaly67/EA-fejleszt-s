@@ -1,54 +1,63 @@
 # SYSTEM ARCHITECTURE & CAPABILITIES
 
-**Version:** 2.0 (Modular Core)
+**Version:** 3.0 (Detailed Locations)
 **Date:** 2025
 **Status:** **ACTIVE REFERENCE**
 
 ## 1. The Core System (Modular Architecture)
-The true capabilities of the system are defined by the modular components located in `Profit_Management/`. This is the "Architect" of the system.
+The "Architect" of the system. These modules define the EA's capabilities.
 
-### A. Trading Assistant (`TradingAssistant.mqh`)
-*   **Role:** The Central Brain.
+### A. Trading Assistant (The Brain)
+*   **Location:** `Profit_Management/TradingAssistant.mqh`
 *   **Capabilities:**
-    *   **Signal Synthesis:** Combines multiple inputs (Strategy, Environment, Risk) to make trading decisions.
-    *   **Conviction Scoring:** Calculates a weighted score (0-100%) for trade setups based on Market Regime (40%), Momentum (30%), etc.
-    *   **State Management:** Tracks the current state of the trade (Entry, Managing, Exit).
+    *   Synthesizes signals from Strategy, Environment, and Risk.
+    *   Calculates "Conviction Score" (Regime + Momentum + Volatility).
+    *   Manages Trade State Machine (Entry -> Manage -> Exit).
 
-### B. Risk Manager (`RiskManager.mqh`)
-*   **Role:** Capital Protection & Sizing.
+### B. Risk Manager (The Safety)
+*   **Location:** `Profit_Management/RiskManager.mqh`
 *   **Capabilities:**
-    *   **Dynamic Sizing:** Calculates Lot Size based on Risk % or Margin %.
-    *   **Tick Volatility:** Adapts Stop Loss distances to real-time market noise (TickSD).
-    *   **Safety Checks:** Prevents over-leveraging and trading during unsafe conditions.
+    *   **Dynamic Sizing:** Lot = f(Account%, Margin%).
+    *   **Tick Volatility:** Adapts Stop Loss to microstructure noise (TickSD).
+    *   **Leverage Guard:** Prevents trades if margin usage > limit.
 
-### C. Environment (`Environment/` folder)
-*   **Role:** Situational Awareness.
+### C. Environment (The Context)
+*   **Location:** `Profit_Management/Environment/`
+    *   `BrokerInfo.mqh`: Normalizes Points/Pips/Lots.
+    *   `TimeManager.mqh`: Session times, DST, Rollover protection.
+    *   `NewsWatcher.mqh`: (Future) Economic event filtering.
+
+### D. Profit Maximizer (The Exit)
+*   **Location:** `Profit_Management/ProfitMaximizer.mqh`
+*   **Dependencies:** `Trailings.mqh` (Standard Library wrapper).
 *   **Capabilities:**
-    *   **Time Manager:** Handles session times (London, NY), DST, and rollover avoidance.
-    *   **Broker Info:** Normalizes instrument properties (Point vs Pip, Lot Steps).
-    *   **News Watcher:** (Planned) Filters trades during high-impact news.
+    *   **Trend Chasing:** Infinite TP expansion.
+    *   **Smart Trailing:** ATR/AMA based trailing stops.
+    *   **BreakEven:** Locks profit at defined R-multiples.
 
-### D. Profit Maximizer (`ProfitMaximizer.mqh` & `Trailings.mqh`)
-*   **Role:** Exit Optimization.
+### E. Trading Panel (The Interface)
+*   **Location:** `Profit_Management/TradingPanel.mqh`
 *   **Capabilities:**
-    *   **Trend Chasing:** Dynamically adjusts Take Profit to "ride" the trend.
-    *   **Smart Trailing:** Uses ATR, AMA, or Tick Volatility to trail stops without premature knockouts.
-    *   **BreakEven:** Secures profit at defined thresholds.
+    *   **Cockpit Controls:** Granular Auto/Manual switches.
+    *   **Dashboard:** Real-time P/L and Status display.
+    *   **Manual Override:** Direct Buy/Sell buttons.
 
-### E. Trading Panel (`TradingPanel.mqh`)
-*   **Role:** Human-Machine Interface (Cockpit).
-*   **Capabilities:**
-    *   **Manual Override:** Buttons for immediate Buy/Sell/Close.
-    *   **Status Display:** Shows P/L, Balance, and current Algorithm State.
-    *   **Cockpit Controls:** Granular toggles for Auto/Manual modes.
+## 2. Python Hybrid Strategy (The Co-Pilot)
+*   **Status:** **DESIGN / PLANNED** (Not implemented in code yet).
+*   **Location:** `Profit_Management/Python_Hybrid_Strategy.md`
+*   **Concept:**
+    *   **DSP (Digital Signal Processing):** Use Python (`scipy`) to perform Zero-Phase Filtering (Lag removal) on price data.
+    *   **Protocol:** CSV/JSON Shared File Exchange. MQL5 writes Ticks -> Python filters -> MQL5 reads Trend.
+    *   **Goal:** Replace lagging MQL5 indicators with mathematical prediction.
 
-## 2. Infrastructure
-*   **`restore_environment.py`:** The Unified Startup Script. Ensures RAG databases (Theory/Code) are ready.
-*   **`kutato.py`:** The Deep Research Tool.
+## 3. Infrastructure
+*   **Startup Script:** `restore_environment.py` (Root) - **MANDATORY STARTUP**.
+*   **Search Engine:** `kutato.py` (Root).
+*   **Protocol:** `AGENTS.md` (Root).
 
-## 3. Deprecated / Excluded
-*   `WPR_Analyst_*.mq5`: **OBSOLETE.** Do not use as reference logic.
-*   `Colombo_*`: Experimental/Failed prototypes.
+## 4. Deprecated / Excluded
+*   `WPR_Analyst_*.mq5`: **OBSOLETE.** Do not reference.
+*   `Colombo_*` code files: Deleted. (Concept survives in `Python_Hybrid_Strategy.md`).
 
 ---
-*This architecture defines the actual capabilities of the Jules Trading System.*
+*Use this map to locate any system component instantly.*
