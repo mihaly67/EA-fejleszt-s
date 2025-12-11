@@ -1,19 +1,23 @@
-# Last Session Handover (Super MACD Fixed)
+# Last Session Handover (Ready for Colombo)
 
 ## 1. System Status
-- **Infrastructure:** **UNIFIED.**
-    - `restore_environment.py` is the single startup script.
-    - RAG databases configured (Theory=RAM, Code/MQL5=Disk).
-    - `kutato.py` works with this architecture.
-- **New Feature:** **Super MACD (Showcase) v1.20**
-    - File: `Showcase_Indicators/Super_MACD_Showcase.mq5`
-    - Logic: Corrected FRAMA (Clamped [1.0, 2.0], Norm N) for MACD, DEMA for Signal.
-    - Visual: 4-Color Gradient Histogram.
+- **Infrastructure:** **UNIFIED.** (`restore_environment.py` is the single startup script).
+- **New Tools (Committed):**
+    - `Lag_Tester_MACD.mq5`: Visualizer for comparing M1 vs MTF MACD lag.
+    - `Colombo_MACD_MTF.mq5`: Data exporter for Python DSP.
+    - `colombo_filter.py`: Python script for Zero-Phase filtering (Savitzky-Golay).
+    - `Super_MACD_Showcase.mq5` (v1.20): Fixed FRAMA logic + DEMA Signal.
 
-## 2. Next Session Goals
-**Primary Focus:** **Hybrid System Integration.**
-- **Verification:** Compile and test `Super_MACD_Showcase.mq5` v1.20.
-- **Integration:** If smooth and trend-following, integrate into EA.
+## 2. Research Findings (Article 18033)
+- Investigated "MQL5 Wizard + White-Noise Kernel".
+- **Verdict:** Uses DeMarker + Envelopes with Machine Learning. Powerful but complex.
+- **Decision:** Stick to **Colombo (Python DSP)** first. If MACD fails, we swap the input to **DeMarker** using the same Python pipeline.
 
-## 3. Critical Instructions
+## 3. Next Session Goals
+**Primary Focus:** **Execute "Colombo" Project.**
+1.  **Run `restore_environment.py`.**
+2.  **Verify Lag:** Run `Lag_Tester_MACD.mq5` on M1 chart.
+3.  **Activate Python:** Run `colombo_filter.py` alongside `Colombo_MACD_MTF.mq5` to test the loop.
+
+## 4. Critical Instructions
 - **STARTUP COMMAND:** `python3 restore_environment.py`
