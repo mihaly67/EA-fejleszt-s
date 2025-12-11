@@ -88,8 +88,11 @@ def report_hardware_status():
     print("\n📊 === HARDWARE STATUS REPORT ===")
 
     # Disk Usage
-    total, used, free = shutil.disk_usage(".")
-    print(f"💾 Disk Usage: Used: {used // (2**30)} GB / Total: {total // (2**30)} GB (Free: {free // (2**30)} GB)")
+    try:
+        total, used, free = shutil.disk_usage(".")
+        print(f"💾 Disk Usage: Used: {used // (2**30)} GB / Total: {total // (2**30)} GB (Free: {free // (2**30)} GB)")
+    except Exception as e:
+        print(f"⚠️ Error reading Disk info: {e}")
 
     # RAM Usage (Linux specific)
     try:
