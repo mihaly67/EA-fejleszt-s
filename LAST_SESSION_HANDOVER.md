@@ -1,24 +1,22 @@
-# Last Session Handover (Ready for Colombo)
+# Last Session Handover (Knowledge Secured)
 
 ## 1. System Status
-- **Infrastructure:** **UNIFIED.** (`restore_environment.py` is the single startup script).
-- **New Tools (Committed):**
-    - `Lag_Tester_MACD.mq5`: Visualizer for comparing M1 vs MTF MACD lag.
-    - `Colombo_MACD_MTF.mq5`: Data exporter for Python.
-    - `colombo_filter.py`: Python script for Zero-Phase filtering (Savitzky-Golay).
-    - `Super_MACD_Showcase.mq5` (v1.20): Fixed FRAMA logic + DEMA Signal.
-    - `kutato_ugynok_v3.py`: Deep Recursive Researcher.
+- **Environment:** **UNIFIED & STABLE.**
+    - **Startup:** Run `python3 restore_environment.py`. This is mandatory.
+    - **Protocol:** Read `AGENTS.md` and obey strictly.
+- **Production Code:**
+    - `WPR_Analyst_v4.3.mq5` is the active, stable EA.
+- **Knowledge Base:**
+    - **Master Doc:** `SYSTEM_ARCHITECTURE.md` (Read this first!).
+    - **Specs:** Detailed designs in `Profit_Management/`.
 
-## 2. Research Findings (Article 18033)
-- Investigated "MQL5 Wizard + White-Noise Kernel".
-- **Verdict:** Uses DeMarker + Envelopes with Machine Learning. Powerful but complex.
-- **Decision:** Stick to **Colombo (Python DSP)** first. If MACD fails, we swap the input to **DeMarker** using the same Python pipeline.
+## 2. Key Learnings (From Previous Session)
+- **Infrastructure Success:** `restore_environment.py` solved the setup chaos. Preserve it.
+- **Development Failure (Colombo):** The "Colombo" Python Bridge (File-based DSP) was implemented but rejected due to complexity/lag concerns.
+    - *Lesson:* Future Python integration must be **proven faster** (e.g. Sockets) or simpler before full integration.
+- **Indicator Preference:** User prefers robust standard indicators (WPR, Stoch) over unstable experimental math (FRAMA).
 
-## 3. Next Session Goals
-**Primary Focus:** **Execute "Colombo" Project.**
-1.  **Run `restore_environment.py`.**
-2.  **Verify Lag:** Run `Lag_Tester_MACD.mq5` on M1 chart.
-3.  **Activate Python:** Run `colombo_filter.py` alongside `Colombo_MACD_MTF.mq5` to test the loop.
-
-## 4. Critical Instructions
-- **STARTUP COMMAND:** `python3 restore_environment.py`
+## 3. Next Steps
+- **Read:** `SYSTEM_ARCHITECTURE.md`.
+- **Verify:** Run `restore_environment.py` to ensure RAG access.
+- **Wait:** Await user direction on whether to refine the EA or restart the Python Bridge research (Socket approach).
