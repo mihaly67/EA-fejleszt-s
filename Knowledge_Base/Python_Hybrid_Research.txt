@@ -1,0 +1,1486 @@
+🚀 Starting Deep Research (Depth: 3)
+
+--- DEPTH 1/3 ---
+🔍 Searching: 'Python causal filter minimal delay trading'
+   -> Found 5 hits.
+🔍 Searching: 'Python real-time signal smoothing Kalman filter'
+   -> Found 5 hits.
+🔍 Searching: 'Python Savitzky-Golay causal implementation'
+   -> Found 5 hits.
+🔍 Searching: 'Python pandas TA-Lib MACD WPR hybrid strategy'
+   -> Found 5 hits.
+🔍 Searching: 'Python Ehlers SuperSmoother implementation'
+   -> Found 5 hits.
+
+--- DEPTH 2/3 ---
+🔍 Searching: 'MQL5 kalman smoothing algorithm code'
+   -> Found 5 hits.
+
+================================================================================
+🔬 RESEARCH REPORT (Total Unique Documents: 28)
+================================================================================
+
+📄 ITEM #1 [CODE | Nonlinear Kalman filter deviation.mq5] (Score: 0.59)
+--------------------------------------------------------------------------------
+E_CLOSE;  // Price
+input int                PreSmooth      =  3;           // Pre-smoothing period
+input ENUM_MA_METHOD     PreSmoothMode  = MODE_LWMA;    // Pre-smoothing MA method
+//
+//---
+//
+double val[],valc[],lowpass[],delta[],flt[],avg[],dev_diff[],dev_summ[];
+double ª_a=0,ª_b=0,ª_c=0; int ª_maHandle;
+//------------------------------------------------------------------
+//
+//------------------------------------------------------------------
+int OnInit()
+{
+   ª_maHandle  = iMA(_Symbol,0,PreSmooth,0,PreSmoothMode,Price); if (!_checkHandle(ª_maHandle,"average")) { return(INIT_FAILED); }
+   //
+   //---
+   //
+      SetIndexBuffer(0,val     ,INDICATOR_DATA);
+      SetIndexBuffer(1,valc    ,INDICATOR_COLOR_INDEX);
+      SetIndexBuffer(2,flt     ,INDICATOR_CALCULATIONS);
+      SetIndexBuffer(3,avg     ,INDICATOR_CALCULATIONS);
+      SetIndexBuffer(4,delta   ,INDICATOR_CALCULATIONS);
+      SetIndexBuffer(5,lowpass ,INDICATOR_CALCULATIONS);
+--------------------------------------------------------------------------------
+
+📄 ITEM #2 [CODE | Nonlinear Kalman filter deviation.mq5] (Score: 0.59)
+--------------------------------------------------------------------------------
+      lowpass[i] = (i>2) ? (ª_b+ª_c)*lowpass[i-1] - (ª_c+ª_b*ª_c)*lowpass[i-2] + ª_c*ª_c*lowpass[i-3] + (1-ª_b+ª_c)*(1-ª_c)*_smoother : _smoother;
+               delta[i]   = (i>2) ? (ª_b+ª_c)*delta[i-1] - (ª_c+ª_b*ª_c)*delta[i-2] + ª_c*ª_c*delta[i-3] + (1-ª_b+ª_c)*(1-ª_c)*_detrend : 0;
+         }
+         //
+         //---
+         //
+         flt[i] = lowpass[i]+delta[i];
+            //
+            //---
+            //
+                  dev_diff[i] = (_smoother-flt[i])*(_smoother-flt[i]);
+                  if (i>Length)
+                           dev_summ[i] = dev_summ[i-1]+dev_diff[i]-dev_diff[i-Length];
+                  else  {  dev_summ[i] = dev_diff[i]; for(int k=1; k<Length && i>=k; k++) dev_summ[i] += dev_diff[i-k]; }
+            //
+            //---
+            //
+         val[i]  = MathSqrt(dev_summ[i]/Length);
+         valc[i] = (i>0) ? (val[i]>val[i-1]) ? 0 : 1 : 0;
+   }
+   return(i);
+}
+--------------------------------------------------------------------------------
+
+📄 ITEM #3 [CODE | Nonlinear Kalman filter (zm)(fl).mq5] (Score: 0.58)
+--------------------------------------------------------------------------------
+ CSma
+{
+   private :
+      struct scSmaArrayStruct
+         {
+            double value;
+            double summ;
+         };
+      scSmaArrayStruct m_array[];
+      int              m_arraySize;
+      int              m_period;
+   public :
+      CSma() { init(1);            return; }
+     ~CSma() { ArrayFree(m_array); return; }
+     //
+     //---
+     //
+     bool init(int period)
+         {
+            m_period    = (period>1) ? period : 1;
+            m_arraySize = m_period+32;
+               ArrayResize(m_array,m_arraySize);
+               for (int k=0; k<m_arraySize; k++)
+               {
+                  m_array[k].value =
+                  m_array[k].summ  = 0;
+               }
+               return(true);
+         }
+     double calculate(double value, int i)
+         {
+            int _indC = (i)%m_arraySize; m_array[_indC].value=value;
+               if (i>m_period)
+               {
+                  int _indP = (i-1       )%m_arraySize;
+--------------------------------------------------------------------------------
+
+📄 ITEM #4 [MQL5_DEV | article_8863.html] (Score: 0.56)
+--------------------------------------------------------------------------------
+return dataset
+
+[CODE END]
+ As soon as the filter is passed to the function, it can be used to mark Buy or Sell trades. The filter receives the original dataset and the index of the current bar. Indexes in the dataset are represented as 'datetime index' containing the time. The filter searches for the hour and day in the dataframe's 'datetime index' by the i-th number and returns False if it finds nothing. If the condition is met, the deal is marked as 1 or 0, otherwise as 2. Finally, all 2s are removed from the training dataset, and thus only examples for specific days and hours determined by the filter are left.
+
+ A filter should also be added to the custom tester, to enable trade opening at a specific time (or according to any other condition set by this filter).
+
+
+[CODE START]
+def tester(dataset, markup=0.0, plot=False, filter=time_filter):
+    last_deal = int(2)
+    last_price = 0.0
+    report = [0.0]
+    for i in range(dataset.shape[0]):
+        pred = dataset['labels'][i]
+        ind = dataset.index[i].hour
+        if last_deal == 2 and filter(dataset, i):
+            last_price = dataset['close'][i]
+            last_deal = 0 if pred <= 0.5 else 1
+            continue
+        if last_deal == 0 and pred > 0.5:
+            last_deal = 2
+            report.append(report[-1] - markup +
+                          (dataset['close'][i] - last_price))
+            continue
+        if last_deal == 1 and pred < 0.5:
+            last_deal = 2
+            report.append(report[-1] - markup +
+                          (last_price - dataset['close'][i]))
+
+    y = np.array(report).reshape(-1, 1)
+    X = np.arange(len(report)).reshape(-1, 1)
+    lr = LinearRegression()
+    lr.fit(X, y)
+
+    l = lr.coef_
+    if l >= 0:
+        l = 1
+    else:
+        l = -1
+
+    if(plot):
+        plt.plot(report)
+        plt.plot(lr.predict(X))
+        plt.title("Strategy performance")
+        plt.xlabel("the number of trades")
+        plt.ylabel("cumulative profit in pips")
+        plt.show()
+
+    return lr.score(X, y) * l
+
+[CODE END]
+ This is implemented as follows. Digit 2 is used when there is no open position: last_deal = 2. There are no open positions before testing start, therefore set 2. Iterate through the entire dataset and check if the filter condition is met. If the condition is met, open a Buy or Sell deal. The filter conditions do not apply to deal closing, as they can be closed at another hour or day of the week. These changes are enough for further correct training and testing. 
+
+
+
+ Exploratory analysis for each trading hour
+
+
+ It is not very convenient to test the model manually for each individual condition (and for a combination of hours or days). A special function has been written for this purpose, which allows fast obtaining of summary statistics for each condition separately. The function may take some time to complete, but it outputs the time ranges in which the model shows better performance.
+--------------------------------------------------------------------------------
+
+📄 ITEM #5 [MQL5_DEV | article_17986.html] (Score: 0.55)
+--------------------------------------------------------------------------------
+In supervised machine learning, we need a target variable that the model can use to map the relationships between the predictors and this target variable.
+
+ We know that once the news is released, the markets tend to react rapidly heading into either direction based on traders' actions and reactions to the news but, the challenge here is determining how long could we consider what's happening in the market is actually due to the recently released news?
+
+ Those who prevent trading after news releases often abstain from trading activities for 15 - 30 minutes after news release believing that after this number of minutes the impact caused by the news has weared off.
+
+ Since after news releases the markets experiences huge volatility and unexpected spikes leading to a plenty of noise, let's create the target variable for 15 bars ahead (approximately 4 hours ahead in time).
+
+
+[CODE START]
+lookahead = 15
+clean_df = df.copy()
+
+clean_df["Future Close"] = df["Close"].shift(-lookahead)
+clean_df.dropna(inplace=True) # drop nan caused by shifting operation
+
+clean_df["Signal"] = (clean_df["Future Close"] > clean_df["Close"]).astype(int) # if the future close > current close = bullish movement otherwise bearish movement
+
+clean_df
+[CODE END]
+ Removing rows without news in the data
+
+ After making the target variable, we can go ahead and drop all rows where there were no news released, we want fo feed our model with all rows containing news only.
+
+ We filter all rows with the value (null) in the Name column (a column for holding news names).
+
+
+[CODE START]
+clean_df = clean_df[clean_df['Name'] != '(null)']
+
+clean_df
+[CODE END]
+ Encoding strings in the dataframe
+
+ Since strings aren't supported in many machine learning models, we have to encode string values into integers.
+
+ Strings can be found in columns: Name, Sector, and Importance.
+
+
+[CODE START]
+from sklearn.preprocessing import LabelEncoder
+[CODE END]
+
+[CODE START]
+categorical_cols = ['Name', 'Sector', 'Importance']
+
+label_encoders = {}
+encoded_df = clean_df.copy()
+
+for col in categorical_cols:
+    le = LabelEncoder()
+    encoded_df[col] = le.fit_transform(clean_df[col])
+
+    # Save classes to binary file (.bin)
+    with open(f"{col}_classes.bin", 'wb') as f:
+        np.save(f, le.classes_, allow_pickle=True)
+        
+    label_encoders[col] = le  
+
+encoded_df.head(5)
+[CODE END]
+ Alternatively, you can wrap the LabelEncoder inside a Pipeline for ease of use.
+
+  It is very crucial to save the classes detected by the label encoder object for each column encoded because we need the same information when encoding news inside our final programs made with the MQL5 language.
+
+ This is mainly because we want to be consistent with our encoding patterns also to stay alert and throw errors when the encoder encounters news it wasn't trained on as unexpected news are bound to happend in the world.
+
+
+ Outputs.
+--------------------------------------------------------------------------------
+
+📄 ITEM #6 [MQL5_DEV | article_19850.html] (Score: 0.54)
+--------------------------------------------------------------------------------
+triple_barrier_events,
+            close_index,
+            verbose=verbose,
+        )
+    elif isinstance(av_uniqueness, pd.Series):
+        av_uniqueness = av_uniqueness.to_frame()
+
+    # Extract and sort weights by time
+    cum_weights = av_uniqueness["tW"].sort_index().cumsum()
+
+    # Apply optimized decay calculation using Numba
+    decay_weights = _apply_time_decay_numba(cum_weights.values, last_weight, linear)
+
+    if verbose:
+        print(
+            f"get_weights_by_time_decay_optimized done after {timedelta(seconds=round(time.perf_counter() - time0))}."
+        )
+
+    return pd.Series(decay_weights, index=cum_weights.index)
+--------------------------------------------------------------------------------
+
+📄 ITEM #7 [MQL5_DEV | article_16984.html] (Score: 0.54)
+--------------------------------------------------------------------------------
+[CODE END]
+ Signal confirmation helps avoid acting on fleeting or unreliable signals. By confirming the signal multiple times, we increase the accuracy and reliability of the trade decisions. Alerts provide immediate feedback to the trader, ensuring they are aware of important changes.
+
+ 2. Python
+
+ The script's flow is designed to preprocess data, calculate VWAP and relevant metrics, generate signals, and return meaningful information to the EA for decision-making. This includes determining the major and minor support/resistance levels, along with the VWAP and signal explanations. Let's follow the steps below:
+
+ Data Preparation & Preprocessing
+
+ The first part of the script ensures that the incoming data is clean and ready for analysis by performing several preprocessing steps. These steps ensure that all necessary columns have valid data and handle edge cases like missing or invalid values.
+
+
+[CODE START]
+# Ensure critical columns have no missing values
+df = df.dropna(subset=['volume', 'high', 'low', 'open', 'close'])
+
+# Convert 'date' column to datetime
+df.loc[:, 'date'] = pd.to_datetime(df['date'])
+
+# Handle zero volume by replacing with NaN and dropping invalid rows
+df.loc[:, 'volume'] = df['volume'].replace(0, np.nan)
+df = df.dropna(subset=['volume'])
+
+# Check if data exists after filtering
+if df.empty:
+    print("No data to calculate VWAP.")
+    return pd.DataFrame()
+
+[CODE END]
+ The script ensures that the essential columns (volume, high, low, open, close) do not contain missing values using dropna(). It also handles zero volumes by replacing them with NaN and dropping any rows with invalid volumes. The date column is converted to a datetime format for time series analysis.
+
+ VWAP Calculation & Additional Metrics
+
+ The script calculates the VWAP (Volume Weighted Average Price) and additional metrics like typical price, average price, average volume, and support/resistance levels.
+
+
+[CODE START]
+# Calculate VWAP and additional metrics
+df.loc[:, 'typical_price'] = (df['high'] + df['low'] + df['close']) / 3
+df.loc[:, 'vwap'] = (df['typical_price'] * df['volume']).cumsum() / df['volume'].cumsum()
+df.loc[:, 'avg_price'] = df[['high', 'low', 'open', 'close']].mean(axis=1)
+df.loc[:, 'avg_volume'] = df['volume'].rolling(window=2, min_periods=1).mean()
+df.loc[:, 'major_support'] = df['low'].min()
+df.loc[:, 'major_resistance'] = df['high'].max()
+df.loc[:, 'minor_support'] = df['low'].rolling(window=3, min_periods=1).mean()
+df.loc[:, 'minor_resistance'] = df['high'].rolling(window=3, min_periods=1).mean()
+
+[CODE END]
+
+
+
+ VWAP Calculation: The VWAP is calculated as a cumulative sum of the typical price weighted by the volume, divided by the cumulative volume.
+ Typical Price: The typical price is calculated as the average of high, low, and close for each period.
+
+
+
+ Support and Resistance
+--------------------------------------------------------------------------------
+
+📄 ITEM #8 [MQL5_DEV | article_19850.html] (Score: 0.53)
+--------------------------------------------------------------------------------
+def _get_average_uniqueness_optimized(label_endtime, num_conc_events):
+    """
+    Optimized version of average uniqueness calculation for parallel processing.
+
+    This function  provides performance improvements through:
+
+    - Parallel processing of uniqueness calculations via Numba
+    - Vectorized operations for mathematical computations
+    - Efficient memory access patterns
+    - Reduced Python overhead
+
+    Parameters:
+    -----------
+    label_endtime : pd.Series
+        Label endtime series (t1 for triple barrier events)
+    num_conc_events : pd.Series
+        Number of concurrent events
+
+    Returns:
+    --------
+    pd.Series
+        Average uniqueness over event's lifespan
+
+    Performance:
+    -----------
+    - 3-4x faster than original implementation
+    - Better scalability for large datasets
+    - Improved memory efficiency
+    """
+    n_events = len(label_endtime)
+
+    if n_events == 0:
+        return pd.Series(dtype=np.float64)
+
+    # Prepare arrays for Numba function
+    start_indices = np.zeros(n_events, dtype=np.int32)
+    end_indices = np.zeros(n_events, dtype=np.int32)
+
+    # Convert datetime indices to integer positions efficiently
+    close_index = num_conc_events.index
+    for i, (t_in, t_out) in enumerate(label_endtime.items()):
+        start_indices[i] = close_index.get_loc(t_in)
+        end_indices[i] = close_index.get_loc(t_out) + 1
+
+    # Get concurrent events as numpy array
+    concurrent_counts = num_conc_events.to_numpy()
+
+    # Use Numba-optimized function for heavy computation
+    uniqueness = _compute_uniqueness_numba(start_indices, end_indices, concurrent_counts, n_events)
+
+    return pd.Series(uniqueness, index=label_endtime.index)
+
+
+# =============================================================================
+# MAIN OPTIMIZED FUNCTIONS
+# =============================================================================
+
+
+def get_num_conc_events_optimized(
+    close_index: pd.DatetimeIndex, label_endtime: pd.Series, verbose: bool = False
+):
+    """
+    Advances in Financial Machine Learning, Snippet 4.1, page 60.
+
+    Estimating the Uniqueness of a Label
+
+    This function uses close series prices and label endtime (when the first barrier is touched) to compute the number
+    of concurrent events per bar.
+
+
+    This function provides significant performance improvements over the original
+    implementation by using vectorized operations and parallel processing.
+
+    Key Optimizations:
+    1. Numba JIT compilation for hot loops
+    2. Parallel processing of time points
+    3. Efficient memory usage and data structures
+    4. Vectorized operations for time comparisons
+    5. Reduced Python overhead
+
+    Performance Improvements:
+    - 5-10x faster for large datasets
+    - 3-5x faster for medium datasets
+    - 2-3x faster for small datasets
+    - Better memory efficiency
+    - Improved scalability with dataset size
+--------------------------------------------------------------------------------
+
+📄 ITEM #9 [MQL5_DEV | article_19220.html] (Score: 0.53)
+--------------------------------------------------------------------------------
+While, there are a lot of profitable trades it appears this signal still fails to forward walk profitably for the year 2024.
+
+ Feature-3
+
+
+
+ The second signal pattern is based on contraction to expansion with intra-bar thrust. We implement this in Python as follows:
+
+
+[CODE START]
+def feature_3(df):
+    """
+//+------------------------------------------------------------------+
+//| Check for Pattern 3.                                             |
+//+------------------------------------------------------------------+
+    """
+    feature = np.zeros((len(df), 2))
+    
+    cond_1 = df['Gator_Up_Color'].shift(1) == 'red'
+    cond_2 = df['Gator_Down_Color'].shift(1) == 'red'
+    cond_3 = df['Gator_Up_Color'] == 'red'
+    cond_4 = df['Gator_Down_Color'] == 'green'
+    
+    feature[:, 0] = (cond_1 &
+                     cond_2 &
+                     cond_3 &
+                     cond_4 &
+                     (df['close']-df['low'].shift(1) > 0.5*(df['high'].shift(1)-df['low'].shift(1))) &
+                     (df['AD_Oscillator'].shift(2) > df['AD_Oscillator']) &
+                     (df['AD_Oscillator'] > df['AD_Oscillator'].shift(1))).astype(int)
+    
+    feature[:, 1] = (cond_1 &
+                     cond_2 &
+                     cond_3 &
+                     cond_4 &
+                     (df['high'].shift(1)-df['close'] < 0.5*(df['high'].shift(1)-df['low'].shift(1))) &
+                     (df['AD_Oscillator'].shift(2) < df['AD_Oscillator']) &
+                     (df['AD_Oscillator'] < df['AD_Oscillator'].shift(1))).astype(int)
+    
+    
+    feature[0, :] = 0
+    feature[1, :] = 0
+    
+    return feature
+[CODE END]
+ Basic conditions here are prior gator histogram bars indicating red both up and down that are then followed by one of them flipping to green, as a sign of a transition, as covered in the article before the last. Much of these pattern descriptions were covered in that article so we’ll skip to our test report of the same pattern when it is applied through our neural network as a filter. We get the following report:
+
+
+
+
+
+ We were almost able to forward walk until the last string of unprofitable trades. Our systems always use take profit targets without stop loss, so this is to blame, since we are always relying on a signal reversal to close unprofitable trades.
+
+ Feature-4
+
+
+
+ The final signal pattern we review is a color flip continuation with a simple momentum confirmation. If the prior bar was up and expanding with green on the upper histogram and red on the lower, and on subsequent bars we have the upper histogram indicating red for contraction while the lower is green, this could potentially signal a regime change in the gator oscillator. Price rejection and AD momentum checks also get applied as already mentioned in the prior pieces.Our coding of this signal in Python takes the following shape:
+--------------------------------------------------------------------------------
+
+📄 ITEM #10 [MQL5_DEV | article_18878.html] (Score: 0.53)
+--------------------------------------------------------------------------------
+We are revisiting feature-4, feature-8, and feature-9. So, the general structure of these feature functions, as we adopt them here, does not deviate much from what we have been using. Each function outputs a 2D NumPy array whose shape is the number of rows in the data frame and whose columns are two. Each row’s [0] index is a unique bullish or buy pattern; while each row’s [1] features a unique bearish or sell marker. In our format, 1 means there is a buy/sell pattern, while 0 implies there is none. Each pattern is a combination of signals from two indicators, the AO and the envelope channels. We use the shift[n] in each data frame when making multi-bar comparisons. Each loaded data frame therefore needs to have sufficient data.
+
+
+
+ Feature-4
+
+ To recap, the core logic of this pattern is we mark a bullish signal when the AO is forming a dip above zero and price is inside the lower half of the envelope. Conversely, the bearish signal is when the AO forms a peak below zero and price is in the upper half of the envelope. We implement this in Python as follows:
+
+
+[CODE START]
+def feature_4(df):
+    """
+//+------------------------------------------------------------------+
+//| Check for Pattern 4.                                             |
+//+------------------------------------------------------------------+
+--------------------------------------------------------------------------------
+
+📄 ITEM #11 [MQL5_DEV | article_19850.html] (Score: 0.53)
+--------------------------------------------------------------------------------
+// CONTEXT: Series: Machine Learning Blueprint, Part: 4, Title: Machine Learning Blueprint (Part 4): The Hidden Flaw in Your Financial ML Pipeline — Label Concurrency - MQL5 Articles | FILE: filters.py
+"""
+Filters are used to filter events based on some kind of trigger. For example a structural break filter can be
+used to filter events where a structural break occurs. This event is then used to measure the return from the event
+to some event horizon, say a day.
+"""
+
+from typing import Union
+
+import numpy as np
+import pandas as pd
+from loguru import logger
+from numba import njit
+
+
+# Snippet 2.4, page 39, The Symmetric CUSUM Filter.
+@njit(cache=True)
+def _cusum_filter_numba_core(
+    log_returns_np: np.ndarray, thresholds_np: np.ndarray, index_values_np: np.ndarray
+) -> list:
+    """
+    Core CUSUM filter logic implemented with Numba for speed.
+    """
+    t_events_val = []  # Numba will infer the type for the list
+    s_pos = 0.0
+    s_neg = 0.0
+
+    # Determine if threshold is a single scalar value or an array per data point
+    is_threshold_scalar = thresholds_np.shape[0] == 1
+
+    scalar_thresh_val = 0.0
+    if is_threshold_scalar:
+        scalar_thresh_val = thresholds_np[0]
+
+    for i in range(len(log_returns_np)):
+        log_ret = log_returns_np[i]
+
+        current_thresh = scalar_thresh_val if is_threshold_scalar else thresholds_np[i]
+
+        # Calculate potential new s_pos and s_neg
+        s_pos_candidate = s_pos + log_ret
+        s_neg_candidate = s_neg + log_ret
+
+        # Apply CUSUM logic: reset if sum crosses zero from the wrong direction
+        s_pos = max(0.0, s_pos_candidate)
+        s_neg = min(0.0, s_neg_candidate)
+
+        # Check for events
+        if s_neg < -current_thresh:
+            s_neg = 0.0  # Reset the sum that triggered
+            t_events_val.append(index_values_np[i])
+        elif s_pos > current_thresh:  # `elif` ensures only one event type per step
+            s_pos = 0.0  # Reset the sum that triggered
+            t_events_val.append(index_values_np[i])
+
+    return t_events_val
+
+
+def cusum_filter(
+    raw_time_series: pd.Series, threshold: Union[float, int, pd.Series], time_stamps: bool = True
+):
+    """
+    Advances in Financial Machine Learning, Snippet 2.4, page 39.
+
+    The Symmetric Dynamic/Fixed CUSUM Filter.
+
+    The CUSUM filter is a quality-control method, designed to detect a shift in the mean value of a measured quantity
+    away from a target value. The filter is set up to identify a sequence of upside or downside divergences from any
+    reset level zero. We sample a bar t if and only if S_t >= threshold, at which point S_t is reset to 0.
+
+    One practical aspect that makes CUSUM filters appealing is that multiple events are not triggered by raw_time_series
+    hovering around a threshold level, which is a flaw suffered by popular market signals such as Bollinger Bands.
+--------------------------------------------------------------------------------
+
+📄 ITEM #12 [MQL5_DEV | article_16879.html] (Score: 0.53)
+--------------------------------------------------------------------------------
+class QuantumFeatureGenerator:
+    def __init__(self, num_qubits=8):
+        self.num_qubits = num_qubits
+        self.simulator = AerSimulator()
+        self.scaler = MinMaxScaler()
+        
+    def create_quantum_circuit(self, market_data, current_price):
+        qr = QuantumRegister(self.num_qubits, 'qr')
+        cr = ClassicalRegister(self.num_qubits, 'cr')
+        qc = QuantumCircuit(qr, cr)
+        
+        # Normalize data
+        scaled_data = self.scaler.fit_transform(market_data.reshape(-1, 1)).flatten()
+        
+        # Create superposition
+        for i in range(self.num_qubits):
+            qc.h(qr[i])
+        
+        # Apply market data as phases
+        for i in range(min(len(scaled_data), self.num_qubits)):
+            angle = float(scaled_data[i] * np.pi)
+            qc.ry(angle, qr[i])
+        
+        # Create entanglement
+        for i in range(self.num_qubits - 1):
+            qc.cx(qr[i], qr[i + 1])
+        
+        # Add the current price
+        price_angle = float((current_price % 0.01) * 100 * np.pi)
+        qc.ry(price_angle, qr[0])
+        
+        qc.measure(qr, cr)
+        return qc
+        
+    def get_quantum_features(self, market_data, current_price):
+        qc = self.create_quantum_circuit(market_data, current_price)
+        compiled_circuit = transpile(qc, self.simulator, optimization_level=3)
+        job = self.simulator.run(compiled_circuit, shots=2000)
+        result = job.result()
+        counts = result.get_counts()
+        
+        # Create a vector of quantum features
+        feature_vector = np.zeros(2**self.num_qubits)
+        total_shots = sum(counts.values())
+        
+        for bitstring, count in counts.items():
+            index = int(bitstring, 2)
+            feature_vector[index] = count / total_shots
+            
+        return feature_vector
+--------------------------------------------------------------------------------
+
+📄 ITEM #13 [MQL5_DEV | article_19850.html] (Score: 0.53)
+--------------------------------------------------------------------------------
+return parts
+
+
+# Snippet 20.7 (page 310), The mpPandasObj, used at various points in the book
+def mp_pandas_obj(func, pd_obj, num_threads=24, mp_batches=1, lin_mols=True, verbose=True, **kargs):
+    """
+    Advances in Financial Machine Learning, Snippet 20.7, page 310.
+
+    The mpPandasObj, used at various points in the book
+
+    Parallelize jobs, return a dataframe or series.
+    Example: df1=mp_pandas_obj(func,('molecule',df0.index),24,**kwds)
+
+    First, atoms are grouped into molecules, using linParts (equal number of atoms per molecule)
+    or nestedParts (atoms distributed in a lower-triangular structure). When mpBatches is greater
+    than 1, there will be more molecules than cores. Suppose that we divide a task into 10 molecules,
+    where molecule 1 takes twice as long as the rest. If we run this process in 10 cores, 9 of the
+    cores will be idle half of the runtime, waiting for the first core to process molecule 1.
+    Alternatively, we could set mpBatches=10 so as to divide that task in 100 molecules. In doing so,
+    every core will receive equal workload, even though the first 10 molecules take as much time as the
+    next 20 molecules. In this example, the run with mpBatches=10 will take half of the time consumed by
+    mpBatches=1.
+
+    Second, we form a list of jobs. A job is a dictionary containing all the information needed to process
+    a molecule, that is, the callback function, its keyword arguments, and the subset of atoms that form
+    the molecule.
+
+    Third, we will process the jobs sequentially if numThreads==1 (see Snippet 20.8), and in parallel
+    otherwise (see Section 20.5.2). The reason that we want the option to run jobs sequentially is for
+    debugging purposes. It is not easy to catch a bug when programs are run in multiple processors.
+    Once the code is debugged, we will want to use numThreads>1.
+
+    Fourth, we stitch together the output from every molecule into a single list, series, or dataframe.
+
+    :param func: (function) A callback function, which will be executed in parallel
+    :param pd_obj: (tuple) Element 0: The name of the argument used to pass molecules to the callback function
+                    Element 1: A list of indivisible tasks (atoms), which will be grouped into molecules
+    :param num_threads: (int) The number of threads that will be used in parallel (one processor per thread)
+    :param mp_batches: (int) Number of parallel batches (jobs per core)
+    :param lin_mols: (bool) Tells if the method should use linear or nested partitioning
+    :param verbose: (bool) Flag to report progress on asynch jobs
+    :param kargs: (var args) Keyword arguments needed by func
+    :return: (pd.DataFrame) of results
+    """
+
+    if lin_mols:
+        parts = lin_parts(len(pd_obj[1]), num_threads * mp_batches)
+    else:
+        upper_triangle = kargs.setdefault('upper_triangle', False)
+--------------------------------------------------------------------------------
+
+📄 ITEM #14 [MQL5_DEV | article_20059.html] (Score: 0.52)
+--------------------------------------------------------------------------------
+parts = np.cumsum(np.diff(parts)[::-1])
+        parts = np.append(np.array([0]), parts)
+
+    return parts
+
+
+# Snippet 20.7 (page 310), The mpPandasObj, used at various points in the book
+def mp_pandas_obj(func, pd_obj, num_threads=24, mp_batches=1, lin_mols=True, verbose=True, **kargs):
+    """
+    Advances in Financial Machine Learning, Snippet 20.7, page 310.
+
+    The mpPandasObj, used at various points in the book
+
+    Parallelize jobs, return a dataframe or series.
+    Example: df1=mp_pandas_obj(func,('molecule',df0.index),24,**kwds)
+
+    First, atoms are grouped into molecules, using linParts (equal number of atoms per molecule)
+    or nestedParts (atoms distributed in a lower-triangular structure). When mpBatches is greater
+    than 1, there will be more molecules than cores. Suppose that we divide a task into 10 molecules,
+    where molecule 1 takes twice as long as the rest. If we run this process in 10 cores, 9 of the
+    cores will be idle half of the runtime, waiting for the first core to process molecule 1.
+    Alternatively, we could set mpBatches=10 so as to divide that task in 100 molecules. In doing so,
+    every core will receive equal workload, even though the first 10 molecules take as much time as the
+    next 20 molecules. In this example, the run with mpBatches=10 will take half of the time consumed by
+    mpBatches=1.
+
+    Second, we form a list of jobs. A job is a dictionary containing all the information needed to process
+    a molecule, that is, the callback function, its keyword arguments, and the subset of atoms that form
+    the molecule.
+
+    Third, we will process the jobs sequentially if numThreads==1 (see Snippet 20.8), and in parallel
+    otherwise (see Section 20.5.2). The reason that we want the option to run jobs sequentially is for
+    debugging purposes. It is not easy to catch a bug when programs are run in multiple processors.
+    Once the code is debugged, we will want to use numThreads>1.
+
+    Fourth, we stitch together the output from every molecule into a single list, series, or dataframe.
+
+    :param func: (function) A callback function, which will be executed in parallel
+    :param pd_obj: (tuple) Element 0: The name of the argument used to pass molecules to the callback function
+                    Element 1: A list of indivisible tasks (atoms), which will be grouped into molecules
+    :param num_threads: (int) The number of threads that will be used in parallel (one processor per thread)
+    :param mp_batches: (int) Number of parallel batches (jobs per core)
+    :param lin_mols: (bool) Tells if the method should use linear or nested partitioning
+    :param verbose: (bool) Flag to report progress on asynch jobs
+    :param kargs: (var args) Keyword arguments needed by func
+    :return: (pd.DataFrame) of results
+    """
+
+    if lin_mols:
+        parts = lin_parts(len(pd_obj[1]), num_threads * mp_batches)
+    else:
+--------------------------------------------------------------------------------
+
+📄 ITEM #15 [MQL5_DEV | article_13975.html] (Score: 0.51)
+--------------------------------------------------------------------------------
+"portable": False
+    }
+
+    # Lanzamos la plataforma MT5 y nos conectamos al servidor con nuestro usuario y contraseña
+    if mt5.initialize(path=creds['path'],
+                    login=creds['login'],
+                    password=creds['pass'],
+                    server=creds['server'],
+                    timeout=creds['timeout'],
+                    portable=creds['portable']):
+
+            print("Plataform MT5 launched correctly")
+    else:
+        print(f"There has been a problem with initialization: {mt5.last_error()}")
+
+    if not mt5.initialize():
+        print("initialize() failed, error code =",mt5.last_error())
+        quit()
+
+    import pandas as pd
+    from datetime import datetime, timedelta
+    #############################################################
+    # Obtains actual time and date
+    now_inicio_script = time.time()
+    ###########################################################
+    symbols=selection
+
+    if Seleccion_tmf== "1":
+        tmf = mt5.TIMEFRAME_H1
+        seconds = 60*60
+        delay=delay_1
+        cerrar=cerrar1*60
+        temporalidad="1 hora"
+    if Seleccion_tmf== "2":
+        tmf = mt5.TIMEFRAME_H2
+        seconds = 60*60*2
+        delay=delay_1
+        cerrar=cerrar1*60*2
+        temporalidad="2 horas"
+    if Seleccion_tmf== "3":
+        tmf = mt5.TIMEFRAME_H3
+        seconds = 60*60*3
+        delay=delay_1
+        cerrar=cerrar1*60*3
+        temporalidad="3 horas"
+    if Seleccion_tmf== "4":
+        tmf = mt5.TIMEFRAME_H4
+        seconds = 60*60*4
+        delay=delay_1
+        cerrar=cerrar1*60*4
+        temporalidad="4 horas"
+    if Seleccion_tmf== "1d":
+        tmf = mt5.TIMEFRAME_D1
+        seconds = 60*60*24
+        delay=delay_1
+        cerrar=cerrar1*60*24
+        temporalidad="1 dia"
+    if Seleccion_tmf== "3d":
+        tmf = mt5.TIMEFRAME_D1
+        seconds = 60*60*24*3
+        delay=delay_1
+        cerrar=cerrar1*60*24*3
+        temporalidad="3 dias"
+    if Seleccion_tmf== "4d":
+        tmf = mt5.TIMEFRAME_D1
+        seconds = 60*60*24*4
+        delay=delay_1
+        cerrar=cerrar1*60*24*4
+        temporalidad="4 dias"
+    if Seleccion_tmf== "1w":
+        tmf = mt5.TIMEFRAME_W1
+        seconds = 60*60*24*7
+        delay=delay_1
+        cerrar=cerrar1*60*24*7
+        temporalidad="1 semana"
+    print(temporalidad)
+
+    print(symbols)
+    # Initialize an empty list to store results
+    df = pd.DataFrame()
+
+    df = df.drop(index=df.index)
+
+    df2 = pd.DataFrame()
+    # Empty DataFrame
+    df2 = df2.drop(index=df2.index)
+
+    # Create an empty dictionary to store DataFrames
+    dfs = pd.DataFrame()
+    # Empty the DataFrame
+    dfs = dfs.drop(index=dfs.index)
+
+    simbolito=symbols
+    print("Symbol: ", simbolito)
+
+    symbol = simbolito
+    timeframe = temporalidad
+
+    # import the 'pandas' module for displaying data obtained in the tabular form
+    import pandas as pd
+--------------------------------------------------------------------------------
+
+📄 ITEM #16 [MQL5_DEV | article_1628.html] (Score: 0.51)
+--------------------------------------------------------------------------------
+[CODE START]
+sig <- resBal[[1]]$sig
+sig.cor <- correct(sig)
+sig.c <- sig.cor$sig.c
+pr.sig.cor <- pred.sig(sig.c)
+sig.pr <- pr.sig.cor$sig.pr
+# Resulting vector of signals for Expert Advisor
+S <- sig.pr * tail(sig, length(sig.pr))
+[CODE END]
+
+Smoothing the predicted signal.
+
+We will write a function that will smooth the discrete signal using the model of the hidden Markov chain. For this purpose, we will use the "mhsmm" package.
+
+[CODE START]
+#---16---smooth------------------------------------
+smoooth <- function(sig){
+# smooth predicted signal
+# define parameters of hidden Markov model
+# if there is no model in the environment yet
+    require(mhsmm)
+    if(!exists('obj.sm')){
+         obj.sm <<- sig2stat(sig)%>% smooth.discrete()
+    }
+# smooth the signal with the obtained model
+    sig.s <- predict(obj.sm, x = sig2stat(sig))%>%
+             extract2(1)%>% stat2sig()
+# calculate balance with smoothed signal
+     sig.s1 <- Hmisc::Lag(sig.s) %>% na.omit
+     bal <- cumsum(sig.s1 * (price[ ,6]%>% tail(.,length(sig.s1))))
+     K <- tail(bal, 1)/length(bal) * 10 ^ Dig
+     Kmax <- max(bal)/which.max(bal) * 10 ^ Dig
+     dd <- fTrading::maxDrawDown(bal)
+     return(list(sig = sig.s, bal = bal, Kmax = Kmax, K = K, dd = dd))
+}
+[CODE END]
+
+We will calculate and compare the balance based on predicted and smoothed signals.
+
+[CODE START]
+sig <- resBal[[1]]$sig
+sig.sm <- smoooth(sig)
+plot(sig.sm$bal, t="l")
+lines(resBal[[1]]$bal, col=2)
+[CODE END]
+
+Fig.6 Balance based on smoothed and predicted signals
+
+As we can see, the quality has slightly improved, but the drawdown still remains. We won't use this method in our Expert Advisor.
+
+[CODE START]
+sig.sm$dd
+$maxdrawdown
+[1] 0.02335
+$from
+[1] 208
+$to
+[1] 300
+[CODE END]
+
+4. Structure of the EA algorithm
+
+Fig.7 Structure of the EA algorithm
+
+4.1. Description of the Expert Advisor's operation
+
+Since the Expert Advisor operates in two streams (mql and Rterm), we will describe the process of their interaction. We will discuss the operations performed in each stream separately.
+
+4.1.1 MQL
+
+After placing the Expert Advisor on the chart:
+
+in the init() function
+
+we check the terminal's settings (DLL availability, permission to trade);
+
+set the timer;
+
+launch Rterm;
+
+calculate and transfer constants required for work to the R-process environment;
+
+check if Rterm works, if not - alert;
+
+exit from init().
+
+In the deinit() function
+
+we stop the timer;
+
+delete graphic objects;
+
+stop the Rterm.
+
+In the onTimer()function
+
+check if Rterm is working;
+
+if Rterm is not occupied and the new bar is (LastTime != Time[0]):
+
+ set the depth of history depending on if this is a first launch of the Expert Advisor;
+
+form four vectors of quotes (Open, High, Low, Close) and transfer them to Rterm;
+
+launch the script and leave without receiving the results of its performance;
+
+set the get_sig = true flag;
+
+set LastTime= Time[0].
+
+Otherwise, if Rterm works, is not occupied and the flag is get_sig = true:
+--------------------------------------------------------------------------------
+
+📄 ITEM #17 [MQL5_DEV | article_16984.html] (Score: 0.51)
+--------------------------------------------------------------------------------
+df.loc[:, 'entry_point'] = np.where(
+        df['signal'] == 'BUY', df['vwap'],
+        np.where(df['signal'] == 'SELL', df['vwap'], np.nan)
+    )
+
+    # Return data with major and minor support/resistance levels included
+    return df[['date', 'vwap', 'signal', 'signal_explanation', 'entry_point', 'major_support', 'major_resistance', 'minor_support', 'minor_resistance']].iloc[-1]
+
+# Route to handle incoming data
+@app.route('/vwap', methods=['POST'])
+def vwap():
+    try:
+        # Receive CSV data from EA
+        data = request.data.decode('utf-8')
+        print(f"Received data: {data[:200]}...")  # Log first 200 chars to ensure data is received correctly
+
+        # Load data into DataFrame
+        df = pd.read_csv(StringIO(data))
+
+        # Calculate VWAP and generate signals
+        result = calculate_vwap(df)
+
+        # Send response back to EA with signal, signal explanation, entry point, and support/resistance levels
+        response = {
+            'vwap': result['vwap'],
+            'signal': result['signal'],
+            'signal_explanation': result['signal_explanation'],
+            'entry_point': result['entry_point'],
+            'major_support': result['major_support'],
+            'major_resistance': result['major_resistance'],
+            'minor_support': result['minor_support'],
+            'minor_resistance': result['minor_resistance']
+        }
+        return jsonify(response)
+
+    except Exception as e:
+        print(f"Error processing request: {e}")
+        return jsonify({'error': 'Error processing the data'}), 500
+
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=5080, debug=True)
+--------------------------------------------------------------------------------
+
+📄 ITEM #18 [MQL5_DEV | article_20302.html] (Score: 0.50)
+--------------------------------------------------------------------------------
+@lru_cache(maxsize=128)
+def compute_features(data):
+    # Expensive computation
+    return features  # Lost on restart!
+
+[CODE END]
+ AFML solves this problem simply: we move the cache to disk. Joblib persists calculation results between Python runs, so even after a restart, you instantly get the previously calculated data. An example implementation is below.
+
+
+[CODE START]
+# AFML approach - persistent
+from joblib import Memory
+from appdirs import user_cache_dir
+
+memory = Memory(location=user_cache_dir("afml"), verbose=0)
+
+@memory.cache
+def compute_features(data):
+    # Expensive computation
+    return features  # Saved to disk automatically!
+
+[CODE END]
+ Challenge #2: Hashing Complex Financial Data Structures
+
+ And then there's an even bigger problem—financial data can't be hashed using standard methods. Pandas DataFrames, NumPy arrays, and dates are all "unhashable", and a regular cache simply won't work. Here's an example of how this breaks down.
+
+
+[CODE START]
+# This fails!
+import pandas as pd
+from functools import lru_cache
+
+@lru_cache
+def bad_cache_example(df: pd.DataFrame):
+    return df.mean()
+
+df = pd.DataFrame({'price': [100, 101, 102]})
+bad_cache_example(df)  # TypeError: unhashable type: 'DataFrame'
+[CODE END]
+ To ensure the cache works correctly, AFML creates its own key generator. It can "understand" DataFrames: their structure, data types, columns, indexes, and, most importantly, time range. Here's what a custom hashing implementation looks like.
+
+
+[CODE START]
+# afml/cache/robust_cache_keys.py
+--------------------------------------------------------------------------------
+
+📄 ITEM #19 [MQL5_DEV | article_18979.html] (Score: 0.50)
+--------------------------------------------------------------------------------
+[CODE START]
+pip install numpy pandas pyarrow flask MetaTrader5 ta scikit-learn \
+            joblib prophet cmdstanpy pykalman pytz
+
+[CODE END]
+ Installing prophet will automatically pull in dependencies such as tqdm, holidays, and lunarcalendar
+
+ Built‑in (no installation required)
+
+
+[CODE START]
+os, sys, logging, warnings, argparse, threading, io, datetime, pathlib, typing, time
+
+[CODE END]
+    Package  Purpose in the Script  Where it is used
+    Numpy  Vectorized maths on large arrays; foundation for Pandas, TA-lib, scikit-learn.  All feature helpers (np.diff, np.std, predict_proba, …).
+  pandas  Time-series DataFrame, fast CSV/Parquet IO, rolling windows.  Construct DF in /upload_history, deduplicate, feature engineering, model training, back-tests.
+  pyarrow (or fastparquet)  Engine for  df.to_parquet() / read_parquet() ; much smaller & faster than CSV, keeps nanosecond timestamps.
+  cDisk storage of uploaded history per symbol.
+  flask  Lightweight HTTP server that exposes /upload_history, /upload_spike_csv, /analyze. Converts JSON - Python.  All REST endpoints.
+  MetaTrader 5  Python bridge to a head-less MetaTrader 5 terminal: login,  copy_rates_range , symbol subscription.
+  History import, live collect_loop, back-tester.
+  ta  Pure-python technical-analysis indicators (MACD, RSI, ATR).  Features macd_div, rsi_val, offline_atr.
+  scikit-learn  Machine-learning core (StandardScaler + GradientBoostingClassifier + Pipeline).  Training models, probability inference inside /analyze and back-test.
+  joblib  Fast (de)serialization of scikit models; implements the per-symbol model cache.  joblib.dump/load everywhere models/*.pkl are read or written.
+  cmdstanpy  Stan backend that Prophet compiles to; Prophet will not fit without it.  Imported indirectly by Prophet during fit().
+  pykalman  Linear Kalman Filter smoothing; returns last/5-bar slope.  kalman_slope() feature.
+  pytz  Explicit UTC localization of datetime objects to avoid broker- vs-system-time confusion.  Conversions in history/back-test ranges.
+  prophet  Low-frequency trend forecast; provides “delta” feature (future price estimate).  prophet_delta() helper and async compilation cache.
+   Next, we’ll dive into the portion of the code that handles data collection and storage—right before model training.
+
+ Receiving MetaTrader 5 History via WebRequest
+
+ On the Python side, a lightweight Flask API (typically running at http://127.0.0.1:5000/upload_history) is set up to handle incoming HTTP POST requests. When the MQL5 script posts a JSON payload containing historical data (symbol name, timestamps, OHLC arrays), this Flask endpoint parses and validates the data. This avoids manual CSV handling and ensures the Python back-end can receive data in real time, automatically, from any MetaTrader 5 chart or EA script using the uploader.
+--------------------------------------------------------------------------------
+
+📄 ITEM #20 [MQL5_DEV | article_18247.html] (Score: 0.50)
+--------------------------------------------------------------------------------
+Building an ARIMA model on EURUSD
+
+ Now that we have determined the values of p,d, and q, we have everything needed to fit (train) the ARIMA model.
+
+
+
+
+[CODE START]
+from statsmodels.tsa.arima.model import ARIMA
+
+arima_model = ARIMA(series, order=(0,1,0))
+arima_model = arima_model.fit()
+print(arima_model.summary())
+[CODE END]
+ Outputs.
+
+
+[CODE START]
+                               SARIMAX Results                                
+==============================================================================
+Dep. Variable:                  Close   No. Observations:                 4007
+Model:                 ARIMA(0, 1, 0)   Log Likelihood               13987.647
+Date:                Mon, 26 May 2025   AIC                         -27973.293
+Time:                        16:59:38   BIC                         -27966.998
+Sample:                             0   HQIC                        -27971.062
+                               - 4007                                        
+Covariance Type:                  opg                                        
+==============================================================================
+                 coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------
+sigma2      5.427e-05   7.78e-07     69.768      0.000    5.27e-05    5.58e-05
+===================================================================================
+Ljung-Box (L1) (Q):                   1.47   Jarque-Bera (JB):              1370.86
+Prob(Q):                              0.22   Prob(JB):                         0.00
+Heteroskedasticity (H):               0.49   Skew:                             0.09
+Prob(H) (two-sided):                  0.00   Kurtosis:                         5.86
+===================================================================================
+
+Warnings:
+[1] Covariance matrix calculated using the outer product of gradients (complex-step).
+[CODE END]
+
+
+ Now let's train this model on some data and use it to make predictions on out-of-sample data, similarly to how we do with classical machine learning models.
+
+ Starting with splitting the data into training and testing samples.
+
+
+[CODE START]
+series = df["Close"]
+
+train_size = int(len(series) * 0.8)
+train, test = series[:train_size], series[train_size:]
+[CODE END]
+ Fitting the model to the training data.
+
+
+[CODE START]
+from statsmodels.tsa.arima.model import ARIMA
+
+arima_model = ARIMA(train, order=(0,1,0))
+arima_model = arima_model.fit()
+print(arima_model.summary())
+[CODE END]
+ Making predictions on the training data.
+
+
+[CODE START]
+predicted = arima_model.predict(start=1, end=len(train))
+[CODE END]
+ Visualizing the outcome.
+
+
+[CODE START]
+plt.figure(figsize=(7,4))
+plt.plot(train.index, train, label='Actual')
+plt.plot(train.index, predicted, label='Forecasted mean', linestyle='--')
+plt.title('Actual vs Forecast')
+plt.legend()
+plt.show()
+[CODE END]
+ Outputs.
+--------------------------------------------------------------------------------
+
+📄 ITEM #21 [MQL5_DEV | article_15665.html] (Score: 0.50)
+--------------------------------------------------------------------------------
+Why did we use FCI instead of PC?
+
+
+ FCI (Fast Causal Inference) and PC (Peter-Clark) are both causal discovery algorithms used in the field of causal inference. They're designed to infer causal relationships from observational data. Here's why one might choose FCI over PC:
+
+
+ Latent confounders: The main advantage of FCI over PC is its ability to handle latent confounders. FCI can infer the presence of hidden common causes, while PC assumes causal sufficiency (no latent confounders).
+ Selection bias: FCI can also account for selection bias in the data, which PC cannot.
+ More general model: FCI produces a more general graphical model called a Partial Ancestral Graph (PAG), which can represent a broader class of causal structures than the Directed Acyclic Graphs (DAGs) produced by PC.
+ Soundness and completeness: FCI is sound and complete for the class of causally insufficient systems, meaning it can correctly identify all possible causal relationships given infinite sample size.
+ Robustness: Due to its ability to handle latent confounders and selection bias, FCI is generally more robust when dealing with real-world data where hidden variables are common.
+
+ However, it's worth noting that FCI has some drawbacks compared to PC:
+
+
+ Computational complexity: FCI is generally more computationally expensive than PC, especially for large datasets.
+ Less definitive output: The PAGs produced by FCI often contain more undetermined edge directions than the DAGs from PC, reflecting the additional uncertainty from potential latent confounders.
+ Interpretation: PAGs can be more challenging to interpret than DAGs for non-experts.
+
+ In practice, the choice between FCI and PC often depends on the specific requirements of your causal inference task, the nature of your data, and your assumptions about the causal system. If you're confident that there are no hidden confounders and no selection bias, PC might be sufficient and more efficient. If you suspect latent variables or selection bias, FCI would be the more appropriate choice.
+
+
+
+ Vector Autoregression (VAR) Model
+
+ VAR is a multivariate forecasting algorithm that's used when two or more time series influence each other. In this trading system, it's likely used to model the relationships between different financial instruments or economic indicators.
+
+Key features of VAR:
+
+
+
+ It captures linear interdependencies among multiple time series.
+ Each variable is a linear function of past lags of itself and past lags of the other variables.
+ It allows for rich dynamics in a multiple time series system.
+
+
+
+In the context of this trading system:
+
+
+
+ The VAR model is trained using the `TrainVARModel` function.
+ The `PredictVARValue` function uses the trained model to make predictions.
+ The system optimizes the VAR model by selecting the optimal lag and significant variables using the `OptimizeVARModel` function.
+
+
+
+
+
+ Mathematical representation:
+
+
+ For a two-variable VAR model with lag 1:
+--------------------------------------------------------------------------------
+
+📄 ITEM #22 [MQL5_DEV | article_18247.html] (Score: 0.50)
+--------------------------------------------------------------------------------
+Moving average (MA)
+
+The moving average continues to model past errors in predictions.
+
+ Integration (I)
+
+Integration is always present to make the time series stationary.
+
+ Seasonal component (S)
+
+The seasonal component captures variations that recur at regular intervals.
+
+
+
+  Seasonal differencing is similar to regular differencing, but, instead of subtracting consecutive terms, we subtract the value from the previous season.
+
+
+ Before calling the SARIMAX model, let's determine the right parameters for it using auto_arima.
+
+
+[CODE START]
+from pmdarima.arima import auto_arima
+
+# Auto-fit SARIMA (automatically detects P, D, Q, S)
+
+auto_model = auto_arima(
+    series,
+    seasonal=True,          # Enable seasonality
+    m=5,                    # Weeky cycle (5 days) for daily data
+    trace=True,             # Show search progress
+    stepwise=True,          # Faster optimization
+    suppress_warnings=True,
+    error_action="ignore"
+)
+
+print(auto_model.summary())
+[CODE END]
+ Outputs.
+
+
+[CODE START]
+Performing stepwise search to minimize aic
+ ARIMA(2,1,2)(1,0,1)[5] intercept   : AIC=-35529.092, Time=3.81 sec
+ ARIMA(0,1,0)(0,0,0)[5] intercept   : AIC=-35537.068, Time=0.29 sec
+ ARIMA(1,1,0)(1,0,0)[5] intercept   : AIC=-35536.573, Time=0.97 sec
+ ARIMA(0,1,1)(0,0,1)[5] intercept   : AIC=-35536.570, Time=4.38 sec
+ ARIMA(0,1,0)(0,0,0)[5]             : AIC=-35538.731, Time=0.21 sec
+ ARIMA(0,1,0)(1,0,0)[5] intercept   : AIC=-35536.048, Time=0.67 sec
+ ARIMA(0,1,0)(0,0,1)[5] intercept   : AIC=-35536.024, Time=0.87 sec
+ ARIMA(0,1,0)(1,0,1)[5] intercept   : AIC=-35534.248, Time=0.92 sec
+ ARIMA(1,1,0)(0,0,0)[5] intercept   : AIC=-35537.492, Time=0.37 sec
+ ARIMA(0,1,1)(0,0,0)[5] intercept   : AIC=-35537.511, Time=0.55 sec
+ ARIMA(1,1,1)(0,0,0)[5] intercept   : AIC=-35535.683, Time=0.57 sec
+--------------------------------------------------------------------------------
+
+📄 ITEM #23 [CODE | Nonlinear Kalman filter.mq5] (Score: 0.49)
+--------------------------------------------------------------------------------
+a*a)*smoother[i] : smoother[i];
+            detrend    = smoother[i] - lowpass[i];
+            delta[i]   = (i>1) ? b*delta[i-1] - a*a*delta[i-2] + (1-b+a*a)*detrend : 0;
+            break;
+         default :
+            lowpass[i] = (i>2) ? (b+c)*lowpass[i-1] - (c+b*c)*lowpass[i-2] + c*c*lowpass[i-3] + (1-b+c)*(1-c)*smoother[i] : smoother[i];
+            detrend    = smoother[i] - lowpass[i];
+            delta[i]   = (i>2) ? (b+c)*delta[i-1] - (c+b*c)*delta[i-2] + c*c*delta[i-3] + (1-b+c)*(1-c)*detrend : 0;
+        }
+      kalman[i]=lowpass[i]+delta[i];
+      kalmanc[i] = (i>0) ? (kalman[i]>kalman[i-1]) ? 0 : (kalman[i]<kalman[i-1]) ? 1 : kalmanc[i-1] : 0;
+     }
+   return(i);
+  }
+//| Custom functions                                                 |
+#define _maInstances 1
+#define _maWorkBufferx1 1*_maInstances
+//|                                                                  |
+double iCustomMa(int mode,double price,double length,int r,int bars,int instanceNo=0)
+--------------------------------------------------------------------------------
+
+📄 ITEM #24 [CODE | Nonlinear Kalman filter.mq5] (Score: 0.49)
+--------------------------------------------------------------------------------
+wma    // Linear weighted MA
+  };
+input ENUM_APPLIED_PRICE Price          =  PRICE_CLOSE;  // Price
+input enOrder            Order          =  ord_3;        // Filter Order
+input int                Length         = 14;            // Fast Filter Period
+input int                PreSmooth      =  3;            // Pre-smoothing period
+input enMaTypes          PreSmoothMode  =  ma_lwma;      // Pre-smoothing MA Mode
+double kalman[],kalmanc[],lowpass[],delta[],smoother[];
+//------------------------------------------------------------------
+//
+//------------------------------------------------------------------
+int OnInit()
+  {
+   SetIndexBuffer(0,kalman,INDICATOR_DATA);
+   SetIndexBuffer(1,kalmanc,INDICATOR_COLOR_INDEX);
+   SetIndexBuffer(2,lowpass,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(3,delta,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(4,smoother,INDICATOR_CALCULATIONS);
+   return(0);
+  }
+void OnDeinit(const int reason) { return; }
+--------------------------------------------------------------------------------
+
+📄 ITEM #25 [MQL5_DEV | article_15665.html] (Score: 0.49)
+--------------------------------------------------------------------------------
+// CONTEXT: Series: Example of Causality Network Analysis (CNA) and Vector Auto-Regression Model for Market Event Prediction - MQL5 Articles, Part: N/A, Title: Example of Causality Network Analysis (CNA) and Vector Auto-Regression Model for Market Event Prediction - MQL5 Articles
+
+Introduction
+
+ Causality Network Analysis (CNA) is a method used to understand and model complex causal relationships between variables in a system. When applied to financial markets, it can help identify how different market events and factors influence each other, potentially leading to more accurate predictions.
+
+ Causal Discovery: Causal discovery is the process of inferring causal relationships from observational data. In the context of financial markets, this means identifying which variables (like economic indicators, market prices, or external events) have causal effects on others. There are several algorithms for causal discovery, but one of the most popular is the PC (Peter-Clark) algorithm.
+
+ This trading bot doesn't explicitly implement a system called "Causality Network Analysis for Market Event Prediction" as a named component. However, the bot does incorporate elements of causal analysis and network-based approaches that are conceptually similar. Let's break this down:
+
+ Causal Analysis: The bot uses a causal discovery algorithm, specifically the Fast Causal Inference (FCI) algorithm (instead of PC algorithm). This is implemented in the FCIAlgorithm() function.
+
+ Network Analysis: The bot uses a network structure to represent relationships between different financial instruments or indicators. This is evident from the Node struct and the SetupNetwork() function.
+
+ Event Prediction: While not explicitly called "event prediction", the bot uses a Vector Autoregression (VAR) model to make predictions about future market states. This is implemented in functions like TrainVARModel() and PredictVARValue() .
+
+
+
+ Causality Network Analysis: A New Frontier in Market Event Prediction
+
+
+ In the world of algorithmic trading, a new approach is gaining traction among quants and traders alike: Causality Network Analysis for Market Event Prediction. This sophisticated method combines the power of causal inference, network theory, and predictive analytics to forecast significant market events with unprecedented accuracy.
+
+ Imagine the financial market as a vast, interconnected web. Each strand represents a relationship between different market variables - stock prices, economic indicators, geopolitical events, and more. Traditional analysis often focuses on correlations, but as any seasoned trader knows, correlation doesn't always imply causation.
+
+ This is where Causality Network Analysis steps in. It aims to uncover the true cause-and-effect relationships within this complex web. By doing so, it provides traders with a deeper understanding of market dynamics, allowing them to anticipate events that might be invisible to conventional analysis.
+--------------------------------------------------------------------------------
+
+📄 ITEM #26 [MQL5_DEV | article_1468.html] (Score: 0.48)
+--------------------------------------------------------------------------------
+In an interaction, two forces participate.
+
+"The Golden Section is a constant of the interaction quantum … A question occurs where the limit to increasing
+of one force and decreasing of the other force is. There must be such a limit, this results from the reasoning
+below. Let us imagine that there is no such a limit. Then we can increase the one force and descrease the other
+one down to zero. This results in that the only one force remains, and this is the same as if there were no interaction
+at all. This is impossible, of course. Therefore, there is a limit to increasing the one force and decreasing
+the other one. The problem of limits in changing the forces can, in our opinion, be solved using the Golden Section. The Russian science experiences recovery in recent years concerning the role of the Golden Section in different
+fields of science and technology. Scientists have brought out clearly that the Golden Section is a universal
+constant. However, the nature of the Golden Section is still unexplored. We think that this nature can only be
+studied within the general cycle theory (GCT)…". [2:29, translated by MetaQuotes Software Corp., 2007]
+
+How the central tenets of the GCT can be applied in scientific research. The fluctuative nature of interaction is determined by a "game" or interaction of two opposed and mutually
+causal forces, trends. It is this "game" that determines the cycle structure. Therefore, to apply the
+general theory of cycle, it is necessary to start with the most important thing – with detecting those two
+opposed forces. When investigating different systems, we will have different names for those forces. If we consider
+interaction in inorganic nature, those forces will be active/reactive forces… It is the most important thing
+for further analysis to detect the forces clearly in every research. After two opposed trends have been found,
+it is necessary to set two opposed and mutually causal cycle poles. One pole is composed of the maximalvalue
+of the positive force and the minimal value of the negative force. The second pole is opposite to the first one
+and is composed of the minimal value of the positive force and the maximal value of the negative force. As shown
+above, these are these poles, between which the oscillatory process takes place.
+
+ The next stage consists in finding a parameter that would detect the inertial mass and rate of changing the two
+opposed forces. The process rate is tracked within a certain period of time, a sequence diagram is built by the
+procedure described above. The sequence diagram shows the wave length, the amplitude and the oscillatory "gap"
+size. If it is necessary, the interference of neighboring cycles towards the given cycle…» [2:46, translated by MetaQuotes Software Corp., 2007]
+
+ I will not give figures and formulas from the work [3] here. They are rather interesting.
+You can read this work yourselves if you wish.
+--------------------------------------------------------------------------------
+
+📄 ITEM #27 [MQL5_DEV | article_14360.html] (Score: 0.48)
+--------------------------------------------------------------------------------
+Inverse probability weighting can help balance the distribution of covariates between treatment and control groups, reducing bias in estimating causal effects. However, it is based on the assumption that all relevant confounding variables are measured and included in the model used to estimate the propensity score. Additionally, like any statistical method, the success of IPW depends on the quality of the model used to estimate the propensity score.
+
+ The inverse propensity score equation is as follows:
+
+
+
+ Without going into detail, you can compare the two terms of the equation. The left one is for the treatment group, while the right one is for the control group. The equation shows that a simple comparison of averages is equivalent to a comparison of inversely weighted averages. This creates a population the same size as the original, but in which everyone on the left side receives the treatment. For the same reasons, the right one considers untreated ones and puts a high value on those that look like treated ones.
+
+
+
+ Evaluation of results after matching
+
+ In causal inference, the estimate is constructed as ATE or CATE, that is, the difference in the weighted means (adjusted for the propensity score) of the treated and untreated target values. 
+
+ Once we have obtained the propensity score as e(x), we can use these values, for example, to train another classifier, instead of the original values of X features. We can also compare samples by their propensity score to divide them into strata. Another option is to add e(x) as a separate feature when training the final evaluator, which will help eliminate biased estimates due to confounding, when different examples in the sample have different estimates according to propensity score.
+
+ We are interested in finding subgroups that respond well or poorly to treatment (model training) and then train the final classifier only on data that can be trained well (the classification error is minimal). Then we should put the poorly classified data into the second subgroup and train the second classifier to distinguish between these two subgroups, that is, to separate the wheat from the chaff, or to identify subgroups that are most amenable to treatment. Therefore, we will not now adopt the entire propensity score methodology, but will match the samples according to the obtained probabilities of the trained classifier, while the overall ATE (average treatment effect) assessment is of little interest to us.
+
+ In other words, we will base our assessment on the results of the algorithm running on new data that did not participate in training. Additionally, we are still interested in the average speed of a set of models trained on randomized data. The higher the average score of independent models, the more confidence we have in each specific model.
+
+
+
+ Moving on to experiments
+--------------------------------------------------------------------------------
+
+📄 ITEM #28 [MQL5_DEV | article_14360.html] (Score: 0.47)
+--------------------------------------------------------------------------------
+Strong neglect assumption
+
+ "Strong neglect" is a crucial assumption in the construction of the propensity score, which aims to estimate causal effects in observations where treatment assignment is random. Essentially, this means that treatment assignment is independent of potential outcomes given observed baseline covariates (traits). 
+
+ Let's take a closer look:
+
+
+
+
+ Treatment distribution: This is whether a unit receives treatment or not (such as taking a new medication or participating in a program).
+
+
+ Potential outcomes: These are the outcomes that a unit would experience in both the treatment and control conditions, but we can only observe one for each unit.
+
+
+ Baseline covariates: These are unit characteristics measured before treatment allocation that may influence both the likelihood of receiving treatment and the outcome.
+
+ The "strongly ignorable" assumption states that:
+
+
+
+
+ No unmeasured confounders: There are no unobserved variables that influence either treatment allocation or outcome. This is important because unobserved confounders may bias the estimated treatment effect.
+
+
+ Positivity: Each unit has a nonzero probability of receiving both treatment and control, given its observed covariates. This ensures that there are enough units in the groups being compared to make meaningful comparisons.
+
+
+
+ If these conditions are met, then conditioning on the propensity score (the estimated probability of receiving treatment given covariates) produces unbiased estimates of the average treatment effect (ATE). ATE represents the mean difference in outcomes between treatment and control groups as if treatment had been randomly assigned.
+
+
+
+ Inverse probability weighting
+
+ Inverse probability weighting is one of the approaches implying eliminating noise or confounding factors by attempting to re-weight observations in a data set based on the inverse of the probability of treatment assignment. The idea is to give more weight to observations that are rated as less likely to be treated by treatment, making them more representative of the general population.
+
+
+
+
+ First, a propensity score is estimated, which is the probability of receiving treatment given the observed covariates.
+
+
+ An inverse propensity score is calculated for each observation.
+
+
+ Each observation is then multiplied by its corresponding weight. This means that observations with a lower probability of receiving the observed treatment are given more weight.
+
+
+ The weighted data set is then used for analysis. Weights are applied to both the treatment and control groups, adjusting for the potential influence of observed covariates.
+--------------------------------------------------------------------------------
