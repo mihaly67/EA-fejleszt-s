@@ -8,6 +8,8 @@
 #property version   "1.00"
 #property indicator_separate_window
 #property indicator_buffers 5
+#include "Amplitude_Booster.mqh"
+
 #property indicator_plots   2
 
 //--- Plot settings
@@ -53,6 +55,10 @@ int hFastDEMA2 = INVALID_HANDLE;
 int hWPR       = INVALID_HANDLE;
 int hSlowMACD  = INVALID_HANDLE;
 
+//--- Boosters
+CAmplitudeBooster BoostFast;
+CAmplitudeBooster BoostSlow;
+
 //+------------------------------------------------------------------+
 //| Custom Indicator Initialization                                  |
 //+------------------------------------------------------------------+
@@ -84,6 +90,10 @@ int OnInit()
    IndicatorSetDouble(INDICATOR_LEVELVALUE, 1, 0.8);
    IndicatorSetDouble(INDICATOR_LEVELVALUE, 2, -0.8);
 
+   //--- Init Boosters
+   BoostFast.Init(InpNormPeriod, true, InpIFTGain);
+   BoostSlow.Init(InpNormPeriod, true, InpIFTGain);
+
    //--- Create Handles (Global)
    hFastDEMA1 = iDEMA(NULL, PERIOD_CURRENT, InpFastPeriod1, 0, PRICE_CLOSE);
    hFastDEMA2 = iDEMA(NULL, PERIOD_CURRENT, InpFastPeriod2, 0, PRICE_CLOSE);
@@ -114,25 +124,6 @@ void OnDeinit(const int reason)
    if(hFastDEMA2 != INVALID_HANDLE) IndicatorRelease(hFastDEMA2);
    if(hWPR != INVALID_HANDLE)       IndicatorRelease(hWPR);
    if(hSlowMACD != INVALID_HANDLE)  IndicatorRelease(hSlowMACD);
-  }
-
-//+------------------------------------------------------------------+
-//| Math: IFT                                                        |
-//+------------------------------------------------------------------+
-double IFT(double x)
-  {
-   double e2x = MathExp(2 * x * InpIFTGain);
-   return (e2x - 1) / (e2x + 1);
-  }
-
-//+------------------------------------------------------------------+
-//| Math: Normalize (Stoch-like)                                     |
-//+------------------------------------------------------------------+
-double Normalize(double val, double min, double max)
-  {
-   if(max - min <= 0) return 0;
-   double norm = (val - min) / (max - min); // 0..1
-   return (norm - 0.5) * 4.0; // -2..2 approx for IFT
   }
 
 //+------------------------------------------------------------------+
@@ -210,31 +201,37 @@ int OnCalculate(const int rates_total,
         }
      }
 
-   //--- Final Normalization & Fusion Loop
-   // We need 'InpNormPeriod' history to normalize.
+   //--- Final Normalization & Fusion Loop (Using AGC Boosters)
+   // We recalculate the ENTIRE sequence if it's the first run,
+   // or just update incrementally. Boosters have internal state (circular buffer).
+   // Ideally, we should feed the boosters sequentially from 0 to rates_total.
 
-   int norm_limit = limit;
-   if(norm_limit < InpNormPeriod) norm_limit = InpNormPeriod;
+   // If prev_calculated > 0, we must be careful. The Booster class as written
+   // expects sequential Update() calls. Jumping back will break its buffer index.
+   // For robust visualization in this prototype, we will Reset boosters and loop ALL
+   // if we are not strictly at the end.
+   // For optimized production code, we would save booster state or use a stateless (array-based) function.
 
-   for(int i = norm_limit; i < rates_total; i++)
+   // PROTOTYPE APPROACH: Re-run normalization loop from Start for accuracy on history load
+   // (AGC depends on history).
+
+   if(prev_calculated == 0) {
+      BoostFast.Init(InpNormPeriod, true, InpIFTGain);
+      BoostSlow.Init(InpNormPeriod, true, InpIFTGain);
+      limit = 0;
+   } else {
+      // In live tick, usually limit is rates_total-1.
+      // We accept that we might "double feed" the last bar, which is fine for AGC (it just updates the last slot).
+      // Actually, standard indicators re-calculate the last bar.
+      // We need to avoid corrupting the buffer with duplicate data.
+      // We will only feed new bars.
+      limit = prev_calculated;
+   }
+
+   for(int i = limit; i < rates_total; i++)
      {
-      // 1. Normalize Fast Raw
-      double min_f = Buf_FastRaw[i], max_f = Buf_FastRaw[i];
-      for(int k=1; k<InpNormPeriod; k++) {
-         if(Buf_FastRaw[i-k] < min_f) min_f = Buf_FastRaw[i-k];
-         if(Buf_FastRaw[i-k] > max_f) max_f = Buf_FastRaw[i-k];
-      }
-      double fast_norm_val = Normalize(Buf_FastRaw[i], min_f, max_f);
-      double fast_ift = IFT(fast_norm_val);
-
-      // 2. Normalize Slow Raw
-      double min_s = Buf_SlowRaw[i], max_s = Buf_SlowRaw[i];
-      for(int k=1; k<InpNormPeriod; k++) {
-         if(Buf_SlowRaw[i-k] < min_s) min_s = Buf_SlowRaw[i-k];
-         if(Buf_SlowRaw[i-k] > max_s) max_s = Buf_SlowRaw[i-k];
-      }
-      double slow_norm_val = Normalize(Buf_SlowRaw[i], min_s, max_s);
-      double slow_ift = IFT(slow_norm_val);
+      double fast_ift = BoostFast.Update(Buf_FastRaw[i]);
+      double slow_ift = BoostSlow.Update(Buf_SlowRaw[i]);
 
       // 3. Fusion
       double hybrid = (fast_ift * InpFastWeight) + (slow_ift * InpSlowWeight);
