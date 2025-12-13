@@ -1,35 +1,30 @@
 # Session Handover - Hybrid Scalper Research Phase
 
-## 🟢 Status: Research & Prototyping Complete
-We have successfully restored the environment and conducted a deep "Full Sweep" research on Lag-Free Scalping, Multi-Timeframe (MTF) logic, and Python-based signal processing.
+## 🟢 Status: Research & Prototyping Complete (Ready for User Test)
+The environment is restored, diagnostics are active, and the "Hybrid Scalper" prototypes are implemented.
 
-## 📂 Key Artifacts Created
-*   **Research Engine:** `Factory_System/kutato_ugynok_v3.py` (Recursive "Deep Search" agent).
-*   **Knowledge Base:**
-    *   `Knowledge_Base/MTF_Research_Source.txt`
-    *   `Knowledge_Base/Python_Hybrid_Research.txt`
-    *   `Knowledge_Base/Lag_Analysis.txt`
-    *   `Knowledge_Base/Amplitude_Restoration.txt`
-*   **Prototypes:**
-    *   `Showcase_Indicators/Hybrid_MTF_Scalper.mq5`: (M1 ZeroLag + M5 Trend Bias + IFT).
-    *   `Showcase_Indicators/Lag_Comparator.mq5`: (Visual proof of ALMA vs Kalman vs DEMA).
-    *   `Factory_System/Hybrid_Signal_Processor.py`: (Python Kalman/CUSUM engine).
+## 📂 Key Artifacts Created (All in Repository)
+*   **Libraries:** `Showcase_Indicators/Amplitude_Booster.mqh` (AGC Logic).
+*   **Indicators:** `Showcase_Indicators/Hybrid_MTF_Scalper.mq5` (The main tool).
+*   **Scripts:** `Showcase_Indicators/Test_Amplitude_Booster.mq5` (Verification).
+*   **Python Engine:** `Factory_System/Hybrid_Signal_Processor.py`.
+*   **Research Logs:** `Knowledge_Base/` (Lag Analysis, Amplitude Restoration, MTF Source).
+
+## 📁 Recommended Installation Structure (MQL5 Data Folder)
+To simplify installation and ensure dependencies work, create this specific folder structure in MetaTrader:
+`MQL5/Indicators/Jules/Showcase_Indicators/Hybrid_MTF_Scalper/`
+...and copy **ALL three files** (`.mq5` and `.mqh`) into this single folder.
 
 ## 🔭 Next Objectives (Implementation Phase)
-1.  **Amplitude Restoration:**
-    *   Create `Amplitude_Booster.mqh` library.
-    *   Implement **AGC (Automatic Gain Control)** to fix the "flattening" caused by Kalman/ALMA smoothing.
-2.  **Integration:**
-    *   Establish file-based communication between MQL5 EA and `Hybrid_Signal_Processor.py`.
-3.  **Refinement:**
-    *   Upgrade `Hybrid_MTF_Scalper.mq5` to use the new `Amplitude_Booster` library.
+1.  **User Verification:** User will test `Hybrid_MTF_Scalper.mq5` on their local machine.
+2.  **Feedback Integration:** Refine AGC settings based on visual results (is it still lagging? is it too noisy?).
+3.  **Python Connection:** Once MQL5 logic is proven, wire up the File I/O to the Python engine.
 
-## ⚠️ Critical Context
-*   **Lag Conclusion:** Standard Kalman lags due to pre-smoothing. Use **ALMA (Offset 0.99)** or **DEMA** for execution, and **Kalman** only if dynamic covariance is implemented (via Python).
-*   **Amplitude:** Smoothing kills volatility. We MUST normalize the signal *after* smoothing to detect crossings on time.
-*   **Environment:** `restore_environment.py` is stable and includes diagnostics.
+## ⚠️ Session Health Report
+*   **Current Status:** **YELLOW/RED**. We have had a long session with deep research.
+*   **Recommendation:** **FRESH START**. Do not start the complex "Python Integration" task in this session. Close this chat, and start a new one referencing this Handover file.
 
-## 📌 Instructions for Next Session
+## 📌 Instructions for New Session
 1.  **Start:** Run `python3 restore_environment.py`.
-2.  **Focus:** Build `Amplitude_Booster.mqh` based on `Amplitude_Restoration.txt`.
-3.  **Action:** Do not research "Lag" again. We have the solution. **Build it.**
+2.  **Context:** Read `LAST_SESSION_HANDOVER.md`.
+3.  **Action:** Ask user: "Sikerült a teszt? Milyen az AGC teljesítménye?" (Did the test work? How is the AGC performance?).
