@@ -176,6 +176,15 @@ double GetValMTF(int handle, int buffer_num, datetime time)
 }
 
 //+------------------------------------------------------------------+
+//| Helper: IFT (Restored for Histogram Scaling)                     |
+//+------------------------------------------------------------------+
+double IFT(double x)
+{
+   double e2x = MathExp(2 * x * InpIFTGain);
+   return (e2x - 1) / (e2x + 1);
+}
+
+//+------------------------------------------------------------------+
 //| Calculation                                                      |
 //+------------------------------------------------------------------+
 int OnCalculate(const int rates_total,
