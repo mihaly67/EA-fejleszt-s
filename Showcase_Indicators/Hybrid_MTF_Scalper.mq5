@@ -37,6 +37,11 @@
 #property indicator_width3  2
 
 //--- Inputs
+input group "Visibility"
+input bool     InpShowHybrid  = true; // Show Hybrid Signal
+input bool     InpShowTrend   = true; // Show Trend Bias
+input bool     InpShowHist    = true; // Show Current Histogram
+
 input group "Timeframes (Sandwich Logic)"
 input ENUM_TIMEFRAMES InpFastTF     = PERIOD_M1;  // Lower/Fast TF (Context)
 input ENUM_TIMEFRAMES InpTrendTF    = PERIOD_M5;  // Higher/Trend TF (Bias)
@@ -126,6 +131,11 @@ int OnInit()
    string name = StringFormat("HybridMTF(F:%s, T:%s)", EnumToString(InpFastTF), EnumToString(InpTrendTF));
    IndicatorSetString(INDICATOR_SHORTNAME, name);
 
+   //--- Visibility Control
+   if(!InpShowHybrid) PlotIndexSetInteger(0, PLOT_DRAW_TYPE, DRAW_NONE);
+   if(!InpShowTrend)  PlotIndexSetInteger(1, PLOT_DRAW_TYPE, DRAW_NONE);
+   if(!InpShowHist)   PlotIndexSetInteger(2, PLOT_DRAW_TYPE, DRAW_NONE);
+
    return(INIT_SUCCEEDED);
   }
 
@@ -207,7 +217,19 @@ int OnCalculate(const int rates_total,
 
       double c_d1 = GetVal(hCurrDEMA1, 0, shift);
       double c_d2 = GetVal(hCurrDEMA2, 0, shift);
-      Buf_Hist[i] = (c_d1 - c_d2); // Histogram
+
+      double hist_raw = (c_d1 - c_d2);
+
+      // Auto-Scale Histogram to fit in window (e.g., max height 0.5)
+      // Simple heuristic: Normalize by recent ATR or just simple Price scale factor?
+      // Better: Since Hybrid is -1..1, we can just use a fixed multiplier for visual,
+      // or track max history.
+      // For this showcase, we use a static scaling factor derived from price (Percent).
+      // Or safer: Normalize by TickSize * Period?
+      // Simplest Visual Fix: Use IFT on Histogram too, but with lower gain.
+
+      double hist_scaled = IFT(hist_raw / _Point * 0.1); // Quick scaling attempt
+      Buf_Hist[i] = hist_scaled * 0.5; // Cap at 0.5 visual height
 
       // 2. Fast Signal (From InpFastTF)
       // Map Current Time -> Fast TF Time
