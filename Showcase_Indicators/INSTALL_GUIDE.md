@@ -1,4 +1,4 @@
-# MQL5 Installation Guide
+# MQL5 Installation Guide (Updated)
 
 To ensure the "Hybrid Scalper" system works correctly, please install the files into the following directories within your MetaTrader 5 Data Folder (File -> Open Data Folder).
 

@@ -18,5 +18,9 @@
 *   **RESPECT EXPERIENCE:** The user is technically proficient. Do not over-explain basics. Focus on the specific architectural or logical problem.
 *   **OBEY RESET:** If the user demands a reset/cleanup, execute it immediately and thoroughly without debate.
 
+## 5. Session Health Monitoring (MANDATORY)
+*   **PROACTIVE WARNING:** The agent must monitor the conversation length. If the session exceeds ~20-25 turns or if RAG outputs are exceptionally large, the agent must proactively warn the user that context limits are approaching.
+*   **STATUS REPORT:** Upon request (or automatically at high usage), report the estimated "Health" of the session (Green/Yellow/Red) and recommend a restart ("Handover") if complexity increases.
+
 ---
 *This protocol is binding for all future sessions.*
