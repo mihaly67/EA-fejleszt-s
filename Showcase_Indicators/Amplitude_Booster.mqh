@@ -2,6 +2,7 @@
 //|                                            Amplitude_Booster.mqh |
 //|                                                   Jules Assistant|
 //|                                  Automatic Gain Control (AGC) Lib|
+//|                                       Verified Compilation Header|
 //+------------------------------------------------------------------+
 #property copyright "Jules Assistant"
 #property strict
