@@ -2,12 +2,18 @@
 //|                                        Hybrid_MTF_Scalper.mq5 |
 //|                                            Jules Assistant |
 //|                                   Deep Research: MTF & Hybrid Logic |
+//|                                                                  |
+//| INSTALLATION PATH: MQL5/Indicators/Hybrid_MTF_Scalper.mq5        |
+//| DEPENDENCY: MQL5/Include/Amplitude_Booster.mqh                   |
 //+------------------------------------------------------------------+
 #property copyright "Jules Assistant"
 #property link      "https://github.com/mihaly67/EA-fejleszt-s"
 #property version   "1.00"
 #property indicator_separate_window
 #property indicator_buffers 5
+
+// Use angle brackets < > to search in MQL5/Include/
+// Use quotes " " to search in the SAME folder as this indicator
 #include "Amplitude_Booster.mqh"
 
 #property indicator_plots   2

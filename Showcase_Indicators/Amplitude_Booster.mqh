@@ -3,6 +3,9 @@
 //|                                                   Jules Assistant|
 //|                                  Automatic Gain Control (AGC) Lib|
 //|                                       Verified Compilation Header|
+//|                                                                  |
+//| INSTALLATION PATH: MQL5/Include/Amplitude_Booster.mqh            |
+//| (Or inside a subfolder, e.g. MQL5/Include/Jules/ )               |
 //+------------------------------------------------------------------+
 #property copyright "Jules Assistant"
 #property strict

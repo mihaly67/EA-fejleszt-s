@@ -2,12 +2,15 @@
 //|                                       Test_Amplitude_Booster.mq5 |
 //|                                                   Jules Assistant|
 //|                                      Test Script for AGC Library |
+//|                                                                  |
+//| INSTALLATION PATH: MQL5/Scripts/Test_Amplitude_Booster.mq5       |
+//| DEPENDENCY: MQL5/Include/Amplitude_Booster.mqh                   |
 //+------------------------------------------------------------------+
 #property copyright "Jules Assistant"
 #property version   "1.00"
 #property script_show_inputs
 
-// Include the library
+// Include the library (Ensure Amplitude_Booster.mqh is in MQL5/Include/ or same folder)
 #include "Amplitude_Booster.mqh"
 
 //+------------------------------------------------------------------+
