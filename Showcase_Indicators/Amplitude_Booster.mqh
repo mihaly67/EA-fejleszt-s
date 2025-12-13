@@ -57,8 +57,29 @@ public:
       if(m_index >= m_period) m_index = 0;
       if(m_count < m_period) m_count++;
 
+      return CalculateBoost(raw_input);
+     }
+
+   // Update Last Value (For real-time ticks on the same bar)
+   // Overwrites the most recent value without advancing the buffer
+   double UpdateLast(double raw_input)
+     {
+      if(m_count == 0) return Update(raw_input);
+
+      // Backtrack index to overwrite last
+      int last_idx = m_index - 1;
+      if(last_idx < 0) last_idx = m_period - 1;
+
+      m_buffer[last_idx] = raw_input;
+
+      return CalculateBoost(raw_input);
+     }
+
+   // Internal Calculation Logic
+   double CalculateBoost(double current_val)
+     {
       // Need enough data
-      if(m_count < m_period) return 0.0;
+      if(m_count < 2) return 0.0;
 
       // 2. Find Range (Min/Max)
       double min_val = m_buffer[0];
@@ -77,7 +98,7 @@ public:
 
       if(range > 0.00000001) // Avoid div by zero
         {
-         normalized = (raw_input - min_val) / range; // 0..1
+         normalized = (current_val - min_val) / range; // 0..1
          normalized = normalized - 0.5;              // -0.5..0.5
         }
 
