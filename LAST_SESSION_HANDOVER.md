@@ -1,30 +1,28 @@
-# Session Handover - Hybrid Scalper Research Phase
+# Session Handover - Hybrid Scalper Debugging Phase
 
-## 🟢 Status: Research & Prototyping Complete (Ready for User Test)
-The environment is restored, diagnostics are active, and the "Hybrid Scalper" prototypes are implemented.
+## 🔴 Current Status: Prototype Live, Critical Bugs Identified
+The environment is stable, and the "Hybrid Scalper" system files are in the repository. However, the user reports significant functional issues with the indicator (`Hybrid_MTF_Scalper.mq5`).
 
-## 📂 Key Artifacts Created (All in Repository)
-*   **Libraries:** `Showcase_Indicators/Amplitude_Booster.mqh` (AGC Logic).
-*   **Indicators:** `Showcase_Indicators/Hybrid_MTF_Scalper.mq5` (The main tool).
-*   **Scripts:** `Showcase_Indicators/Test_Amplitude_Booster.mq5` (Verification).
-*   **Python Engine:** `Factory_System/Hybrid_Signal_Processor.py`.
-*   **Research Logs:** `Knowledge_Base/` (Lag Analysis, Amplitude Restoration, MTF Source).
+## 🐛 Known Bugs & User Feedback
+1.  **No History Data:** The indicator shows a flat line (0) and only updates for new ticks.
+    *   *Cause:* The `OnCalculate` optimization `limit = prev_calculated` is too aggressive or the `Amplitude_Booster` state isn't initializing correctly for historical bars.
+2.  **Histogram Scaling Failed:** "Minden oszlop egyforma magas".
+    *   *Cause:* The "Visual Auto-Scaling" logic is likely normalizing everything to 1.0 or failing to detect the true range.
+3.  **Parameter Confusion:** User cannot find/adjust WPR and MACD settings easily.
+    *   *Action:* Simplify `input` groups and names.
 
-## 📁 Recommended Installation Structure (MQL5 Data Folder)
-To simplify installation and ensure dependencies work, create this specific folder structure in MetaTrader:
-`MQL5/Indicators/Jules/Showcase_Indicators/Hybrid_MTF_Scalper/`
-...and copy **ALL three files** (`.mq5` and `.mqh`) into this single folder.
+## 📂 Key Artifacts (All in `Showcase_Indicators/` & `MQL5/`)
+*   `Hybrid_MTF_Scalper.mq5` (v2.1 - Needs Fix)
+*   `Amplitude_Booster.mqh` (v2.0 - Working, but needs sequential feed)
+*   `Test_Amplitude_Booster.mq5` (Test Script)
+*   `INSTALL_GUIDE.md` (Reference)
 
-## 🔭 Next Objectives (Implementation Phase)
-1.  **User Verification:** User will test `Hybrid_MTF_Scalper.mq5` on their local machine.
-2.  **Feedback Integration:** Refine AGC settings based on visual results (is it still lagging? is it too noisy?).
-3.  **Python Connection:** Once MQL5 logic is proven, wire up the File I/O to the Python engine.
+## 🚀 Tasks for Next Session (Immediate)
+1.  **Refactor `Hybrid_MTF_Scalper.mq5`:**
+    *   **Force History Calculation:** Ensure `limit = 0` runs on the first call to populate the chart history.
+    *   **Simplify Histogram:** Remove complex auto-scaling. Use a simple manual multiplier input (e.g., `InpHistScale = 1.0`).
+    *   **Ungroup Inputs:** Flatten the input parameters for better visibility in MetaTrader.
+2.  **Verify Booster Logic:** Ensure `Amplitude_Booster` can handle a historical loop without resetting incorrectly.
 
-## ⚠️ Session Health Report
-*   **Current Status:** **YELLOW/RED**. We have had a long session with deep research.
-*   **Recommendation:** **FRESH START**. Do not start the complex "Python Integration" task in this session. Close this chat, and start a new one referencing this Handover file.
-
-## 📌 Instructions for New Session
-1.  **Start:** Run `python3 restore_environment.py`.
-2.  **Context:** Read `LAST_SESSION_HANDOVER.md`.
-3.  **Action:** Ask user: "Sikerült a teszt? Milyen az AGC teljesítménye?" (Did the test work? How is the AGC performance?).
+## 📌 Context for Agent
+The user is testing on **Crypto** (weekend). Focus on **robustness** and **usability** (fixing the flat line) before adding new features. The goal is a working, visible curve on the chart history.
