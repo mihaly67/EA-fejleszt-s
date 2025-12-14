@@ -357,7 +357,7 @@ int OnCalculate(const int rates_total,
       if(is_forming_bar) {
          // If we are recalculating the same bar multiple times (tick updates)
          fast_boosted = BoostFast.UpdateLast(fast_raw);
-         trend_boosted = BoostTrend.UpdateLast(t_macd / _Point);
+         trend_boosted = BoostTrend.UpdateLast(trend_norm);
       } else {
          // We are on a finalized historical bar.
          // Note: In OnCalculate, 'i' iterates through history once.
