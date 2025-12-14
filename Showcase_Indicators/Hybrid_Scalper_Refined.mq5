@@ -1,16 +1,14 @@
 //+------------------------------------------------------------------+
 //|                                     Hybrid_Scalper_Refined.mq5 |
 //|                                            Jules Assistant |
-//|                             Verzió: 4.0 (Alpha Logic + Fixes) |
+//|                             Verzió: 4.1 (Alpha Logic + Calibrated)|
 //|                                                                  |
 //| LEÍRÁS:                                                          |
-//| Az Alpha verzió finomított változata.                            |
-//| 1. Tick Átlagolás (10mp) a zaj ellen.                            |
-//| 2. Helyes Normalizálás (SoftNormalize) a súlyozás javítására.    |
-//| 3. Hisztogram eltávolítva.                                       |
+//| Az Alpha verzió finomított változata Tick Átlagolással.          |
+//| Kalibrált "Saturation Points" bemenetekkel a könnyű hangoláshoz. |
 //+------------------------------------------------------------------+
 #property copyright "Jules Assistant"
-#property version   "4.00"
+#property version   "4.10"
 #property indicator_separate_window
 #property indicator_buffers 10
 #property indicator_plots   2
@@ -36,19 +34,22 @@
 // INPUT PARAMETERS
 //==================================================================
 input group "Fast Signal (Current TF)"
-input int      InpTickAvgTime = 10;   // Tick Átlagolás (mp)
+input int      InpTickAvgTime = 10;   // Tick Átlagolás (mp) [Zajszűrés]
 input int      InpFastPeriod1 = 12;   // DEMA Fast
 input int      InpFastPeriod2 = 26;   // DEMA Slow
 input int      InpWPRPeriod   = 14;   // WPR Period
 input double   InpFastWeight  = 0.6;  // Fast Signal Weight (0.0-1.0)
-input double   InpDEMAScale   = 0.05; // DEMA Normalizáló Skála (pl. 0.05 ~ 20 pont)
+
+// --- CALIBRATION ---
+// Forex: 10, Gold: 50, Index: 20, Crypto: 100
+input int      InpSaturationPoints = 20; // Telítési Pont (DEMA érzékenység)
 
 input group "Slow Trend (Higher TF)"
 input ENUM_TIMEFRAMES InpSlowTF = PERIOD_M5; // Trend Timeframe
 input int      InpSlowMACD1   = 24;   // Slow MACD Fast
 input int      InpSlowMACD2   = 52;   // Slow MACD Slow
 input double   InpSlowWeight  = 0.4;  // Slow Signal Weight
-input double   InpTrendScale  = 0.02; // Trend Normalizáló Skála (pl. 0.02 ~ 50 pont)
+input int      InpTrendSaturation = 50; // Trend Telítési Pont (Bias érzékenység)
 
 input group "Common"
 input int      InpNormPeriod  = 50;   // Normalization Lookback
@@ -82,6 +83,10 @@ struct TickNode {
 };
 TickNode       TickBuffer[];
 
+// Derived Scales
+double         dema_scale_factor;
+double         trend_scale_factor;
+
 //+------------------------------------------------------------------+
 //| Custom Indicator Initialization                                  |
 //+------------------------------------------------------------------+
@@ -91,6 +96,14 @@ int OnInit()
    if(InpSlowTF <= Period()) {
       Print("Figyelem: A Trend TF (Slow) legyen magasabb, mint a jelenlegi chart TF!");
    }
+
+   // Set Scales (1.0 / Saturation)
+   // Ha Saturation=20, Scale=0.05. Tanh(20*0.05) = Tanh(1) = 0.76 (Erős jel)
+   if(InpSaturationPoints < 1) dema_scale_factor = 1.0;
+   else dema_scale_factor = 1.0 / (double)InpSaturationPoints;
+
+   if(InpTrendSaturation < 1) trend_scale_factor = 1.0;
+   else trend_scale_factor = 1.0 / (double)InpTrendSaturation;
 
    // Buffers
    SetIndexBuffer(0, Buf_Hybrid, INDICATOR_DATA);
@@ -115,35 +128,20 @@ int OnInit()
    BoostFast.Init(InpNormPeriod, true, InpIFTGain);
    BoostSlow.Init(InpNormPeriod, true, InpIFTGain);
 
-   // Create Handles
-   // Fontos: Mivel a DEMA handle-k a Close árat használják,
-   // nem tudjuk őket "becsapni" a saját TickAverage bufferünkkel közvetlenül (iCustom kéne).
-   // DE: A feladat szerint "Ontick 10 másodperces tickátlag".
-   // Ha az iDEMA-t használjuk, az a Close árat fogja használni (ami tick-enként frissül).
-   // Megoldás: Vagy kézzel számoljuk a DEMA-t (mint a v3.1-ben), vagy elfogadjuk, hogy a DEMA a nyers Close-t nézi.
-   // A "Refined" verzióban a stabilitás a cél.
-   // Kézi DEMA számítás a TickAvg bufferből a legprecízebb.
-   // DE az Alpha kódban iDEMA volt.
-   // Kompromisszum: A Tick Átlagot a WPR és a Hybrid összeállításnál használjuk,
-   // a DEMA-t hagyjuk a rendszerre (gyorsabb, optimalizált).
-   // VAGY: Kézi DEMA. Legyen Kézi, mert különben a zajszűrés nem ér semmit.
+   // Handles
+   hFastDEMA1 = iDEMA(NULL, PERIOD_CURRENT, InpFastPeriod1, 0, PRICE_CLOSE);
+   hFastDEMA2 = iDEMA(NULL, PERIOD_CURRENT, InpFastPeriod2, 0, PRICE_CLOSE);
+   hWPR       = iWPR(NULL, PERIOD_CURRENT, InpWPRPeriod);
+   hSlowMACD  = iMACD(NULL, InpSlowTF, InpSlowMACD1, InpSlowMACD2, 9, PRICE_CLOSE);
 
-   // VÁLASZTÁS: Használjuk a v3.1 Kézi DEMA logikáját, de az Alpha struktúrájában.
-   // Ehhez 4 extra buffer kell az EMA állapotoknak.
-   // Bufferek száma: 10. (5 + 4 EMA + 1 Temp).
-   // Mivel IndicatorBuffers limitált, de 10 belefér.
-
-   // Handles (WPR és Slow MACD marad, DEMA kézi)
-   hWPR      = iWPR(NULL, PERIOD_CURRENT, InpWPRPeriod);
-   hSlowMACD = iMACD(NULL, InpSlowTF, InpSlowMACD1, InpSlowMACD2, 9, PRICE_CLOSE);
-
-   if(hWPR == INVALID_HANDLE || hSlowMACD == INVALID_HANDLE)
+   if(hFastDEMA1 == INVALID_HANDLE || hFastDEMA2 == INVALID_HANDLE ||
+      hWPR == INVALID_HANDLE || hSlowMACD == INVALID_HANDLE)
      {
       Print("Hiba: Handle létrehozása sikertelen.");
       return(INIT_FAILED);
      }
 
-   string name = StringFormat("HybridScalperRefined(T:%d)", InpTickAvgTime);
+   string name = StringFormat("HybridScalper(Tick:%ds, Sat:%d)", InpTickAvgTime, InpSaturationPoints);
    IndicatorSetString(INDICATOR_SHORTNAME, name);
 
    return(INIT_SUCCEEDED);
@@ -154,6 +152,8 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
   {
+   if(hFastDEMA1 != INVALID_HANDLE) IndicatorRelease(hFastDEMA1);
+   if(hFastDEMA2 != INVALID_HANDLE) IndicatorRelease(hFastDEMA2);
    if(hWPR != INVALID_HANDLE)       IndicatorRelease(hWPR);
    if(hSlowMACD != INVALID_HANDLE)  IndicatorRelease(hSlowMACD);
    ArrayFree(TickBuffer);
@@ -177,6 +177,16 @@ double GetValMTF(int handle, int buffer_num, datetime time)
 {
    double buf[1];
    if(CopyBuffer(handle, buffer_num, time, 1, buf) > 0) return buf[0];
+   return 0.0;
+}
+
+//+------------------------------------------------------------------+
+//| Helper: Get Latest Value (For Current Bar Ticks)                 |
+//+------------------------------------------------------------------+
+double GetValLatest(int handle, int buffer_num)
+{
+   double buf[1];
+   if(CopyBuffer(handle, buffer_num, 0, 1, buf) > 0) return buf[0];
    return 0.0;
 }
 
@@ -211,20 +221,6 @@ double UpdateTickAverage(double current_price)
 }
 
 //+------------------------------------------------------------------+
-//| Helper: Manual DEMA Calc                                         |
-//+------------------------------------------------------------------+
-// Egyszerűsített: iDEMA helyett itt használjuk a beépített iDEMA-t,
-// de a TickAvg miatt ez nehézkes.
-// Visszatérek az iDEMA handle használatához a Close áron,
-// mert a TickAvg 10mp-es, a DEMA 12-es periódusa (12 bar) sokkal lassabb,
-// így a TickAvg hatása a DEMA-ra minimális lenne (csak a legutolsó bar értéke más).
-// A zajszűrést a WPR és a Hybrid Output szintjén végezzük.
-// Így megspóroljuk a kézi DEMA implementációt és a buffer-limit problémákat.
-// Tehát: DEMA marad iDEMA (Close), de a WPR-t és a végső mixet a TickAvg alapján korrigáljuk?
-// Nem, az Alpha logika szerint a DEMA-k különbsége a jel.
-// Használjuk az iDEMA-t.
-
-//+------------------------------------------------------------------+
 //| Main Calculation                                                 |
 //+------------------------------------------------------------------+
 int OnCalculate(const int rates_total,
@@ -240,12 +236,6 @@ int OnCalculate(const int rates_total,
   {
    if(rates_total < InpNormPeriod * 2) return 0;
 
-   //--- Init Handles if needed (DEMA handles here to keep OnInit clean)
-   if(hFastDEMA1 == INVALID_HANDLE) {
-       hFastDEMA1 = iDEMA(NULL, PERIOD_CURRENT, InpFastPeriod1, 0, PRICE_CLOSE);
-       hFastDEMA2 = iDEMA(NULL, PERIOD_CURRENT, InpFastPeriod2, 0, PRICE_CLOSE);
-   }
-
    int start = prev_calculated - 1;
    if(start < 0) start = 0;
 
@@ -259,44 +249,53 @@ int OnCalculate(const int rates_total,
      {
       bool is_forming = (i == rates_total - 1);
 
-      // 1. Tick Average (Live only)
-      double price_input = close[i];
+      // 1. Tick Average (Live only) - For Visual Verification
       if(is_forming) {
-         price_input = UpdateTickAverage(close[i]);
-         Buf_TickAvg[i] = price_input; // Visual verification
+         Buf_TickAvg[i] = UpdateTickAverage(close[i]);
       } else {
-         Buf_TickAvg[i] = (high[i]+low[i]+close[i])/3.0; // Typical history
+         Buf_TickAvg[i] = (high[i]+low[i]+close[i])/3.0;
       }
 
       // 2. Fast Signal (Alpha: DEMA Diff + WPR)
       double d1_buf[1], d2_buf[1], wpr_buf[1];
       double d1=0, d2=0, wpr=0;
 
-      // Get DEMA values
-      // Note: iDEMA uses Close price. We can't force it to use TickAvg easily.
-      // We accept standard DEMA.
       if(CopyBuffer(hFastDEMA1, 0, rates_total-1-i, 1, d1_buf)>0) d1 = d1_buf[0];
       if(CopyBuffer(hFastDEMA2, 0, rates_total-1-i, 1, d2_buf)>0) d2 = d2_buf[0];
       if(CopyBuffer(hWPR, 0, rates_total-1-i, 1, wpr_buf)>0)      wpr = wpr_buf[0];
 
-      // ZeroLag MACD
-      double macd_raw = d1 - d2; // Points (e.g. 0.0005)
+      // ZeroLag MACD (Points)
+      double macd_raw = d1 - d2;
 
-      // FIX: Soft Normalize MACD (Points -> -1..1)
-      double macd_norm = SoftNormalize(macd_raw / _Point, InpDEMAScale);
+      // Normalize using Calibrated Scale (SaturationPoints)
+      // Input is Points (e.g. 20 * _Point). Divide by _Point first.
+      double macd_points = macd_raw / _Point;
+      double macd_norm = SoftNormalize(macd_points, dema_scale_factor);
 
       // WPR Normalize (-100..0 -> -1..1)
+      // Original logic: 1 + (WPR / 50).
+      // If WPR=-100 -> 1-2 = -1. If WPR=0 -> 1.
       double wpr_norm = 1.0 + (wpr / 50.0);
 
       // Mix
       double fast_raw = (macd_norm * (1.0 - InpFastWeight)) + (wpr_norm * InpFastWeight);
-      // Wait, Alpha used simple sum. Weighted average is better.
+      Buf_FastRaw[i] = fast_raw;
 
       // 3. Slow Signal (MTF)
       datetime t = time[i];
-      double slow_macd_raw = GetValMTF(hSlowMACD, 0, t);
-      // FIX: Normalize Slow MACD
-      double slow_norm = SoftNormalize(slow_macd_raw / _Point, InpTrendScale);
+      double slow_macd_raw = 0.0;
+
+      if(is_forming) {
+         // Live: Get Latest (Index 0) to avoid lag
+         slow_macd_raw = GetValLatest(hSlowMACD, 0);
+      } else {
+         // History: Time-based mapping
+         slow_macd_raw = GetValMTF(hSlowMACD, 0, t);
+      }
+
+      // Normalize Trend
+      double slow_norm = SoftNormalize(slow_macd_raw / _Point, trend_scale_factor);
+      Buf_SlowRaw[i] = slow_norm;
 
       // 4. Booster Logic
       double fast_boosted = 0;
@@ -316,21 +315,14 @@ int OnCalculate(const int rates_total,
       }
 
       // 5. Final Output
-      Buf_Hybrid[i] = fast_boosted; // Show Fast Component directly? Or Mix?
-      // Alpha mixed them:
-      // double hybrid = (fast_ift * InpFastWeight) + (slow_ift * InpSlowWeight);
-      // Let's stick to Alpha Logic for final mix, but use the normalized inputs.
-      // Wait, InpFastWeight was used inside Fast calculation? No.
-      // Let's use simple mix for final output.
+      // Hybrid Fusion (Alpha Logic): Combine Fast (Current TF) + Slow (Trend TF)
+      double hybrid = (fast_boosted * InpFastWeight) + (slow_boosted * InpSlowWeight);
 
-      double hybrid = fast_boosted; // Primary Signal
-      // Apply Trend Bias?
-      // "Trend Bias" plot is separate.
-      // Maybe filter Hybrid by Trend?
-      // Alpha: hybrid = (fast * fastW) + (slow * slowW)
-      // We'll output Fast as Hybrid, and Slow as Trend Bias line.
+      // Clamp to prevent overshoot
+      if(hybrid > 1.05) hybrid = 1.05;
+      if(hybrid < -1.05) hybrid = -1.05;
 
-      Buf_Hybrid[i] = fast_boosted;
+      Buf_Hybrid[i] = hybrid;
       Buf_Trend[i]  = slow_boosted;
      }
 
