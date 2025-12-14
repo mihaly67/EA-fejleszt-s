@@ -198,6 +198,18 @@ double GetValMTF(int handle, int buffer_num, datetime time)
 }
 
 //+------------------------------------------------------------------+
+//| Helper: Get Latest Value (For Current Bar Ticks)                 |
+//+------------------------------------------------------------------+
+double GetValLatest(int handle, int buffer_num)
+{
+   double buf[1];
+   // Get the very latest value (index 0)
+   if(CopyBuffer(handle, buffer_num, 0, 1, buf) > 0)
+      return buf[0];
+   return 0.0;
+}
+
+//+------------------------------------------------------------------+
 //| Helper: Soft Normalization (Tanh approximation)                  |
 //| Scales arbitrary input to roughly -1..1                          |
 //+------------------------------------------------------------------+
@@ -244,26 +256,25 @@ int OnCalculate(const int rates_total,
    for(int i = start; i < rates_total; i++)
      {
       datetime t = time[i];
+      bool is_forming_bar = (i == rates_total - 1);
 
       //---------------------------------------------------------
       // 1. MACD Histogram (Gradient & Normalization)
       //---------------------------------------------------------
-      // Get Main and Signal lines of MACD to calculate histogram manually or get buffer 0?
-      // iMACD Mode MAIN=0, SIGNAL=1. Histogram = Main - Signal? Or just get the lines.
-      // Usually MT5 iMACD buffer 0 is Main Line, buffer 1 is Signal Line.
-      // Wait, standard MACD indicator: buffer 0 = Main, buffer 1 = Signal.
-      // Histogram is difference.
+      double macd_main, macd_sig;
 
-      double macd_main = GetValMTF(hHistMACD, 0, t);
-      double macd_sig  = GetValMTF(hHistMACD, 1, t);
+      // Use Latest data for forming bar to capture ticks immediately
+      if(is_forming_bar) {
+         macd_main = GetValLatest(hHistMACD, 0);
+         macd_sig  = GetValLatest(hHistMACD, 1);
+      } else {
+         macd_main = GetValMTF(hHistMACD, 0, t);
+         macd_sig  = GetValMTF(hHistMACD, 1, t);
+      }
+
       double hist_raw  = (macd_main - macd_sig);
 
       // Normalize
-      // Scale factor: Tune this so typical MACD range fits into -1..1
-      // Typical MACD on H1 might be 0.0005. 0.0005 * 200 = 0.1. Too small.
-      // Need dynamic or aggressive scaling.
-      // User requested "Manual Multiplier" -> InpHistScale.
-      // Let's also divide by Point to make it symbol-independent.
       double hist_norm = SoftNormalize(hist_raw / _Point, 0.01 * InpHistScale);
 
       Buf_Hist[i] = hist_norm;
@@ -287,33 +298,56 @@ int OnCalculate(const int rates_total,
       //---------------------------------------------------------
       // 2. Fast Signal (MTF)
       //---------------------------------------------------------
-      double f_d1 = GetValMTF(hFastDEMA1, 0, t);
-      double f_d2 = GetValMTF(hFastDEMA2, 0, t);
-      double f_wpr = GetValMTF(hWPR, 0, t); // -100..0
+      double f_d1, f_d2, f_wpr;
+
+      if(is_forming_bar) {
+         f_d1  = GetValLatest(hFastDEMA1, 0);
+         f_d2  = GetValLatest(hFastDEMA2, 0);
+         f_wpr = GetValLatest(hWPR, 0);
+      } else {
+         f_d1  = GetValMTF(hFastDEMA1, 0, t);
+         f_d2  = GetValMTF(hFastDEMA2, 0, t);
+         f_wpr = GetValMTF(hWPR, 0, t);
+      }
 
       // Mix: DEMA Cross + WPR
-      // DEMA Cross = (d1 - d2). WPR normalized to -0.5..+0.5
-      double dema_diff = (f_d1 - f_d2) / _Point; // Points
-      double wpr_norm  = (f_wpr + 50.0) / 50.0;    // -1..1
+      // FIX: Normalize DEMA Difference to be compatible with WPR (-0.5..0.5)
+      // DEMA diff in Points can be large (e.g. 50 points). WPR is 0.5.
+      // We use SoftNormalize on the DEMA diff too.
+      double dema_diff_points = (f_d1 - f_d2) / _Point;
+      double dema_norm = SoftNormalize(dema_diff_points, 0.05); // Scale factor 0.05 implies ~20 points = 1.0 (Saturation)
 
-      // Raw Fast Signal
-      double fast_raw = (dema_diff * 0.5) + (wpr_norm * 0.5); // Simple weighted mix
+      double wpr_norm  = (f_wpr + 50.0) / 100.0; // Map -100..0 to -0.5..+0.5 range? No, (-50/100)=-0.5. (0/100)=0.0.
+      // Standard WPR is -100 (Oversold) to 0 (Overbought).
+      // (WPR + 50) / 50 -> -1..1 range.
+      // -100 + 50 = -50 / 50 = -1.
+      // 0 + 50 = 50 / 50 = 1.
+      wpr_norm = (f_wpr + 50.0) / 50.0;
+
+      // Raw Fast Signal (Now both inputs are approx -1..1)
+      double fast_raw = (dema_norm * 0.5) + (wpr_norm * 0.5);
       Buf_FastRaw[i] = fast_raw;
 
       //---------------------------------------------------------
       // 3. Trend Signal (MTF)
       //---------------------------------------------------------
-      double t_macd = GetValMTF(hTrendMACD, 0, t);
-      Buf_TrendRaw[i] = t_macd / _Point; // Store in points for consistency
+      double t_macd;
+      if(is_forming_bar) {
+         t_macd = GetValLatest(hTrendMACD, 0);
+      } else {
+         t_macd = GetValMTF(hTrendMACD, 0, t);
+      }
+
+      // FIX: Normalize Trend MACD so it works with the Mixer
+      double trend_norm = SoftNormalize(t_macd / _Point, 0.02); // 50 points saturation
+
+      Buf_TrendRaw[i] = trend_norm;
 
       //---------------------------------------------------------
       // 4. Amplitude Booster (The Magic)
       //---------------------------------------------------------
       double fast_boosted = 0.0;
       double trend_boosted = 0.0;
-
-      // Determine if we are on the OPEN (forming) bar
-      bool is_forming_bar = (i == rates_total - 1);
 
       // CRITICAL LOGIC:
       // To prevent flatline, we must feed data sequentially.
@@ -444,22 +478,19 @@ int OnCalculate(const int rates_total,
 
          if(start == 0) {
             // Full History Rebuild
-            BoostFast.Update(fast_raw);
-            trend_boosted = BoostTrend.Update(t_macd / _Point);
-            // Note: Update() returns the boosted value.
-            fast_boosted = BoostFast.GetValue(0); // Get latest
+            fast_boosted = BoostFast.Update(fast_raw);
+            trend_boosted = BoostTrend.Update(trend_norm);
          } else {
             // Incremental
             if(i >= prev_calculated) {
                // New Bar Index -> Push New
-               BoostFast.Update(fast_raw);
-               trend_boosted = BoostTrend.Update(t_macd / _Point);
+               fast_boosted = BoostFast.Update(fast_raw);
+               trend_boosted = BoostTrend.Update(trend_norm);
             } else {
                // Existing Bar Index (Recalc) -> Overwrite Last
-               BoostFast.UpdateLast(fast_raw);
-               trend_boosted = BoostTrend.UpdateLast(t_macd / _Point);
+               fast_boosted = BoostFast.UpdateLast(fast_raw);
+               trend_boosted = BoostTrend.UpdateLast(trend_norm);
             }
-            fast_boosted = BoostFast.GetValue(0);
          }
       }
 
