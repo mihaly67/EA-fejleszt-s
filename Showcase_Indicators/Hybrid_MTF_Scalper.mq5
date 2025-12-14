@@ -444,22 +444,19 @@ int OnCalculate(const int rates_total,
 
          if(start == 0) {
             // Full History Rebuild
-            BoostFast.Update(fast_raw);
+            fast_boosted = BoostFast.Update(fast_raw);
             trend_boosted = BoostTrend.Update(t_macd / _Point);
-            // Note: Update() returns the boosted value.
-            fast_boosted = BoostFast.GetValue(0); // Get latest
          } else {
             // Incremental
             if(i >= prev_calculated) {
                // New Bar Index -> Push New
-               BoostFast.Update(fast_raw);
+               fast_boosted = BoostFast.Update(fast_raw);
                trend_boosted = BoostTrend.Update(t_macd / _Point);
             } else {
                // Existing Bar Index (Recalc) -> Overwrite Last
-               BoostFast.UpdateLast(fast_raw);
+               fast_boosted = BoostFast.UpdateLast(fast_raw);
                trend_boosted = BoostTrend.UpdateLast(t_macd / _Point);
             }
-            fast_boosted = BoostFast.GetValue(0);
          }
       }
 
