@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                 HybridMomentumIndicator_v1.2.mq5 |
+//|                                 HybridMomentumIndicator_v1.3.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|              Verzió: 1.2 (Soft Gate & Visual Update)              |
+//|              Verzió: 1.3 (Gray Ghosts & Faster Signal)            |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.2"
+#property version   "1.3"
 
 #property indicator_separate_window
 #property indicator_buffers 8  // JAVÍTVA: 8 buffer kell
@@ -16,7 +16,8 @@
 #property indicator_type1   DRAW_COLOR_HISTOGRAM
 #property indicator_style1  STYLE_SOLID
 #property indicator_width1  2
-#property indicator_color1  C'60,80,60', C'40,120,40', C'20,160,20', C'10,200,10', clrLimeGreen, C'80,60,60', C'120,40,40', C'160,20,20', C'200,10,10', clrRed
+// Palette: 0-4 (Green), 5-9 (Red), 10 (Gray)
+#property indicator_color1  C'60,80,60', C'40,120,40', C'20,160,20', C'10,200,10', clrLimeGreen, C'80,60,60', C'120,40,40', C'160,20,20', C'200,10,10', clrRed, clrGray
 
 //--- Plot 2: MACD Fővonal
 #property indicator_label2  "MACD Line"
@@ -189,7 +190,7 @@ int OnInit()
     min_bars_required = MathMax(InpSlowDEMAPeriod, InpFastDEMAPeriod) + InpSignalPeriod + 10;
     
     // Plot settings
-    IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Momentum v1.2");
+    IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Momentum v1.3");
     PlotIndexSetInteger(0, PLOT_DRAW_BEGIN, min_bars_required);
     PlotIndexSetInteger(1, PLOT_DRAW_BEGIN, min_bars_required);
     PlotIndexSetInteger(2, PLOT_DRAW_BEGIN, min_bars_required);
@@ -382,8 +383,9 @@ int OnCalculate(const int rates_total,
         MacdLineBuffer[i] = fast_dema_buffer[i] - slow_dema_buffer[i];
     }
     
-    // Calculate Signal Line (EMA of MACD)
-    CalculateEMA(rates_total, InpSlowDEMAPeriod, InpSignalPeriod, MacdLineBuffer, SignalLineBuffer);
+    // Calculate Signal Line (DEMA of MACD for Lower Lag - v1.3)
+    // We reuse the CalculateDEMA function but apply it to the MacdLineBuffer
+    CalculateDEMA(rates_total, InpSlowDEMAPeriod, InpSignalPeriod, MacdLineBuffer, SignalLineBuffer);
     
     // Get auxiliary data
     double wpr_val[], stoch_main[], stoch_signal[], atr_val[], vol_ma[];
@@ -467,16 +469,14 @@ int OnCalculate(const int rates_total,
         {
             // Soft Gate: Show weak signal as Gray (Ghost Mode)
             HistogramBuffer[i] = histogram_raw * 0.2; // 20% visual height for weak signals
-            HistogramBuffer[i] = histogram_raw * conviction_buffer[i]; // Or actual weak conviction? Let's use actual but weak.
+            HistogramBuffer[i] = histogram_raw * conviction_buffer[i];
 
             // Fallback for visibility
             if (MathAbs(HistogramBuffer[i]) < 0.0000001) HistogramBuffer[i] = histogram_raw * 0.1;
 
-            // Gray Color Mapping (Using the dullest available colors in palette)
-            // Palette has 10 colors. 0-4 (Green), 5-9 (Red).
-            // We use Index 0 (Darkest Green) and Index 5 (Darkest Red) for "Ghost" bars.
-            if(histogram_raw > 0) ColorBuffer[i] = 0;
-            else                  ColorBuffer[i] = 5;
+            // Gray Color Mapping (v1.3)
+            // Use the new explicit Gray color (Index 10)
+            ColorBuffer[i] = 10;
         }
     }
     
