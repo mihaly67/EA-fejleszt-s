@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                 HybridMomentumIndicator_v1.4.mq5 |
+//|                                 HybridMomentumIndicator_v1.5.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|              Verzió: 1.4 (Scaling & Separation)                   |
+//|              Verzió: 1.5 (Decoupled Scaling)                      |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.4"
+#property version   "1.5"
 
 #property indicator_separate_window
 #property indicator_buffers 8  // JAVÍTVA: 8 buffer kell
@@ -192,7 +192,7 @@ int OnInit()
     min_bars_required = MathMax(InpSlowDEMAPeriod, InpFastDEMAPeriod) + InpSignalPeriod + 10;
     
     // Plot settings
-    IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Momentum v1.4");
+    IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Momentum v1.5");
     PlotIndexSetInteger(0, PLOT_DRAW_BEGIN, min_bars_required);
     PlotIndexSetInteger(1, PLOT_DRAW_BEGIN, min_bars_required);
     PlotIndexSetInteger(2, PLOT_DRAW_BEGIN, min_bars_required);
@@ -383,12 +383,22 @@ int OnCalculate(const int rates_total,
     for(int i = start; i < rates_total; i++)
     {
         double raw_macd = fast_dema_buffer[i] - slow_dema_buffer[i];
-        // Apply Signal Gain for separation (v1.4)
+
+        // Store RAW MACD in temp buffer for pure calculations
+        temp_buffer[i] = raw_macd;
+
+        // Apply Signal Gain ONLY for the visual MACD line buffer
         MacdLineBuffer[i] = raw_macd * InpSignalGain;
     }
     
-    // Calculate Signal Line (DEMA of MACD for Lower Lag - v1.3)
-    // We reuse the CalculateDEMA function but apply it to the MacdLineBuffer
+    // Calculate Signal Line
+    // 1. Calculate RAW Signal (on raw MACD) for Histogram consistency
+    // We can't easily do this without another buffer.
+    // Alternative: Calculate Scaled Signal Line on Scaled MACD (visual),
+    // and derive Histogram from (Macd/Gain - Signal/Gain) * HistScale?
+    // YES.
+
+    // Calculate Visual Signal Line (DEMA of Visual MACD)
     CalculateDEMA(rates_total, InpSlowDEMAPeriod, InpSignalPeriod, MacdLineBuffer, SignalLineBuffer);
     
     // Get auxiliary data
@@ -442,11 +452,20 @@ int OnCalculate(const int rates_total,
         conviction_buffer[i] = CalculateConviction(i, atr_val, wpr_val, stoch_main, vol_ma, tick_volume);
         
         // Calculate histogram
-        double histogram_raw = MacdLineBuffer[i] - SignalLineBuffer[i];
-        
-        // Apply Histogram Scale (v1.4)
-        histogram_raw *= InpHistScale;
+        // We must reverse the SignalGain to get the "True" difference, then apply HistScale.
+        // Or simply: VisualDiff = (Macd - Signal). This contains Gain.
+        // We want Hist = RawDiff * HistScale.
+        // Since VisualDiff = RawDiff * Gain, then RawDiff = VisualDiff / Gain.
+        // So Hist = (VisualDiff / Gain) * HistScale.
 
+        double visual_diff = MacdLineBuffer[i] - SignalLineBuffer[i];
+        double histogram_raw = 0.0;
+
+        if(InpSignalGain > 0.0)
+            histogram_raw = (visual_diff / InpSignalGain) * InpHistScale;
+        else
+            histogram_raw = visual_diff * InpHistScale; // Safety fallback
+        
         if(InpShowAllValues || conviction_buffer[i] >= InpConvictionThreshold)
         {
             HistogramBuffer[i] = histogram_raw * conviction_buffer[i];
