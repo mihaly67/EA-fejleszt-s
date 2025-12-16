@@ -1,4 +1,4 @@
-# Használati Útmutató: Hybrid Momentum Indicator v1.10
+# Használati Útmutató: Hybrid Momentum Indicator v1.2
 
 Ez az indikátor nem egy egyszerű MACD. Egy **Hibrid Rendszer**, amely csak akkor ad jelet, ha a "Meggyőződés" (Conviction) elég magas. Ha a piac bizonytalan (zaj), az indikátor elrejti a hisztogramot.
 
