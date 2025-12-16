@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                HybridMomentumIndicator_v1.10.mq5 |
+//|                                 HybridMomentumIndicator_v1.2.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|              Verzió: Javított DEMA MACD, teljes paraméterezés     |
+//|              Verzió: 1.2 (Soft Gate & Visual Update)              |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.10"
+#property version   "1.2"
 
 #property indicator_separate_window
 #property indicator_buffers 8  // JAVÍTVA: 8 buffer kell
@@ -189,7 +189,7 @@ int OnInit()
     min_bars_required = MathMax(InpSlowDEMAPeriod, InpFastDEMAPeriod) + InpSignalPeriod + 10;
     
     // Plot settings
-    IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Momentum v1.10");
+    IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Momentum v1.2");
     PlotIndexSetInteger(0, PLOT_DRAW_BEGIN, min_bars_required);
     PlotIndexSetInteger(1, PLOT_DRAW_BEGIN, min_bars_required);
     PlotIndexSetInteger(2, PLOT_DRAW_BEGIN, min_bars_required);
@@ -441,31 +441,42 @@ int OnCalculate(const int rates_total,
         if(InpShowAllValues || conviction_buffer[i] >= InpConvictionThreshold)
         {
             HistogramBuffer[i] = histogram_raw * conviction_buffer[i];
+
+            // Calculate color (Standard Gradient)
+            int lookback = MathMin(i + 1, InpGradientLookback);
+            double max_val = HistogramBuffer[ArrayMaximum(HistogramBuffer, i - lookback + 1, lookback)];
+            double min_val = HistogramBuffer[ArrayMinimum(HistogramBuffer, i - lookback + 1, lookback)];
+
+            double value = HistogramBuffer[i];
+            if(value > 0 && max_val > 0)
+            {
+                int color_index = (int)MathRound((value / max_val) * 4.0);
+                ColorBuffer[i] = MathMin(4, color_index);
+            }
+            else if(value < 0 && min_val < 0)
+            {
+                int color_index = (int)MathRound((value / min_val) * 4.0);
+                ColorBuffer[i] = MathMin(4, color_index) + 5;
+            }
+            else
+            {
+                ColorBuffer[i] = 0;
+            }
         }
         else
         {
-            HistogramBuffer[i] = 0.0;
-        }
-        
-        // Calculate color
-        int lookback = MathMin(i + 1, InpGradientLookback);
-        double max_val = HistogramBuffer[ArrayMaximum(HistogramBuffer, i - lookback + 1, lookback)];
-        double min_val = HistogramBuffer[ArrayMinimum(HistogramBuffer, i - lookback + 1, lookback)];
-        
-        double value = HistogramBuffer[i];
-        if(value > 0 && max_val > 0)
-        {
-            int color_index = (int)MathRound((value / max_val) * 4.0);
-            ColorBuffer[i] = MathMin(4, color_index);
-        }
-        else if(value < 0 && min_val < 0)
-        {
-            int color_index = (int)MathRound((value / min_val) * 4.0);
-            ColorBuffer[i] = MathMin(4, color_index) + 5;
-        }
-        else
-        {
-            ColorBuffer[i] = 0;
+            // Soft Gate: Show weak signal as Gray (Ghost Mode)
+            HistogramBuffer[i] = histogram_raw * 0.2; // 20% visual height for weak signals
+            HistogramBuffer[i] = histogram_raw * conviction_buffer[i]; // Or actual weak conviction? Let's use actual but weak.
+
+            // Fallback for visibility
+            if (MathAbs(HistogramBuffer[i]) < 0.0000001) HistogramBuffer[i] = histogram_raw * 0.1;
+
+            // Gray Color Mapping (Using the dullest available colors in palette)
+            // Palette has 10 colors. 0-4 (Green), 5-9 (Red).
+            // We use Index 0 (Darkest Green) and Index 5 (Darkest Red) for "Ghost" bars.
+            if(histogram_raw > 0) ColorBuffer[i] = 0;
+            else                  ColorBuffer[i] = 5;
         }
     }
     
