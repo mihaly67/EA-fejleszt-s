@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                 HybridMomentumIndicator_v1.3.mq5 |
+//|                                 HybridMomentumIndicator_v1.4.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|              Verzió: 1.3 (Gray Ghosts & Faster Signal)            |
+//|              Verzió: 1.4 (Scaling & Separation)                   |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.3"
+#property version   "1.4"
 
 #property indicator_separate_window
 #property indicator_buffers 8  // JAVÍTVA: 8 buffer kell
@@ -78,6 +78,8 @@ input bool               InpShowZeroLine       = true;   // Nulla vonal megjelen
 input color              InpZeroLineColor      = clrGray; // Nulla vonal színe
 input ENUM_LINE_STYLE    InpZeroLineStyle     = STYLE_DOT; // Nulla vonal stílusa
 input int                InpZeroLineWidth      = 1;      // Nulla vonal szélesség
+input double             InpHistScale          = 1.0;    // Hisztogram skálázás (Magasság szorzó)
+input double             InpSignalGain         = 1.0;    // Görbe szétválasztás (Jel erősítés)
 
 input group              "=== Debug Settings ==="
 input bool               InpEnableDebug        = false;  // Debug üzenetek
@@ -190,7 +192,7 @@ int OnInit()
     min_bars_required = MathMax(InpSlowDEMAPeriod, InpFastDEMAPeriod) + InpSignalPeriod + 10;
     
     // Plot settings
-    IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Momentum v1.3");
+    IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Momentum v1.4");
     PlotIndexSetInteger(0, PLOT_DRAW_BEGIN, min_bars_required);
     PlotIndexSetInteger(1, PLOT_DRAW_BEGIN, min_bars_required);
     PlotIndexSetInteger(2, PLOT_DRAW_BEGIN, min_bars_required);
@@ -380,7 +382,9 @@ int OnCalculate(const int rates_total,
     // Calculate MACD Line
     for(int i = start; i < rates_total; i++)
     {
-        MacdLineBuffer[i] = fast_dema_buffer[i] - slow_dema_buffer[i];
+        double raw_macd = fast_dema_buffer[i] - slow_dema_buffer[i];
+        // Apply Signal Gain for separation (v1.4)
+        MacdLineBuffer[i] = raw_macd * InpSignalGain;
     }
     
     // Calculate Signal Line (DEMA of MACD for Lower Lag - v1.3)
@@ -440,6 +444,9 @@ int OnCalculate(const int rates_total,
         // Calculate histogram
         double histogram_raw = MacdLineBuffer[i] - SignalLineBuffer[i];
         
+        // Apply Histogram Scale (v1.4)
+        histogram_raw *= InpHistScale;
+
         if(InpShowAllValues || conviction_buffer[i] >= InpConvictionThreshold)
         {
             HistogramBuffer[i] = histogram_raw * conviction_buffer[i];
