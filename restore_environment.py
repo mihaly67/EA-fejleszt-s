@@ -114,45 +114,60 @@ def report_hardware_status():
         print(f"⚠️ Error reading RAM info: {e}")
 
 def verify_rag_functionality():
-    print("\n🔎 === RAG FUNCTIONALITY TEST ===")
+    print("\n🔎 === RAG FUNCTIONALITY TEST (Comprehensive) ===")
 
     if not os.path.exists("kutato.py"):
         print("❌ CRITICAL: 'kutato.py' not found! Cannot verify RAG.")
         return
 
-    test_query = "MQL5 custom indicator"
-    print(f"🧪 Running test query: '{test_query}'...")
+    # Helper function to run query
+    def test_scope(scope_name, query):
+        print(f"\n👉 Testing Scope: {scope_name} (Query: '{query}')")
+        try:
+            # Note: kutato.py takes arguments: query --scope --json
+            result = subprocess.run(
+                [sys.executable, "kutato.py", query, "--scope", scope_name, "--json"],
+                capture_output=True,
+                text=True,
+                timeout=45
+            )
 
-    try:
-        # Run kutato.py with --json flag to get structured output
-        result = subprocess.run(
-            [sys.executable, "kutato.py", test_query, "--json"],
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
+            if result.returncode != 0:
+                print(f"   ❌ Execution Failed: {result.stderr.strip()}")
+                return False
 
-        if result.returncode == 0:
-            print("✅ RAG Search Successful!")
             try:
-                data = json.loads(result.stdout)
-                if isinstance(data, list) and len(data) > 0:
-                     print(f"✅ Output validates knowledge retrieval ({len(data)} hits found).")
+                hits = json.loads(result.stdout)
+                if isinstance(hits, list) and len(hits) > 0:
+                    top_hit = hits[0]
+                    title = top_hit.get('filename', 'Unknown')
+                    snippet = top_hit.get('content', '')[:100].replace('\n', ' ')
+                    print(f"   ✅ Success! Found {len(hits)} hits.")
+                    print(f"   📄 Top Hit: {title}")
+                    print(f"   📝 Snippet: {snippet}...")
+                    return True
                 else:
-                     print("⚠️ Search ran but returned no results or unexpected format.")
+                    print(f"   ⚠️ No hits found.")
+                    return False
             except json.JSONDecodeError:
-                print("⚠️ Output is not valid JSON.")
+                print(f"   ⚠️ Invalid JSON output: {result.stdout.strip()[:100]}...")
+                return False
 
-            # Print a snippet of the output for verification
-            print(f"📄 Output Snippet:\n{result.stdout[:300]}...")
-        else:
-            print(f"❌ RAG Search Failed with code {result.returncode}")
-            print(f"❌ Error Output:\n{result.stderr}")
+        except subprocess.TimeoutExpired:
+            print(f"   ❌ Timeout.")
+            return False
+        except Exception as e:
+            print(f"   ❌ Exception: {e}")
+            return False
 
-    except subprocess.TimeoutExpired:
-        print("❌ RAG Search Timed Out (Possible performance issue or hang).")
-    except Exception as e:
-        print(f"❌ Error running RAG test: {e}")
+    # Test MQL5
+    test_scope('MQL5', 'indicator handle')
+
+    # Test Theory
+    test_scope('THEORY', 'market microstructure')
+
+    # Test Code
+    test_scope('CODE', 'OnCalculate')
 
 def restore_environment():
     setup_logger()
