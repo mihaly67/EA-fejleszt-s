@@ -1,0 +1,51 @@
+
+=== RESEARCH RESULTS: Dynamic Pivots & Fibo for Scalping ===
+Date: 2025-12-17
+Source: User Request & Codebase Search
+
+1. **User Requirement**:
+   - Scalping focus (M1/M5 charts).
+   - Dynamic Pivot Timeframes:
+     - M1/M5 -> Use "Quarter/Half Hour" (M15/M30) pivots.
+     - H1 -> Use D1 pivots.
+   - "Intelligent" adaptation: Pivots should not be miles away (like D1 pivots on M1 chart).
+   - Fibo: Predictive power, anchored to these dynamic trends.
+
+2. **Findings (Codebase & MQL5 logic)**:
+   - **Pivot Logic**:
+     - Standard Pivot formulas (High+Low+Close)/3 work fine, but the *Input Timeframe* is key.
+     - "Rolling Pivots" or "Shifted Timeframes" are essential.
+     - Code snippet `SCT_PivotPoints.mq5` suggests standard D1/H4 logic. We need to override this.
+     - **Solution**: A `GetAutoPivotTF()` function.
+       - If Period <= M5 -> Return PERIOD_M15 or PERIOD_M30 (User Choice).
+       - If Period <= M30 -> Return PERIOD_H1 or PERIOD_H4.
+       - If Period <= H4 -> Return PERIOD_D1.
+
+   - **Fibo Logic**:
+     - Fibo levels are best drawn from "Local Extrema" (ZigZag or Fractal) within that *Dynamic Timeframe*.
+     - If we use M15 Pivots, we should look for M15 High/Low to draw the Fibo.
+     - **Concept**: "Auto-Fibo on Pivot Source". If Pivot is M15, finding the High/Low of the last completed M15 trend (using ZigZag on M15) provides the relevant retracement levels.
+
+3. **Implementation Plan**:
+   - **HybridContextIndicator v2.0**:
+     - Input `InpAutoMode` (bool).
+     - Logic:
+       ```mql5
+       ENUM_TIMEFRAMES pivot_tf = InpPrimaryPivotTF;
+       if(InpAutoMode) {
+           if(_Period <= PERIOD_M5) pivot_tf = PERIOD_M30;
+           else if(_Period <= PERIOD_M30) pivot_tf = PERIOD_H4;
+           else pivot_tf = PERIOD_D1;
+       }
+       ```
+     - Fibo Source: Must match `pivot_tf`.
+
+4. **Visuals**:
+   - MFI + Delta:
+     - Center Delta at 50.
+     - Scaling: `50 + (Delta / MaxDelta) * 40`. MaxDelta calculated dynamically or fixed?
+     - User said "fine if it overshoots slightly", implying dynamic normalization is better than fixed hard cap.
+
+5. **Action**:
+   - Update `HybridFlowIndicator` (MFI/Delta Visuals).
+   - Update `HybridContextIndicator` (Dynamic Logic).

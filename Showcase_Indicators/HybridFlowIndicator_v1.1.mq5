@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                        HybridFlowIndicator_v1.1.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 1.1 (MFI + Scaled Delta)                             |
+//|      Verzió: 1.2 (MFI + Scaled Delta v2)                          |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.1"
+#property version   "1.2"
 
 #property indicator_separate_window
 #property indicator_buffers 4
@@ -40,6 +40,7 @@ input group              "=== Delta Settings ==="
 input bool               InpUseApproxDelta     = true;
 input int                InpDeltaSmooth        = 3;
 input int                InpNormalizationLen   = 100;    // Lookback for volume normalization
+input double             InpDeltaScaleFactor   = 40.0;   // Scaling range (e.g., 40 means +/- 40 from 50)
 
 //--- Buffers
 double      MFIBuffer[];
@@ -62,7 +63,7 @@ int OnInit()
    SetIndexBuffer(2, DeltaColorBuffer, INDICATOR_COLOR_INDEX);
    SetIndexBuffer(3, RawDeltaBuffer, INDICATOR_CALCULATIONS);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.1");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.2");
 
    mfi_handle = iMFI(_Symbol, _Period, InpMFIPeriod, VOLUME_TICK);
    if(mfi_handle == INVALID_HANDLE) return INIT_FAILED;
@@ -142,16 +143,17 @@ int OnCalculate(const int rates_total,
        if(max_vol > 0)
        {
            // Delta is usually less than total volume.
-           // Let's assume max possible delta is approx max_vol.
+           // Ratio = Delta / MaxVolume.
+           // Since Delta is capped by Volume, Ratio is approx -1 to 1.
            double ratio = smooth_delta / max_vol;
 
            // Scale factor: 40 (so it spans 10 to 90)
-           scaled_val = 50.0 + (ratio * 40.0);
+           scaled_val = 50.0 + (ratio * InpDeltaScaleFactor);
        }
 
-       // Clamp
-       if(scaled_val > 100) scaled_val = 100;
-       if(scaled_val < 0) scaled_val = 0;
+       // Allow slight overshoot for visibility, but clamp extreme outliers
+       if(scaled_val > 110) scaled_val = 110;
+       if(scaled_val < -10) scaled_val = -10;
 
        DeltaBuffer[i] = scaled_val;
        DeltaColorBuffer[i] = (smooth_delta >= 0) ? 0 : 1;
