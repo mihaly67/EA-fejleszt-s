@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                        HybridFlowIndicator_v1.3.mq5 |
+//|                                        HybridFlowIndicator_v1.4.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 1.3 (MFI + Center-50 Scaled Delta)                   |
+//|      Verzió: 1.4 (MFI + Boosted Delta)                            |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.3"
+#property version   "1.4"
 
 #property indicator_separate_window
 #property indicator_buffers 5
@@ -40,7 +40,7 @@ input group              "=== Delta Settings ==="
 input bool               InpUseApproxDelta     = true;
 input int                InpDeltaSmooth        = 3;
 input int                InpNormalizationLen   = 100;    // Lookback for volume normalization
-input double             InpDeltaScaleFactor   = 40.0;   // Scaling range (e.g., 40 means +/- 40 from 50)
+input double             InpDeltaScaleFactor   = 50.0;   // Boosted to 50.0 (fills 0-100 range)
 
 //--- Buffers
 double      MFIBuffer[];
@@ -68,7 +68,7 @@ int OnInit()
 
    SetIndexBuffer(4, RawDeltaBuffer, INDICATOR_CALCULATIONS);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.3");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.4");
 
    mfi_handle = iMFI(_Symbol, _Period, InpMFIPeriod, VOLUME_TICK);
    if(mfi_handle == INVALID_HANDLE) return INIT_FAILED;
@@ -153,7 +153,7 @@ int OnCalculate(const int rates_total,
        DeltaStartBuffer[i] = 50.0;
        double final_val = 50.0 + scaled_offset;
 
-       // Clamp strict limits if needed, though overshoot is allowed
+       // Clamp strict limits if needed
        if(final_val > 110) final_val = 110;
        if(final_val < -10) final_val = -10;
 

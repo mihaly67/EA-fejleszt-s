@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                     HybridContextIndicator_v2.1.mq5 |
+//|                                     HybridContextIndicator_v2.2.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 2.1 (Auto-Pivot & Native Fibo - No External Deps)    |
+//|      Verzió: 2.2 (Micro-Trend Alignment & Tighter Pivots)         |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "2.1"
+#property version   "2.2"
 
 #property indicator_chart_window
 #property indicator_buffers 10
@@ -46,7 +46,7 @@
 //--- Input Parameters
 input group              "=== Intelligent Pivot Settings ==="
 input bool               InpShowPivots         = true;
-input bool               InpAutoMode           = true;       // Automatikus idősík választás
+input bool               InpAutoMode           = true;       // Automatikus idősík választás (Micro-Align)
 input ENUM_TIMEFRAMES    InpManualPivotTF      = PERIOD_H4;  // Manuális beállítás
 input bool               InpShowSecondaryPivot = true;
 input ENUM_TIMEFRAMES    InpSecondaryPivotTF   = PERIOD_H1;
@@ -77,14 +77,19 @@ int         ema_slow_handle = INVALID_HANDLE;
 ENUM_TIMEFRAMES current_pivot_tf;
 
 //+------------------------------------------------------------------+
-//| Helper: Determine Optimal Pivot Timeframe                        |
+//| Helper: Determine Optimal Pivot Timeframe (Tighter for Micro)    |
 //+------------------------------------------------------------------+
 ENUM_TIMEFRAMES GetOptimalPivotTF()
 {
     if(!InpAutoMode) return InpManualPivotTF;
 
-    if(_Period <= PERIOD_M5) return PERIOD_M30;
-    if(_Period <= PERIOD_M30) return PERIOD_H4;
+    // Adjusted Logic: Tighter pivot alignment for "smallest pivot" logic
+    // M1, M5 -> M15 Pivots (Was M30) - Aligns with Micro Trend
+    // M15, M30 -> H1 Pivots (Was H4)
+    // H1, H4 -> D1 Pivots
+
+    if(_Period <= PERIOD_M5) return PERIOD_M15;
+    if(_Period <= PERIOD_M30) return PERIOD_H1;
     if(_Period <= PERIOD_H4) return PERIOD_D1;
 
     return PERIOD_W1;
@@ -146,7 +151,6 @@ void UpdateFiboNative(const datetime &time[])
    if(!InpShowFibo) return;
 
    // 1. Get HTF Data (Highs/Lows)
-   // We need enough bars to find swings.
    int lookback = InpSwingLookback * 2;
    double highs[];
    double lows[];
@@ -156,7 +160,7 @@ void UpdateFiboNative(const datetime &time[])
    if(CopyLow(_Symbol, current_pivot_tf, 0, lookback, lows) <= 0) return;
    if(CopyTime(_Symbol, current_pivot_tf, 0, lookback, times) <= 0) return;
 
-   // 2. Simple Swing Detection (Highest High and Lowest Low in range)
+   // 2. Simple Swing Detection
    int hh_idx = -1;
    int ll_idx = -1;
    double max_h = -DBL_MAX;
@@ -169,19 +173,16 @@ void UpdateFiboNative(const datetime &time[])
        if(lows[i] < min_l)  { min_l = lows[i];  ll_idx = i; }
    }
 
-   // 3. Determine Direction (Most recent point defines end of Fibo)
-   // If HH is more recent than LL -> Uptrend Fibo (Low to High)
-   // If LL is more recent than HH -> Downtrend Fibo (High to Low)
-
+   // 3. Determine Direction
    if(hh_idx != -1 && ll_idx != -1 && hh_idx != ll_idx)
    {
-       datetime t1, t2; // t1=start(100%), t2=end(0%)
+       datetime t1, t2;
        double p1, p2;
 
        if(hh_idx > ll_idx) // Recent High, Old Low -> Uptrend
        {
-           t1 = times[ll_idx]; p1 = min_l; // Anchor 1 (100% or 0%) - usually 100% at bottom
-           t2 = times[hh_idx]; p2 = max_h; // Anchor 2
+           t1 = times[ll_idx]; p1 = min_l;
+           t2 = times[hh_idx]; p2 = max_h;
        }
        else // Recent Low, Old High -> Downtrend
        {
@@ -202,7 +203,7 @@ void UpdateFiboNative(const datetime &time[])
        ObjectSetInteger(0, name, OBJPROP_TIMEFRAMES, OBJ_ALL_PERIODS);
        ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
 
-       string desc = StringFormat("Auto Fibo (%s)", EnumToString(current_pivot_tf));
+       string desc = StringFormat("Micro Fibo (%s)", EnumToString(current_pivot_tf));
        ObjectSetString(0, name, OBJPROP_TEXT, desc);
    }
 }
@@ -218,7 +219,7 @@ int OnInit()
    SetIndexBuffer(3, TrendFastBuffer, INDICATOR_DATA);
    SetIndexBuffer(4, TrendSlowBuffer, INDICATOR_DATA);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Context v2.1 (Auto)");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Context v2.2 (Micro)");
 
    current_pivot_tf = GetOptimalPivotTF();
 
