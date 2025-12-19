@@ -32,15 +32,22 @@ This document outlines the modular development path for the "Hybrid Scalper" sys
     *   **Squeeze Detection:** BB inside Keltner = Potential Breakout.
 *   **Responsibility:** Filtering out low-volatility noise and catching explosions.
 
+### 5. Hybrid Flow (New) - "The Pressure"
+*   **Logic:** MFI + Bid/Ask Volume Delta.
+*   **Features:**
+    *   **MFI:** Money Flow Index (Smart RSI).
+    *   **Delta:** Net Buying/Selling Volume.
+*   **Responsibility:** Confirming the strength of the move (Price vs Volume divergence).
+
 ## 🧠 Module 2: The Decision Core ("The Brain")
 **Purpose:** The Expert Advisor (EA). It consumes data from the Signal Engine and makes trading decisions.
 **Key Characteristic:** State-Machine based execution.
 
 ### Components:
 1.  **Signal Aggregator:**
-    *   Reads `iCustom` buffers from all 4 indicators.
+    *   Reads `iCustom` buffers from all 5 indicators.
     *   **Logic:**
-        *   **LONG Condition:** Momentum > Threshold AND Price > VWAP AND Volatility != Squeeze AND Price > EMA 150.
+        *   **LONG Condition:** Momentum > Threshold AND Price > VWAP AND Volatility != Squeeze AND Price > EMA 150 AND Flow > 0.
 2.  **Risk Manager:**
     *   Calculates Position Size based on Account Equity & Stop Loss distance.
 3.  **Execution Engine:**
@@ -48,7 +55,7 @@ This document outlines the modular development path for the "Hybrid Scalper" sys
 
 ## 🖥 Module 3: The Visual Assistant ("The Eyes")
 **Purpose:** User feedback and monitoring.
-**Key Characteristic:** Low-priority update frequency.
+**Key Characteristic:** Visualization *integrated* into the EA where critical.
 
 ### Components:
 1.  **Info Dashboard (GUI):**
@@ -56,4 +63,6 @@ This document outlines the modular development path for the "Hybrid Scalper" sys
     *   **Content:**
         *   Signal Conviction %.
         *   Current Squeeze Status.
-        *   Distance to VWAP/Pivots.
+        *   Flow Pressure (Delta).
+2.  **EA Visualization:**
+    *   The EA will draw crucial levels (e.g. Stop Loss lines, Entry Arrows) directly on the chart to assist the user.
