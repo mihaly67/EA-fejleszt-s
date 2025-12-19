@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                     HybridContextIndicator_v2.0.mq5 |
+//|                                     HybridContextIndicator_v2.1.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 2.0 (Intelligent Auto-Pivot & Scalping Fibo)         |
+//|      Verzió: 2.1 (Auto-Pivot & Native Fibo - No External Deps)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "2.0"
+#property version   "2.1"
 
 #property indicator_chart_window
 #property indicator_buffers 10
@@ -46,9 +46,9 @@
 //--- Input Parameters
 input group              "=== Intelligent Pivot Settings ==="
 input bool               InpShowPivots         = true;
-input bool               InpAutoMode           = true;       // Automatikus idősík választás (M1->M15, M5->H1...)
-input ENUM_TIMEFRAMES    InpManualPivotTF      = PERIOD_H4;  // Manuális beállítás ha Auto=False
-input bool               InpShowSecondaryPivot = true;       // Másodlagos (Pl. H1 - Mikro Támasz)
+input bool               InpAutoMode           = true;       // Automatikus idősík választás
+input ENUM_TIMEFRAMES    InpManualPivotTF      = PERIOD_H4;  // Manuális beállítás
+input bool               InpShowSecondaryPivot = true;
 input ENUM_TIMEFRAMES    InpSecondaryPivotTF   = PERIOD_H1;
 
 input group              "=== Trend Settings ==="
@@ -59,9 +59,7 @@ input ENUM_MA_METHOD     InpTrendMethod        = MODE_EMA;
 
 input group              "=== Smart Fibo Settings ==="
 input bool               InpShowFibo           = true;
-input int                InpZigZagDepth        = 12;
-input int                InpZigZagDev          = 5;
-input int                InpZigZagBack         = 3;
+input int                InpSwingLookback      = 20;         // Lookback for High/Low search on Pivot TF
 input color              InpFiboColor          = clrGoldenrod;
 
 //--- Buffers
@@ -72,7 +70,6 @@ double      TrendFastBuffer[];
 double      TrendSlowBuffer[];
 
 //--- Global Handles
-int         zigzag_handle = INVALID_HANDLE;
 int         ema_fast_handle = INVALID_HANDLE;
 int         ema_slow_handle = INVALID_HANDLE;
 
@@ -86,12 +83,9 @@ ENUM_TIMEFRAMES GetOptimalPivotTF()
 {
     if(!InpAutoMode) return InpManualPivotTF;
 
-    // Logic: Scalping (M1-M5) needs nearby pivots (M15-M30)
-    //        Day Trading (M15-H1) needs H4-D1
-
-    if(_Period <= PERIOD_M5) return PERIOD_M30;   // M1, M5 -> M30 Pivots (Good balance)
-    if(_Period <= PERIOD_M30) return PERIOD_H4;   // M15, M30 -> H4 Pivots
-    if(_Period <= PERIOD_H4) return PERIOD_D1;    // H1, H4 -> D1 Pivots
+    if(_Period <= PERIOD_M5) return PERIOD_M30;
+    if(_Period <= PERIOD_M30) return PERIOD_H4;
+    if(_Period <= PERIOD_H4) return PERIOD_D1;
 
     return PERIOD_W1;
 }
@@ -102,7 +96,7 @@ ENUM_TIMEFRAMES GetOptimalPivotTF()
 bool GetPivotData(datetime time, ENUM_TIMEFRAMES tf, double &P, double &R1, double &S1)
 {
    datetime htf_time = iTime(_Symbol, tf, iBarShift(_Symbol, tf, time));
-   int shift = iBarShift(_Symbol, tf, htf_time) + 1; // Previous completed bar
+   int shift = iBarShift(_Symbol, tf, htf_time) + 1;
 
    if(shift < 0) return false;
 
@@ -145,67 +139,71 @@ void UpdateSecondaryPivot(datetime time, double P, double R1, double S1)
 }
 
 //+------------------------------------------------------------------+
-//| Helper: Draw Fibo from Dynamic Pivot Source TF                   |
+//| Helper: Native Swing Detection for Fibo (No External Deps)       |
 //+------------------------------------------------------------------+
-void UpdateFibo(int rates_total, const datetime &time[])
+void UpdateFiboNative(const datetime &time[])
 {
-   if(!InpShowFibo || zigzag_handle == INVALID_HANDLE) return;
+   if(!InpShowFibo) return;
 
-   // Use the same timeframe as the Pivots for consistency
-   ENUM_TIMEFRAMES fibo_tf = current_pivot_tf;
+   // 1. Get HTF Data (Highs/Lows)
+   // We need enough bars to find swings.
+   int lookback = InpSwingLookback * 2;
+   double highs[];
+   double lows[];
+   datetime times[];
 
-   double zigzag_buffer[];
-   datetime zigzag_times[];
+   if(CopyHigh(_Symbol, current_pivot_tf, 0, lookback, highs) <= 0) return;
+   if(CopyLow(_Symbol, current_pivot_tf, 0, lookback, lows) <= 0) return;
+   if(CopyTime(_Symbol, current_pivot_tf, 0, lookback, times) <= 0) return;
 
-   int copied = CopyBuffer(zigzag_handle, 0, 0, 100, zigzag_buffer);
-   if(copied <= 0) return;
+   // 2. Simple Swing Detection (Highest High and Lowest Low in range)
+   int hh_idx = -1;
+   int ll_idx = -1;
+   double max_h = -DBL_MAX;
+   double min_l = DBL_MAX;
 
-   CopyTime(_Symbol, fibo_tf, 0, 100, zigzag_times);
-
-   int p1_idx = -1;
-   int p2_idx = -1;
-   double p1_val = 0;
-   double p2_val = 0;
-   datetime p1_time = 0;
-   datetime p2_time = 0;
-
-   for(int i = copied - 1; i >= 0; i--)
+   // Search recent history
+   for(int i = 0; i < lookback; i++)
    {
-       if(zigzag_buffer[i] != 0 && zigzag_buffer[i] != EMPTY_VALUE)
-       {
-           if(p1_idx == -1) {
-               p1_idx = i;
-               p1_val = zigzag_buffer[i];
-               p1_time = zigzag_times[i];
-           }
-           else if(p2_idx == -1) {
-               p2_idx = i;
-               p2_val = zigzag_buffer[i];
-               p2_time = zigzag_times[i];
-               break;
-           }
-       }
+       if(highs[i] > max_h) { max_h = highs[i]; hh_idx = i; }
+       if(lows[i] < min_l)  { min_l = lows[i];  ll_idx = i; }
    }
 
-   if(p1_idx != -1 && p2_idx != -1)
+   // 3. Determine Direction (Most recent point defines end of Fibo)
+   // If HH is more recent than LL -> Uptrend Fibo (Low to High)
+   // If LL is more recent than HH -> Downtrend Fibo (High to Low)
+
+   if(hh_idx != -1 && ll_idx != -1 && hh_idx != ll_idx)
    {
-      string name = "HybridSmartFibo";
-      if(ObjectFind(0, name) < 0) ObjectCreate(0, name, OBJ_FIBO, 0, 0, 0);
+       datetime t1, t2; // t1=start(100%), t2=end(0%)
+       double p1, p2;
 
-      ObjectSetInteger(0, name, OBJPROP_TIME, 0, p2_time);
-      ObjectSetDouble(0, name, OBJPROP_PRICE, 0, p2_val);
-      ObjectSetInteger(0, name, OBJPROP_TIME, 1, p1_time);
-      ObjectSetDouble(0, name, OBJPROP_PRICE, 1, p1_val);
+       if(hh_idx > ll_idx) // Recent High, Old Low -> Uptrend
+       {
+           t1 = times[ll_idx]; p1 = min_l; // Anchor 1 (100% or 0%) - usually 100% at bottom
+           t2 = times[hh_idx]; p2 = max_h; // Anchor 2
+       }
+       else // Recent Low, Old High -> Downtrend
+       {
+           t1 = times[hh_idx]; p1 = max_h;
+           t2 = times[ll_idx]; p2 = min_l;
+       }
 
-      ObjectSetInteger(0, name, OBJPROP_COLOR, InpFiboColor);
-      ObjectSetInteger(0, name, OBJPROP_RAY_RIGHT, true);
-      ObjectSetInteger(0, name, OBJPROP_TIMEFRAMES, OBJ_ALL_PERIODS);
+       string name = "HybridSmartFibo";
+       if(ObjectFind(0, name) < 0) ObjectCreate(0, name, OBJ_FIBO, 0, 0, 0);
 
-      // Make line thinner for scalping clarity
-      ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+       ObjectSetInteger(0, name, OBJPROP_TIME, 0, t1);
+       ObjectSetDouble(0, name, OBJPROP_PRICE, 0, p1);
+       ObjectSetInteger(0, name, OBJPROP_TIME, 1, t2);
+       ObjectSetDouble(0, name, OBJPROP_PRICE, 1, p2);
 
-      string desc = StringFormat("Auto Fibo (%s)", EnumToString(fibo_tf));
-      ObjectSetString(0, name, OBJPROP_TEXT, desc);
+       ObjectSetInteger(0, name, OBJPROP_COLOR, InpFiboColor);
+       ObjectSetInteger(0, name, OBJPROP_RAY_RIGHT, true);
+       ObjectSetInteger(0, name, OBJPROP_TIMEFRAMES, OBJ_ALL_PERIODS);
+       ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+
+       string desc = StringFormat("Auto Fibo (%s)", EnumToString(current_pivot_tf));
+       ObjectSetString(0, name, OBJPROP_TEXT, desc);
    }
 }
 
@@ -220,21 +218,14 @@ int OnInit()
    SetIndexBuffer(3, TrendFastBuffer, INDICATOR_DATA);
    SetIndexBuffer(4, TrendSlowBuffer, INDICATOR_DATA);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Context v2.0 (Auto)");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Context v2.1 (Auto)");
 
-   // Determine TF Logic
    current_pivot_tf = GetOptimalPivotTF();
 
    if(InpShowTrends)
    {
       ema_fast_handle = iMA(_Symbol, _Period, InpTrendFastPeriod, 0, InpTrendMethod, PRICE_CLOSE);
       ema_slow_handle = iMA(_Symbol, _Period, InpTrendSlowPeriod, 0, InpTrendMethod, PRICE_CLOSE);
-   }
-
-   if(InpShowFibo)
-   {
-      // ZigZag on DYNAMIC TF to match Pivots
-      zigzag_handle = iCustom(_Symbol, current_pivot_tf, "Examples\\ZigZag", InpZigZagDepth, InpZigZagDev, InpZigZagBack);
    }
 
    return INIT_SUCCEEDED;
@@ -262,7 +253,6 @@ int OnCalculate(const int rates_total,
       for(int i = start; i < rates_total; i++)
       {
          double P, R1, S1;
-         // Use the determined DYNAMIC TF
          if(GetPivotData(time[i], current_pivot_tf, P, R1, S1))
          {
             PivotPBuffer[i] = P;
@@ -277,7 +267,6 @@ int OnCalculate(const int rates_total,
          }
       }
 
-      // Secondary Pivot (Visual Only - Last Bar)
       if(InpShowSecondaryPivot)
       {
           double P2, R12, S12;
@@ -295,10 +284,10 @@ int OnCalculate(const int rates_total,
       if(ema_slow_handle != INVALID_HANDLE) CopyBuffer(ema_slow_handle, 0, 0, rates_total, TrendSlowBuffer);
    }
 
-   // --- 3. Smart Fibo ---
-   if(InpShowFibo && prev_calculated < rates_total) // Update only on new bar
+   // --- 3. Smart Fibo (Native) ---
+   if(InpShowFibo && prev_calculated < rates_total)
    {
-       UpdateFibo(rates_total, time);
+       UpdateFiboNative(time);
    }
 
    return rates_total;
@@ -316,5 +305,4 @@ void OnDeinit(const int reason)
 
    if(ema_fast_handle != INVALID_HANDLE) IndicatorRelease(ema_fast_handle);
    if(ema_slow_handle != INVALID_HANDLE) IndicatorRelease(ema_slow_handle);
-   if(zigzag_handle != INVALID_HANDLE) IndicatorRelease(zigzag_handle);
 }
