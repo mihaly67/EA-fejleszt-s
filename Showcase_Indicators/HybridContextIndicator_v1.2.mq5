@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                     HybridContextIndicator_v1.2.mq5 |
+//|                                     HybridContextIndicator_v2.0.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 1.2 (Multi-TF Pivot & HTF Fibo)                      |
+//|      Verzió: 2.0 (Intelligent Auto-Pivot & Scalping Fibo)         |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.2"
+#property version   "2.0"
 
 #property indicator_chart_window
 #property indicator_buffers 10
@@ -44,9 +44,10 @@
 #property indicator_width5  2
 
 //--- Input Parameters
-input group              "=== Pivot Hierarchy ==="
+input group              "=== Intelligent Pivot Settings ==="
 input bool               InpShowPivots         = true;
-input ENUM_TIMEFRAMES    InpPrimaryPivotTF     = PERIOD_H4;  // Fő Pivot (Pl. H4 - Erős Támasz)
+input bool               InpAutoMode           = true;       // Automatikus idősík választás (M1->M15, M5->H1...)
+input ENUM_TIMEFRAMES    InpManualPivotTF      = PERIOD_H4;  // Manuális beállítás ha Auto=False
 input bool               InpShowSecondaryPivot = true;       // Másodlagos (Pl. H1 - Mikro Támasz)
 input ENUM_TIMEFRAMES    InpSecondaryPivotTF   = PERIOD_H1;
 
@@ -58,7 +59,6 @@ input ENUM_MA_METHOD     InpTrendMethod        = MODE_EMA;
 
 input group              "=== Smart Fibo Settings ==="
 input bool               InpShowFibo           = true;
-input ENUM_TIMEFRAMES    InpFiboSourceTF       = PERIOD_M15; // Melyik idősík hullámait nézzük? (Pl. M15 zajszűréshez)
 input int                InpZigZagDepth        = 12;
 input int                InpZigZagDev          = 5;
 input int                InpZigZagBack         = 3;
@@ -75,6 +75,26 @@ double      TrendSlowBuffer[];
 int         zigzag_handle = INVALID_HANDLE;
 int         ema_fast_handle = INVALID_HANDLE;
 int         ema_slow_handle = INVALID_HANDLE;
+
+//--- State Variables
+ENUM_TIMEFRAMES current_pivot_tf;
+
+//+------------------------------------------------------------------+
+//| Helper: Determine Optimal Pivot Timeframe                        |
+//+------------------------------------------------------------------+
+ENUM_TIMEFRAMES GetOptimalPivotTF()
+{
+    if(!InpAutoMode) return InpManualPivotTF;
+
+    // Logic: Scalping (M1-M5) needs nearby pivots (M15-M30)
+    //        Day Trading (M15-H1) needs H4-D1
+
+    if(_Period <= PERIOD_M5) return PERIOD_M30;   // M1, M5 -> M30 Pivots (Good balance)
+    if(_Period <= PERIOD_M30) return PERIOD_H4;   // M15, M30 -> H4 Pivots
+    if(_Period <= PERIOD_H4) return PERIOD_D1;    // H1, H4 -> D1 Pivots
+
+    return PERIOD_W1;
+}
 
 //+------------------------------------------------------------------+
 //| Helper: Get Pivot Data from HTF                                  |
@@ -104,13 +124,10 @@ bool GetPivotData(datetime time, ENUM_TIMEFRAMES tf, double &P, double &R1, doub
 //+------------------------------------------------------------------+
 void UpdateSecondaryPivot(datetime time, double P, double R1, double S1)
 {
-    // Draw horizontal lines for secondary pivot levels using Objects (to avoid buffer limits)
-    // We update them to the current bar's levels
     string p_name = "SecPivot_P";
     string r_name = "SecPivot_R1";
     string s_name = "SecPivot_S1";
 
-    // Create or Move
     if(ObjectFind(0, p_name) < 0) ObjectCreate(0, p_name, OBJ_HLINE, 0, 0, 0);
     ObjectSetDouble(0, p_name, OBJPROP_PRICE, P);
     ObjectSetInteger(0, p_name, OBJPROP_COLOR, clrBlue);
@@ -128,27 +145,23 @@ void UpdateSecondaryPivot(datetime time, double P, double R1, double S1)
 }
 
 //+------------------------------------------------------------------+
-//| Helper: Draw Fibo from HTF ZigZag                                |
+//| Helper: Draw Fibo from Dynamic Pivot Source TF                   |
 //+------------------------------------------------------------------+
 void UpdateFibo(int rates_total, const datetime &time[])
 {
    if(!InpShowFibo || zigzag_handle == INVALID_HANDLE) return;
 
-   // We need to fetch ZigZag data from the SOURCE TF, not current TF
-   // This is tricky because buffers are aligned to Source TF bars.
-   // We must CopyBuffer from the handle (which is on InpFiboSourceTF)
-   // and map the times to current chart.
+   // Use the same timeframe as the Pivots for consistency
+   ENUM_TIMEFRAMES fibo_tf = current_pivot_tf;
 
    double zigzag_buffer[];
    datetime zigzag_times[];
 
-   int copied = CopyBuffer(zigzag_handle, 0, 0, 100, zigzag_buffer); // Copy last 100 bars of HTF
+   int copied = CopyBuffer(zigzag_handle, 0, 0, 100, zigzag_buffer);
    if(copied <= 0) return;
 
-   // We also need times of HTF bars to map them
-   CopyTime(_Symbol, InpFiboSourceTF, 0, 100, zigzag_times);
+   CopyTime(_Symbol, fibo_tf, 0, 100, zigzag_times);
 
-   // Find last two non-zero ZigZag points in HTF data
    int p1_idx = -1;
    int p2_idx = -1;
    double p1_val = 0;
@@ -156,7 +169,6 @@ void UpdateFibo(int rates_total, const datetime &time[])
    datetime p1_time = 0;
    datetime p2_time = 0;
 
-   // Iterate backwards through HTF buffer
    for(int i = copied - 1; i >= 0; i--)
    {
        if(zigzag_buffer[i] != 0 && zigzag_buffer[i] != EMPTY_VALUE)
@@ -180,7 +192,6 @@ void UpdateFibo(int rates_total, const datetime &time[])
       string name = "HybridSmartFibo";
       if(ObjectFind(0, name) < 0) ObjectCreate(0, name, OBJ_FIBO, 0, 0, 0);
 
-      // Use the TIME from HTF to place object on Current Chart
       ObjectSetInteger(0, name, OBJPROP_TIME, 0, p2_time);
       ObjectSetDouble(0, name, OBJPROP_PRICE, 0, p2_val);
       ObjectSetInteger(0, name, OBJPROP_TIME, 1, p1_time);
@@ -190,8 +201,10 @@ void UpdateFibo(int rates_total, const datetime &time[])
       ObjectSetInteger(0, name, OBJPROP_RAY_RIGHT, true);
       ObjectSetInteger(0, name, OBJPROP_TIMEFRAMES, OBJ_ALL_PERIODS);
 
-      // Add description
-      string desc = StringFormat("Fibo (%s)", EnumToString(InpFiboSourceTF));
+      // Make line thinner for scalping clarity
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+
+      string desc = StringFormat("Auto Fibo (%s)", EnumToString(fibo_tf));
       ObjectSetString(0, name, OBJPROP_TEXT, desc);
    }
 }
@@ -207,7 +220,10 @@ int OnInit()
    SetIndexBuffer(3, TrendFastBuffer, INDICATOR_DATA);
    SetIndexBuffer(4, TrendSlowBuffer, INDICATOR_DATA);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Context v1.2");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Context v2.0 (Auto)");
+
+   // Determine TF Logic
+   current_pivot_tf = GetOptimalPivotTF();
 
    if(InpShowTrends)
    {
@@ -217,8 +233,8 @@ int OnInit()
 
    if(InpShowFibo)
    {
-      // ZigZag on Specified Source TF (e.g., M15) to filter noise
-      zigzag_handle = iCustom(_Symbol, InpFiboSourceTF, "Examples\\ZigZag", InpZigZagDepth, InpZigZagDev, InpZigZagBack);
+      // ZigZag on DYNAMIC TF to match Pivots
+      zigzag_handle = iCustom(_Symbol, current_pivot_tf, "Examples\\ZigZag", InpZigZagDepth, InpZigZagDev, InpZigZagBack);
    }
 
    return INIT_SUCCEEDED;
@@ -246,7 +262,8 @@ int OnCalculate(const int rates_total,
       for(int i = start; i < rates_total; i++)
       {
          double P, R1, S1;
-         if(GetPivotData(time[i], InpPrimaryPivotTF, P, R1, S1))
+         // Use the determined DYNAMIC TF
+         if(GetPivotData(time[i], current_pivot_tf, P, R1, S1))
          {
             PivotPBuffer[i] = P;
             PivotR1Buffer[i] = R1;
@@ -279,7 +296,7 @@ int OnCalculate(const int rates_total,
    }
 
    // --- 3. Smart Fibo ---
-   if(InpShowFibo && prev_calculated < rates_total) // Update only on new bar to save CPU
+   if(InpShowFibo && prev_calculated < rates_total) // Update only on new bar
    {
        UpdateFibo(rates_total, time);
    }
