@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                     HybridContextIndicator_v1.0.mq5 |
+//|                                     HybridContextIndicator_v1.1.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 1.0 (Pivot, Auto-Fibo, Trend EMA)                    |
+//|      Verzió: 1.1 (Enhanced Pivot, Auto-Fibo, Trend EMA)           |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.0"
+#property version   "1.1"
 
 #property indicator_chart_window
 #property indicator_buffers 10
@@ -140,6 +140,8 @@ void UpdateFibo(int rates_total, const datetime &time[], const double &zigzag[])
 
       ObjectSetInteger(0, name, OBJPROP_COLOR, InpFiboColor);
       ObjectSetInteger(0, name, OBJPROP_RAY_RIGHT, true);
+      // Ensure visibility on current timeframe
+      ObjectSetInteger(0, name, OBJPROP_TIMEFRAMES, OBJ_ALL_PERIODS);
    }
 }
 
@@ -154,7 +156,7 @@ int OnInit()
    SetIndexBuffer(3, TrendFastBuffer, INDICATOR_DATA);
    SetIndexBuffer(4, TrendSlowBuffer, INDICATOR_DATA);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Context v1.0");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Context v1.1");
 
    if(InpShowTrends)
    {
@@ -214,6 +216,7 @@ int OnCalculate(const int rates_total,
    // --- 2. Trends ---
    if(InpShowTrends)
    {
+      // Optimization: Only copy what is needed if possible, but CopyBuffer handles logic well.
       if(ema_fast_handle != INVALID_HANDLE) CopyBuffer(ema_fast_handle, 0, 0, rates_total, TrendFastBuffer);
       if(ema_slow_handle != INVALID_HANDLE) CopyBuffer(ema_slow_handle, 0, 0, rates_total, TrendSlowBuffer);
    }
@@ -224,8 +227,11 @@ int OnCalculate(const int rates_total,
       double zigzags[];
       CopyBuffer(zigzag_handle, 0, 0, rates_total, zigzags);
 
-      // Update object only on last bar update
-      UpdateFibo(rates_total, time, zigzags);
+      // Update object only on last bar update to save resources
+      if(prev_calculated < rates_total)
+      {
+          UpdateFibo(rates_total, time, zigzags);
+      }
    }
 
    return rates_total;
