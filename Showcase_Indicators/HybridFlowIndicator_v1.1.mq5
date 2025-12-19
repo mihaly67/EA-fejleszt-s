@@ -1,44 +1,50 @@
 //+------------------------------------------------------------------+
-//|                                        HybridFlowIndicator_v1.0.mq5 |
+//|                                        HybridFlowIndicator_v1.1.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 1.0 (MFI + Bid/Ask Delta)                            |
+//|      Verzió: 1.1 (MFI + Scaled Delta)                             |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.0"
+#property version   "1.1"
 
 #property indicator_separate_window
 #property indicator_buffers 4
 #property indicator_plots   2
 
-//--- Plot 1: MFI
+// Force Fixed Range 0-100 for MFI Visibility
+#property indicator_minimum 0
+#property indicator_maximum 100
+
+//--- Plot 1: MFI (Blue Line)
 #property indicator_label1  "MFI"
 #property indicator_type1   DRAW_LINE
 #property indicator_style1  STYLE_SOLID
 #property indicator_color1  clrDodgerBlue
 #property indicator_width1  2
 #property indicator_level1  20
-#property indicator_level2  80
+#property indicator_level2  50 // Midpoint
+#property indicator_level3  80
 
-//--- Plot 2: Volume Delta (Histogram)
-#property indicator_label2  "Delta"
+//--- Plot 2: Volume Delta (Scaled Histogram)
+#property indicator_label2  "Scaled Delta"
 #property indicator_type2   DRAW_COLOR_HISTOGRAM
 #property indicator_style2  STYLE_SOLID
-#property indicator_color2  clrGreen, clrRed
-#property indicator_width2  2
+#property indicator_color2  C'0,100,0', C'100,0,0' // Dark Green, Dark Red (Background)
+#property indicator_width2  4 // Wider bars
 
 //--- Input Parameters
 input group              "=== MFI Settings ==="
 input int                InpMFIPeriod          = 14;
 
 input group              "=== Delta Settings ==="
-input bool               InpUseApproxDelta     = true;   // True: Candle Analysis, False: CopyTicks (Heavy)
-input int                InpDeltaSmooth        = 3;      // Smoothing for Delta
+input bool               InpUseApproxDelta     = true;
+input int                InpDeltaSmooth        = 3;
+input int                InpNormalizationLen   = 100;    // Lookback for volume normalization
 
 //--- Buffers
 double      MFIBuffer[];
 double      DeltaBuffer[];
-double      DeltaColorBuffer[]; // 0=Green, 1=Red
+double      DeltaColorBuffer[];
 
 //--- Calculation Buffers
 double      RawDeltaBuffer[];
@@ -56,12 +62,26 @@ int OnInit()
    SetIndexBuffer(2, DeltaColorBuffer, INDICATOR_COLOR_INDEX);
    SetIndexBuffer(3, RawDeltaBuffer, INDICATOR_CALCULATIONS);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.0");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.1");
 
    mfi_handle = iMFI(_Symbol, _Period, InpMFIPeriod, VOLUME_TICK);
    if(mfi_handle == INVALID_HANDLE) return INIT_FAILED;
 
    return INIT_SUCCEEDED;
+}
+
+//+------------------------------------------------------------------+
+//| Helper: Get Max Volume in window                                 |
+//+------------------------------------------------------------------+
+double GetMaxVolume(const long &vol[], int index, int len)
+{
+    double max_v = 1.0;
+    int start = MathMax(0, index - len + 1);
+    for(int i = start; i <= index; i++)
+    {
+        if((double)vol[i] > max_v) max_v = (double)vol[i];
+    }
+    return max_v;
 }
 
 //+------------------------------------------------------------------+
@@ -83,7 +103,6 @@ int OnCalculate(const int rates_total,
    int start = (prev_calculated > 0) ? prev_calculated - 1 : 0;
 
    // --- MFI Calculation ---
-   // We simply copy the built-in MFI buffer.
    CopyBuffer(mfi_handle, 0, 0, rates_total, MFIBuffer);
 
    // --- Delta Calculation ---
@@ -93,37 +112,18 @@ int OnCalculate(const int rates_total,
 
        if(InpUseApproxDelta)
        {
-           // Approximation: "Bull/Bear Power" of Volume
-           // If Close > Open, mostly buying?
-           // Better approximation: Close relative to High/Low
            double range = high[i] - low[i];
            if(range > 0)
            {
-               // Position of Close within Range (0.0 to 1.0)
                double pos = (close[i] - low[i]) / range;
-               // Map to -1 to +1
-               double power = (pos - 0.5) * 2.0;
-
-               // Delta = Volume * Power
+               double power = (pos - 0.5) * 2.0; // -1 to +1
                delta = (double)tick_volume[i] * power;
            }
-           else
-           {
-               // Doji / Flat bar
-               delta = 0;
-           }
-       }
-       else
-       {
-           // Here we would implement CopyTicks logic.
-           // For v1.0, we stick to approximation for speed.
-           // Placeholder for future expansion.
-           delta = 0;
        }
 
        RawDeltaBuffer[i] = delta;
 
-       // Smoothing Delta for visual clarity
+       // Smoothing
        double smooth_delta = 0;
        int count = 0;
        for(int j = 0; j < InpDeltaSmooth; j++)
@@ -132,7 +132,28 @@ int OnCalculate(const int rates_total,
        }
        if(count > 0) smooth_delta /= count;
 
-       DeltaBuffer[i] = smooth_delta;
+       // --- SCALING LOGIC ---
+       // We map the delta to fit around the 50 line.
+       // E.g. +MaxDelta -> 90, -MaxDelta -> 10, 0 -> 50.
+
+       double max_vol = GetMaxVolume(tick_volume, i, InpNormalizationLen);
+       double scaled_val = 50.0;
+
+       if(max_vol > 0)
+       {
+           // Delta is usually less than total volume.
+           // Let's assume max possible delta is approx max_vol.
+           double ratio = smooth_delta / max_vol;
+
+           // Scale factor: 40 (so it spans 10 to 90)
+           scaled_val = 50.0 + (ratio * 40.0);
+       }
+
+       // Clamp
+       if(scaled_val > 100) scaled_val = 100;
+       if(scaled_val < 0) scaled_val = 0;
+
+       DeltaBuffer[i] = scaled_val;
        DeltaColorBuffer[i] = (smooth_delta >= 0) ? 0 : 1;
    }
 
