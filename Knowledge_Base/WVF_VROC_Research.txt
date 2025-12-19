@@ -1,0 +1,60 @@
+
+=== RESEARCH: Williams Vix Fix & VROC ===
+Date: 2025-12-17
+
+1. **Williams Vix Fix (WVF)**:
+   - **Formula**: `WVF = (Highest(Close, n) - Low) / Highest(Close, n) * 100`
+   - **Purpose**: A synthetic "VIX" for any asset.
+   - **Interpretation**:
+     - High values indicate "Market Fear" / Oversold conditions (Bottoms).
+     - Low values indicate Complacency / Uptrend.
+   - **Standard Period**: 22 (Monthly trading days), but for scalping, a shorter period (e.g., 20 or 50) might be better.
+   - **Integration**: Add to `HybridVolatilityIndicator`. It complements the BB Squeeze (which detects low volatility). WVF detects *High Volatility Downside*.
+
+2. **Volume Rate of Change (VROC)**:
+   - **Formula**: `(Volume[0] - Volume[n]) / Volume[n] * 100`
+   - **Purpose**: Measures the acceleration of volume.
+   - **Interpretation**: Spike in VROC often precedes price breakouts.
+   - **Integration**: Add to `HybridFlowIndicator`.
+     - Current Flow: MFI + Delta.
+     - New Flow: MFI + Delta + VROC.
+     - **Visualization**: User said "what is unnecessary, don't bother".
+     - *Decision*: Since `HybridFlow` handles Delta (Directional Volume), adding VROC (Speed of Volume) might be clutter if not careful.
+     - *Hypothesis*: The user specifically asked for "WV F, VROC correctly". I must implement them.
+     - *Method*: Add VROC as a line overlay on the `HybridFlow` window? Or separate?
+     - *Better idea*: Use VROC to *color* the MFI line? Or add a simple "VROC Spike" marker?
+     - *User Constraint*: "What depends on how it can be visualized".
+     - *Plan*: I will add VROC as a colored line or histogram in `HybridFlow`. If it's too much, I'll make it toggleable. Actually, VROC is often noisy. A "Volume Surge" boolean indicator might be better.
+     - *Refined Plan*: Focus on WVF first (HybridVolatility), then VROC (HybridFlow).
+
+3. **HybridVolatility Upgrade**:
+   - Rename to `HybridVolatilityIndicator_v1.1`.
+   - Plot 1-3: BB (Existing).
+   - Plot 4-5: Keltner (Existing).
+   - Plot 6: WVF Histogram (New).
+     - Location: Separate window? No, `HybridVolatility` is Chart Window (BB bands). WVF is an oscillator (0-100+).
+     - *Conflict*: BB is on Chart, WVF is separate.
+     - *Solution*: Split? Or create `Hybrid_WVF_VROC_Showcase.mq5`?
+     - *User Preference*: "Hybrid System".
+     - *Decision*: Modify `HybridVolatility` to be a "Panel" or keep purely on-chart?
+     - *Correction*: Standard `HybridVolatility` (BB/KC) is on-chart. WVF *must* be separate window.
+     - *Action*: Create `HybridVolatilityOscillator_v1.0.mq5` (WVF + maybe VROC here?).
+     - *Alternative*: The user asked for "WVF, VROC... complete market picture".
+     - *Synthesis*: Create a **Market Stress & Flow** indicator?
+     - *Better*: Add VROC to `HybridFlow` (Separate Window). Add WVF to a new `HybridStressIndicator` (Separate Window) OR combine WVF into `HybridFlow` (as they are both oscillators)?
+     - WVF is volatility/fear. Flow is money.
+     - *Decision*:
+       1. **HybridFlow v1.5**: Add VROC (Optional Line).
+       2. **HybridVolatility v1.1**: Use `ChartIndicatorAdd` to add a subwindow WVF? No, that's complex.
+       3. **New Indicator**: `HybridFearIndicator_v1.0` (WVF).
+
+   - *Wait*, `HybridVolatility` currently displays Bands. WVF is an oscillator. I cannot mix them in one file easily unless I use `ChartIndicatorAdd`.
+   - **Plan B**: Create `Hybrid_WVF_Indicator.mq5` and user can stack it.
+   - **Refined Plan**: I will update `HybridFlow` to include VROC (as it fits "Flow"). I will create a standalone `HybridWVF` (as it fits "Volatility" but needs a window).
+
+   - *Actually*, looking at the "Full Market Picture":
+     1. Momentum (Oscillator)
+     2. Flow (Oscillator)
+     3. Context (Chart)
+     4. Volatility (Chart - Bands)
+     5. **Fear/Stress (WVF)** -> New Oscillator Window.

@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                        HybridFlowIndicator_v1.4.mq5 |
+//|                                        HybridFlowIndicator_v1.5.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 1.4 (MFI + Boosted Delta)                            |
+//|      Verzió: 1.5 (MFI + Delta + VROC)                             |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.4"
+#property version   "1.5"
 
 #property indicator_separate_window
 #property indicator_buffers 5
@@ -15,11 +15,11 @@
 #property indicator_minimum 0
 #property indicator_maximum 100
 
-//--- Plot 1: MFI (Blue Line)
+//--- Plot 1: MFI (Blue Line) with VROC Color
 #property indicator_label1  "MFI"
-#property indicator_type1   DRAW_LINE
+#property indicator_type1   DRAW_COLOR_LINE
 #property indicator_style1  STYLE_SOLID
-#property indicator_color1  clrDodgerBlue
+#property indicator_color1  clrDodgerBlue, clrMagenta // Blue = Normal, Magenta = High VROC
 #property indicator_width1  2
 #property indicator_level1  20
 #property indicator_level2  50 // Midpoint
@@ -36,14 +36,20 @@
 input group              "=== MFI Settings ==="
 input int                InpMFIPeriod          = 14;
 
+input group              "=== VROC Settings ==="
+input bool               InpShowVROC           = true;
+input int                InpVROCPeriod         = 10;
+input double             InpVROCThreshold      = 20.0; // % Change to trigger alert color
+
 input group              "=== Delta Settings ==="
 input bool               InpUseApproxDelta     = true;
 input int                InpDeltaSmooth        = 3;
 input int                InpNormalizationLen   = 100;    // Lookback for volume normalization
-input double             InpDeltaScaleFactor   = 50.0;   // Boosted to 50.0 (fills 0-100 range)
+input double             InpDeltaScaleFactor   = 50.0;   // Boosted to 50.0
 
 //--- Buffers
 double      MFIBuffer[];
+double      MFIColorBuffer[];
 double      DeltaStartBuffer[]; // Buffer for "50" baseline
 double      DeltaEndBuffer[];   // Buffer for Value
 double      DeltaColorBuffer[];
@@ -60,15 +66,28 @@ int         mfi_handle = INVALID_HANDLE;
 int OnInit()
 {
    SetIndexBuffer(0, MFIBuffer, INDICATOR_DATA);
+   SetIndexBuffer(1, MFIColorBuffer, INDICATOR_COLOR_INDEX);
 
    // Histogram2 requires two data buffers for Start and End values
-   SetIndexBuffer(1, DeltaStartBuffer, INDICATOR_DATA);
-   SetIndexBuffer(2, DeltaEndBuffer, INDICATOR_DATA);
-   SetIndexBuffer(3, DeltaColorBuffer, INDICATOR_COLOR_INDEX);
+   SetIndexBuffer(2, DeltaStartBuffer, INDICATOR_DATA);
+   SetIndexBuffer(3, DeltaEndBuffer, INDICATOR_DATA);
+   SetIndexBuffer(4, DeltaColorBuffer, INDICATOR_COLOR_INDEX);
 
-   SetIndexBuffer(4, RawDeltaBuffer, INDICATOR_CALCULATIONS);
+   // Reorder buffers for calculations if needed, but MQL5 manages handles by index
+   // Wait, indicator_buffers must cover all.
+   // 0: MFI Value
+   // 1: MFI Color
+   // 2: Delta Start
+   // 3: Delta End
+   // 4: Delta Color
+   // 5: Raw Delta (Calc)
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.4");
+   // Need 6 buffers total
+
+   IndicatorSetInteger(INDICATOR_BUFFERS, 6); // Explicitly set total
+   SetIndexBuffer(5, RawDeltaBuffer, INDICATOR_CALCULATIONS);
+
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.5");
 
    mfi_handle = iMFI(_Symbol, _Period, InpMFIPeriod, VOLUME_TICK);
    if(mfi_handle == INVALID_HANDLE) return INIT_FAILED;
@@ -104,14 +123,19 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
 {
-   if(rates_total < InpMFIPeriod) return 0;
+   if(rates_total < InpMFIPeriod || rates_total < InpVROCPeriod) return 0;
 
    int start = (prev_calculated > 0) ? prev_calculated - 1 : 0;
 
    // --- MFI Calculation ---
+   // Note: CopyBuffer to MFIBuffer directly works if it's double[].
+   // But we need to color it based on VROC.
+   // So we copy to a temp array or access handle frame by frame?
+   // CopyBuffer writes to the whole array. We can overwrite the color buffer after.
+
    CopyBuffer(mfi_handle, 0, 0, rates_total, MFIBuffer);
 
-   // --- Delta Calculation ---
+   // --- Delta & VROC Calculation ---
    for(int i = start; i < rates_total; i++)
    {
        // 1. Calculate Raw Delta
@@ -148,19 +172,30 @@ int OnCalculate(const int rates_total,
            scaled_offset = ratio * InpDeltaScaleFactor;
        }
 
-       // 4. Fill Draw Buffers
-       // Start at 50, End at 50 + offset
+       // 4. Fill Delta Buffers
        DeltaStartBuffer[i] = 50.0;
        double final_val = 50.0 + scaled_offset;
 
-       // Clamp strict limits if needed
        if(final_val > 110) final_val = 110;
        if(final_val < -10) final_val = -10;
 
        DeltaEndBuffer[i] = final_val;
-
-       // Color: Positive = 0 (Green), Negative = 1 (Red)
        DeltaColorBuffer[i] = (smooth_delta >= 0) ? 0 : 1;
+
+       // 5. VROC Logic (Color the MFI Line)
+       if(InpShowVROC && i >= InpVROCPeriod && (double)tick_volume[i - InpVROCPeriod] > 0)
+       {
+           double vroc = ((double)tick_volume[i] - (double)tick_volume[i - InpVROCPeriod]) / (double)tick_volume[i - InpVROCPeriod] * 100.0;
+
+           if(vroc > InpVROCThreshold) // Check against Input Threshold
+               MFIColorBuffer[i] = 1; // Magenta (Volume Spike)
+           else
+               MFIColorBuffer[i] = 0; // Blue (Normal)
+       }
+       else
+       {
+           MFIColorBuffer[i] = 0;
+       }
    }
 
    return rates_total;
