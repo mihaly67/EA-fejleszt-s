@@ -384,13 +384,26 @@ int OnCalculate(const int rates_total,
     // Let's fill it all for safety to avoid garbage in history.
 
     // Performance Note: Copying 100k doubles is ~0.1ms. Negligible.
+    // However, for strict incremental correctness, we only need to update the NEW part.
+    // BUT since 'price_data' is a local dynamic array that is re-created (or resized) every tick,
+    // it contains garbage or zeros if not filled completely.
+    // Indicators do NOT persist local array content between calls unless declared static or global.
+    // So we MUST copy everything or use a static array.
+
+    // To be safe and simple, we copy all. Optimization: Use 'close' directly if possible?
+    // We cannot pass 'close' (const double[]) to a function expecting (double[]).
+    // So Copy is necessary.
+
     if(InpAppliedPrice == PRICE_CLOSE)
     {
        ArrayCopy(price_data, close, 0, 0, rates_total);
     }
     else
     {
-       for(int i = 0; i < rates_total; i++) { // Optimization: Could restrict to 'start' if we had static array
+       // Optimization: Only loop through 'start' to 'rates_total' IF we could trust history.
+       // But we can't trust local array history. So we loop all.
+       // Parallel execution (OpenCL) would be overkill here.
+       for(int i = 0; i < rates_total; i++) {
            switch(InpAppliedPrice) {
                case PRICE_OPEN:     price_data[i] = open[i]; break;
                case PRICE_HIGH:     price_data[i] = high[i]; break;
