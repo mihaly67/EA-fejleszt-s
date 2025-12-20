@@ -1,14 +1,14 @@
 //+------------------------------------------------------------------+
-//|                                        HybridFlowIndicator_v1.5.mq5 |
+//|                                        HybridFlowIndicator_v1.6.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 1.5 (MFI + Delta + VROC)                             |
+//|      Verzió: 1.6 (MFI + Delta + VROC - FIXED)                     |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.5"
+#property version   "1.6"
 
 #property indicator_separate_window
-#property indicator_buffers 5
+#property indicator_buffers 6
 #property indicator_plots   2
 
 // Force Fixed Range 0-100 for MFI Visibility
@@ -73,21 +73,9 @@ int OnInit()
    SetIndexBuffer(3, DeltaEndBuffer, INDICATOR_DATA);
    SetIndexBuffer(4, DeltaColorBuffer, INDICATOR_COLOR_INDEX);
 
-   // Reorder buffers for calculations if needed, but MQL5 manages handles by index
-   // Wait, indicator_buffers must cover all.
-   // 0: MFI Value
-   // 1: MFI Color
-   // 2: Delta Start
-   // 3: Delta End
-   // 4: Delta Color
-   // 5: Raw Delta (Calc)
-
-   // Need 6 buffers total
-
-   IndicatorSetInteger(INDICATOR_BUFFERS, 6); // Explicitly set total
    SetIndexBuffer(5, RawDeltaBuffer, INDICATOR_CALCULATIONS);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.5");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.6");
 
    mfi_handle = iMFI(_Symbol, _Period, InpMFIPeriod, VOLUME_TICK);
    if(mfi_handle == INVALID_HANDLE) return INIT_FAILED;
@@ -128,11 +116,6 @@ int OnCalculate(const int rates_total,
    int start = (prev_calculated > 0) ? prev_calculated - 1 : 0;
 
    // --- MFI Calculation ---
-   // Note: CopyBuffer to MFIBuffer directly works if it's double[].
-   // But we need to color it based on VROC.
-   // So we copy to a temp array or access handle frame by frame?
-   // CopyBuffer writes to the whole array. We can overwrite the color buffer after.
-
    CopyBuffer(mfi_handle, 0, 0, rates_total, MFIBuffer);
 
    // --- Delta & VROC Calculation ---
