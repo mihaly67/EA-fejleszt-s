@@ -1,28 +1,28 @@
 //+------------------------------------------------------------------+
-//|                                     HybridWVFIndicator_v1.1.mq5 |
+//|                                     HybridWVFIndicator_v1.2.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 1.1 (Bidirectional WVF - Up/Down Fear)               |
+//|      Verzió: 1.2 (Bidirectional WVF - Soft Colors)                |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.1"
+#property version   "1.2"
 
 #property indicator_separate_window
 #property indicator_buffers 2
 #property indicator_plots   2
 
-//--- Plot 1: Up Fear (FOMO/Euphoria) - Green
+//--- Plot 1: Up Fear (FOMO/Euphoria) - Soft Green
 #property indicator_label1  "WVF Up (Euphoria)"
 #property indicator_type1   DRAW_HISTOGRAM
 #property indicator_style1  STYLE_SOLID
-#property indicator_color1  clrLimeGreen
+#property indicator_color1  clrForestGreen // Softer than LimeGreen
 #property indicator_width1  3
 
-//--- Plot 2: Down Fear (Panic) - Red
+//--- Plot 2: Down Fear (Panic) - Soft Red
 #property indicator_label2  "WVF Down (Panic)"
 #property indicator_type2   DRAW_HISTOGRAM
 #property indicator_style2  STYLE_SOLID
-#property indicator_color2  clrRed
+#property indicator_color2  clrFireBrick // Softer than Red
 #property indicator_width2  3
 
 //--- Input Parameters
@@ -42,7 +42,7 @@ int OnInit()
    SetIndexBuffer(0, UpBuffer, INDICATOR_DATA);
    SetIndexBuffer(1, DownBuffer, INDICATOR_DATA);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid WVF v1.1");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid WVF v1.2");
 
    // Set levels for reference
    IndicatorSetInteger(INDICATOR_LEVELS, 3);
