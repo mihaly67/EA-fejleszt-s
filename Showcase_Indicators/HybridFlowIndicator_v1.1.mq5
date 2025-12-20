@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                        HybridFlowIndicator_v1.6.mq5 |
+//|                                        HybridFlowIndicator_v1.7.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 1.6 (MFI + Delta + VROC - FIXED)                     |
+//|      Verzió: 1.7 (MFI + Delta + VROC - Soft Colors)               |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.6"
+#property version   "1.7"
 
 #property indicator_separate_window
 #property indicator_buffers 6
@@ -19,7 +19,7 @@
 #property indicator_label1  "MFI"
 #property indicator_type1   DRAW_COLOR_LINE
 #property indicator_style1  STYLE_SOLID
-#property indicator_color1  clrDodgerBlue, clrMagenta // Blue = Normal, Magenta = High VROC
+#property indicator_color1  clrDodgerBlue, clrDarkViolet // Blue = Normal, DarkViolet = High VROC (Softer)
 #property indicator_width1  2
 #property indicator_level1  20
 #property indicator_level2  50 // Midpoint
@@ -29,7 +29,7 @@
 #property indicator_label2  "Scaled Delta"
 #property indicator_type2   DRAW_COLOR_HISTOGRAM2
 #property indicator_style2  STYLE_SOLID
-#property indicator_color2  C'0,100,0', C'100,0,0' // Dark Green, Dark Red
+#property indicator_color2  clrForestGreen, clrFireBrick // Soft Professional Palette
 #property indicator_width2  4 // Wider bars
 
 //--- Input Parameters
@@ -75,7 +75,7 @@ int OnInit()
 
    SetIndexBuffer(5, RawDeltaBuffer, INDICATOR_CALCULATIONS);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.6");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.7");
 
    mfi_handle = iMFI(_Symbol, _Period, InpMFIPeriod, VOLUME_TICK);
    if(mfi_handle == INVALID_HANDLE) return INIT_FAILED;
@@ -170,8 +170,8 @@ int OnCalculate(const int rates_total,
        {
            double vroc = ((double)tick_volume[i] - (double)tick_volume[i - InpVROCPeriod]) / (double)tick_volume[i - InpVROCPeriod] * 100.0;
 
-           if(vroc > InpVROCThreshold) // Check against Input Threshold
-               MFIColorBuffer[i] = 1; // Magenta (Volume Spike)
+           if(vroc > InpVROCThreshold)
+               MFIColorBuffer[i] = 1; // DarkViolet (Volume Spike)
            else
                MFIColorBuffer[i] = 0; // Blue (Normal)
        }
