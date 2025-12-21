@@ -168,16 +168,16 @@ void UpdateKalman(int i, double price, double period,
 //+------------------------------------------------------------------+
 //| Helper: Simple Lowpass Update (For Signal Line)                  |
 //+------------------------------------------------------------------+
-void UpdateLowpass(int i, double input, double period, double &buffer[])
+void UpdateLowpass(int i, double src_val, double period, double &buffer[])
 {
     double a = 2.0 / (period + 1.0);
     double b = 1.0 - a;
 
     if(i == 0) {
-        buffer[i] = input;
+        buffer[i] = src_val;
         return;
     }
-    buffer[i] = b * buffer[i-1] + a * input;
+    buffer[i] = b * buffer[i-1] + a * src_val;
 }
 
 //+------------------------------------------------------------------+
