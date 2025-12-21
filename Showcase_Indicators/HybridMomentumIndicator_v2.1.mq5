@@ -149,7 +149,8 @@ void UpdateKalman(int i, double price, double period,
                  double &lowpass[], double &delta[], double &output[])
 {
     // Constants
-    double a = MathExp(-M_PI / period);
+    // double a = MathExp(-M_PI / period); // OLD: Inverted Logic (Higher Period = Faster)
+    double a = 2.0 / (period + 1.0);       // FIXED: Standard EMA Logic (Higher Period = Slower)
     double b = 1.0 - a;
 
     // Init check
