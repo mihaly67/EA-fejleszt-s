@@ -163,11 +163,11 @@ def verify_rag_functionality():
     # Test MQL5
     test_scope('MQL5', 'indicator handle')
 
-    # Test Theory
-    test_scope('THEORY', 'market microstructure')
+    # Test Theory (Legacy)
+    test_scope('LEGACY', 'market microstructure')
 
-    # Test Code
-    test_scope('CODE', 'OnCalculate')
+    # Test Code (Legacy)
+    test_scope('LEGACY', 'OnCalculate')
 
 def restore_environment():
     setup_logger()
