@@ -124,10 +124,10 @@ double CRiskManager::CalculateLotSize(string symbol, double sl_points, double co
    // Ensure we have enough free margin. OrderCalcMargin is safer.
    double required_margin = m_broker->CalculateMargin(ORDER_TYPE_BUY, raw_lots, SymbolInfoDouble(symbol, SYMBOL_ASK));
 
-   // If margin required > X% of Free Margin (e.g. 50% safety buffer), reduce lots.
-   if(required_margin > free_margin * 0.9)
+   // If margin required > X% of Free Margin (User requested 70% max), reduce lots.
+   if(required_margin > free_margin * 0.7)
      {
-      double ratio = (free_margin * 0.9) / required_margin;
+      double ratio = (free_margin * 0.7) / required_margin;
       raw_lots *= ratio;
      }
 
