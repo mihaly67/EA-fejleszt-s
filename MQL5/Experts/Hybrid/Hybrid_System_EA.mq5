@@ -4,7 +4,7 @@
 //|             Master EA running the Hybrid System                   |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
-#property version   "1.0"
+#property version   "1.1"
 
 #include <Hybrid\Hybrid_Signal_Aggregator.mqh>
 #include <Hybrid\Hybrid_Panel.mqh>
@@ -17,11 +17,16 @@ input int InpMagicNumber = 123456; // Magic Number
 HybridSignal_Aggregator ExtBrain;
 Hybrid_Panel            ExtPanel;
 
+//--- State
+datetime LastDayTime = 0;
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
 int OnInit()
 {
+   LastDayTime = iTime(_Symbol, PERIOD_D1, 0);
+
    // 1. Initialize Brain (Aggregator)
    if(!ExtBrain.Init(_Symbol, _Period))
    {
@@ -37,16 +42,13 @@ int OnInit()
    }
 
    // 3. Create Panel UI
-   // Place it at top-left
    if(!ExtPanel.Create("HybridPanel", 10, 20, 310, 420))
    {
       Print("Failed to create Hybrid Panel UI!");
       return INIT_FAILED;
    }
 
-   ExtPanel.Run(); // Needed for CAppDialog to start handling events? usually Create + explicit calls are enough but Run() sets up some flags.
-   // Actually CAppDialog::Run() is not always standard, but let's check.
-   // Usually we just create it.
+   ExtPanel.Run();
 
    Print("Hybrid System Initialized.");
    return(INIT_SUCCEEDED);
@@ -65,15 +67,20 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
 {
+   // Check New Day
+   datetime currentDay = iTime(_Symbol, PERIOD_D1, 0);
+   if(currentDay != LastDayTime)
+   {
+      LastDayTime = currentDay;
+      ExtPanel.OnNewDay();
+   }
+
    // Update Logic
    ExtBrain.Update();
+   ExtPanel.OnTick(); // Agent Logic (Profit Management)
 
    // Update Visuals
    ExtPanel.Update();
-
-   // Auto-Trading Logic (Optional - if we want the EA to trade automatically based on Brain)
-   // For now, it's Manual via Panel.
-   // if(ExtBrain.GetConviction() > 0.8) m_agent.OrderBuy(...)
 }
 
 //+------------------------------------------------------------------+
