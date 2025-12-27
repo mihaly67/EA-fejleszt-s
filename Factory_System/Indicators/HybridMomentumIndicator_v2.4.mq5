@@ -30,8 +30,8 @@
 //--- Plot 3: Signal Line (Lowpass)
 #property indicator_label3  "Signal (Lowpass)"
 #property indicator_type3   DRAW_LINE
-#property indicator_style3  STYLE_DOT
-#property indicator_width3  1
+#property indicator_style3  STYLE_SOLID
+#property indicator_width3  2
 // Color set via input
 
 //--- Input Parameters
@@ -63,7 +63,7 @@ input int                InpNormPeriod         = 100;    // Normalization Lookba
 input double             InpNormSensitivity    = 1.0;    // Sensitivity
 
 input group              "=== Filter Settings ==="
-input bool               InpUseVolumeFilter    = true;   // Use VWMA Pre-Filter
+input bool               InpUseVolumeFilter    = false;  // Use VWMA Pre-Filter (Disabled by default)
 input int                InpVolFilterPeriod    = 20;     // Volume Filter Period
 input double             InpVolThreshold       = 0.5;    // Rel. Volume Threshold
 
@@ -166,8 +166,8 @@ int OnInit()
    PlotIndexSetInteger(0, PLOT_LINE_COLOR, 0, InpHistUpColor);
    PlotIndexSetInteger(0, PLOT_LINE_COLOR, 1, InpHistDownColor);
    PlotIndexSetInteger(0, PLOT_LINE_COLOR, 2, InpHistWeakColor);
-   PlotIndexSetInteger(2, PLOT_LINE_COLOR, InpMacdColor);
-   PlotIndexSetInteger(3, PLOT_LINE_COLOR, InpSignalColor);
+   PlotIndexSetInteger(1, PLOT_LINE_COLOR, InpMacdColor); // Plot 1 = MACD
+   PlotIndexSetInteger(2, PLOT_LINE_COLOR, InpSignalColor); // Plot 2 = Signal
 
    return(INIT_SUCCEEDED);
 }
