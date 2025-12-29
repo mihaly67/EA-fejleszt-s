@@ -235,8 +235,11 @@ int OnCalculate(const int rates_total,
    // Pre-fill Stochastic Buffer
    double stoch_temp[];
    if(InpUseStochFusion) {
-      int to_copy = rates_total - start;
-      if(CopyBuffer(hStoch, 0, 0, to_copy, stoch_temp) <= 0) {
+      ArraySetAsSeries(stoch_temp, true); // Ensure 0 = Newest for safe indexing
+      // Copy everything from 0 (Newest) to coverage required
+      // We need data corresponding to 'rates_total-1' (Newest) down to 'start' (Oldest)
+      // Range length = rates_total
+      if(CopyBuffer(hStoch, 0, 0, rates_total, stoch_temp) <= 0) {
          Print("Warning: Stoch CopyBuffer failed");
       }
    }
@@ -276,7 +279,10 @@ int OnCalculate(const int rates_total,
       // --- FUSION LOGIC START (ADAPTIVE BOOST) ---
       if(InpUseStochFusion && i > 0) {
              double stoch_val = 50.0; // Default Neutral
-             int stoch_idx = i - start;
+             // Alignment: Loop 'i' is 0=Oldest. Stoch Series is 0=Newest.
+             // Corresponding index in Stoch Series: rates_total - 1 - i
+             int stoch_idx = rates_total - 1 - i;
+
              if(stoch_idx >= 0 && stoch_idx < ArraySize(stoch_temp)) {
                  stoch_val = stoch_temp[stoch_idx];
              }

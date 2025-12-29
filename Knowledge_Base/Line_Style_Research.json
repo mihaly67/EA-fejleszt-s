@@ -1,0 +1,32 @@
+[
+  {
+    "source_type": "CODE",
+    "filename": "MA plus.mq5",
+    "content": "#property link         \"https://www.mql5.com/en/users/asokolov7\"\r\n#property version      \"1.00\"\r\n#property indicator_chart_window\r\n#property indicator_buffers  18\r\n#property indicator_plots    1\r\n#property indicator_type1   DRAW_COLOR_LINE\r\n#property indicator_style1  STYLE_SOLID\r\n#property indicator_width1  1\r\n#property indicator_color1  clrLime, clrRed\r\n//-------------------------------------------------------------------------------------------------\r\n//   Indicator arrays                                                                             |\r\n//-------------------------------------------------------------------------------------------------\r\ndouble  MA[],        //Main array\r\n        MA_color[],  //Array to store color index\r\n        v_open[],    //Array to store virtual price open\r\n        v_high[],    //Array to store virtual price high\r\n        v_low[],     //Array to store virtual price low\r\n        Price[],     //Array to store prices\r",
+    "score": 0.5740918517112732
+  },
+  {
+    "source_type": "CODE",
+    "filename": "Dev-stops.mq5",
+    "content": "#property link        \"mladenfx@gmail.com\"\r\n#property link        \"https://www.mql5.com\"\r\n#property description \"Dev-stops\"\r\n#property indicator_chart_window\r\n#property indicator_buffers 9\r\n#property indicator_plots   4\r\n#property indicator_label1  \"Dev-stop 1\"\r\n#property indicator_type1   DRAW_COLOR_LINE\r\n#property indicator_color1  clrDarkGray,clrSkyBlue,clrSandyBrown\r\n#property indicator_width1  2\r\n#property indicator_label2  \"Dev-stop 2\"\r\n#property indicator_type2   DRAW_COLOR_LINE\r\n#property indicator_color2  clrDarkGray,clrSkyBlue,clrSandyBrown\r\n#property indicator_style2  STYLE_DOT\r\n#property indicator_label3  \"Dev-stop 3\"\r\n#property indicator_type3   DRAW_COLOR_LINE\r\n#property indicator_color3  clrDarkGray,clrSkyBlue,clrSandyBrown\r\n#property indicator_style3  STYLE_DOT\r\n#property indicator_label4  \"Dev-stop 4\"\r\n#property indicator_type4   DRAW_COLOR_LINE\r\n#property indicator_color4  clrDarkGray,clrSkyBlue,clrSandyBrown\r\n#property indicator_width4  2\r\n//--- input parameters\r",
+    "score": 0.5737562775611877
+  },
+  {
+    "source_type": "CODE",
+    "filename": "Ema - Jurik volty adaptive.mq5",
+    "content": "//------------------------------------------------------------------\r\n#property link      \"mladenfx@gmail.com\"\r\n//------------------------------------------------------------------\r\n#property indicator_chart_window\r\n#property indicator_buffers 2\r\n#property indicator_plots   1\r\n#property indicator_label1  \"EMA - Jurik volty adaptive\"\r\n#property indicator_type1   DRAW_COLOR_LINE\r\n#property indicator_color1  clrDarkGray,clrDeepPink,clrLimeGreen\r\n#property indicator_width1  2\r\n//--- input parameters\r\ninput double             inpPeriod = 27;          // Period\r\ninput ENUM_APPLIED_PRICE inpPrice  = PRICE_CLOSE; // Price\r\n//--- indicator buffers\r\ndouble val[],valc[];\r\n//| Custom indicator initialization function                         | \r\nint OnInit()\r\n  {\r\n//--- indicator buffers mapping\r\n   SetIndexBuffer(0,val,INDICATOR_DATA);\r\n   SetIndexBuffer(1,valc,INDICATOR_COLOR_INDEX);\r\n//--- indicator short name assignment\r",
+    "score": 0.5639248490333557
+  },
+  {
+    "source_type": "CODE",
+    "filename": "MFI smoothed.mq5",
+    "content": "//------------------------------------------------------------------\r\n#property link        \"mladenfx@gmail.com\"\r\n#property version     \"1.00\"\r\n#property description \"Smooth MFI\"\r\n//------------------------------------------------------------------\r\n#property indicator_separate_window\r\n#property indicator_buffers 2\r\n#property indicator_plots   1\r\n#property indicator_label1  \"Smooth MFI\"\r\n#property indicator_type1   DRAW_COLOR_LINE\r\n#property indicator_color1  clrDodgerBlue,clrSandyBrown\r\n#property indicator_width1  2\r\n#property indicator_maximum 100.0\r\n#property indicator_minimum 0.0\r\n#property indicator_level1  20.0\r\n#property indicator_level2  80.0\r\n//\r\n//--- input parameters\r\n//\r\ninput int                 inpMfiPeriod  = 14;          // MFI period\r\ninput int                 inpSmoPeriod  = 14;          // Smoothing period\r\ninput ENUM_APPLIED_VOLUME inpVolumeType = VOLUME_TICK; // Volumes\r\n//\r\n//--- indicator buffers\r\n//\r\ndouble val[],valc[];\r",
+    "score": 0.5624555349349976
+  },
+  {
+    "source_type": "CODE",
+    "filename": "Squeeze.mq5",
+    "content": "//------------------------------------------------------------------\r\n#property link      \"mladenfx@gmail.com\"\r\n//------------------------------------------------------------------\r\n#property indicator_separate_window\r\n#property indicator_buffers 3\r\n#property indicator_plots   2\r\n#property indicator_label1  \"Squeeze\"\r\n#property indicator_type1   DRAW_COLOR_HISTOGRAM\r\n#property indicator_color1  clrDarkGray,clrMediumSeaGreen,clrOrangeRed\r\n#property indicator_width1  2\r\n#property indicator_label2  \"Squeeze line\"\r\n#property indicator_type2   DRAW_LINE\r\n#property indicator_color2  clrGray\r\n#property indicator_width2  0\r\n//\r\n//\r\n//\r\ninput int     inpPeriod        = 20; // Period\r\ninput double  inpDevMultiplier = 1;  // Deviation multiplier\r\ninput double  inpAtrMultiplier = 1;  // ATR multiplier\r\n//\r\n//\r\n//\r\ndouble val[],vall[],valc[];\r\n//------------------------------------------------------------------\r\n// \r\n//------------------------------------------------------------------\r\n//\r\n//\r\n//\r",
+    "score": 0.5617272257804871
+  }
+]
