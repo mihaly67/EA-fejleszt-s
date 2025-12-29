@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                 HybridMomentumIndicator_v2.5.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|        Verzió: 2.5 (Phase Advance + Adaptive Stoch Boost Fusion)  |
+//|        Verzió: 2.5 (Adaptive Boost + Stochastic Fusion)          |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
@@ -15,59 +15,61 @@
 //--- Plot 1: Histogram (MACD - Signal)
 #property indicator_label1  "Phase Momentum Hist"
 #property indicator_type1   DRAW_COLOR_HISTOGRAM
+// Default styles (will be overridden by inputs)
 #property indicator_style1  STYLE_SOLID
 #property indicator_width1  3
-// Palette defined dynamically via inputs, but default buffers need declared colors
+// Palette placeholders
 #property indicator_color1  clrForestGreen, clrFireBrick, clrGray
 
-//--- Plot 2: MACD Line (Kalman + Phase Boost + Stoch Correction)
-#property indicator_label2  "MACD (Fused)"
+//--- Plot 2: MACD Line (Kalman + Phase Boost)
+#property indicator_label2  "MACD (Boosted)"
 #property indicator_type2   DRAW_LINE
 #property indicator_style2  STYLE_SOLID
 #property indicator_width2  2
-// Color set via input
+#property indicator_color2  clrDodgerBlue
 
 //--- Plot 3: Signal Line (Lowpass)
 #property indicator_label3  "Signal (Lowpass)"
 #property indicator_type3   DRAW_LINE
-#property indicator_style3  STYLE_SOLID
-#property indicator_width3  2
-// Color set via input
+#property indicator_style3  STYLE_DOT
+#property indicator_width3  1
+#property indicator_color3  clrOrangeRed
 
 //--- Input Parameters
-input group              "=== Visual Settings ==="
-input color              InpHistUpColor        = clrForestGreen; // Histogram Up
-input color              InpHistDownColor      = clrFireBrick;   // Histogram Down
-input color              InpHistWeakColor      = clrGray;        // Histogram Weak
-input color              InpMacdColor          = clrDodgerBlue;  // MACD Line
-input color              InpSignalColor        = clrOrangeRed;   // Signal Line
-
-input group              "=== Momentum Settings ==="
-input int                InpFastPeriod         = 5;      // Fast Period
-input int                InpSlowPeriod         = 13;     // Slow Period
-input int                InpSignalPeriod       = 6;      // Signal Period
+input group              "=== Momentum Settings (v2.5 Defaults) ==="
+input int                InpFastPeriod         = 3;      // Fast Period
+input int                InpSlowPeriod         = 6;      // Slow Period
+input int                InpSignalPeriod       = 13;     // Signal Period
 input ENUM_APPLIED_PRICE InpAppliedPrice       = PRICE_CLOSE;
 input double             InpKalmanGain         = 1.0;    // Kalman Gain
 input double             InpPhaseAdvance       = 0.5;    // Phase Advance (Speed Boost)
 
-input group              "=== Stochastic Fusion (Low Volatility) ==="
-input bool               InpUseStochFusion     = true;   // Enable Stoch Fusion
-input int                InpStochK             = 5;      // Stoch K Period
-input int                InpStochD             = 3;      // Stoch D Period
-input int                InpStochSlowing       = 3;      // Stoch Slowing
-input double             InpFusionBaseWeight   = 0.5;    // Base Fusion Weight (Continuous)
-input bool               InpAdaptiveBoost      = true;   // Enable Adaptive Volatility Boost
-input double             InpBoostSensitivity   = 2.0;    // Volatility Sensitivity (Higher = Boosts earlier)
-input double             InpMaxBoostMultiplier = 3.0;    // Max Multiplier (at Zero Volatility)
+input group              "=== Adaptive Boost (Stochastic) ==="
+input bool               InpEnableBoost        = true;   // Enable Adaptive Boost
+input double             InpBoostIntensity     = 1.5;    // Max Boost Multiplier
+input int                InpStochK             = 5;      // Stochastic K
+input int                InpStochD             = 3;      // Stochastic D
+input int                InpStochSlowing       = 3;      // Stochastic Slowing
+input double             InpVolThreshold       = 20.0;   // Volatility Threshold (Points)
+
+input group              "=== Visual Styles (Customizable) ==="
+input color              InpHistColorUp        = clrForestGreen; // Hist Up Color
+input color              InpHistColorDown      = clrFireBrick;   // Hist Down Color
+input color              InpHistColorNeutral   = clrGray;        // Hist Neutral Color
+input int                InpHistWidth          = 3;              // Hist Width
+input ENUM_LINE_STYLE    InpHistStyle          = STYLE_SOLID;    // Hist Style
+
+input color              InpMacdColor          = clrDodgerBlue;  // MACD Line Color
+input int                InpMacdWidth          = 2;              // MACD Width
+input ENUM_LINE_STYLE    InpMacdStyle          = STYLE_SOLID;    // MACD Style
+
+input color              InpSignalColor        = clrOrangeRed;   // Signal Line Color
+input int                InpSignalWidth        = 1;              // Signal Width
+input ENUM_LINE_STYLE    InpSignalStyle        = STYLE_DOT;      // Signal Style
 
 input group              "=== Normalization Settings ==="
 input int                InpNormPeriod         = 100;    // Normalization Lookback
 input double             InpNormSensitivity    = 1.0;    // Sensitivity
-
-input group              "=== Filter Settings ==="
-input bool               InpUseVolumeFilter    = false;  // Use VWMA Pre-Filter (Disabled by default)
-input int                InpVolFilterPeriod    = 20;     // Volume Filter Period
-input double             InpVolThreshold       = 0.5;    // Rel. Volume Threshold
 
 //--- Indicator Buffers
 double      HistogramBuffer[];
@@ -85,11 +87,11 @@ double      k_slow_delta[];
 double      k_slow_out[];
 double      raw_macd_buffer[];
 double      sig_lowpass_buffer[];
-double      stoch_buffer[]; // New buffer for Stoch calcs
+double      stoch_raw_buffer[]; // Buffer for CopyBuffer
 
 //--- Global Variables
 int         min_bars_required;
-int         hStoch;
+int         hStoch; // Handle for Stochastic
 
 //+------------------------------------------------------------------+
 //| Helper: Tanh Normalization                                       |
@@ -107,16 +109,13 @@ double CalculateStdDev(const double &data[], int index, int period)
 {
    if(index < period) return 1.0;
    double sum = 0.0, sum_sq = 0.0;
-   int count = 0;
-   for(int i=0; i<period && (index-i)>=0; i++) {
+   for(int i=0; i<period; i++) {
       double val = data[index-i];
       sum += val;
       sum_sq += val * val;
-      count++;
    }
-   if(count == 0) return 1.0;
-   double mean = sum / count;
-   double variance = (sum_sq / count) - (mean * mean);
+   double mean = sum / period;
+   double variance = (sum_sq / period) - (mean * mean);
    return (variance > 0) ? MathSqrt(variance) : 1.0;
 }
 
@@ -125,6 +124,7 @@ double CalculateStdDev(const double &data[], int index, int period)
 //+------------------------------------------------------------------+
 int OnInit()
 {
+   // --- Buffers Mapping ---
    SetIndexBuffer(0, HistogramBuffer, INDICATOR_DATA);
    SetIndexBuffer(1, ColorBuffer, INDICATOR_COLOR_INDEX);
    SetIndexBuffer(2, MacdBuffer, INDICATOR_DATA);
@@ -139,37 +139,48 @@ int OnInit()
    SetIndexBuffer(10, k_slow_out, INDICATOR_CALCULATIONS);
    SetIndexBuffer(11, raw_macd_buffer, INDICATOR_CALCULATIONS);
    SetIndexBuffer(12, sig_lowpass_buffer, INDICATOR_CALCULATIONS);
-   SetIndexBuffer(13, stoch_buffer, INDICATOR_CALCULATIONS);
+   SetIndexBuffer(13, stoch_raw_buffer, INDICATOR_CALCULATIONS);
 
-   // Initialize Stochastic Handle
-   if(InpUseStochFusion) {
+   // --- Stochastic Handle ---
+   if (InpEnableBoost) {
       hStoch = iStochastic(_Symbol, _Period, InpStochK, InpStochD, InpStochSlowing, MODE_SMA, STO_LOWHIGH);
-      if(hStoch == INVALID_HANDLE) {
+      if (hStoch == INVALID_HANDLE) {
          Print("Failed to create Stochastic handle");
          return(INIT_FAILED);
       }
    }
 
-   min_bars_required = MathMax(InpFastPeriod, InpSlowPeriod) + InpSignalPeriod + InpNormPeriod;
+   // --- Visual Styles Setup (Dynamic) ---
+   // Histogram
+   PlotIndexSetInteger(0, PLOT_LINE_WIDTH, InpHistWidth);
+   PlotIndexSetInteger(0, PLOT_LINE_STYLE, InpHistStyle);
+   PlotIndexSetInteger(0, PLOT_LINE_COLOR, 0, InpHistColorUp);
+   PlotIndexSetInteger(0, PLOT_LINE_COLOR, 1, InpHistColorDown);
+   PlotIndexSetInteger(0, PLOT_LINE_COLOR, 2, InpHistColorNeutral);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Momentum v2.5 (Adaptive)");
+   // MACD Line
+   PlotIndexSetInteger(1, PLOT_LINE_WIDTH, InpMacdWidth);
+   PlotIndexSetInteger(1, PLOT_LINE_STYLE, InpMacdStyle);
+   PlotIndexSetInteger(1, PLOT_LINE_COLOR, InpMacdColor);
+
+   // Signal Line
+   PlotIndexSetInteger(2, PLOT_LINE_WIDTH, InpSignalWidth);
+   PlotIndexSetInteger(2, PLOT_LINE_STYLE, InpSignalStyle);
+   PlotIndexSetInteger(2, PLOT_LINE_COLOR, InpSignalColor);
+
+   // --- Metadata ---
+   min_bars_required = MathMax(InpFastPeriod, InpSlowPeriod) + InpSignalPeriod + InpNormPeriod;
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Momentum v2.5 (Adaptive Boost)");
    IndicatorSetInteger(INDICATOR_DIGITS, 2);
 
    PlotIndexSetInteger(0, PLOT_DRAW_BEGIN, min_bars_required);
-   PlotIndexSetInteger(1, PLOT_DRAW_BEGIN, min_bars_required); // Plot 1 = MACD
-   PlotIndexSetInteger(2, PLOT_DRAW_BEGIN, min_bars_required); // Plot 2 = Signal
+   PlotIndexSetInteger(1, PLOT_DRAW_BEGIN, min_bars_required);
+   PlotIndexSetInteger(2, PLOT_DRAW_BEGIN, min_bars_required);
 
    IndicatorSetDouble(INDICATOR_MINIMUM, -110.0);
    IndicatorSetDouble(INDICATOR_MAXIMUM, 110.0);
    IndicatorSetDouble(INDICATOR_LEVELVALUE, 0, 0.0);
    IndicatorSetInteger(INDICATOR_LEVELCOLOR, 0, clrGray);
-
-   // Set Dynamic Colors
-   PlotIndexSetInteger(0, PLOT_LINE_COLOR, 0, InpHistUpColor);
-   PlotIndexSetInteger(0, PLOT_LINE_COLOR, 1, InpHistDownColor);
-   PlotIndexSetInteger(0, PLOT_LINE_COLOR, 2, InpHistWeakColor);
-   PlotIndexSetInteger(1, PLOT_LINE_COLOR, InpMacdColor); // Plot 1 = MACD
-   PlotIndexSetInteger(2, PLOT_LINE_COLOR, InpSignalColor); // Plot 2 = Signal
 
    return(INIT_SUCCEEDED);
 }
@@ -229,20 +240,39 @@ int OnCalculate(const int rates_total,
 {
    if(rates_total < min_bars_required) return 0;
 
+   // --- Fetch Stochastic Data (Future Peek Fix) ---
+   if (InpEnableBoost) {
+       // Using a hidden buffer to store Stochastic values
+       // We request 'rates_total' items.
+       // IMPORTANT: CopyBuffer returns data in Time-Descending (Series) if ArraySetAsSeries is true,
+       // or Time-Ascending if false.
+       // Here we control it explicitly.
+
+       // Use a local array for CopyBuffer first
+       double local_stoch[];
+       ArraySetAsSeries(local_stoch, true); // 0 = Newest
+
+       int copied = CopyBuffer(hStoch, 0, 0, rates_total, local_stoch);
+       if(copied < rates_total) return 0; // Wait for data
+
+       // Copy to our indicator calculation buffer, ensuring Series alignment
+       // But wait, our calculation loop below iterates 0..rates_total (Old..New)
+       // So we need to access the Stochastic data such that index 'i' (Time-Ascending)
+       // corresponds to the correct time.
+       // If local_stoch is Series (0=Newest), then 'i' (Oldest, where i=0) is at index 'rates_total-1'.
+       // Mapping: stoch_val = local_stoch[rates_total - 1 - i];
+
+       // Optimization: Just CopyBuffer directly to stoch_raw_buffer and access it correctly.
+       // But stoch_raw_buffer is an indicator buffer, handled by MT5.
+       // If we use ArraySetAsSeries(stoch_raw_buffer, true), it aligns 0=Newest.
+       // Let's do that for safety.
+       ArraySetAsSeries(stoch_raw_buffer, true);
+       int res = CopyBuffer(hStoch, 0, 0, rates_total, stoch_raw_buffer);
+       if (res <= 0) return 0;
+   }
+
    int start = (prev_calculated > 0) ? prev_calculated - 1 : 0;
    if(start < 0) start = 0;
-
-   // Pre-fill Stochastic Buffer
-   double stoch_temp[];
-   if(InpUseStochFusion) {
-      ArraySetAsSeries(stoch_temp, true); // Ensure 0 = Newest for safe indexing
-      // Copy everything from 0 (Newest) to coverage required
-      // We need data corresponding to 'rates_total-1' (Newest) down to 'start' (Oldest)
-      // Range length = rates_total
-      if(CopyBuffer(hStoch, 0, 0, rates_total, stoch_temp) <= 0) {
-         Print("Warning: Stoch CopyBuffer failed");
-      }
-   }
 
    for(int i = start; i < rates_total; i++)
    {
@@ -258,16 +288,15 @@ int OnCalculate(const int rates_total,
          default: p_val = close[i];
       }
 
-      // Pre-Filter
-      if(InpUseVolumeFilter && i >= 3) {
+      // Pre-Filter (VWMA)
+      vwma_price_buffer[i] = p_val; // Default
+      if(i >= 3) { // Minimal check
           double sum_pv=0, sum_v=0;
           for(int k=0; k<3; k++) {
               sum_pv += close[i-k] * (double)tick_volume[i-k];
               sum_v += (double)tick_volume[i-k];
           }
-          vwma_price_buffer[i] = (sum_v > 0) ? sum_pv / sum_v : p_val;
-      } else {
-          vwma_price_buffer[i] = p_val;
+          if (sum_v > 0) vwma_price_buffer[i] = sum_pv / sum_v;
       }
 
       // Kalman Update
@@ -276,54 +305,35 @@ int OnCalculate(const int rates_total,
 
       raw_macd_buffer[i] = k_fast_out[i] - k_slow_out[i];
 
-      // --- FUSION LOGIC START (ADAPTIVE BOOST) ---
-      if(InpUseStochFusion && i > 0) {
-             double stoch_val = 50.0; // Default Neutral
-             // Alignment: Loop 'i' is 0=Oldest. Stoch Series is 0=Newest.
-             // Corresponding index in Stoch Series: rates_total - 1 - i
-             int stoch_idx = rates_total - 1 - i;
+      // --- Adaptive Boost Logic ---
+      if (InpEnableBoost && i > 50) {
+          double std_dev_raw = CalculateStdDev(raw_macd_buffer, i, 20); // Short term volatility
 
-             if(stoch_idx >= 0 && stoch_idx < ArraySize(stoch_temp)) {
-                 stoch_val = stoch_temp[stoch_idx];
-             }
+          // Inverse Volatility Multiplier
+          // If std_dev is Low, Multiplier is High.
+          // Normalized roughly to user Threshold.
+          double vol_ratio = std_dev_raw / (InpVolThreshold * Point());
+          if (vol_ratio < 0.0001) vol_ratio = 0.0001;
 
-             // Normalize Stoch to [-1, 1] range
-             double stoch_norm = (stoch_val - 50.0) / 50.0;
+          // Formula: Multiplier = 1 + (Max-1) * exp(-Vol)
+          double boost_mult = 1.0 + (InpBoostIntensity - 1.0) * MathExp(-vol_ratio);
 
-             // Get Current MACD scale (StdDev) to map Stoch into Points
-             double vol_scale = CalculateStdDev(raw_macd_buffer, i, InpNormPeriod);
-             if(vol_scale < _Point) vol_scale = _Point; // Prevent zero
+          // Inject Stochastic
+          // Correct Indexing for Series Buffer: rates_total - 1 - i
+          double stoch_val = stoch_raw_buffer[rates_total - 1 - i];
+          // Normalize Stochastic (0-100) to Momentum range (approx -1 to 1 or -50 to 50?)
+          // Raw MACD is in points. Stochastic is 0-100.
+          // We map Stoch 50 -> 0.
+          double stoch_centered = (stoch_val - 50.0) * (Point() * 2); // Scale it down to point-like range?
+          // Actually, we usually boost the *existing* signal, or blend.
 
-             // Calculate Boost Factor based on Volatility
-             double boost_multiplier = 1.0;
-             if(InpAdaptiveBoost) {
-                 // Inverse Relationship: Low Volatility -> High Boost
-                 // We normalize Volatility relative to a baseline or simply use Tanh decay
-                 // Volatility of 0 should give MaxBoost.
-                 // Volatility of 'Average' should give 1.0.
+          // "Inject Stochastic momentum"
+          // Let's add a fraction of the stochastic delta to the raw macd
+          raw_macd_buffer[i] += stoch_centered * boost_mult * 0.5;
 
-                 // Heuristic: Normalize vol_scale by price to get % volatility
-                 double vol_pct = (p_val > 0) ? vol_scale / p_val : 0;
-
-                 // Apply sensitivity. If Sensitivity is high, small volatility kills the boost.
-                 // Formula: Multiplier = 1 + (Max - 1) * exp(-Sensitivity * Volatility_Factor)
-                 // We need a stable volatility factor. Maybe just raw point volatility relative to pip?
-                 double vol_factor = vol_scale / (_Point * 100); // Volatility in 'pips' approx
-
-                 boost_multiplier = 1.0 + (InpMaxBoostMultiplier - 1.0) * MathExp(-vol_factor / InpBoostSensitivity);
-             }
-
-             // Final Weight = BaseWeight * Multiplier
-             double final_weight = InpFusionBaseWeight * boost_multiplier;
-
-             // Calculate Correction Term
-             // Note: vol_scale is multiplied here so the correction matches the indicator's magnitude (points)
-             double correction = stoch_norm * vol_scale * final_weight;
-
-             // Inject Correction into Raw MACD
-             raw_macd_buffer[i] += correction;
+          // Also apply multiplier to the raw signal itself to "Amplify" in flat markets
+          raw_macd_buffer[i] *= boost_mult;
       }
-      // --- FUSION LOGIC END ---
 
       // Signal Update (Lowpass)
       UpdateLowpass(i, raw_macd_buffer[i], (double)InpSignalPeriod, sig_lowpass_buffer);
@@ -335,20 +345,26 @@ int OnCalculate(const int rates_total,
 
       double hist = MacdBuffer[i] - SignalBuffer[i];
 
-      // Visualization
-      double vol_avg = 0;
-      if(i >= InpVolFilterPeriod) {
-         for(int k=0; k<InpVolFilterPeriod; k++) vol_avg += (double)tick_volume[i-k];
-         vol_avg /= InpVolFilterPeriod;
-      }
-      bool is_weak = (vol_avg > 0 && tick_volume[i] < vol_avg * InpVolThreshold);
+      // Visualization Colors
+      // Use standard up/down logic
+      HistogramBuffer[i] = hist;
 
-      if(is_weak && InpUseVolumeFilter) {
-          HistogramBuffer[i] = hist * 0.3;
-          ColorBuffer[i] = 2; // Gray
+      // Determine color index
+      if(hist >= 0) {
+          ColorBuffer[i] = 0; // Up
       } else {
-          HistogramBuffer[i] = hist;
-          ColorBuffer[i] = (hist >= 0) ? 0 : 1;
+          ColorBuffer[i] = 1; // Down
+      }
+
+      // Optional: Check for "Weak" volume (Gray)
+      // If we want to keep the "Ghost Bar" logic from v2.3
+      if (i >= 20) {
+          double vol_avg = 0;
+          for(int k=0; k<20; k++) vol_avg += (double)tick_volume[i-k];
+          vol_avg /= 20.0;
+          if (tick_volume[i] < vol_avg * 0.5) {
+             ColorBuffer[i] = 2; // Neutral/Gray
+          }
       }
    }
 
