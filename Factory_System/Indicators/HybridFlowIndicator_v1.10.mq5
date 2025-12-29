@@ -145,7 +145,20 @@ int OnCalculate(const int rates_total,
    int start = (prev_calculated > 0) ? prev_calculated - 1 : 0;
 
    // --- MFI Calculation ---
-   // Read MFI into Raw buffer to preserve history in MFIBuffer logic
+   // Read MFI into Raw buffer. CopyBuffer defaults to Newest-at-0 if AsSeries is false? No.
+   // If AsSeries=false (default for dynamic array), CopyBuffer fills 0,1,2...
+   // BUT CopyBuffer copies FROM the source. Source[0] goes to Target[0].
+   // Standard Indicators are Series. So Source[0] (Newest) -> Target[0].
+   // This means RawMFIBuffer[0] IS NEWEST.
+   // The loop below iterates 'i' from Oldest to Newest.
+   // So RawMFIBuffer[i] is accessing WRONG END (Oldest loop index accessing Newest data).
+
+   // FIX: Set RawMFIBuffer to AsSeries to explicitly handle indexing or just rely on 'CopyBuffer' filling logic?
+   // Simplest: Set AsSeries(true). CopyBuffer(..., 0, count, ...).
+   // Then RawMFIBuffer[0] = Newest.
+   // Loop access: RawMFIBuffer[rates_total - 1 - i].
+
+   ArraySetAsSeries(RawMFIBuffer, true);
    if(CopyBuffer(mfi_handle, 0, 0, rates_total, RawMFIBuffer) <= 0) return 0;
 
    // --- Delta & VROC Calculation ---
@@ -196,7 +209,8 @@ int OnCalculate(const int rates_total,
        // 5. HYBRID MFI LOGIC (Inject Delta into MFI Line)
        // Standard MFI (0-100) + Offset (-50 to +50 approx)
        // Use RawMFIBuffer as source so we don't accumulate on existing MFIBuffer
-       MFIBuffer[i] = RawMFIBuffer[i] + scaled_offset;
+       // Alignment: 'i' is Oldest (0) -> Newest. RawMFI is Series (0=Newest).
+       MFIBuffer[i] = RawMFIBuffer[rates_total - 1 - i] + scaled_offset;
 
        // 6. VROC Logic
        if(InpShowVROC && i >= InpVROCPeriod && (double)tick_volume[i - InpVROCPeriod] > 0)
