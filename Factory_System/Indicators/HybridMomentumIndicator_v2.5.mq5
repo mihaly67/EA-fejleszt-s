@@ -156,8 +156,8 @@ int OnInit()
    IndicatorSetInteger(INDICATOR_DIGITS, 2);
 
    PlotIndexSetInteger(0, PLOT_DRAW_BEGIN, min_bars_required);
-   PlotIndexSetInteger(2, PLOT_DRAW_BEGIN, min_bars_required);
-   PlotIndexSetInteger(3, PLOT_DRAW_BEGIN, min_bars_required);
+   PlotIndexSetInteger(1, PLOT_DRAW_BEGIN, min_bars_required); // Plot 1 = MACD
+   PlotIndexSetInteger(2, PLOT_DRAW_BEGIN, min_bars_required); // Plot 2 = Signal
 
    IndicatorSetDouble(INDICATOR_MINIMUM, -110.0);
    IndicatorSetDouble(INDICATOR_MAXIMUM, 110.0);
