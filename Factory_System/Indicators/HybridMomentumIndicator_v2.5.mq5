@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                 HybridMomentumIndicator_v2.5.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|        Verzió: 2.5 (Adaptive Boost + Stochastic Fusion)          |
+//|        Verzió: 2.5 (Adaptive Boost + Stoch Mix + UX Redesign)    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
@@ -9,30 +9,43 @@
 
 //--- Indicator Settings
 #property indicator_separate_window
-#property indicator_buffers 16
-#property indicator_plots   3
+#property indicator_buffers 18
+#property indicator_plots   5
 
-//--- Plot 1: Histogram (MACD - Signal)
-#property indicator_label1  "Phase Momentum Hist"
-#property indicator_type1   DRAW_COLOR_HISTOGRAM
+//--- Plot 1: Histogram UP (Green)
+#property indicator_label1  "Hist Up"
+#property indicator_type1   DRAW_HISTOGRAM
+#property indicator_color1  clrForestGreen
 #property indicator_style1  STYLE_SOLID
 #property indicator_width1  3
-// Standard Palette (User Editable in Colors Tab)
-#property indicator_color1  clrForestGreen, clrFireBrick, clrGray
 
-//--- Plot 2: MACD Line (Boosted)
-#property indicator_label2  "MACD (Boosted)"
-#property indicator_type2   DRAW_LINE
+//--- Plot 2: Histogram DOWN (Red)
+#property indicator_label2  "Hist Down"
+#property indicator_type2   DRAW_HISTOGRAM
+#property indicator_color2  clrFireBrick
 #property indicator_style2  STYLE_SOLID
-#property indicator_width2  2
-#property indicator_color2  clrDodgerBlue
+#property indicator_width2  3
 
-//--- Plot 3: Signal Line (Lowpass)
-#property indicator_label3  "Signal (Lowpass)"
-#property indicator_type3   DRAW_LINE
-#property indicator_style3  STYLE_DOT
-#property indicator_width3  1
-#property indicator_color3  clrOrangeRed
+//--- Plot 3: Histogram NEUTRAL (Gray)
+#property indicator_label3  "Hist Neutral"
+#property indicator_type3   DRAW_HISTOGRAM
+#property indicator_color3  clrGray
+#property indicator_style3  STYLE_SOLID
+#property indicator_width3  3
+
+//--- Plot 4: MACD Line (Blue)
+#property indicator_label4  "MACD (Boosted)"
+#property indicator_type4   DRAW_LINE
+#property indicator_color4  clrDodgerBlue
+#property indicator_style4  STYLE_SOLID
+#property indicator_width4  2
+
+//--- Plot 5: Signal Line (Orange)
+#property indicator_label5  "Signal (Lowpass)"
+#property indicator_type5   DRAW_LINE
+#property indicator_color5  clrOrangeRed
+#property indicator_style5  STYLE_DOT
+#property indicator_width5  1
 
 //--- Levels
 #property indicator_level1 0.0
@@ -60,8 +73,9 @@ input int                InpNormPeriod         = 100;    // Normalization Lookba
 input double             InpNormSensitivity    = 1.0;    // Sensitivity
 
 //--- Indicator Buffers
-double      HistogramBuffer[];
-double      ColorBuffer[];
+double      HistUpBuffer[];
+double      HistDownBuffer[];
+double      HistNeutralBuffer[];
 double      MacdBuffer[];
 double      SignalBuffer[];
 
@@ -76,6 +90,7 @@ double      k_slow_out[];
 double      raw_macd_buffer[];
 double      sig_lowpass_buffer[];
 double      stoch_raw_buffer[]; // Buffer for CopyBuffer
+double      calc_hist_buffer[]; // Intermediate histogram values
 
 //--- Global Variables
 int         min_bars_required;
@@ -113,21 +128,23 @@ double CalculateStdDev(const double &data[], int index, int period)
 int OnInit()
 {
    // --- Buffers Mapping ---
-   SetIndexBuffer(0, HistogramBuffer, INDICATOR_DATA);
-   SetIndexBuffer(1, ColorBuffer, INDICATOR_COLOR_INDEX);
-   SetIndexBuffer(2, MacdBuffer, INDICATOR_DATA);
-   SetIndexBuffer(3, SignalBuffer, INDICATOR_DATA);
+   SetIndexBuffer(0, HistUpBuffer, INDICATOR_DATA);
+   SetIndexBuffer(1, HistDownBuffer, INDICATOR_DATA);
+   SetIndexBuffer(2, HistNeutralBuffer, INDICATOR_DATA);
+   SetIndexBuffer(3, MacdBuffer, INDICATOR_DATA);
+   SetIndexBuffer(4, SignalBuffer, INDICATOR_DATA);
 
-   SetIndexBuffer(4, vwma_price_buffer, INDICATOR_CALCULATIONS);
-   SetIndexBuffer(5, k_fast_lowpass, INDICATOR_CALCULATIONS);
-   SetIndexBuffer(6, k_fast_delta, INDICATOR_CALCULATIONS);
-   SetIndexBuffer(7, k_fast_out, INDICATOR_CALCULATIONS);
-   SetIndexBuffer(8, k_slow_lowpass, INDICATOR_CALCULATIONS);
-   SetIndexBuffer(9, k_slow_delta, INDICATOR_CALCULATIONS);
-   SetIndexBuffer(10, k_slow_out, INDICATOR_CALCULATIONS);
-   SetIndexBuffer(11, raw_macd_buffer, INDICATOR_CALCULATIONS);
-   SetIndexBuffer(12, sig_lowpass_buffer, INDICATOR_CALCULATIONS);
-   SetIndexBuffer(13, stoch_raw_buffer, INDICATOR_CALCULATIONS);
+   SetIndexBuffer(5, vwma_price_buffer, INDICATOR_CALCULATIONS);
+   SetIndexBuffer(6, k_fast_lowpass, INDICATOR_CALCULATIONS);
+   SetIndexBuffer(7, k_fast_delta, INDICATOR_CALCULATIONS);
+   SetIndexBuffer(8, k_fast_out, INDICATOR_CALCULATIONS);
+   SetIndexBuffer(9, k_slow_lowpass, INDICATOR_CALCULATIONS);
+   SetIndexBuffer(10, k_slow_delta, INDICATOR_CALCULATIONS);
+   SetIndexBuffer(11, k_slow_out, INDICATOR_CALCULATIONS);
+   SetIndexBuffer(12, raw_macd_buffer, INDICATOR_CALCULATIONS);
+   SetIndexBuffer(13, sig_lowpass_buffer, INDICATOR_CALCULATIONS);
+   SetIndexBuffer(14, stoch_raw_buffer, INDICATOR_CALCULATIONS);
+   SetIndexBuffer(15, calc_hist_buffer, INDICATOR_CALCULATIONS);
 
    // --- Stochastic Handle ---
    if (InpEnableBoost) {
@@ -143,15 +160,20 @@ int OnInit()
    IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Momentum v2.5");
    IndicatorSetInteger(INDICATOR_DIGITS, 2);
 
+   // --- Plot Settings ---
+   // Set Empty Value (0.0 will not be drawn)
+   PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, 0.0);
+   PlotIndexSetDouble(1, PLOT_EMPTY_VALUE, 0.0);
+   PlotIndexSetDouble(2, PLOT_EMPTY_VALUE, 0.0);
+
    PlotIndexSetInteger(0, PLOT_DRAW_BEGIN, min_bars_required);
    PlotIndexSetInteger(1, PLOT_DRAW_BEGIN, min_bars_required);
    PlotIndexSetInteger(2, PLOT_DRAW_BEGIN, min_bars_required);
+   PlotIndexSetInteger(3, PLOT_DRAW_BEGIN, min_bars_required);
+   PlotIndexSetInteger(4, PLOT_DRAW_BEGIN, min_bars_required);
 
    IndicatorSetDouble(INDICATOR_MINIMUM, -110.0);
    IndicatorSetDouble(INDICATOR_MAXIMUM, 110.0);
-
-   // Note: We do NOT use PlotIndexSetInteger here for Colors/Styles
-   // to allow the user to use the "Colors" tab in the property dialog.
 
    return(INIT_SUCCEEDED);
 }
@@ -223,8 +245,7 @@ int OnCalculate(const int rates_total,
 
    for(int i = start; i < rates_total; i++)
    {
-      double p_val = close[i]; // Default to Close if not handling others for brevity or use switch if critical
-      // (Using simple close for price source for now, or keep the switch from v2.3 if space allows)
+      double p_val = close[i];
       switch(InpAppliedPrice) {
          case PRICE_CLOSE: p_val = close[i]; break;
          case PRICE_OPEN:  p_val = open[i]; break;
@@ -245,61 +266,52 @@ int OnCalculate(const int rates_total,
 
       double raw_macd = k_fast_out[i] - k_slow_out[i];
 
-      // Calculate Volatility of Raw MACD (for Normalization)
+      // Calculate Volatility of Raw MACD
       double std_dev_macd = CalculateStdDev(raw_macd_buffer, i, InpNormPeriod);
-      // Fallback if std_dev is 0
       if (std_dev_macd == 0) std_dev_macd = Point();
 
       double final_signal = raw_macd;
 
       // --- Always Active Stochastic Mixing ---
       if (InpEnableBoost) {
-          // 1. Normalize MACD (Z-Score approximation)
           double norm_macd = raw_macd / std_dev_macd;
-
-          // 2. Fetch Stoch & Normalize to approx same range (-2 to +2)
           double stoch_val = stoch_raw_buffer[rates_total - 1 - i];
-          double norm_stoch = (stoch_val - 50.0) / 20.0; // 50->0, 90->2, 10->-2
+          double norm_stoch = (stoch_val - 50.0) / 20.0;
 
-          // 3. Mix
           double w = InpStochMixWeight;
           double mixed_norm = (norm_macd * (1.0 - w)) + (norm_stoch * w);
 
-          // 4. Denormalize (Scale back to MACD points domain) for consistent display
-          // This ensures the signal line logic (which runs next) sees "Price Points" units.
           final_signal = mixed_norm * std_dev_macd;
       }
 
       raw_macd_buffer[i] = final_signal;
 
-      // Signal Update (Lowpass on the MIXED signal)
+      // Signal Update
       UpdateLowpass(i, raw_macd_buffer[i], (double)InpSignalPeriod, sig_lowpass_buffer);
 
-      // Final Display Normalization (Tanh)
-      // Recalculate StdDev on the MIXED buffer?
-      // Actually, since we denormalized, the std_dev_macd is still roughly valid,
-      // but let's re-calc for precision if buffer was updated.
-      // But calculating StdDev of the *just updated* buffer is tricky in a single loop
-      // (lookback needs past values).
-      // Since 'raw_macd_buffer' stores the Mixed value now, 'CalculateStdDev' will use
-      // Mixed values from the past and the Current Mixed value.
+      // Final Normalization
       double std_dev_final = CalculateStdDev(raw_macd_buffer, i, InpNormPeriod);
-
       MacdBuffer[i]   = NormalizeTanh(raw_macd_buffer[i], std_dev_final);
       SignalBuffer[i] = NormalizeTanh(sig_lowpass_buffer[i], std_dev_final);
 
       double hist = MacdBuffer[i] - SignalBuffer[i];
+      calc_hist_buffer[i] = hist;
 
-      // Visualization
-      HistogramBuffer[i] = hist;
+      // --- Visualization (Split Buffers for UX) ---
+      // Reset all first
+      HistUpBuffer[i] = 0.0;
+      HistDownBuffer[i] = 0.0;
+      HistNeutralBuffer[i] = 0.0;
 
-      // Color Logic (Index 0, 1, 2)
-      // 0 = Up (Green), 1 = Down (Red), 2 = Neutral (Gray)
-      if (hist >= 0) ColorBuffer[i] = 0;
-      else ColorBuffer[i] = 1;
+      // Logic
+      if (hist >= 0) {
+          HistUpBuffer[i] = hist;
+      } else {
+          HistDownBuffer[i] = hist;
+      }
 
-      // Optional: Weak Signal (Gray) logic could go here if requested
-      // For now, sticking to standard Up/Down
+      // Optional: Logic for Neutral (if required later, currently standard Up/Down)
+      // Example: if (MathAbs(hist) < Threshold) HistNeutralBuffer[i] = hist; ...
    }
 
    return rates_total;
