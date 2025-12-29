@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                     HybridWVFIndicator_v1.2.mq5 |
+//|                                     HybridWVFIndicator_v1.3.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 1.2 (Bidirectional WVF - Soft Colors)                |
+//|      Verzió: 1.3 (Bidirectional WVF - Soft Colors)                |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.2"
+#property version   "1.3"
 
 #property indicator_separate_window
 #property indicator_buffers 2
@@ -42,7 +42,7 @@ int OnInit()
    SetIndexBuffer(0, UpBuffer, INDICATOR_DATA);
    SetIndexBuffer(1, DownBuffer, INDICATOR_DATA);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid WVF v1.2");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid WVF v1.3");
 
    // Set levels for reference
    IndicatorSetInteger(INDICATOR_LEVELS, 3);
