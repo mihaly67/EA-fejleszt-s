@@ -7,6 +7,7 @@ import logging
 import warnings
 import subprocess
 import json
+import glob
 
 # --- AUTO-INSTALL DEPENDENCIES ---
 try:
@@ -17,11 +18,7 @@ except ImportError:
     import gdown
 
 # --- CONFIGURATION ---
-# User-provided mappings:
-# THEORY_RAG.zip  (Books)     -> 1T0etzQc1bdT89X67sa3zMbuZNZWM-Anv  -> RAM (Index+Data)
-# CODEBASE_RAG.zip (Snippets) -> 1CmoE49YTc_-dxyn4EiYyIDHINENeT5KI  -> DISK (MMAP)
-# MQL5_DEV_RAG.zip (Articles) -> 1gMumIUSdXuUlHJuymbWE8GwAd5K7ruSy  -> DISK (MMAP)
-
+# RAG Databases
 DATABASES = {
     "rag_theory": {
         "id": "1T0etzQc1bdT89X67sa3zMbuZNZWM-Anv",
@@ -43,8 +40,20 @@ DATABASES = {
     }
 }
 
+# External Codebases
+GITHUB_CODEBASE = {
+    "dir": "github_codebase",
+    "id": "1P_7FFJ2fIlAUJ45HofNJlFO5D1TaW908",
+    "zip_name": "codebase.zip",
+    "check_file": "external_codebase.jsonl"
+}
+
+# Local Assets to Process
+METATRADER_LIBS_ZIP = "Metatrader _beépitett_könyvtárak.zip"
+METATRADER_JSONL_OUT = os.path.join("Knowledge_Base", "metatrader_libraries.jsonl")
+
 # Directories to ignore in Git
-GIT_IGNORE_DIRS = list(DATABASES.keys())
+GIT_IGNORE_DIRS = list(DATABASES.keys()) + ["github_codebase", "downloaded_content"]
 
 def setup_logger():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -57,7 +66,6 @@ def clean_old_scripts():
 
 def hoist_files(target_dir, check_file):
     """Moves files from subdirectories to target_dir if the check_file is nested."""
-    # Find the check_file
     found_path = None
     for root, dirs, files in os.walk(target_dir):
         if check_file in files:
@@ -86,15 +94,12 @@ def hoist_files(target_dir, check_file):
 
 def report_hardware_status():
     print("\n📊 === HARDWARE STATUS REPORT ===")
-
-    # Disk Usage
     try:
         total, used, free = shutil.disk_usage(".")
         print(f"💾 Disk Usage: Used: {used // (2**30)} GB / Total: {total // (2**30)} GB (Free: {free // (2**30)} GB)")
     except Exception as e:
         print(f"⚠️ Error reading Disk info: {e}")
 
-    # RAM Usage (Linux specific)
     try:
         with open('/proc/meminfo', 'r') as f:
             mem_info = {}
@@ -107,7 +112,6 @@ def report_hardware_status():
             available_ram = mem_info.get('MemAvailable', 0) / 1024
             used_ram = total_ram - available_ram
             print(f"🧠 RAM Usage: Used: {used_ram:.2f} MB / Total: {total_ram:.2f} MB (Available: {available_ram:.2f} MB)")
-
     except FileNotFoundError:
         print("⚠️ Could not read /proc/meminfo (Not Linux?)")
     except Exception as e:
@@ -120,11 +124,9 @@ def verify_rag_functionality():
         print("❌ CRITICAL: 'kutato.py' not found! Cannot verify RAG.")
         return
 
-    # Helper function to run query
-    def test_scope(scope_name, query):
-        print(f"\n👉 Testing Scope: {scope_name} (Query: '{query}')")
+    def test_scope(scope_name, display_name, query):
+        print(f"\n👉 Testing Scope: {display_name} (Query: '{query}')")
         try:
-            # Note: kutato.py takes arguments: query --scope --json
             result = subprocess.run(
                 [sys.executable, "kutato.py", query, "--scope", scope_name, "--json"],
                 capture_output=True,
@@ -160,27 +162,176 @@ def verify_rag_functionality():
             print(f"   ❌ Exception: {e}")
             return False
 
-    # Test MQL5
-    test_scope('MQL5', 'indicator handle')
+    # Test MQL5 (MQL5_DEV_RAG)
+    test_scope('MQL5', 'MQL5_DEV_RAG', 'indicator handle')
 
-    # Test Theory (Legacy)
-    test_scope('LEGACY', 'market microstructure')
+    # Test Theory (THEORY_RAG)
+    test_scope('THEORY', 'THEORY_RAG', 'market microstructure')
 
-    # Test Code (Legacy)
-    test_scope('LEGACY', 'OnCalculate')
+    # Test Code (CODEBASE_RAG)
+    test_scope('CODE', 'CODEBASE_RAG', 'OnCalculate')
+
+def process_metatrader_libs():
+    print("\n📚 === PROCESSING METATRADER LIBRARIES ===")
+
+    zip_path = METATRADER_LIBS_ZIP
+    jsonl_path = METATRADER_JSONL_OUT
+
+    if not os.path.exists(zip_path):
+        print(f"⚠️ {zip_path} not found. Skipping library processing.")
+        return
+
+    if os.path.exists(jsonl_path):
+        print(f"✅ {jsonl_path} already exists. Skipping.")
+        return
+
+    print(f"📦 Extracting {zip_path} to build JSONL...")
+    temp_dir = "temp_mt_libs"
+    os.makedirs(temp_dir, exist_ok=True)
+
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as z:
+            z.extractall(temp_dir)
+
+        print(f"📝 Writing to {jsonl_path}...")
+        os.makedirs(os.path.dirname(jsonl_path), exist_ok=True)
+
+        count = 0
+        with open(jsonl_path, 'w', encoding='utf-8') as outfile:
+            for root, dirs, files in os.walk(temp_dir):
+                for file in files:
+                    if file.lower().endswith(('.mq5', '.mqh', '.py', '.txt', '.md')):
+                        filepath = os.path.join(root, file)
+                        try:
+                            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                                content = f.read()
+
+                            rel_path = os.path.relpath(filepath, temp_dir)
+
+                            record = {
+                                "filename": f"METATRADER_LIB/{rel_path}",
+                                "code": content,
+                                "source": "Metatrader_Libraries_Zip"
+                            }
+                            outfile.write(json.dumps(record) + '\n')
+                            count += 1
+                        except Exception as e:
+                            print(f"   ⚠️ Failed to read {file}: {e}")
+
+        print(f"✅ Successfully processed {count} files into {jsonl_path}.")
+
+    except Exception as e:
+        print(f"❌ Error processing libs: {e}")
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
+def process_github_codebase():
+    """Scans github_codebase dir and creates external_codebase.jsonl."""
+    print("\n🐙 === PROCESSING GITHUB CODEBASE ===")
+
+    base_dir = GITHUB_CODEBASE["dir"]
+    jsonl_path = os.path.join(base_dir, GITHUB_CODEBASE["check_file"])
+
+    if not os.path.exists(base_dir):
+        print(f"⚠️ {base_dir} not found. Skipping.")
+        return
+
+    if os.path.exists(jsonl_path):
+        # Optional: check if empty?
+        if os.path.getsize(jsonl_path) > 1024:
+            print(f"✅ {jsonl_path} already exists. Skipping.")
+            return
+        else:
+             print(f"⚠️ {jsonl_path} exists but is too small. Rebuilding...")
+
+    print(f"📝 Scanning {base_dir} to build JSONL...")
+
+    valid_exts = {'.mq5', '.mqh', '.py', '.js', '.ts', '.jsx', '.tsx', '.css', '.html', '.md', '.txt', '.json', '.cs'}
+    skip_dirs = {'node_modules', '.git', '.next', 'dist', 'build', '__pycache__', 'obj', 'bin'}
+
+    count = 0
+    try:
+        with open(jsonl_path, 'w', encoding='utf-8') as outfile:
+            for root, dirs, files in os.walk(base_dir):
+                # Filter directories
+                dirs[:] = [d for d in dirs if d not in skip_dirs]
+
+                for file in files:
+                    ext = os.path.splitext(file)[1].lower()
+                    if ext in valid_exts:
+                        filepath = os.path.join(root, file)
+
+                        # Skip the jsonl itself if encountered
+                        if os.path.abspath(filepath) == os.path.abspath(jsonl_path):
+                            continue
+
+                        try:
+                            # Skip large files > 1MB
+                            if os.path.getsize(filepath) > 1 * 1024 * 1024:
+                                continue
+
+                            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                                content = f.read()
+
+                            rel_path = os.path.relpath(filepath, base_dir)
+
+                            record = {
+                                "filename": f"GITHUB_REPO/{rel_path}",
+                                "code": content,
+                                "source": "Github_Codebase_Zip"
+                            }
+                            outfile.write(json.dumps(record) + '\n')
+                            count += 1
+                        except Exception as e:
+                            # logging.warning(f"Failed to read {file}: {e}")
+                            pass
+
+        print(f"✅ Successfully processed {count} files into {jsonl_path}.")
+
+    except Exception as e:
+        print(f"❌ Error processing github codebase: {e}")
+
+
+def restore_github_codebase():
+    print(f"\n--- Processing GitHub Codebase ---")
+    cfg = GITHUB_CODEBASE
+    target_dir = cfg['dir']
+    check_file_path = os.path.join(target_dir, cfg['check_file'])
+
+    # Check if folder exists
+    if not os.path.exists(target_dir):
+        print(f"📥 Downloading {cfg['zip_name']}...")
+        try:
+            os.makedirs(target_dir, exist_ok=True)
+            gdown.download(id=cfg['id'], output=cfg['zip_name'], quiet=False, fuzzy=True)
+
+            print(f"📦 Extracting {cfg['zip_name']}...")
+            with zipfile.ZipFile(cfg['zip_name'], 'r') as z:
+                z.extractall(target_dir)
+
+            os.remove(cfg['zip_name'])
+            print(f"✨ {target_dir} downloaded.")
+        except Exception as e:
+             print(f"❌ Error installing codebase: {e}")
+    else:
+        print(f"✅ {target_dir} exists.")
+
+    # Always try to generate the JSONL if missing
+    process_github_codebase()
+
 
 def restore_environment():
     setup_logger()
     print("=== ENVIRONMENT RESTORE & VERIFICATION ===")
 
-    # 1. Clean old scripts
+    # 1. Clean
     clean_old_scripts()
 
-    # 2. Process Databases
+    # 2. Process RAG Databases
     for dir_name, config in DATABASES.items():
         print(f"\n--- Processing {dir_name} ({config['mode']}) ---")
 
-        # Check if exists and valid
         is_installed = False
         if os.path.exists(dir_name):
             if os.path.exists(os.path.join(dir_name, config['check_file'])):
@@ -194,28 +345,30 @@ def restore_environment():
             print(f"📥 Downloading {config['zip_name']}...")
             try:
                 os.makedirs(dir_name, exist_ok=True)
-                # Download to temp file
                 gdown.download(id=config['id'], output=config['zip_name'], quiet=False, fuzzy=True)
 
                 print(f"📦 Extracting {config['zip_name']}...")
                 with zipfile.ZipFile(config['zip_name'], 'r') as z:
                     z.extractall(dir_name)
 
-                # Hoist
                 if not hoist_files(dir_name, config['check_file']):
                     print(f"❌ CRITICAL: {config['check_file']} not found in {config['zip_name']}!")
-                    # Cleanup failed install
                     shutil.rmtree(dir_name)
                     continue
 
-                # Cleanup Zip
                 os.remove(config['zip_name'])
                 print(f"✨ {dir_name} successfully installed.")
 
             except Exception as e:
                 print(f"❌ Error installing {dir_name}: {e}")
 
-    # 3. Update .gitignore
+    # 3. Process Github Codebase
+    restore_github_codebase()
+
+    # 4. Process Metatrader Libraries
+    process_metatrader_libs()
+
+    # 5. Update .gitignore
     print("\n📝 Updating .gitignore...")
     if os.path.exists(".gitignore"):
         with open(".gitignore", "r") as f:
@@ -230,6 +383,14 @@ def restore_environment():
             lines.append(f"{d}/\n")
             changed = True
 
+    # Explicitly verify jsonl ignores
+    if "Knowledge_Base/*.jsonl" not in [l.strip() for l in lines]:
+        lines.append("Knowledge_Base/*.jsonl\n")
+        changed = True
+    if "github_codebase/*.jsonl" not in [l.strip() for l in lines]:
+        lines.append("github_codebase/*.jsonl\n")
+        changed = True
+
     if changed:
         with open(".gitignore", "w") as f:
             f.writelines(lines)
@@ -237,15 +398,13 @@ def restore_environment():
     else:
         print("✅ .gitignore already up to date.")
 
-    # 4. Handle "rag_mql5" -> "rag_mql5_dev" rename if old exists
+    # 6. Legacy Rename
     if os.path.exists("rag_mql5") and not os.path.exists("rag_mql5_dev"):
         print("🔄 Renaming legacy 'rag_mql5' to 'rag_mql5_dev'...")
         os.rename("rag_mql5", "rag_mql5_dev")
 
-    # 5. Hardware Report
+    # 7. Hardware & Tests
     report_hardware_status()
-
-    # 6. Functional Test
     verify_rag_functionality()
 
     print("\n🚀 Environment Restore Complete. Ready for work.")
