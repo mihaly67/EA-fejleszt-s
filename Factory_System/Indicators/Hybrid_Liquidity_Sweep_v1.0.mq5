@@ -26,7 +26,7 @@
 //--- Input Parameters
 input group              "=== Sweep Detection ==="
 input int                InpSwingLeft          = 10;     // Left Strength (Bars)
-input int                InpSwingRight         = 3;      // Right Strength (Bars)
+input int                InpSwingRight         = 3;      // Right Strength (Bars) - Reduce for Faster Swings
 input double             InpWickRatio          = 0.4;    // Min Wick Ratio (40%) to Body
 input bool               InpShowZones          = true;   // Draw Demand/Supply Zones
 
@@ -42,16 +42,9 @@ double      BullishSweepBuffer[];
 double      SwingHighBuffer[]; // Internal calculation
 double      SwingLowBuffer[];  // Internal calculation
 
-//--- Structures for Zones
-struct Zone {
-    datetime time_start;
-    double   price_top;
-    double   price_bottom;
-    bool     is_supply; // True=Supply, False=Demand
-    bool     active;
-    string   name;
-};
-Zone active_zones[];
+//--- Global Variables for Zone Management
+string g_last_supply_zone = "";
+string g_last_demand_zone = "";
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
@@ -72,52 +65,45 @@ int OnInit()
 }
 
 //+------------------------------------------------------------------+
-//| Helper: Calculate Wick Ratio                                     |
-//+------------------------------------------------------------------+
-double GetWickRatio(double high, double low, double open, double close, bool is_bullish)
-{
-    double total_range = high - low;
-    if(total_range == 0) return 0;
-
-    double body_top = MathMax(open, close);
-    double body_bottom = MathMin(open, close);
-
-    if(is_bullish) {
-        // Bullish Sweep = Long Lower Wick? No, usually Sweep is against trend.
-        // Bearish Sweep (High test) -> Upper Wick.
-        // Bullish Sweep (Low test) -> Lower Wick.
-        return (body_bottom - low) / total_range; // Lower Wick Ratio
-    } else {
-        return (high - body_top) / total_range;   // Upper Wick Ratio
-    }
-}
-
-//+------------------------------------------------------------------+
-//| Helper: Draw Zone Object                                         |
+//| Helper: Draw Zone Object (Manages Single Active Zone)            |
 //+------------------------------------------------------------------+
 void DrawZone(datetime time1, double price1, double price2, bool is_supply, datetime bar_time)
 {
     if(!InpShowZones) return;
-    // Use bar_time to ensure unique but stable name per bar
-    string name = "Zone_" + IntegerToString((long)bar_time);
 
-    // Check if exists to avoid recreation overhead (optional, but good practice)
+    // Unique name for this specific potential zone
+    string name = "Zone_" + (is_supply ? "Supply_" : "Demand_") + IntegerToString((long)bar_time);
+
+    // --- LOGIC: Delete Old Zone ---
+    // If a PREVIOUS zone exists and it is NOT this one (new signal), delete the old one.
+    if (is_supply) {
+        if (g_last_supply_zone != "" && g_last_supply_zone != name) {
+            ObjectDelete(0, g_last_supply_zone);
+        }
+        g_last_supply_zone = name;
+    } else {
+        if (g_last_demand_zone != "" && g_last_demand_zone != name) {
+            ObjectDelete(0, g_last_demand_zone);
+        }
+        g_last_demand_zone = name;
+    }
+    // -----------------------------
+
+    // Create or Update
     if(ObjectFind(0, name) < 0) {
         if(!ObjectCreate(0, name, OBJ_RECTANGLE, 0, time1, price1, TimeCurrent(), price2)) return;
-    } else {
-        // Update coordinates if needed (e.g. active candle changes)
-        // For completed candles, this stabilizes.
-        ObjectSetDouble(0, name, OBJPROP_PRICE, 0, price1);
-        ObjectSetDouble(0, name, OBJPROP_PRICE, 1, price2);
-        ObjectSetInteger(0, name, OBJPROP_TIME, 0, time1);
-    }
 
-    ObjectSetInteger(0, name, OBJPROP_COLOR, is_supply ? InpSupplyColor : InpDemandColor);
+        // Set static properties only once
+        ObjectSetInteger(0, name, OBJPROP_COLOR, is_supply ? InpSupplyColor : InpDemandColor);
         ObjectSetInteger(0, name, OBJPROP_FILL, true);
         ObjectSetInteger(0, name, OBJPROP_BACK, true);
         ObjectSetInteger(0, name, OBJPROP_WIDTH, InpZoneWidth);
-        // Extend to future?
-        ObjectSetInteger(0, name, OBJPROP_RAY_RIGHT, true);
+        ObjectSetInteger(0, name, OBJPROP_RAY_RIGHT, true); // Extend to future
+    } else {
+        // Update coordinates (important for forming bars, though usually Sweep is fixed)
+        ObjectSetDouble(0, name, OBJPROP_PRICE, 0, price1);
+        ObjectSetDouble(0, name, OBJPROP_PRICE, 1, price2);
+        ObjectSetInteger(0, name, OBJPROP_TIME, 0, time1);
     }
 }
 
@@ -137,18 +123,25 @@ int OnCalculate(const int rates_total,
 {
    if(rates_total < InpSwingLeft + InpSwingRight + 1) return 0;
 
+   // Initialization / Reset
+   if (prev_calculated == 0) {
+       ObjectsDeleteAll(0, "Zone_");
+       g_last_supply_zone = "";
+       g_last_demand_zone = "";
+   }
+
    int start = (prev_calculated > 0) ? prev_calculated - 1 : InpSwingLeft;
 
+   // 1. Identify Swing Points (Fractals)
    for(int i = start; i < rates_total - InpSwingRight; i++)
    {
-       // 1. Identify Swing Points (Fractals)
        // Check if i is a High
        bool is_high = true;
        for(int k = 1; k <= InpSwingLeft; k++) if(high[i] <= high[i-k]) is_high = false;
        for(int k = 1; k <= InpSwingRight; k++) if(high[i] <= high[i+k]) is_high = false;
 
        if(is_high) SwingHighBuffer[i] = high[i];
-       else SwingHighBuffer[i] = 0; // Or keep previous?
+       else SwingHighBuffer[i] = 0;
 
        // Check if i is a Low
        bool is_low = true;
@@ -159,10 +152,10 @@ int OnCalculate(const int rates_total,
        else SwingLowBuffer[i] = 0;
    }
 
-   // 2. Sweep Detection (Full History)
-   int search_window = 50; // Look back limit for nearest swing
+   // 2. Sweep Detection
+   int search_window = 50;
 
-   // Iterate correctly from start
+   // Loop through bars
    for(int i = start; i < rates_total; i++)
    {
        BearishSweepBuffer[i] = 0.0;
@@ -189,13 +182,12 @@ int OnCalculate(const int rates_total,
        // Logic: Bearish Sweep (Liquidity Grab above High)
        if(nearest_swing_high > 0) {
            if(high[i] > nearest_swing_high && close[i] < nearest_swing_high) {
-               // Check Wick
                double total_h = high[i] - low[i];
                if(total_h > 0) {
                    double wick_ratio = (high[i] - MathMax(open[i], close[i])) / total_h;
                    if(wick_ratio > InpWickRatio) {
-                       BearishSweepBuffer[i] = high[i]; // Draw Arrow
-                       // Draw Supply Zone (Body of candle)
+                       BearishSweepBuffer[i] = high[i];
+                       // Draw Supply Zone
                        DrawZone(time[i], MathMax(open[i], close[i]), high[i], true, time[i]);
                    }
                }
@@ -205,12 +197,11 @@ int OnCalculate(const int rates_total,
        // Logic: Bullish Sweep (Liquidity Grab below Low)
        if(nearest_swing_low > 0) {
            if(low[i] < nearest_swing_low && close[i] > nearest_swing_low) {
-               // Check Wick
                double total_h = high[i] - low[i];
                if(total_h > 0) {
                    double wick_ratio = (MathMin(open[i], close[i]) - low[i]) / total_h;
                    if(wick_ratio > InpWickRatio) {
-                       BullishSweepBuffer[i] = low[i]; // Draw Arrow
+                       BullishSweepBuffer[i] = low[i];
                        // Draw Demand Zone
                        DrawZone(time[i], low[i], MathMin(open[i], close[i]), false, time[i]);
                    }
