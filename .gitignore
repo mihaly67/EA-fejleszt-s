@@ -21,3 +21,5 @@ Knowledge_Base/new_knowledge_2/
 Knowledge_Base/new_knowledge_3/
 Knowledge_Base/new_knowledge_4/
 github_codebase/
+Knowledge_Base/*.jsonl
+github_codebase/*.jsonl
