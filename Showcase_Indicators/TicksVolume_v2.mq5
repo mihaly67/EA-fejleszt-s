@@ -5,8 +5,8 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, MetaQuotes Ltd."
 #property link      "https://www.mql5.com"
-#property version   "2.0"
-#property description "Tick Volume Analysis (Up/Down) using real Tick History."
+#property version   "2.1"
+#property description "Tick Volume Analysis (Up/Down) using CopyTicksRange."
 
 #property indicator_separate_window
 #property indicator_buffers 4
@@ -56,8 +56,8 @@ int OnInit()
    SetIndexBuffer(2, DnBuffer, INDICATOR_DATA);
    SetIndexBuffer(3, DnTick, INDICATOR_DATA);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "TicksVolume v2.0");
-   IndicatorSetInteger(INDICATOR_DIGITS, 0); // Counts/Points
+   IndicatorSetString(INDICATOR_SHORTNAME, "TicksVolume v2.1");
+   IndicatorSetInteger(INDICATOR_DIGITS, 0);
 
    return(INIT_SUCCEEDED);
 }
@@ -76,35 +76,41 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
 {
-   // Ensure time is series for easy access, but loop usually goes 0..total
-   // Standard loop: i=0 is OLDEST.
+   // Performance Optimization: Limit history on first run
+   int limit = 1000;
+   int start;
 
-   int start = (prev_calculated > 0) ? prev_calculated - 1 : 0;
+   if (prev_calculated == 0) {
+       start = (rates_total > limit) ? rates_total - limit : 0;
+       // Initialize buffers before start
+       ArrayInitialize(UpBuffer, 0);
+       ArrayInitialize(DnBuffer, 0);
+       ArrayInitialize(UpTick, 0);
+       ArrayInitialize(DnTick, 0);
+   } else {
+       start = prev_calculated - 1;
+   }
 
    MqlTick ticks[];
 
    for(int i = start; i < rates_total; i++)
    {
-       // Reset current bar buffers
        UpBuffer[i] = 0;
        DnBuffer[i] = 0;
        UpTick[i] = 0;
        DnTick[i] = 0;
 
-       // Get Ticks for this bar
-       // Time range: time[i] to time[i+1] (or Current Time if last bar)
        long time_from = (long)time[i] * 1000;
        long time_to = (i < rates_total - 1) ? (long)time[i+1] * 1000 : TimeCurrent() * 1000 + 999;
 
-       // Use CopyTicksRange for history
+       // Only fetch if meaningful time range
+       if (time_to <= time_from) continue;
+
        int copied = CopyTicksRange(_Symbol, ticks, COPY_TICKS_INFO, time_from, time_to);
 
        if (copied > 1)
        {
-           double prev_bid = ticks[0].bid; // Init with first tick of the bar (or close of prev?)
-           // Ideally, compare with Close of previous bar for the FIRST tick?
-           // Simplification: Intra-bar movement only.
-
+           double prev_bid = ticks[0].bid;
            double price_up = 0;
            double price_dn = 0;
            double tick_up = 0;

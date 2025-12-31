@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright © 2008, TrendLaboratory (Refactored 2024)"
 #property link      "http://finance.groups.yahoo.com/group/TrendLaboratory"
-#property version   "2.0"
+#property version   "2.1"
 #property description "Adaptive Tick RSI using real Tick History."
 
 #property indicator_separate_window
@@ -40,7 +40,7 @@ input int     SlowMA      =    14;  // Slow MA (Ticks)
 double ARSIBuffer[];
 double FastMABuffer[];
 double SlowMABuffer[];
-double CalcBuffer[]; // Temp buffer for internal RSI calculation if needed
+double CalcBuffer[];
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
@@ -52,7 +52,7 @@ int OnInit()
    SetIndexBuffer(2, SlowMABuffer, INDICATOR_DATA);
    SetIndexBuffer(3, CalcBuffer, INDICATOR_CALCULATIONS);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "TickAdaptiveRSI v2.0");
+   IndicatorSetString(INDICATOR_SHORTNAME, "TickAdaptiveRSI v2.1");
 
    return(INIT_SUCCEEDED);
 }
@@ -68,7 +68,6 @@ double CalculateRSI(const double &prices[], int period)
    double gain = 0;
    double loss = 0;
 
-   // Simple RSI logic for the last 'period' ticks
    for(int i = size - period; i < size; i++)
    {
        double diff = prices[i] - prices[i-1];
@@ -94,89 +93,57 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
 {
-   int start = (prev_calculated > 0) ? prev_calculated - 1 : 0;
-   MqlTick ticks[];
+   // Performance Limit: Max 1000 bars history on init
+   int limit = 1000;
+   int start;
 
-   // We need enough ticks for calculation: ARSIPeriod + SlowMA
+   if (prev_calculated == 0) {
+       start = (rates_total > limit) ? rates_total - limit : 0;
+       ArrayInitialize(ARSIBuffer, 50.0);
+       ArrayInitialize(FastMABuffer, 50.0);
+       ArrayInitialize(SlowMABuffer, 50.0);
+   } else {
+       start = prev_calculated - 1;
+   }
+
+   MqlTick ticks[];
    int required_ticks = ARSIPeriod + SlowMA + 50;
 
    for(int i = start; i < rates_total; i++)
    {
-       // Strategy: For each bar, get the LAST N ticks ending at that bar's close time.
-       // This simulates what the indicator value was at the end of that bar.
-
        long time_to_msc = (i < rates_total - 1) ? (long)time[i+1] * 1000 : TimeCurrent() * 1000 + 999;
 
-       // Get last N ticks
        int copied = CopyTicks(_Symbol, ticks, COPY_TICKS_INFO, time_to_msc, required_ticks);
 
        if (copied >= required_ticks)
        {
-           // 1. Calculate Tick RSI Series (internal)
-           // We need a series of RSI values to calculate MA on them.
-           // Let's say we want the RSI value at the very last tick (copied-1).
-           // And we also need RSI values for previous ticks to average them.
-
-           double rsi_series[];
-           ArrayResize(rsi_series, SlowMA); // Need enough history for MA
-
-           // Extract prices for RSI calc
            double prices[];
            ArrayResize(prices, copied);
            for(int k=0; k<copied; k++) prices[k] = ticks[k].bid;
 
-           // Calculate RSI for the last 'SlowMA' points
-           for(int m=0; m<SlowMA; m++)
-           {
-               // Subset of prices ending at index (copied - 1 - m)
-               // Passing a slice is hard in MQL5, so we pass full array and index or just loop here.
-               // Optimized: Just calculate one RSI at the end for the Bar?
-               // Wait, user wants "Adaptive Tick RSI".
-               // Standard logic: RSI of Ticks.
-               // Let's assume we plot the RSI of the *last tick* of the bar.
-
-               // To get MA, we need history of RSI values.
-               // Calculating history of tick-based RSI for every bar is expensive.
-               // Simplification: Calculate RSI based on the last 'ARSIPeriod' ticks.
-
-               // For the current bar 'i', the Tick RSI is:
-               // RSI of the sequence of ticks ending at time[i].
-
-               // Current RSI
-               // We need a sub-array of prices [end-period ... end]
-               // But we can just sum gains/losses in the loop.
-           }
-
-           // --- Simplified Robust Logic ---
-           // 1. Calculate RSI of the last 'ARSIPeriod' ticks at the close of the bar.
            double current_rsi = CalculateRSI(prices, ARSIPeriod);
            ARSIBuffer[i] = current_rsi;
-
-           // 2. Fast/Slow MA of RSI?
-           // Since we don't have a buffer of *past tick RSIs* stored easily (unless we recalc everything),
-           // we can approximate the MA by smoothing the ARSIBuffer itself (Bar-based smoothing of Tick RSI).
-           // OR: Recalculate RSI for previous N ticks?
-           // Let's use Bar-based smoothing for the MA lines, as calculating Tick-MA on history is extremely heavy.
 
            // Fast MA (SMA of ARSIBuffer)
            if (i >= FastMA) {
                double sum=0;
                for(int k=0; k<FastMA; k++) sum += ARSIBuffer[i-k];
                FastMABuffer[i] = sum/FastMA;
-           }
+           } else FastMABuffer[i] = current_rsi;
 
            // Slow MA
            if (i >= SlowMA) {
                double sum=0;
                for(int k=0; k<SlowMA; k++) sum += ARSIBuffer[i-k];
                SlowMABuffer[i] = sum/SlowMA;
-           }
+           } else SlowMABuffer[i] = current_rsi;
        }
        else
        {
-           ARSIBuffer[i] = 50.0;
-           FastMABuffer[i] = 50.0;
-           SlowMABuffer[i] = 50.0;
+           // Not enough ticks, maintain previous or neutral
+           ARSIBuffer[i] = (i>0) ? ARSIBuffer[i-1] : 50.0;
+           FastMABuffer[i] = ARSIBuffer[i];
+           SlowMABuffer[i] = ARSIBuffer[i];
        }
    }
 
