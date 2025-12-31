@@ -1,24 +1,25 @@
 //+------------------------------------------------------------------+
 //|                                Hybrid_Microstructure_Monitor.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|        Verzió: 1.1 (Histogram: Spread Base + Rejection Pressure)  |
+//|        Verzió: 1.2 (Spread Line + Rejection Pressure Histogram)   |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.1"
-#property description "Visualizes Microstructure: Spread (Base) and Rejection Pressure (Wick/Tick Div)."
+#property version   "1.2"
+#property description "Visualizes Microstructure: Spread (Line) vs Rejection Pressure (Histogram)."
 
 #property indicator_separate_window
 #property indicator_buffers 4
 #property indicator_plots   2
 
-//--- Plot 1: Spread (Base Line - Histogram)
+//--- Plot 1: Spread (Base Line) - Costs
 #property indicator_label1  "Spread (Points)"
-#property indicator_type1   DRAW_HISTOGRAM
+#property indicator_type1   DRAW_LINE
 #property indicator_color1  clrSilver
-#property indicator_width1  2
+#property indicator_style1  STYLE_SOLID
+#property indicator_width1  1
 
-//--- Plot 2: Rejection Pressure (Histogram)
+//--- Plot 2: Rejection Pressure (Histogram) - Signal Strength
 #property indicator_label2  "Rejection Pressure"
 #property indicator_type2   DRAW_COLOR_HISTOGRAM
 #property indicator_color2  clrLime, clrRed
@@ -57,7 +58,7 @@ int OnInit()
    SetIndexBuffer(2, PressureColorBuffer, INDICATOR_COLOR_INDEX);
    SetIndexBuffer(3, TickAvgBuffer, INDICATOR_CALCULATIONS);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Microstructure v1.1");
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Microstructure v1.2");
    IndicatorSetInteger(INDICATOR_DIGITS, 1); // Display points
 
    return INIT_SUCCEEDED;
@@ -81,13 +82,25 @@ double UpdateTickAverage(double current_price)
    // 2. Remove old ticks (outside window)
    long threshold = current_msc - (InpTickWindowSec * 1000);
    int remove_count = 0;
-   for(int i=0; i<ArraySize(tick_buffer); i++) {
-       if(tick_buffer[i].time_msc < threshold) remove_count++;
-       else break;
+   // Efficient removal: find split point
+   int split_index = -1;
+   for(int i=0; i<size; i++) {
+       if(tick_buffer[i].time_msc >= threshold) {
+           split_index = i;
+           break;
+       }
    }
 
-   if(remove_count > 0) {
-       ArrayRemove(tick_buffer, 0, remove_count);
+   // If split_index is -1, it means ALL ticks are old (or buffer empty), clear all.
+   // If split_index is 0, no ticks are old.
+   // If split_index > 0, remove 0..split_index-1.
+
+   if (split_index == -1 && size > 0) {
+       // All ticks are old? Or maybe none found?
+       // If loop finished without break, all ticks < threshold.
+       if(tick_buffer[size].time_msc < threshold) ArrayFree(tick_buffer);
+   } else if (split_index > 0) {
+       ArrayRemove(tick_buffer, 0, split_index);
    }
 
    // 3. Calculate Average
