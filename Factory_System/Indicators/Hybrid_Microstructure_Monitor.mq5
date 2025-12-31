@@ -1,28 +1,28 @@
 //+------------------------------------------------------------------+
 //|                                Hybrid_Microstructure_Monitor.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|        Verzió: 1.2 (Spread Line + Rejection Pressure Histogram)   |
+//|        Verzió: 1.4 (Zero-Based Pressure + Optimized Colors)       |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.2"
-#property description "Visualizes Microstructure: Spread (Line) vs Rejection Pressure (Histogram)."
+#property version   "1.4"
+#property description "Visualizes Microstructure: Positive/Negative Pressure Histogram."
 
 #property indicator_separate_window
 #property indicator_buffers 4
 #property indicator_plots   2
 
-//--- Plot 1: Spread (Base Line) - Costs
+//--- Plot 1: Spread (Base Line) - Optional
 #property indicator_label1  "Spread (Points)"
-#property indicator_type1   DRAW_LINE
+#property indicator_type1   DRAW_NONE
 #property indicator_color1  clrSilver
 #property indicator_style1  STYLE_SOLID
 #property indicator_width1  1
 
-//--- Plot 2: Rejection Pressure (Histogram) - Signal Strength
+//--- Plot 2: Rejection Pressure (Histogram)
 #property indicator_label2  "Rejection Pressure"
 #property indicator_type2   DRAW_COLOR_HISTOGRAM
-#property indicator_color2  clrLime, clrRed
+#property indicator_color2  clrForestGreen, clrFireBrick
 #property indicator_width2  3
 
 //--- Input Parameters
@@ -35,18 +35,21 @@ input group              "=== Tick Averaging ==="
 input bool               InpUseTickAvg         = true;   // Enable Rolling Tick Average
 input int                InpTickWindowSec      = 5;      // Rolling Window (seconds)
 
+input group              "=== Visuals ==="
+input bool               InpShowSpread         = false;  // Show Spread Line (Default: False)
+
 //--- Buffers
 double      SpreadBuffer[];
 double      PressureBuffer[];
 double      PressureColorBuffer[];
-double      TickAvgBuffer[];  // Internal calculation
+double      TickAvgBuffer[];
 
-//--- Tick Structure for Rolling Average
+//--- Tick Structure
 struct TickData {
    double price;
    long   time_msc;
 };
-TickData tick_buffer[]; // Circular buffer simulation
+TickData tick_buffer[];
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
@@ -58,14 +61,22 @@ int OnInit()
    SetIndexBuffer(2, PressureColorBuffer, INDICATOR_COLOR_INDEX);
    SetIndexBuffer(3, TickAvgBuffer, INDICATOR_CALCULATIONS);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Microstructure v1.2");
-   IndicatorSetInteger(INDICATOR_DIGITS, 1); // Display points
+   if (InpShowSpread) {
+       PlotIndexSetInteger(0, PLOT_DRAW_TYPE, DRAW_LINE);
+       PlotIndexSetInteger(0, PLOT_LINE_STYLE, STYLE_SOLID);
+       PlotIndexSetInteger(0, PLOT_LINE_COLOR, clrSilver);
+   } else {
+       PlotIndexSetInteger(0, PLOT_DRAW_TYPE, DRAW_NONE);
+   }
+
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Microstructure v1.4");
+   IndicatorSetInteger(INDICATOR_DIGITS, 1);
 
    return INIT_SUCCEEDED;
 }
 
 //+------------------------------------------------------------------+
-//| Helper: Update Tick Buffer & Get Average                         |
+//| Helper: Update Tick Buffer                                       |
 //+------------------------------------------------------------------+
 double UpdateTickAverage(double current_price)
 {
@@ -73,16 +84,12 @@ double UpdateTickAverage(double current_price)
 
    long current_msc = GetTickCount();
 
-   // 1. Add new tick
    int size = ArraySize(tick_buffer);
    ArrayResize(tick_buffer, size + 1);
    tick_buffer[size].price = current_price;
    tick_buffer[size].time_msc = current_msc;
 
-   // 2. Remove old ticks (outside window)
    long threshold = current_msc - (InpTickWindowSec * 1000);
-   int remove_count = 0;
-   // Efficient removal: find split point
    int split_index = -1;
    for(int i=0; i<size; i++) {
        if(tick_buffer[i].time_msc >= threshold) {
@@ -91,19 +98,12 @@ double UpdateTickAverage(double current_price)
        }
    }
 
-   // If split_index is -1, it means ALL ticks are old (or buffer empty), clear all.
-   // If split_index is 0, no ticks are old.
-   // If split_index > 0, remove 0..split_index-1.
-
    if (split_index == -1 && size > 0) {
-       // All ticks are old? Or maybe none found?
-       // If loop finished without break, all ticks < threshold.
        if(tick_buffer[size].time_msc < threshold) ArrayFree(tick_buffer);
    } else if (split_index > 0) {
        ArrayRemove(tick_buffer, 0, split_index);
    }
 
-   // 3. Calculate Average
    double sum = 0;
    int count = ArraySize(tick_buffer);
    if(count == 0) return current_price;
@@ -133,12 +133,8 @@ int OnCalculate(const int rates_total,
 
    for(int i = start; i < rates_total; i++)
    {
-       // --- 1. Spread Calculation (Base Line) ---
-       // Use spread[] array (historical) or calculate from Ask-Bid for live (more accurate)
-       // Note: spread[] in OnCalculate is integer (points).
        SpreadBuffer[i] = (double)spread[i];
 
-       // --- 2. Adaptive Tick Avg Logic ---
        double avg_range = 0;
        for(int k=1; k<=InpLookback; k++) avg_range += (high[i-k] - low[i-k]);
        avg_range /= InpLookback;
@@ -156,10 +152,10 @@ int OnCalculate(const int rates_total,
        }
        TickAvgBuffer[i] = analyzed_close;
 
-       // --- 3. Pressure Calculation ---
+       // --- Pressure Calculation (Zero-Based) ---
        double current_range = high[i] - low[i];
-       PressureBuffer[i] = 0.0; // Default
-       PressureColorBuffer[i] = 0.0; // Empty
+       PressureBuffer[i] = 0.0;
+       PressureColorBuffer[i] = 0.0;
 
        if (current_range > 0) {
            double body_top    = MathMax(open[i], analyzed_close);
@@ -171,21 +167,18 @@ int OnCalculate(const int rates_total,
            double upper_ratio = upper_wick / current_range;
            double lower_ratio = lower_wick / current_range;
 
-           // Determine Direction & Strength
-           // Strength = Wick Ratio * Range (in points) -> This gives magnitude to the bar
-           // We scale it to be comparable to Spread (e.g. Points)
-
-           if (upper_ratio > InpWickRatio) {
-               // Bearish Pressure (Red)
-               double strength = (upper_ratio * current_range) / Point(); // Convert to points
+           // Visual Logic: Green = Up (Positive), Red = Down (Negative)
+           if (lower_ratio > InpWickRatio && lower_ratio > upper_ratio) {
+               // Bullish Rejection (Long Lower Wick -> Price pushed UP)
+               double strength = (lower_ratio * current_range) / Point();
                PressureBuffer[i] = strength;
-               PressureColorBuffer[i] = 1.0; // Index 1: Red
+               PressureColorBuffer[i] = 0.0; // Green
            }
-           else if (lower_ratio > InpWickRatio) {
-               // Bullish Pressure (Green)
-               double strength = (lower_ratio * current_range) / Point(); // Convert to points
-               PressureBuffer[i] = strength;
-               PressureColorBuffer[i] = 0.0; // Index 0: Lime
+           else if (upper_ratio > InpWickRatio && upper_ratio > lower_ratio) {
+               // Bearish Rejection (Long Upper Wick -> Price pushed DOWN)
+               double strength = (upper_ratio * current_range) / Point();
+               PressureBuffer[i] = -strength; // NEGATIVE value
+               PressureColorBuffer[i] = 1.0; // Red
            }
        }
    }
