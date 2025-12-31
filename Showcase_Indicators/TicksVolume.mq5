@@ -5,9 +5,9 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2016, MetaQuotes Software Corp."
 #property link      "http://www.mql5.com"
-#property version   "2.10"
-#property description "Ticks Volume Indicator (Refactored)"
-#property description "Visualizes Pips and Tick Counts per bar using tick data."
+#property version   "2.20"
+#property description "Ticks Volume Indicator (Bidirectional)"
+#property description "Visualizes Pips and Tick Counts per bar (Up/Down) using tick data."
 #property description "Includes History Limit for Scalping Optimization."
 
 #property indicator_separate_window
@@ -24,7 +24,7 @@
 //--- plot UpTick (Tick Up)
 #property indicator_label2  "Tick Up"
 #property indicator_type2   DRAW_HISTOGRAM
-#property indicator_color2  clrSilver
+#property indicator_color2  clrDarkGoldenrod
 #property indicator_style2  STYLE_SOLID
 #property indicator_width2  2
 
@@ -38,7 +38,7 @@
 //--- plot DnTick (Tick Down)
 #property indicator_label4  "Tick Down"
 #property indicator_type4   DRAW_HISTOGRAM
-#property indicator_color4  clrDimGray
+#property indicator_color4  clrDarkGoldenrod
 #property indicator_style4  STYLE_SOLID
 #property indicator_width4  2
 
@@ -58,35 +58,6 @@ double    UpTick[];
 double    DnTick[];
 
 //+------------------------------------------------------------------+
-//| Helper: Calculate clipping limit                                 |
-//+------------------------------------------------------------------+
-double GetClippingLimit(int total_bars)
-  {
-   double sum = 0;
-   int count = 0;
-   // Sample last N bars (max 100 or available history) to find a baseline
-   int lookback = MathMin(total_bars, 100);
-   if(lookback < 10) return 1000000.0; // Not enough data, no clip
-
-   for(int k=0; k<lookback; k++)
-     {
-      // Using UpBuffer as proxy for general volume magnitude.
-      // Ideally we check max of all components, but they correlate.
-      double val = UpBuffer[k];
-      if(val > 0)
-        {
-         sum += val;
-         count++;
-        }
-     }
-
-   if(count == 0) return 1000000.0;
-
-   double avg = sum / count;
-   return avg * InpOutlierMultiplier;
-  }
-
-//+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
 //+------------------------------------------------------------------+
 int OnInit()
@@ -96,7 +67,7 @@ int OnInit()
    SetIndexBuffer(2, DnBuffer, INDICATOR_DATA);
    SetIndexBuffer(3, DnTick,   INDICATOR_DATA);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "TicksVolume Sc");
+   IndicatorSetString(INDICATOR_SHORTNAME, "TicksVolume BiDir");
    IndicatorSetInteger(INDICATOR_DIGITS, 0);
 
    return(INIT_SUCCEEDED);
@@ -184,32 +155,25 @@ int OnCalculate(const int rates_total,
         }
       
       // Store Raw Values (Pips are /_Point)
+      // IMPORTANT: Down values are NEGATIVE for display below zero
       UpBuffer[i] = p_up / _Point;
-      DnBuffer[i] = p_dn / _Point;
+      DnBuffer[i] = -1.0 * (p_dn / _Point);
       UpTick[i]   = t_up;
-      DnTick[i]   = t_dn;
+      DnTick[i]   = -1.0 * t_dn;
      }
 
    //--- 2. Apply Outlier Clipping (Post-Process)
-   // We calculate a dynamic limit based on the visible history (or InpMaxHistoryBars)
-   // Only if InpOutlierMultiplier is reasonable (> 0)
+   // We use MathAbs to handle the negative values correctly
    if(InpOutlierMultiplier > 0)
    {
-      // Calculate Average Volume (using UpBuffer + DnBuffer + Ticks as proxy is complex,
-      // so we just calculate an average of 'activity' from non-zero bars).
-      // For efficiency, we just use a robust static lookback here since we are in a loop.
-      // Actually, to avoid flickering of PAST bars, the clipping threshold should ideally be stable per bar,
-      // but for scalping, global scaling based on recent volatility is better.
-
       double sum_pips = 0;
-      double sum_ticks = 0;
       int count = 0;
 
       int scan_start = 0;
       int scan_end = MathMin(rates_total-1, InpMaxHistoryBars);
 
       for(int k=scan_start; k<scan_end; k++) {
-         double activity = UpBuffer[k] + DnBuffer[k]; // Total Pips Vol
+         double activity = MathAbs(UpBuffer[k]) + MathAbs(DnBuffer[k]); // Total Pips Vol (Abs)
          if(activity > 0) {
             sum_pips += activity;
             count++;
@@ -220,17 +184,13 @@ int OnCalculate(const int rates_total,
          double avg_pips = sum_pips / count;
          double limit_pips = avg_pips * InpOutlierMultiplier;
 
-         // Apply Clipping to display buffers
+         // Apply Clipping to display buffers (Checking Abs values)
          for(int i = limit; i >= 0; i--) {
+            // Clip Up
             if(UpBuffer[i] > limit_pips) UpBuffer[i] = limit_pips;
-            if(DnBuffer[i] > limit_pips) DnBuffer[i] = limit_pips;
 
-            // We can also clip ticks if they are massive, but usually Pips are the issue with "huge bars"
-            // Let's clip Ticks proportionally or separately?
-            // Let's assume Ticks scale with Pips generally. If not, we might need a separate avg.
-            // For safety, let's leave Ticks raw unless requested, as they are usually more stable (0-1000 range).
-            // But user said "minden oszlop nullán van", implying Ticks might also be outliers?
-            // Let's apply similar logic to ticks.
+            // Clip Down (Negative values, so check if LESS than negative limit)
+            if(DnBuffer[i] < -limit_pips) DnBuffer[i] = -limit_pips;
          }
       }
    }
