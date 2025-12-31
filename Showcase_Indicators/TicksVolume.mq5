@@ -5,9 +5,9 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2016, MetaQuotes Software Corp."
 #property link      "http://www.mql5.com"
-#property version   "2.00"
-#property description "Ticks Volume Indicator (Refactored)"
-#property description "Visualizes Pips and Tick Counts per bar using tick data."
+#property version   "2.20"
+#property description "Ticks Volume Indicator (Bidirectional)"
+#property description "Visualizes Pips and Tick Counts per bar (Up/Down) using tick data."
 #property description "Includes History Limit for Scalping Optimization."
 
 #property indicator_separate_window
@@ -24,7 +24,7 @@
 //--- plot UpTick (Tick Up)
 #property indicator_label2  "Tick Up"
 #property indicator_type2   DRAW_HISTOGRAM
-#property indicator_color2  clrSilver
+#property indicator_color2  clrDarkGoldenrod
 #property indicator_style2  STYLE_SOLID
 #property indicator_width2  2
 
@@ -38,7 +38,7 @@
 //--- plot DnTick (Tick Down)
 #property indicator_label4  "Tick Down"
 #property indicator_type4   DRAW_HISTOGRAM
-#property indicator_color4  clrDimGray
+#property indicator_color4  clrDarkGoldenrod
 #property indicator_style4  STYLE_SOLID
 #property indicator_width4  2
 
@@ -48,7 +48,8 @@
 #property indicator_levelstyle  STYLE_DOT
 
 //--- Inputs
-input int InpMaxHistoryBars = 500; // Max History Bars (0 = All)
+input int    InpMaxHistoryBars  = 500; // Max History Bars (0 = All)
+input double InpOutlierMultiplier = 3.0; // Smart Clipping Multiplier (Outlier Filter)
 
 //--- Indicator buffers
 double    UpBuffer[];
@@ -66,7 +67,7 @@ int OnInit()
    SetIndexBuffer(2, DnBuffer, INDICATOR_DATA);
    SetIndexBuffer(3, DnTick,   INDICATOR_DATA);
 
-   IndicatorSetString(INDICATOR_SHORTNAME, "TicksVolume Sc");
+   IndicatorSetString(INDICATOR_SHORTNAME, "TicksVolume BiDir");
    IndicatorSetInteger(INDICATOR_DIGITS, 0);
 
    return(INIT_SUCCEEDED);
@@ -106,7 +107,7 @@ int OnCalculate(const int rates_total,
    // Bounds Check
    if (limit >= rates_total) limit = rates_total - 1;
 
-   //--- Main Loop
+   //--- 1. Calculate Raw Values
    for(int i = limit; i >= 0; i--)
      {
       // Determine Time Range for CopyTicks
@@ -127,8 +128,6 @@ int OnCalculate(const int rates_total,
 
       if(received > 1)
         {
-         // We start from k=1 because we need a previous tick to compare
-         // Initializing with the first tick in the range
          double prev_bid = ticks[0].bid;
          double prev_ask = ticks[0].ask;
 
@@ -155,13 +154,46 @@ int OnCalculate(const int rates_total,
            }
         }
       
-      // Assign to buffers (Normalized)
-      // Note: Pips are calculated as raw price diff, need to divide by Point
+      // Store Raw Values (Pips are /_Point)
+      // IMPORTANT: Down values are NEGATIVE for display below zero
       UpBuffer[i] = p_up / _Point;
-      DnBuffer[i] = p_dn / _Point;
+      DnBuffer[i] = -1.0 * (p_dn / _Point);
       UpTick[i]   = t_up;
-      DnTick[i]   = t_dn;
+      DnTick[i]   = -1.0 * t_dn;
      }
+
+   //--- 2. Apply Outlier Clipping (Post-Process)
+   // We use MathAbs to handle the negative values correctly
+   if(InpOutlierMultiplier > 0)
+   {
+      double sum_pips = 0;
+      int count = 0;
+
+      int scan_start = 0;
+      int scan_end = MathMin(rates_total-1, InpMaxHistoryBars);
+
+      for(int k=scan_start; k<scan_end; k++) {
+         double activity = MathAbs(UpBuffer[k]) + MathAbs(DnBuffer[k]); // Total Pips Vol (Abs)
+         if(activity > 0) {
+            sum_pips += activity;
+            count++;
+         }
+      }
+
+      if(count > 0) {
+         double avg_pips = sum_pips / count;
+         double limit_pips = avg_pips * InpOutlierMultiplier;
+
+         // Apply Clipping to display buffers (Checking Abs values)
+         for(int i = limit; i >= 0; i--) {
+            // Clip Up
+            if(UpBuffer[i] > limit_pips) UpBuffer[i] = limit_pips;
+
+            // Clip Down (Negative values, so check if LESS than negative limit)
+            if(DnBuffer[i] < -limit_pips) DnBuffer[i] = -limit_pips;
+         }
+      }
+   }
 
    return(rates_total);
   }
