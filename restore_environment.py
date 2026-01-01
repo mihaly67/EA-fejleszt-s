@@ -24,7 +24,7 @@ DATABASES = {
         "id": "1T0etzQc1bdT89X67sa3zMbuZNZWM-Anv",
         "zip_name": "THEORY_RAG.zip",
         "check_file": "theory_knowledgebase.db",
-        "mode": "MEMORY"
+        "mode": "DISK"  # Changed from MEMORY to DISK as requested
     },
     "rag_code": {
         "id": "1CmoE49YTc_-dxyn4EiYyIDHINENeT5KI",
@@ -91,6 +91,34 @@ def hoist_files(target_dir, check_file):
         shutil.move(src_item, dst_item)
 
     return True
+
+def read_text_safe(filepath):
+    """
+    Attempts to read a file using multiple encodings and cleans garbage characters.
+    Prioritizes UTF-8, then UTF-16LE (common in MQL5), then Latin-1.
+    """
+    encodings = ['utf-8', 'utf-16', 'utf-16le', 'iso-8859-1', 'windows-1252']
+    content = None
+
+    for enc in encodings:
+        try:
+            with open(filepath, 'r', encoding=enc) as f:
+                content = f.read()
+            break  # Success
+        except UnicodeError:
+            continue
+
+    if content is None:
+        # Final fallback: binary read with ignore errors
+        try:
+            with open(filepath, 'rb') as f:
+                content = f.read().decode('utf-8', errors='ignore')
+        except Exception:
+            return "" # Give up
+
+    # Clean null bytes and BOM
+    content = content.replace('\u0000', '').replace('\ufeff', '')
+    return content
 
 def report_hardware_status():
     print("\n📊 === HARDWARE STATUS REPORT ===")
@@ -165,10 +193,10 @@ def verify_rag_functionality():
     # Test MQL5 (MQL5_DEV_RAG)
     test_scope('MQL5', 'MQL5_DEV_RAG', 'indicator handle')
 
-    # Test Theory (THEORY_RAG)
+    # Test Theory (THEORY_RAG) - Now should work with updated kutato.py
     test_scope('THEORY', 'THEORY_RAG', 'market microstructure')
 
-    # Test Code (CODEBASE_RAG)
+    # Test Code (CODEBASE_RAG) - Now should work with updated kutato.py
     test_scope('CODE', 'CODEBASE_RAG', 'OnCalculate')
 
 def process_metatrader_libs():
@@ -181,9 +209,10 @@ def process_metatrader_libs():
         print(f"⚠️ {zip_path} not found. Skipping library processing.")
         return
 
+    # Force rebuild to fix null bytes issues
     if os.path.exists(jsonl_path):
-        print(f"✅ {jsonl_path} already exists. Skipping.")
-        return
+        print(f"↻ Rebuilding {jsonl_path} to ensure correct encoding...")
+        os.remove(jsonl_path)
 
     print(f"📦 Extracting {zip_path} to build JSONL...")
     temp_dir = "temp_mt_libs"
@@ -203,8 +232,9 @@ def process_metatrader_libs():
                     if file.lower().endswith(('.mq5', '.mqh', '.py', '.txt', '.md')):
                         filepath = os.path.join(root, file)
                         try:
-                            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-                                content = f.read()
+                            # Use safe reader
+                            content = read_text_safe(filepath)
+                            if not content: continue
 
                             rel_path = os.path.relpath(filepath, temp_dir)
 
@@ -237,13 +267,10 @@ def process_github_codebase():
         print(f"⚠️ {base_dir} not found. Skipping.")
         return
 
+    # Force rebuild to fix encoding/null byte issues
     if os.path.exists(jsonl_path):
-        # Optional: check if empty?
-        if os.path.getsize(jsonl_path) > 1024:
-            print(f"✅ {jsonl_path} already exists. Skipping.")
-            return
-        else:
-             print(f"⚠️ {jsonl_path} exists but is too small. Rebuilding...")
+         print(f"↻ Rebuilding {jsonl_path} to ensure correct encoding...")
+         os.remove(jsonl_path)
 
     print(f"📝 Scanning {base_dir} to build JSONL...")
 
@@ -271,8 +298,9 @@ def process_github_codebase():
                             if os.path.getsize(filepath) > 1 * 1024 * 1024:
                                 continue
 
-                            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-                                content = f.read()
+                            # Use safe reader
+                            content = read_text_safe(filepath)
+                            if not content: continue
 
                             rel_path = os.path.relpath(filepath, base_dir)
 
@@ -317,7 +345,7 @@ def restore_github_codebase():
     else:
         print(f"✅ {target_dir} exists.")
 
-    # Always try to generate the JSONL if missing
+    # Always try to generate/check the JSONL
     process_github_codebase()
 
 
@@ -405,7 +433,13 @@ def restore_environment():
 
     # 7. Hardware & Tests
     report_hardware_status()
-    verify_rag_functionality()
+
+    # 8. Verification
+    if os.path.exists("rag_jsonl_test.py"):
+        print("\n🧪 Running full system test suite (rag_jsonl_test.py)...")
+        subprocess.call([sys.executable, "rag_jsonl_test.py"])
+    else:
+        verify_rag_functionality()
 
     print("\n🚀 Environment Restore Complete. Ready for work.")
 
