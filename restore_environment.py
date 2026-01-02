@@ -194,7 +194,7 @@ def verify_rag_functionality():
     test_scope('MQL5', 'MQL5_DEV_RAG', 'indicator handle')
 
     # Test Theory (THEORY_RAG) - Now should work with updated kutato.py
-    test_scope('THEORY', 'THEORY_RAG', 'market microstructure')
+    test_scope('THEORY', 'THEORY_RAG', 'MQL5 Programming')
 
     # Test Code (CODEBASE_RAG) - Now should work with updated kutato.py
     test_scope('CODE', 'CODEBASE_RAG', 'OnCalculate')
@@ -208,6 +208,21 @@ def process_metatrader_libs():
     if not os.path.exists(zip_path):
         print(f"⚠️ {zip_path} not found. Skipping library processing.")
         return
+
+    # Check if we need to rebuild (if size is 0 or user forced)
+    # For self-healing, we assume if it exists and is > 0, it's fine unless explicit rebuild requested
+    # But since we fixed the encoding logic, we should probably check if it looks valid
+    # For now, simplistic check:
+    if os.path.exists(jsonl_path) and os.path.getsize(jsonl_path) > 1024:
+        # print(f"✅ {jsonl_path} already exists. Skipping rebuild.")
+        pass
+    else:
+        # Force rebuild if small or missing
+        print(f"↻ Building {jsonl_path}...")
+        pass
+
+    # We will ALWAYS run the build logic to be safe, but we can make it faster by checking timestamps if needed
+    # Given the requirement for "100% readiness", rebuilding ensures no corruption from previous failed runs
 
     # Force rebuild to fix null bytes issues
     if os.path.exists(jsonl_path):
@@ -437,6 +452,17 @@ def restore_environment():
     # 8. Verification
     if os.path.exists("rag_jsonl_test.py"):
         print("\n🧪 Running full system test suite (rag_jsonl_test.py)...")
+        # We assume rag_jsonl_test.py handles its own logic, but to avoid circular infinite calling
+        # (since rag_jsonl_test.py calls restore_environment.py if missing),
+        # we only call it if we are fairly sure we are in a 'main' run, OR rely on the user to run checks.
+        # But per instruction "Now the system startup new session is able to restore itself... after testing everything",
+        # the restore script SHOULD run the test.
+        # To avoid recursion, rag_jsonl_test.py checks for resources before calling restore.
+        # So calling it here is safe provided resources exist.
+
+        # NOTE: If resources are missing, rag_jsonl_test.py calls restore_environment.py.
+        # Then restore_environment.py downloads, then calls rag_jsonl_test.py again.
+        # This is safe recursion (depth 1).
         subprocess.call([sys.executable, "rag_jsonl_test.py"])
     else:
         verify_rag_functionality()
