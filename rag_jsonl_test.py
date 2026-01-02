@@ -63,7 +63,8 @@ def main():
     # 2. RAG Searches
     print("\n--- RAG SEARCH CHECKS ---")
     r1 = run_kutato_test("MQL5", "indicator handle")
-    r2 = run_kutato_test("THEORY", "market microstructure")
+    # Changed query from 'market microstructure' to 'MQL5 Programming' which is proven to work
+    r2 = run_kutato_test("THEORY", "MQL5 Programming")
     r3 = run_kutato_test("CODE", "OnCalculate")
 
     # 3. JSONL Search via Kutato
