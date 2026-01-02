@@ -47,11 +47,11 @@
 input group              "=== Intelligent Pivot Settings ==="
 input bool               InpShowPivots         = true;
 input bool               InpAutoMode           = true;       // Automatikus idősík választás (Micro-Align)
-input ENUM_TIMEFRAMES    InpManualPivotTF      = PERIOD_H4;  // Manuális beállítás
+input ENUM_TIMEFRAMES    InpManualPivotTF      = PERIOD_M15; // Manuális beállítás (Micro)
 input bool               InpShowSecondaryPivot = true;
-input ENUM_TIMEFRAMES    InpSecondaryPivotTF   = PERIOD_H1;
+input ENUM_TIMEFRAMES    InpSecondaryPivotTF   = PERIOD_M30; // Secondary (Mid)
 input bool               InpShowTertiaryPivot  = true;       // Harmadlagos Pivot (Új)
-input ENUM_TIMEFRAMES    InpTertiaryPivotTF    = PERIOD_D1;  // Legszélesebb
+input ENUM_TIMEFRAMES    InpTertiaryPivotTF    = PERIOD_H1;  // Tertiary (Macro)
 
 input group              "=== Trend Settings ==="
 input bool               InpShowTrends         = true;
@@ -113,10 +113,13 @@ ENUM_TIMEFRAMES current_pivot_tf;
 ENUM_TIMEFRAMES GetOptimalPivotTF()
 {
     if(!InpAutoMode) return InpManualPivotTF;
+    // Scalper Tuning: If on M1-M5, use M15 as base.
+    // If on higher TFs, scale accordingly.
     if(_Period <= PERIOD_M5) return PERIOD_M15;
+    if(_Period <= PERIOD_M15) return PERIOD_M30;
     if(_Period <= PERIOD_M30) return PERIOD_H1;
-    if(_Period <= PERIOD_H4) return PERIOD_D1;
-    return PERIOD_W1;
+    if(_Period <= PERIOD_H1) return PERIOD_H4;
+    return PERIOD_D1;
 }
 
 //+------------------------------------------------------------------+
