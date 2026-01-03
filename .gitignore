@@ -1,25 +1,26 @@
-rag_theory/
-rag_code/
-__pycache__/
-*.zip
-/tmp/
-ALERTS/
-
-downloaded_content/
+# RAG Directories
 rag_mql5_dev/
 rag_theory/
 rag_code/
+downloaded_content/
+github_codebase/
+
+# Ignored File Types
 *.zip
 *.db
 *.index
 *.pkl
+__pycache__/
+/tmp/
+
+# Custom Data
+Knowledge_Base/*.jsonl
+github_codebase/*.jsonl
+ALERTS/
+
+# Legacy/Unused (Explicitly ignored if they appear)
 rag_mql5/
 rag_mql5_big/
-rag_theory/
-rag_code/
 Knowledge_Base/new_knowledge_2/
 Knowledge_Base/new_knowledge_3/
 Knowledge_Base/new_knowledge_4/
-github_codebase/
-Knowledge_Base/*.jsonl
-github_codebase/*.jsonl
