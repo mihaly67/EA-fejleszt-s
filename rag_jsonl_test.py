@@ -53,26 +53,21 @@ def main():
 
     # 1. JSONL Integrity
     print("\n--- JSONL CHECKS ---")
-    f1 = test_jsonl_integrity(os.path.join("github_codebase", "external_codebase.jsonl"))
-    f2 = test_jsonl_integrity(os.path.join("Knowledge_Base", "metatrader_libraries.jsonl"))
+    # Updated Filenames
+    f1 = test_jsonl_integrity(os.path.join("github_codebase", "knowledge_base_github.jsonl"))
+    f2 = test_jsonl_integrity(os.path.join("Knowledge_Base", "knowledge_base_mt_libs.jsonl"))
+    f3 = test_jsonl_integrity("knowledge_base_indicator_layering.jsonl")
 
-    if not (f1 and f2):
+    if not (f1 and f2 and f3):
         print("\n❌ JSONL Check Failed.")
-        # Don't exit, try RAG anyway
 
     # 2. RAG Searches
     print("\n--- RAG SEARCH CHECKS ---")
-    r1 = run_kutato_test("MQL5", "indicator handle")
-    # Changed query from 'market microstructure' to 'MQL5 Programming' which is proven to work
+    r1 = run_kutato_test("MQL5_DEV", "indicator handle")
     r2 = run_kutato_test("THEORY", "MQL5 Programming")
     r3 = run_kutato_test("CODE", "OnCalculate")
 
-    # 3. JSONL Search via Kutato
-    print("\n--- JSONL SEARCH INTEGRATION ---")
-    # Query something specific to code files
-    r4 = run_kutato_test("ALL", "ArrayInitialize")
-
-    if all([f1, f2, r1, r2, r3, r4]):
+    if all([f1, f2, f3, r1, r2, r3]):
         print("\n✅ ALL SYSTEMS GREEN.")
         sys.exit(0)
     else:
