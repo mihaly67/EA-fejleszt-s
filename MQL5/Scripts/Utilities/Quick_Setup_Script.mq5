@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, Jules AI Agent"
 #property link      "https://github.com/your-repo"
-#property version   "1.03"
+#property version   "1.04"
 #property description "Instantly applies chart colors and saves as default.tpl"
 #property script_show_inputs
 
@@ -51,7 +51,9 @@ void OnStart()
 
    // 2. Apply Visual Toggles
    ChartSetInteger(chart, CHART_SHOW_GRID, (long)InpShowGrid);
-   ChartSetInteger(chart, CHART_SHOW_PERIOD_SEPARATORS, (long)InpShowPeriodSep);
+
+   // FIXED: Correct constant name is CHART_SHOW_PERIOD_SEP
+   ChartSetInteger(chart, CHART_SHOW_PERIOD_SEP, (long)InpShowPeriodSep);
 
    // Restored OHLC property with explicit cast
    ChartSetInteger(chart, CHART_SHOW_OHLC, (long)InpShowOHLC);
