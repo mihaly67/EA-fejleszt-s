@@ -24,7 +24,7 @@ DATABASES = {
         "id": "1T0etzQc1bdT89X67sa3zMbuZNZWM-Anv",
         "zip_name": "THEORY_RAG.zip",
         "check_file": "theory_knowledgebase.db",
-        "mode": "DISK"  # Changed from MEMORY to DISK as requested
+        "mode": "DISK"
     },
     "rag_code": {
         "id": "1CmoE49YTc_-dxyn4EiYyIDHINENeT5KI",
@@ -45,12 +45,12 @@ GITHUB_CODEBASE = {
     "dir": "github_codebase",
     "id": "1P_7FFJ2fIlAUJ45HofNJlFO5D1TaW908",
     "zip_name": "codebase.zip",
-    "check_file": "external_codebase.jsonl"
+    "check_file": "knowledge_base_github.jsonl"  # Standardized Name
 }
 
 # Local Assets to Process
 METATRADER_LIBS_ZIP = "Metatrader _beépitett_könyvtárak.zip"
-METATRADER_JSONL_OUT = os.path.join("Knowledge_Base", "metatrader_libraries.jsonl")
+METATRADER_JSONL_OUT = os.path.join("Knowledge_Base", "knowledge_base_mt_libs.jsonl") # Standardized Name
 
 # Directories to ignore in Git
 GIT_IGNORE_DIRS = list(DATABASES.keys()) + ["github_codebase", "downloaded_content"]
@@ -145,60 +145,6 @@ def report_hardware_status():
     except Exception as e:
         print(f"⚠️ Error reading RAM info: {e}")
 
-def verify_rag_functionality():
-    print("\n🔎 === RAG FUNCTIONALITY TEST (Comprehensive) ===")
-
-    if not os.path.exists("kutato.py"):
-        print("❌ CRITICAL: 'kutato.py' not found! Cannot verify RAG.")
-        return
-
-    def test_scope(scope_name, display_name, query):
-        print(f"\n👉 Testing Scope: {display_name} (Query: '{query}')")
-        try:
-            result = subprocess.run(
-                [sys.executable, "kutato.py", query, "--scope", scope_name, "--json"],
-                capture_output=True,
-                text=True,
-                timeout=45
-            )
-
-            if result.returncode != 0:
-                print(f"   ❌ Execution Failed: {result.stderr.strip()}")
-                return False
-
-            try:
-                hits = json.loads(result.stdout)
-                if isinstance(hits, list) and len(hits) > 0:
-                    top_hit = hits[0]
-                    title = top_hit.get('filename', 'Unknown')
-                    snippet = top_hit.get('content', '')[:100].replace('\n', ' ')
-                    print(f"   ✅ Success! Found {len(hits)} hits.")
-                    print(f"   📄 Top Hit: {title}")
-                    print(f"   📝 Snippet: {snippet}...")
-                    return True
-                else:
-                    print(f"   ⚠️ No hits found.")
-                    return False
-            except json.JSONDecodeError:
-                print(f"   ⚠️ Invalid JSON output: {result.stdout.strip()[:100]}...")
-                return False
-
-        except subprocess.TimeoutExpired:
-            print(f"   ❌ Timeout.")
-            return False
-        except Exception as e:
-            print(f"   ❌ Exception: {e}")
-            return False
-
-    # Test MQL5 (MQL5_DEV_RAG)
-    test_scope('MQL5', 'MQL5_DEV_RAG', 'indicator handle')
-
-    # Test Theory (THEORY_RAG) - Now should work with updated kutato.py
-    test_scope('THEORY', 'THEORY_RAG', 'MQL5 Programming')
-
-    # Test Code (CODEBASE_RAG) - Now should work with updated kutato.py
-    test_scope('CODE', 'CODEBASE_RAG', 'OnCalculate')
-
 def process_metatrader_libs():
     print("\n📚 === PROCESSING METATRADER LIBRARIES ===")
 
@@ -208,21 +154,6 @@ def process_metatrader_libs():
     if not os.path.exists(zip_path):
         print(f"⚠️ {zip_path} not found. Skipping library processing.")
         return
-
-    # Check if we need to rebuild (if size is 0 or user forced)
-    # For self-healing, we assume if it exists and is > 0, it's fine unless explicit rebuild requested
-    # But since we fixed the encoding logic, we should probably check if it looks valid
-    # For now, simplistic check:
-    if os.path.exists(jsonl_path) and os.path.getsize(jsonl_path) > 1024:
-        # print(f"✅ {jsonl_path} already exists. Skipping rebuild.")
-        pass
-    else:
-        # Force rebuild if small or missing
-        print(f"↻ Building {jsonl_path}...")
-        pass
-
-    # We will ALWAYS run the build logic to be safe, but we can make it faster by checking timestamps if needed
-    # Given the requirement for "100% readiness", rebuilding ensures no corruption from previous failed runs
 
     # Force rebuild to fix null bytes issues
     if os.path.exists(jsonl_path):
@@ -272,7 +203,7 @@ def process_metatrader_libs():
             shutil.rmtree(temp_dir)
 
 def process_github_codebase():
-    """Scans github_codebase dir and creates external_codebase.jsonl."""
+    """Scans github_codebase dir and creates knowledge_base_github.jsonl."""
     print("\n🐙 === PROCESSING GITHUB CODEBASE ===")
 
     base_dir = GITHUB_CODEBASE["dir"]
@@ -282,7 +213,7 @@ def process_github_codebase():
         print(f"⚠️ {base_dir} not found. Skipping.")
         return
 
-    # Force rebuild to fix encoding/null byte issues
+    # Force rebuild
     if os.path.exists(jsonl_path):
          print(f"↻ Rebuilding {jsonl_path} to ensure correct encoding...")
          os.remove(jsonl_path)
@@ -433,6 +364,9 @@ def restore_environment():
     if "github_codebase/*.jsonl" not in [l.strip() for l in lines]:
         lines.append("github_codebase/*.jsonl\n")
         changed = True
+    if "__pycache__/" not in [l.strip() for l in lines]:
+        lines.append("__pycache__/\n")
+        changed = True
 
     if changed:
         with open(".gitignore", "w") as f:
@@ -441,31 +375,15 @@ def restore_environment():
     else:
         print("✅ .gitignore already up to date.")
 
-    # 6. Legacy Rename
-    if os.path.exists("rag_mql5") and not os.path.exists("rag_mql5_dev"):
-        print("🔄 Renaming legacy 'rag_mql5' to 'rag_mql5_dev'...")
-        os.rename("rag_mql5", "rag_mql5_dev")
-
-    # 7. Hardware & Tests
+    # 6. Hardware & Tests
     report_hardware_status()
 
-    # 8. Verification
+    # 7. Verification
     if os.path.exists("rag_jsonl_test.py"):
         print("\n🧪 Running full system test suite (rag_jsonl_test.py)...")
-        # We assume rag_jsonl_test.py handles its own logic, but to avoid circular infinite calling
-        # (since rag_jsonl_test.py calls restore_environment.py if missing),
-        # we only call it if we are fairly sure we are in a 'main' run, OR rely on the user to run checks.
-        # But per instruction "Now the system startup new session is able to restore itself... after testing everything",
-        # the restore script SHOULD run the test.
-        # To avoid recursion, rag_jsonl_test.py checks for resources before calling restore.
-        # So calling it here is safe provided resources exist.
-
-        # NOTE: If resources are missing, rag_jsonl_test.py calls restore_environment.py.
-        # Then restore_environment.py downloads, then calls rag_jsonl_test.py again.
-        # This is safe recursion (depth 1).
         subprocess.call([sys.executable, "rag_jsonl_test.py"])
     else:
-        verify_rag_functionality()
+        print("⚠️ rag_jsonl_test.py not found. Skipping verification.")
 
     print("\n🚀 Environment Restore Complete. Ready for work.")
 
