@@ -38,6 +38,9 @@ input bool  InpSaveAsDefault  = true;           // Save as 'default.tpl' (Apply 
 //+------------------------------------------------------------------+
 void OnStart()
   {
+   // DEBUG: Show message to confirm inputs were received (if needed)
+   // MessageBox("Applying settings...", "Debug", MB_OK);
+
    long chart_id = ChartID();
 
    //--- A. Set Chart Mode to Candles (Standard)
