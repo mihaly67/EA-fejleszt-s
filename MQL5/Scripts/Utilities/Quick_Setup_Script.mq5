@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, Jules AI Agent"
 #property link      "https://github.com/your-repo"
-#property version   "1.00"
+#property version   "1.01"
 #property description "Instantly applies chart colors and saves as default.tpl"
 #property script_show_inputs
 
@@ -30,41 +30,44 @@ input bool  InpCandleFilled   = true;        // Solid Candle Bodies
 //+------------------------------------------------------------------+
 void OnStart()
   {
-   long chart_id = ChartID();
+   long chart = ChartID(); // Use simple variable name
 
    // 1. Apply Colors
-   ChartSetInteger(chart_id, CHART_COLOR_BACKGROUND, InpBgColor);
-   ChartSetInteger(chart_id, CHART_COLOR_GRID, InpGridColor);
-   ChartSetInteger(chart_id, CHART_COLOR_FOREGROUND, InpTextColor); // Text & Frame
+   ChartSetInteger(chart, CHART_COLOR_BACKGROUND, InpBgColor);
+   ChartSetInteger(chart, CHART_COLOR_GRID, InpGridColor);
+   ChartSetInteger(chart, CHART_COLOR_FOREGROUND, InpTextColor);
 
    // Candle Colors (Body)
-   ChartSetInteger(chart_id, CHART_COLOR_CANDLE_BULL, InpBullColor);
-   ChartSetInteger(chart_id, CHART_COLOR_CANDLE_BEAR, InpBearColor);
+   ChartSetInteger(chart, CHART_COLOR_CANDLE_BULL, InpBullColor);
+   ChartSetInteger(chart, CHART_COLOR_CANDLE_BEAR, InpBearColor);
 
    // Bar/Wick Colors (Outline)
-   ChartSetInteger(chart_id, CHART_COLOR_CHART_UP, InpBullColor);   // Up Bar/Wick
-   ChartSetInteger(chart_id, CHART_COLOR_CHART_DOWN, InpBearColor); // Down Bar/Wick
-   ChartSetInteger(chart_id, CHART_COLOR_CHART_LINE, InpLineColor); // Line Chart
+   ChartSetInteger(chart, CHART_COLOR_CHART_UP, InpBullColor);
+   ChartSetInteger(chart, CHART_COLOR_CHART_DOWN, InpBearColor);
+   ChartSetInteger(chart, CHART_COLOR_CHART_LINE, InpLineColor);
 
    // 2. Apply Visual Toggles
-   ChartSetInteger(chart_id, CHART_SHOW_GRID, InpShowGrid);
-   ChartSetInteger(chart_id, CHART_SHOW_PERIOD_SEPARATORS, InpShowPeriodSep);
-   ChartSetInteger(chart_id, CHART_SHOW_OHLC, InpShowOHLC);
-   ChartSetInteger(chart_id, CHART_SHOW_BID_LINE, InpShowBidAsk);
-   ChartSetInteger(chart_id, CHART_SHOW_ASK_LINE, InpShowBidAsk);
+   ChartSetInteger(chart, CHART_SHOW_GRID, (long)InpShowGrid);
+   ChartSetInteger(chart, CHART_SHOW_PERIOD_SEPARATORS, (long)InpShowPeriodSep);
+
+   // Explicit cast to long to help compiler, and ensure constant is correct
+   ChartSetInteger(chart, CHART_SHOW_OHLC, (long)InpShowOHLC);
+
+   ChartSetInteger(chart, CHART_SHOW_BID_LINE, (long)InpShowBidAsk);
+   ChartSetInteger(chart, CHART_SHOW_ASK_LINE, (long)InpShowBidAsk);
 
    // Mode: Candles
-   ChartSetInteger(chart_id, CHART_MODE, CHART_CANDLES);
+   ChartSetInteger(chart, CHART_MODE, CHART_CANDLES);
 
    // 3. Force Redraw
-   ChartRedraw(chart_id);
+   ChartRedraw(chart);
 
-   Print("Visual settings applied to Chart ID: ", chart_id);
+   Print("Visual settings applied to Chart ID: ", chart);
 
    // 4. Auto-Save as Default Template
    if(ChartSaveTemplate(0, "default.tpl"))
      {
-      Print("Successfully saved 'default.tpl'. New charts will use this theme.");
+      Print("Successfully saved 'default.tpl'.");
       MessageBox("Settings applied and saved as default.tpl!", "Quick Setup", MB_OK);
      }
    else

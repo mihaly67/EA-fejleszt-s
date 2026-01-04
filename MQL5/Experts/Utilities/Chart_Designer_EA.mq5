@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, Jules AI Agent"
 #property link      "https://github.com/your-repo"
-#property version   "1.10"
+#property version   "1.11"
 #property description "GUI Panel to design and save chart themes dynamically."
 
 // DIRECT INCLUDE FOR STABILITY (Merged Chart_Designer_UI.mqh content)
@@ -134,7 +134,7 @@ void CChartDesignerPanel::ApplyInitialSettings()
    ChartSetInteger(chart, CHART_COLOR_CANDLE_BEAR, InpBearColor);
    ChartSetInteger(chart, CHART_COLOR_CHART_DOWN, InpBearColor);
    ChartSetInteger(chart, CHART_SHOW_GRID, InpShowGrid);
-   ChartSetInteger(chart_id(), CHART_SHOW_OHLC, InpShowOHLC);
+   ChartSetInteger(chart, CHART_SHOW_OHLC, InpShowOHLC);
    ChartRedraw(chart);
 }
 
