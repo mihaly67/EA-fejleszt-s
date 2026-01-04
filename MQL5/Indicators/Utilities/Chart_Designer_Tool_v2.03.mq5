@@ -186,7 +186,7 @@ bool CChartDesignerPanel::CreateCategoryButton(CButton &btn, string name, string
 }
 bool CChartDesignerPanel::CreatePaletteButton(int index, int x, int y, int size) {
    if(!m_palette[index].Create(ChartID(), m_name+"Pal"+IntegerToString(index), 0, x, y, x+size, y+size)) return(false);
-   m_palette[index].Text("");
+   m_palette[index].Text(" "); // Space ensures button is rendered correctly
    m_palette[index].ColorBackground(PALETTE_COLORS[index]);
    Add(m_palette[index]);
    return(true);
@@ -194,7 +194,10 @@ bool CChartDesignerPanel::CreatePaletteButton(int index, int x, int y, int size)
 
 void CChartDesignerPanel::ShowPalette(bool show) {
    for(int i=0; i<25; i++) {
-      if(show) m_palette[i].Show();
+      if(show) {
+         m_palette[i].ColorBackground(PALETTE_COLORS[i]); // Force re-apply color on show
+         m_palette[i].Show();
+      }
       else m_palette[i].Hide();
    }
    ChartRedraw(ChartID());
@@ -279,15 +282,29 @@ void CChartDesignerPanel::ApplyToChart() {
 }
 
 void CChartDesignerPanel::LoadConfiguration() {
-   m_theme.bg_color = C'20,20,20'; m_theme.grid_color = clrDimGray;
-   m_theme.bull_body = clrForestGreen; m_theme.bear_body = clrFireBrick;
-   m_theme.bull_wick = clrForestGreen; m_theme.bear_wick = clrFireBrick;
-   m_theme.text_color = clrWhite;
-   m_theme.show_grid = 0; m_theme.show_ohlc = 1; m_theme.show_period_sep = 1;
+   // 1. Define Defaults
+   ChartTheme defaults;
+   defaults.bg_color = C'20,20,20'; defaults.grid_color = clrDimGray;
+   defaults.bull_body = clrForestGreen; defaults.bear_body = clrFireBrick;
+   defaults.bull_wick = clrForestGreen; defaults.bear_wick = clrFireBrick;
+   defaults.text_color = clrWhite;
+   defaults.show_grid = 0; defaults.show_ohlc = 1; defaults.show_period_sep = 1;
+   defaults.show_bid = 1; defaults.show_ask = 1;
 
+   // 2. Set memory to defaults first
+   m_theme = defaults;
+
+   // 3. Try Load
    int handle = FileOpen(CONFIG_FILENAME, FILE_READ|FILE_BIN);
    if(handle != INVALID_HANDLE) {
-      FileReadStruct(handle, m_theme);
+      if(FileReadStruct(handle, m_theme) > 0) {
+         // Validate loaded data. If partially zero/corrupt, revert to defaults.
+         // A valid theme typically won't have black (0) for everything.
+         if(m_theme.bull_body == 0 && m_theme.bear_body == 0 && m_theme.bg_color == 0) {
+             Print("Config file seems corrupt or empty (all zeros). Reverting to defaults.");
+             m_theme = defaults;
+         }
+      }
       FileClose(handle);
    }
 }
