@@ -1,33 +1,30 @@
 # Handover Report: Chart Customization & GUI Tools
-## Session Date: 2026-01-04 (Simulated)
+## Session Date: 2026-01-05 00:19
 
-### Summary of Completed Work
-1.  **Chart Configuration Script (`Configure_Chart_Template_v1.3.mq5`):**
-    *   Updated to use `input color` parameters, allowing use of the native MT5 Color Picker.
-    *   Saves settings to `default.tpl` for persistence on new charts.
-    *   **Status:** Functional. If the input dialog doesn't appear, check MT5 settings ("Confirm scripts" option).
+### Status Overview
+The session focused on creating tools for customizing MT5 chart colors. We explored Script, EA, and Indicator-based GUI approaches.
 
-2.  **Color Reference Tools:**
-    *   Created `Color_Reference_Table_v2.mq5`.
-    *   Displays a comprehensive (4-column) table of ~100 Web Colors directly on the chart.
-    *   Useful for manual code editing if the script input method fails.
+### Completed Work
+1.  **Color Reference Table (`Color_Reference_Table_v2.mq5`) - ✅ SUCCESS**
+    *   Draws a multi-column table of Web Colors on the chart.
+    *   **User Feedback:** "Table is good."
+    *   **Future Task:** Expand the "Gray/Black" section with more shades (e.g., `C'10,10,10'`, `C'20,20,20'`) for fine-tuning dark themes.
 
-3.  **GUI Tool Attempts (Chart Designer EA/Indicator):**
-    *   Developed `Chart_Designer_Tool_v2.03.mq5` (Indicator with Self-Destruct).
-    *   **Issue:** User reported buttons appeared black ("zeros").
-    *   **Fix:** Added space character to buttons and forced `ColorBackground` updates.
-    *   **Status:** Available as a backup if the Script workflow is insufficient.
+2.  **Chart Configuration Script (`Configure_Chart_Template_v1.20.mq5`) - ⚠️ PARTIAL**
+    *   Uses native `input` parameters for color selection.
+    *   **User Feedback:** The input dialog logic is unreliable in the specific environment ("Script is not good").
+    *   **Selected Workflow:** The user prefers to **manually edit the source code** of the script using the color codes found in the Reference Table. This is a valid and stable approach.
 
-### Known Issues & Workarounds
-*   **Script Inputs:** If the input window doesn't pop up, ensure "Tools -> Options -> Expert Advisors -> Allow DLL imports" (not strictly needed here but good check) and verify "Script Properties" are not bypassed by a hotkey or drag-drop setting.
-*   **Button Colors:** `CButton` background color rendering is finicky in some MT5 versions; text content is required.
+3.  **Interactive GUI Tools (`Chart_Designer_Tool_v2.03.mq5`) - 🛑 ARCHIVED**
+    *   Indicator-based utility with "Self-Destruct" logic.
+    *   Archived in favor of the simpler manual script editing workflow.
 
 ### Next Session Plan: 3D GUI Visualization
-The next session will focus on advanced GUI visualization ("3D GUI").
-*   **Resources:** `rag_mql5_dev` contains information on `Canvas`, `CGraphic`, and potentially `DirectX`/`OpenGL` integrations if available in MQL5.
-*   **Goal:** Create more visually appealing, perhaps 3D-styled interface elements for the dashboard.
+*   **Topic:** Advanced GUI visualization techniques ("3D GUI").
+*   **Resources:** Consult `mql5_dev_rag` for `Canvas`, `CGraphic`, and advanced object rendering.
+*   **Goal:** Create visually rich interface elements for the dashboard.
 
 ### File Locations
-*   `MQL5/Scripts/Configure_Chart_Template.mq5` (Primary Tool)
-*   `MQL5/Scripts/Utilities/Color_Reference_Table_v2.mq5` (Reference)
-*   `MQL5/Indicators/Utilities/Chart_Designer_Tool_v2.03.mq5` (Interactive Alternative)
+*   **Primary Tool:** `MQL5/Scripts/Configure_Chart_Template.mq5` (For manual editing)
+*   **Reference Tool:** `MQL5/Scripts/Utilities/Color_Reference_Table_v2.mq5`
+*   **Archived:** `MQL5/Indicators/Utilities/Chart_Designer_Tool_v2.03.mq5`
