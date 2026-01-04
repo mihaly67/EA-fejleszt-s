@@ -16,7 +16,7 @@
 #define CONFIG_FILENAME "ChartDesigner_Config.bin"
 
 //--- Color Palette Array (25 Colors)
-const color PALETTE_COLORS[] = {
+const color PALETTE_COLORS[25] = {
    clrBlack, clrDimGray, clrGray, clrSilver, clrWhite,
    clrMaroon, clrFireBrick, clrRed, clrTomato, clrSalmon,
    clrDarkGreen, clrForestGreen, clrGreen, clrLimeGreen, clrLime,
