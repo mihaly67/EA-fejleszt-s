@@ -1,12 +1,13 @@
 //+------------------------------------------------------------------+
-//|                                            Chart_Designer_EA.mq5 |
+//|                                     Chart_Designer_EA_v2.02.mq5 |
 //|                                  Copyright 2026, Jules AI Agent  |
 //|                                       For Hybrid Scalper System  |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, Jules AI Agent"
 #property link      "https://github.com/your-repo"
-#property version   "2.01"
+#property version   "2.02"
 #property description "GUI Panel to design and save chart themes dynamically."
+#property strict
 
 #include <Controls\Dialog.mqh>
 #include <Controls\Button.mqh>
@@ -186,7 +187,7 @@ bool CChartDesignerPanel::Create(const long chart,const string name,const int su
 //+------------------------------------------------------------------+
 bool CChartDesignerPanel::CreateCategoryButton(CButton &btn, string name, string text, int x, int y, int w, int h)
   {
-   // Accessing inherited protected members m_chart_id, m_name, m_subwin
+   // Use standard Create with specific chart and window
    if(!btn.Create(ChartID(), m_name+name, 0, x, y, x+w, y+h)) return(false);
    btn.Text(text);
    Add(btn);
@@ -392,6 +393,14 @@ int OnInit()
 void OnDeinit(const int reason)
   {
    ExtDialog.Destroy(reason);
+  }
+
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick()
+  {
+   // Necessary for EA compilation compliance
   }
 
 //+------------------------------------------------------------------+
