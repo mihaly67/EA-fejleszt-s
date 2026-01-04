@@ -5,28 +5,43 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, Jules AI Agent"
 #property link      "https://github.com/your-repo"
-#property version   "1.31"
+#property version   "2.00"
 #property description "GUI Panel to design and save chart themes dynamically."
 
 #include <Controls\Dialog.mqh>
 #include <Controls\Button.mqh>
 #include <Controls\Label.mqh>
 
-//--- Input Parameters
-input group "Initial Settings"
-input int   InpPanelX         = 60;             // Panel X Position
-input int   InpPanelY         = 300;            // Panel Y Position
-input color InpBgColor        = C'20,20,20';    // Default Background
-input color InpBullColor      = clrForestGreen; // Default Bull Color
-input color InpBearColor      = clrFireBrick;   // Default Bear Color
-input bool  InpShowGrid       = false;          // Show Grid Initially
-input bool  InpShowOHLC       = true;           // Show OHLC Initially
+//--- Configuration File Name
+#define CONFIG_FILENAME "ChartDesigner_Config.bin"
 
-//--- Palette Colors
-const color C_Greys[] = {clrBlack, C'20,20,20', C'30,30,30', C'40,40,40', clrDimGray, clrGray, clrSilver, clrWhite, clrMidnightBlue, C'10,15,25'};
-const color C_Greens[] = {clrForestGreen, clrLimeGreen, clrLime, clrGreen, clrSeaGreen, clrSpringGreen, clrMediumSeaGreen, clrDarkGreen, clrChartreuse, clrTeal};
-const color C_Reds[] = {clrFireBrick, clrRed, clrCrimson, clrTomato, clrOrangeRed, clrIndianRed, clrMaroon, clrDarkRed, clrSalmon, clrBrown};
-const color C_Blues[] = {clrDodgerBlue, clrDeepSkyBlue, clrRoyalBlue, clrBlue, clrNavy, clrSkyBlue, clrCornflowerBlue, clrSteelBlue, clrLightBlue, clrCadetBlue};
+//--- Color Palette Array (25 Colors)
+const color PALETTE_COLORS[] = {
+   clrBlack, clrDimGray, clrGray, clrSilver, clrWhite,
+   clrMaroon, clrFireBrick, clrRed, clrTomato, clrSalmon,
+   clrDarkGreen, clrForestGreen, clrGreen, clrLimeGreen, clrLime,
+   clrMidnightBlue, clrNavy, clrBlue, clrRoyalBlue, clrDodgerBlue,
+   clrIndigo, clrBlueViolet, clrMagenta, clrDeepPink, clrGold
+};
+
+//--- Theme Structure for Persistence
+struct ChartTheme {
+   color bg_color;
+   color grid_color;
+   color bull_body;
+   color bear_body;
+   color bull_wick;
+   color bear_wick;
+   color text_color;
+   bool  show_grid;
+   bool  show_ohlc;
+   bool  show_period_sep;
+   bool  show_bid;
+   bool  show_ask;
+};
+
+//--- Global Configuration Instance
+ChartTheme GlobalTheme;
 
 //+------------------------------------------------------------------+
 //| Class CChartDesignerPanel                                        |
@@ -34,210 +49,329 @@ const color C_Blues[] = {clrDodgerBlue, clrDeepSkyBlue, clrRoyalBlue, clrBlue, c
 class CChartDesignerPanel : public CAppDialog
   {
 private:
-   CLabel            m_lbl_title;
-   // Category Buttons
+   CLabel            m_lbl_status;
+
+   // Category Selection Buttons
    CButton           m_btn_bg;
-   CButton           m_btn_bull;
-   CButton           m_btn_bear;
    CButton           m_btn_grid;
+   CButton           m_btn_bull_body;
+   CButton           m_btn_bear_body;
+   CButton           m_btn_bull_wick;
+   CButton           m_btn_bear_wick;
+   CButton           m_btn_text;
 
-   // Toggles & Actions
-   CButton           m_btn_toggle_grid;
-   CButton           m_btn_toggle_ohlc;
-   CButton           m_btn_save;
+   // Toggle Buttons
+   CButton           m_tog_grid;
+   CButton           m_tog_ohlc;
+   CButton           m_tog_sep;
 
-   // Palette
-   CButton           m_palette[10];
+   // Palette Buttons (5x5 Grid)
+   CButton           m_palette[25];
+
+   // Action Buttons
+   CButton           m_btn_save_tpl;
 
    // State
-   string            m_active_category;
+   string            m_active_target; // "BG", "GRID", "BULL_BODY", etc.
 
 public:
                      CChartDesignerPanel(void);
                     ~CChartDesignerPanel(void);
    virtual bool      Create(const long chart,const string name,const int subwin,const int x1,const int y1,const int x2,const int y2);
    virtual bool      OnEvent(const int id,const long &lparam,const double &dparam,const string &sparam);
-   void              ApplyInitialSettings();
+
+   void              LoadConfiguration();
+   void              SaveConfiguration();
+   void              ApplyToChart();
 
 private:
-   void              LoadPalette(const color &colors[]);
-   void              ApplyColor(color c);
-   void              ToggleGrid(void);
-   void              ToggleOHLC(void);
-   void              SaveTemplate(void);
-   void              SetActiveCategory(string cat);
+   bool              CreateCategoryButton(CButton &btn, string name, string text, int x, int y, int w, int h);
+   bool              CreatePaletteButton(int index, int x, int y, int size);
+   void              ShowPalette(bool show);
+   void              OnPaletteClick(color c);
+   void              UpdateStatus(string text);
+   void              ResetCategoryButtons();
   };
 
-CChartDesignerPanel::CChartDesignerPanel(void) : m_active_category("BG") {}
-CChartDesignerPanel::~CChartDesignerPanel(void) {}
+//+------------------------------------------------------------------+
+//| Constructor                                                      |
+//+------------------------------------------------------------------+
+CChartDesignerPanel::CChartDesignerPanel(void) : m_active_target("")
+  {
+  }
 
+//+------------------------------------------------------------------+
+//| Destructor                                                       |
+//+------------------------------------------------------------------+
+CChartDesignerPanel::~CChartDesignerPanel(void)
+  {
+  }
+
+//+------------------------------------------------------------------+
+//| Create the Panel                                                 |
+//+------------------------------------------------------------------+
 bool CChartDesignerPanel::Create(const long chart,const string name,const int subwin,const int x1,const int y1,const int x2,const int y2)
   {
    if(!CAppDialog::Create(chart,name,subwin,x1,y1,x2,y2)) return(false);
 
-   int x_off = 10;
-   int y_off = 10;
-   int btn_h = 25;
-   int btn_w = 80;
+   // Calculate inner coordinates relative to the panel position (x1, y1)
+   // and the client area offset. CAppDialog borders are usually handled,
+   // but absolute coordinates for controls are required.
+   int x = x1 + 10;
+   int y = y1 + 40; // Offset for Title Bar
+   int w = 90;
+   int h = 25;
+   int gap = 5;
 
-   if(!m_lbl_title.Create(chart,name+"Label",subwin,x_off,y_off,x_off+150,y_off+20)) return(false);
-   m_lbl_title.Text("Chart Designer v1.31");
-   Add(m_lbl_title);
-   y_off += 30;
+   //--- Status Label
+   if(!m_lbl_status.Create(chart,name+"Status",subwin,x,y,x+200,y+20)) return(false);
+   m_lbl_status.Text("Select an element to color...");
+   Add(m_lbl_status);
+   y += 25;
 
-   //--- Category Selection Row 1
-   if(!m_btn_bg.Create(chart,name+"BtnBG",subwin,x_off,y_off,x_off+btn_w,y_off+btn_h)) return(false);
-   m_btn_bg.Text("Backgrnd");
-   m_btn_bg.ColorBackground(clrGray); // Highlight active
-   Add(m_btn_bg);
+   //--- Row 1: BG & Grid
+   CreateCategoryButton(m_btn_bg, "BtnBG", "Background", x, y, w, h);
+   CreateCategoryButton(m_btn_grid, "BtnGrid", "Grid Color", x+w+gap, y, w, h);
+   y += h + gap;
 
-   if(!m_btn_grid.Create(chart,name+"BtnGridColor",subwin,x_off+90,y_off,x_off+90+btn_w,y_off+btn_h)) return(false);
-   m_btn_grid.Text("Grid Color");
-   Add(m_btn_grid);
-   y_off += 30;
+   //--- Row 2: Bodies
+   CreateCategoryButton(m_btn_bull_body, "BtnBullBody", "Bull Body", x, y, w, h);
+   CreateCategoryButton(m_btn_bear_body, "BtnBearBody", "Bear Body", x+w+gap, y, w, h);
+   y += h + gap;
 
-   //--- Category Selection Row 2
-   if(!m_btn_bull.Create(chart,name+"BtnBull",subwin,x_off,y_off,x_off+btn_w,y_off+btn_h)) return(false);
-   m_btn_bull.Text("Bullish");
-   Add(m_btn_bull);
+   //--- Row 3: Wicks
+   CreateCategoryButton(m_btn_bull_wick, "BtnBullWick", "Bull Wick", x, y, w, h);
+   CreateCategoryButton(m_btn_bear_wick, "BtnBearWick", "Bear Wick", x+w+gap, y, w, h);
+   y += h + gap;
 
-   if(!m_btn_bear.Create(chart,name+"BtnBear",subwin,x_off+90,y_off,x_off+90+btn_w,y_off+btn_h)) return(false);
-   m_btn_bear.Text("Bearish");
-   Add(m_btn_bear);
-   y_off += 40;
+   //--- Row 4: Text
+   CreateCategoryButton(m_btn_text, "BtnText", "Text/Fg", x, y, w, h);
+   y += h + gap + 5;
 
-   //--- Palette Grid (5x2)
-   for(int i=0; i<10; i++) {
-      int col = i % 5;
+   //--- Palette Area (Initially Hidden)
+   // 5x5 Grid
+   int p_size = 30;
+   int p_gap = 2;
+   int start_y = y;
+
+   for(int i=0; i<25; i++) {
       int row = i / 5;
-      int px = x_off + (col * 35);
-      int py = y_off + (row * 35);
-      if(!m_palette[i].Create(chart,name+"Pal"+IntegerToString(i),subwin,px,py,px+30,py+30)) return(false);
-      m_palette[i].Text("");
-      Add(m_palette[i]);
+      int col = i % 5;
+      int px = x + (col * (p_size + p_gap));
+      int py = start_y + (row * (p_size + p_gap));
+      CreatePaletteButton(i, px, py, p_size);
    }
-   y_off += 80;
+
+   y += (5 * (p_size + p_gap)) + 10;
 
    //--- Toggles
-   if(!m_btn_toggle_grid.Create(chart,name+"TogGrid",subwin,x_off,y_off,x_off+btn_w,y_off+btn_h)) return(false);
-   m_btn_toggle_grid.Text("Grid On/Off");
-   Add(m_btn_toggle_grid);
+   CreateCategoryButton(m_tog_grid, "TogGrid", "Grid: ON", x, y, 60, h);
+   CreateCategoryButton(m_tog_ohlc, "TogOHLC", "OHLC: ON", x+65, y, 60, h);
+   CreateCategoryButton(m_tog_sep, "TogSep", "Sep: ON", x+130, y, 60, h);
+   y += h + gap;
 
-   if(!m_btn_toggle_ohlc.Create(chart,name+"TogOHLC",subwin,x_off+90,y_off,x_off+90+btn_w,y_off+btn_h)) return(false);
-   m_btn_toggle_ohlc.Text("OHLC");
-   Add(m_btn_toggle_ohlc);
-   y_off += 35;
+   //--- Save Button
+   if(!m_btn_save_tpl.Create(chart,name+"BtnSave",subwin,x,y,x+190,y+30)) return(false);
+   m_btn_save_tpl.Text("SAVE DEFAULT.TPL");
+   m_btn_save_tpl.ColorBackground(clrDarkBlue);
+   m_btn_save_tpl.Color(clrWhite);
+   Add(m_btn_save_tpl);
 
-   //--- Save
-   if(!m_btn_save.Create(chart,name+"BtnSave",subwin,x_off,y_off,x_off+180,y_off+40)) return(false);
-   m_btn_save.Text("SAVE DEFAULT.TPL");
-   m_btn_save.ColorBackground(clrDarkBlue);
-   m_btn_save.Color(clrWhite);
-   Add(m_btn_save);
-
-   LoadPalette(C_Greys); // Default palette
-   SetActiveCategory("BG");
+   // Initialize State
+   ShowPalette(false); // Hide palette initially
+   LoadConfiguration(); // Load from file
+   ApplyToChart();      // Apply loaded settings
 
    return(true);
   }
 
-void CChartDesignerPanel::SetActiveCategory(string cat) {
-   m_active_category = cat;
-   // Reset button visual states
-   m_btn_bg.Pressed(false); m_btn_grid.Pressed(false);
-   m_btn_bull.Pressed(false); m_btn_bear.Pressed(false);
+//+------------------------------------------------------------------+
+//| Helper: Create Category Button                                   |
+//+------------------------------------------------------------------+
+bool CChartDesignerPanel::CreateCategoryButton(CButton &btn, string name, string text, int x, int y, int w, int h)
+  {
+   if(!btn.Create(m_chart_id, m_name+name, m_subwin, x, y, x+w, y+h)) return(false);
+   btn.Text(text);
+   Add(btn);
+   return(true);
+  }
 
-   if(cat == "BG") { m_btn_bg.Pressed(true); LoadPalette(C_Greys); }
-   else if(cat == "GRID") { m_btn_grid.Pressed(true); LoadPalette(C_Greys); }
-   else if(cat == "BULL") { m_btn_bull.Pressed(true); LoadPalette(C_Greens); }
-   else if(cat == "BEAR") { m_btn_bear.Pressed(true); LoadPalette(C_Reds); }
+//+------------------------------------------------------------------+
+//| Helper: Create Palette Button                                    |
+//+------------------------------------------------------------------+
+bool CChartDesignerPanel::CreatePaletteButton(int index, int x, int y, int size)
+  {
+   if(!m_palette[index].Create(m_chart_id, m_name+"Pal"+IntegerToString(index), m_subwin, x, y, x+size, y+size)) return(false);
+   m_palette[index].Text("");
+   m_palette[index].ColorBackground(PALETTE_COLORS[index]);
+   Add(m_palette[index]);
+   return(true);
+  }
 
-   ChartRedraw();
-}
-
-void CChartDesignerPanel::LoadPalette(const color &colors[]) {
-   for(int i=0; i<10; i++) {
-      m_palette[i].ColorBackground(colors[i]);
-      // Store color in text? No, use background prop.
+//+------------------------------------------------------------------+
+//| Show/Hide Palette                                                |
+//+------------------------------------------------------------------+
+void CChartDesignerPanel::ShowPalette(bool show)
+  {
+   for(int i=0; i<25; i++) {
+      if(show) m_palette[i].Show();
+      else m_palette[i].Hide();
    }
-}
+   ChartRedraw(m_chart_id);
+  }
 
-void CChartDesignerPanel::ApplyInitialSettings()
-{
-   long chart = ChartID();
-   ChartSetInteger(chart, CHART_COLOR_BACKGROUND, InpBgColor);
-   ChartSetInteger(chart, CHART_COLOR_CANDLE_BULL, InpBullColor);
-   ChartSetInteger(chart, CHART_COLOR_CHART_UP, InpBullColor);
-   ChartSetInteger(chart, CHART_COLOR_CANDLE_BEAR, InpBearColor);
-   ChartSetInteger(chart, CHART_COLOR_CHART_DOWN, InpBearColor);
-   ChartSetInteger(chart, CHART_SHOW_GRID, (long)InpShowGrid);
-   ChartSetInteger(chart, CHART_SHOW_OHLC, (long)InpShowOHLC);
-   ChartRedraw(chart);
-}
-
-bool CChartDesignerPanel::OnEvent(const int id,const long &lparam,const double &dparam,const string &sparam) {
+//+------------------------------------------------------------------+
+//| Event Handler                                                    |
+//+------------------------------------------------------------------+
+bool CChartDesignerPanel::OnEvent(const int id,const long &lparam,const double &dparam,const string &sparam)
+  {
    if(id == CHARTEVENT_OBJECT_CLICK) {
-      Print("Click Event: ", sparam); // DEBUG
 
-      // Category Selectors
-      if(sparam == m_btn_bg.Name())   { SetActiveCategory("BG"); return(true); }
-      if(sparam == m_btn_bull.Name()) { SetActiveCategory("BULL"); return(true); }
-      if(sparam == m_btn_bear.Name()) { SetActiveCategory("BEAR"); return(true); }
-      if(sparam == m_btn_grid.Name()) { SetActiveCategory("GRID"); return(true); }
+      //--- Category Buttons
+      if(sparam == m_btn_bg.Name())        { m_active_target="BG"; ShowPalette(true); UpdateStatus("Set Background Color..."); return(true); }
+      if(sparam == m_btn_grid.Name())      { m_active_target="GRID"; ShowPalette(true); UpdateStatus("Set Grid Color..."); return(true); }
+      if(sparam == m_btn_bull_body.Name()) { m_active_target="BULL_BODY"; ShowPalette(true); UpdateStatus("Set Bull Body Color..."); return(true); }
+      if(sparam == m_btn_bear_body.Name()) { m_active_target="BEAR_BODY"; ShowPalette(true); UpdateStatus("Set Bear Body Color..."); return(true); }
+      if(sparam == m_btn_bull_wick.Name()) { m_active_target="BULL_WICK"; ShowPalette(true); UpdateStatus("Set Bull Wick Color..."); return(true); }
+      if(sparam == m_btn_bear_wick.Name()) { m_active_target="BEAR_WICK"; ShowPalette(true); UpdateStatus("Set Bear Wick Color..."); return(true); }
+      if(sparam == m_btn_text.Name())      { m_active_target="TEXT"; ShowPalette(true); UpdateStatus("Set Text Color..."); return(true); }
 
-      // Palette Clicks
-      for(int i=0; i<10; i++) {
+      //--- Palette Clicks
+      for(int i=0; i<25; i++) {
          if(sparam == m_palette[i].Name()) {
-            Print("Palette Click: ", i, " Color: ", m_palette[i].ColorBackground()); // DEBUG
-            ApplyColor(m_palette[i].ColorBackground());
+            OnPaletteClick(PALETTE_COLORS[i]);
             return(true);
          }
       }
 
-      // Toggles
-      if(sparam == m_btn_toggle_grid.Name()) { ToggleGrid(); return(true); }
-      if(sparam == m_btn_toggle_ohlc.Name()) { ToggleOHLC(); return(true); }
-      if(sparam == m_btn_save.Name()) { SaveTemplate(); return(true); }
+      //--- Toggles
+      if(sparam == m_tog_grid.Name()) {
+         GlobalTheme.show_grid = !GlobalTheme.show_grid;
+         ApplyToChart(); SaveConfiguration();
+         return(true);
+      }
+      if(sparam == m_tog_ohlc.Name()) {
+         GlobalTheme.show_ohlc = !GlobalTheme.show_ohlc;
+         ApplyToChart(); SaveConfiguration();
+         return(true);
+      }
+      if(sparam == m_tog_sep.Name()) {
+         GlobalTheme.show_period_sep = !GlobalTheme.show_period_sep;
+         ApplyToChart(); SaveConfiguration();
+         return(true);
+      }
+
+      //--- Save TPL
+      if(sparam == m_btn_save_tpl.Name()) {
+         if(ChartSaveTemplate(0, "default.tpl")) {
+             MessageBox("Template 'default.tpl' Saved!", "Success", MB_OK);
+         } else {
+             MessageBox("Failed to save template.", "Error", MB_ICONERROR);
+         }
+         return(true);
+      }
    }
    return(CAppDialog::OnEvent(id,lparam,dparam,sparam));
 }
 
-void CChartDesignerPanel::ApplyColor(color c) {
-   long cid = ChartID();
-   if(m_active_category == "BG") {
-      ChartSetInteger(cid, CHART_COLOR_BACKGROUND, c);
-   } else if(m_active_category == "BULL") {
-      ChartSetInteger(cid, CHART_COLOR_CANDLE_BULL, c);
-      ChartSetInteger(cid, CHART_COLOR_CHART_UP, c);
-   } else if(m_active_category == "BEAR") {
-      ChartSetInteger(cid, CHART_COLOR_CANDLE_BEAR, c);
-      ChartSetInteger(cid, CHART_COLOR_CHART_DOWN, c);
-   } else if(m_active_category == "GRID") {
-      ChartSetInteger(cid, CHART_COLOR_GRID, c);
+//+------------------------------------------------------------------+
+//| Handle Palette Click                                             |
+//+------------------------------------------------------------------+
+void CChartDesignerPanel::OnPaletteClick(color c)
+  {
+   if(m_active_target == "BG") GlobalTheme.bg_color = c;
+   else if(m_active_target == "GRID") GlobalTheme.grid_color = c;
+   else if(m_active_target == "BULL_BODY") GlobalTheme.bull_body = c;
+   else if(m_active_target == "BEAR_BODY") GlobalTheme.bear_body = c;
+   else if(m_active_target == "BULL_WICK") GlobalTheme.bull_wick = c;
+   else if(m_active_target == "BEAR_WICK") GlobalTheme.bear_wick = c;
+   else if(m_active_target == "TEXT") GlobalTheme.text_color = c;
+
+   ApplyToChart();
+   SaveConfiguration();
+
+   ShowPalette(false); // Hide palette
+   m_active_target = "";
+   UpdateStatus("Color Applied.");
+  }
+
+//+------------------------------------------------------------------+
+//| Update Status Label                                              |
+//+------------------------------------------------------------------+
+void CChartDesignerPanel::UpdateStatus(string text)
+  {
+   m_lbl_status.Text(text);
+  }
+
+//+------------------------------------------------------------------+
+//| Apply Settings to Chart                                          |
+//+------------------------------------------------------------------+
+void CChartDesignerPanel::ApplyToChart()
+  {
+   long chart = ChartID();
+   ChartSetInteger(chart, CHART_COLOR_BACKGROUND, GlobalTheme.bg_color);
+   ChartSetInteger(chart, CHART_COLOR_GRID, GlobalTheme.grid_color);
+   ChartSetInteger(chart, CHART_COLOR_CANDLE_BULL, GlobalTheme.bull_body);
+   ChartSetInteger(chart, CHART_COLOR_CANDLE_BEAR, GlobalTheme.bear_body);
+   ChartSetInteger(chart, CHART_COLOR_CHART_UP, GlobalTheme.bull_wick);
+   ChartSetInteger(chart, CHART_COLOR_CHART_DOWN, GlobalTheme.bear_wick);
+   ChartSetInteger(chart, CHART_COLOR_FOREGROUND, GlobalTheme.text_color);
+
+   ChartSetInteger(chart, CHART_SHOW_GRID, GlobalTheme.show_grid);
+   ChartSetInteger(chart, CHART_SHOW_OHLC, GlobalTheme.show_ohlc);
+   ChartSetInteger(chart, CHART_SHOW_PERIOD_SEP, GlobalTheme.show_period_sep);
+
+   // Update Buttons Text
+   m_tog_grid.Text(GlobalTheme.show_grid ? "Grid: ON" : "Grid: OFF");
+   m_tog_ohlc.Text(GlobalTheme.show_ohlc ? "OHLC: ON" : "OHLC: OFF");
+   m_tog_sep.Text(GlobalTheme.show_period_sep ? "Sep: ON" : "Sep: OFF");
+
+   ChartRedraw(chart);
+  }
+
+//+------------------------------------------------------------------+
+//| Load Configuration from File                                     |
+//+------------------------------------------------------------------+
+void CChartDesignerPanel::LoadConfiguration()
+  {
+   // 1. Set Defaults
+   GlobalTheme.bg_color = C'20,20,20';
+   GlobalTheme.grid_color = clrDimGray;
+   GlobalTheme.bull_body = clrForestGreen;
+   GlobalTheme.bear_body = clrFireBrick;
+   GlobalTheme.bull_wick = clrForestGreen;
+   GlobalTheme.bear_wick = clrFireBrick;
+   GlobalTheme.text_color = clrWhite;
+   GlobalTheme.show_grid = false;
+   GlobalTheme.show_ohlc = true;
+   GlobalTheme.show_period_sep = true;
+
+   // 2. Try Load
+   int handle = FileOpen(CONFIG_FILENAME, FILE_READ|FILE_BIN);
+   if(handle != INVALID_HANDLE) {
+      if(FileReadStruct(handle, GlobalTheme) > 0) {
+         Print("Configuration loaded successfully.");
+      }
+      FileClose(handle);
+   } else {
+      Print("No config file found, using defaults.");
    }
-   ChartRedraw(cid);
-}
+  }
 
-void CChartDesignerPanel::ToggleGrid(void) {
-   long cid = ChartID();
-   bool current = (bool)ChartGetInteger(cid, CHART_SHOW_GRID);
-   ChartSetInteger(cid, CHART_SHOW_GRID, !current);
-   ChartRedraw(cid);
-}
-
-void CChartDesignerPanel::ToggleOHLC(void) {
-   long cid = ChartID();
-   bool current = (bool)ChartGetInteger(cid, CHART_SHOW_OHLC);
-   ChartSetInteger(cid, CHART_SHOW_OHLC, !current);
-   ChartRedraw(cid);
-}
-
-void CChartDesignerPanel::SaveTemplate(void) {
-   if(ChartSaveTemplate(0, "default.tpl"))
-      MessageBox("Template saved as default.tpl", "Success", MB_OK);
-   else
-      MessageBox("Failed to save template", "Error", MB_ICONERROR);
-}
+//+------------------------------------------------------------------+
+//| Save Configuration to File                                       |
+//+------------------------------------------------------------------+
+void CChartDesignerPanel::SaveConfiguration()
+  {
+   int handle = FileOpen(CONFIG_FILENAME, FILE_WRITE|FILE_BIN);
+   if(handle != INVALID_HANDLE) {
+      FileWriteStruct(handle, GlobalTheme);
+      FileClose(handle);
+      Print("Configuration saved.");
+   } else {
+      Print("Error saving config: ", GetLastError());
+   }
+  }
 
 //--- GLOBAL INSTANCE
 CChartDesignerPanel ExtDialog;
@@ -247,14 +381,13 @@ CChartDesignerPanel ExtDialog;
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   if(!ExtDialog.Create(0,"ChartDesigner",0,InpPanelX,InpPanelY,InpPanelX+240,InpPanelY+350))
+   if(!ExtDialog.Create(0,"ChartDesigner",0,60,60,60+240,60+450))
       return(INIT_FAILED);
 
    ExtDialog.Run();
-   ExtDialog.ApplyInitialSettings();
-
    return(INIT_SUCCEEDED);
   }
+
 //+------------------------------------------------------------------+
 //| Expert deinitialization function                                 |
 //+------------------------------------------------------------------+
@@ -262,12 +395,7 @@ void OnDeinit(const int reason)
   {
    ExtDialog.Destroy(reason);
   }
-//+------------------------------------------------------------------+
-//| Expert tick function                                             |
-//+------------------------------------------------------------------+
-void OnTick()
-  {
-  }
+
 //+------------------------------------------------------------------+
 //| ChartEvent function                                              |
 //+------------------------------------------------------------------+
@@ -278,4 +406,3 @@ void OnChartEvent(const int id,
   {
    ExtDialog.ChartEvent(id,lparam,dparam,sparam);
   }
-//+------------------------------------------------------------------+
