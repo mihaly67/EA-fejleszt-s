@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, Jules AI Agent"
 #property link      "https://github.com/your-repo"
-#property version   "1.11"
+#property version   "1.21"
 #property description "GUI Panel to design and save chart themes dynamically."
 
 // DIRECT INCLUDE FOR STABILITY (Merged Chart_Designer_UI.mqh content)
@@ -15,12 +15,13 @@
 
 //--- Input Parameters (New Feature)
 input group "Initial Settings"
-input int   InpPanelY         = 200;            // Panel Y Position (Avoids MT5 Buttons)
+input int   InpPanelX         = 60;             // Panel X Position
+input int   InpPanelY         = 300;            // Panel Y Position (Avoids MT5 Buttons)
 input color InpBgColor        = C'20,20,20';    // Default Background
 input color InpBullColor      = clrForestGreen; // Default Bull Color
 input color InpBearColor      = clrFireBrick;   // Default Bear Color
 input bool  InpShowGrid       = false;          // Show Grid Initially
-input bool  InpShowOHLC       = false;          // Show OHLC Initially
+input bool  InpShowOHLC       = true;           // Show OHLC Initially
 
 //--- Palette Colors
 const color C_Greys[] = {clrBlack, C'20,20,20', C'30,30,30', C'40,40,40', clrDimGray, clrGray, clrSilver, clrWhite, clrMidnightBlue, C'10,15,25'};
@@ -73,7 +74,7 @@ bool CChartDesignerPanel::Create(const long chart,const string name,const int su
    int btn_w = 80;
 
    if(!m_lbl_title.Create(chart,name+"Label",subwin,x_off,y_off,x_off+150,y_off+20)) return(false);
-   m_lbl_title.Text("Chart Designer");
+   m_lbl_title.Text("Chart Designer v1.21");
    Add(m_lbl_title);
    y_off += 25;
 
@@ -133,8 +134,8 @@ void CChartDesignerPanel::ApplyInitialSettings()
    ChartSetInteger(chart, CHART_COLOR_CHART_UP, InpBullColor);
    ChartSetInteger(chart, CHART_COLOR_CANDLE_BEAR, InpBearColor);
    ChartSetInteger(chart, CHART_COLOR_CHART_DOWN, InpBearColor);
-   ChartSetInteger(chart, CHART_SHOW_GRID, InpShowGrid);
-   ChartSetInteger(chart, CHART_SHOW_OHLC, InpShowOHLC);
+   ChartSetInteger(chart, CHART_SHOW_GRID, (long)InpShowGrid);
+   ChartSetInteger(chart, CHART_SHOW_OHLC, (long)InpShowOHLC); // Restored
    ChartRedraw(chart);
 }
 
@@ -210,8 +211,8 @@ CChartDesignerPanel ExtDialog;
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   // Use InpPanelY for Y-coordinate to avoid overlap
-   if(!ExtDialog.Create(0,"ChartDesigner",0,20,InpPanelY,240,InpPanelY+330))
+   // Use InpPanelX and InpPanelY for position
+   if(!ExtDialog.Create(0,"ChartDesigner",0,InpPanelX,InpPanelY,InpPanelX+220,InpPanelY+330))
       return(INIT_FAILED);
 
    ExtDialog.Run();

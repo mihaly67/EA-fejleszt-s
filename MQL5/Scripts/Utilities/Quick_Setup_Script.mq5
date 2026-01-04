@@ -5,9 +5,12 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, Jules AI Agent"
 #property link      "https://github.com/your-repo"
-#property version   "1.01"
+#property version   "1.03"
 #property description "Instantly applies chart colors and saves as default.tpl"
 #property script_show_inputs
+
+// Include Standard Library to ensure all constants are defined
+#include <Controls\Dialog.mqh>
 
 //--- Input Parameters
 input group "Color Settings"
@@ -21,7 +24,7 @@ input color InpTextColor      = clrWhite;    // Axis Text Color
 input group "Visual Settings"
 input bool  InpShowGrid       = false;       // Show Grid
 input bool  InpShowPeriodSep  = true;        // Show Period Separators
-input bool  InpShowOHLC       = false;       // Show OHLC Dashboard
+input bool  InpShowOHLC       = true;        // Show OHLC Dashboard (Restored)
 input bool  InpShowBidAsk     = true;        // Show Bid/Ask Lines
 input bool  InpCandleFilled   = true;        // Solid Candle Bodies
 
@@ -30,7 +33,7 @@ input bool  InpCandleFilled   = true;        // Solid Candle Bodies
 //+------------------------------------------------------------------+
 void OnStart()
   {
-   long chart = ChartID(); // Use simple variable name
+   long chart = ChartID();
 
    // 1. Apply Colors
    ChartSetInteger(chart, CHART_COLOR_BACKGROUND, InpBgColor);
@@ -50,7 +53,7 @@ void OnStart()
    ChartSetInteger(chart, CHART_SHOW_GRID, (long)InpShowGrid);
    ChartSetInteger(chart, CHART_SHOW_PERIOD_SEPARATORS, (long)InpShowPeriodSep);
 
-   // Explicit cast to long to help compiler, and ensure constant is correct
+   // Restored OHLC property with explicit cast
    ChartSetInteger(chart, CHART_SHOW_OHLC, (long)InpShowOHLC);
 
    ChartSetInteger(chart, CHART_SHOW_BID_LINE, (long)InpShowBidAsk);
