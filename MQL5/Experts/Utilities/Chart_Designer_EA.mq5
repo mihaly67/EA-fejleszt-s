@@ -5,13 +5,22 @@
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, Jules AI Agent"
 #property link      "https://github.com/your-repo"
-#property version   "1.00"
+#property version   "1.10"
 #property description "GUI Panel to design and save chart themes dynamically."
 
 // DIRECT INCLUDE FOR STABILITY (Merged Chart_Designer_UI.mqh content)
 #include <Controls\Dialog.mqh>
 #include <Controls\Button.mqh>
 #include <Controls\Label.mqh>
+
+//--- Input Parameters (New Feature)
+input group "Initial Settings"
+input int   InpPanelY         = 200;            // Panel Y Position (Avoids MT5 Buttons)
+input color InpBgColor        = C'20,20,20';    // Default Background
+input color InpBullColor      = clrForestGreen; // Default Bull Color
+input color InpBearColor      = clrFireBrick;   // Default Bear Color
+input bool  InpShowGrid       = false;          // Show Grid Initially
+input bool  InpShowOHLC       = false;          // Show OHLC Initially
 
 //--- Palette Colors
 const color C_Greys[] = {clrBlack, C'20,20,20', C'30,30,30', C'40,40,40', clrDimGray, clrGray, clrSilver, clrWhite, clrMidnightBlue, C'10,15,25'};
@@ -41,6 +50,7 @@ public:
                     ~CChartDesignerPanel(void);
    virtual bool      Create(const long chart,const string name,const int subwin,const int x1,const int y1,const int x2,const int y2);
    virtual bool      OnEvent(const int id,const long &lparam,const double &dparam,const string &sparam);
+   void              ApplyInitialSettings();
 
 private:
    void              LoadPalette(const color &colors[]);
@@ -115,6 +125,19 @@ bool CChartDesignerPanel::Create(const long chart,const string name,const int su
    return(true);
   }
 
+void CChartDesignerPanel::ApplyInitialSettings()
+{
+   long chart = ChartID();
+   ChartSetInteger(chart, CHART_COLOR_BACKGROUND, InpBgColor);
+   ChartSetInteger(chart, CHART_COLOR_CANDLE_BULL, InpBullColor);
+   ChartSetInteger(chart, CHART_COLOR_CHART_UP, InpBullColor);
+   ChartSetInteger(chart, CHART_COLOR_CANDLE_BEAR, InpBearColor);
+   ChartSetInteger(chart, CHART_COLOR_CHART_DOWN, InpBearColor);
+   ChartSetInteger(chart, CHART_SHOW_GRID, InpShowGrid);
+   ChartSetInteger(chart_id(), CHART_SHOW_OHLC, InpShowOHLC);
+   ChartRedraw(chart);
+}
+
 void CChartDesignerPanel::LoadPalette(const color &colors[]) {
    for(int i=0; i<10; i++) {
       m_palette[i].ColorBackground(colors[i]);
@@ -187,10 +210,15 @@ CChartDesignerPanel ExtDialog;
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   if(!ExtDialog.Create(0,"ChartDesigner",0,20,20,240,350))
+   // Use InpPanelY for Y-coordinate to avoid overlap
+   if(!ExtDialog.Create(0,"ChartDesigner",0,20,InpPanelY,240,InpPanelY+330))
       return(INIT_FAILED);
 
    ExtDialog.Run();
+
+   // Apply Initial Input Settings
+   ExtDialog.ApplyInitialSettings();
+
    return(INIT_SUCCEEDED);
   }
 //+------------------------------------------------------------------+
