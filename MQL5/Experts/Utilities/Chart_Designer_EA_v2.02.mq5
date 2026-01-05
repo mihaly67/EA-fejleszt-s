@@ -1,12 +1,12 @@
 //+------------------------------------------------------------------+
-//|                                     Chart_Designer_EA_v2.02.mq5 |
+//|                                     Chart_Designer_EA_v2.03.mq5 |
 //|                                  Copyright 2026, Jules AI Agent  |
 //|                                       For Hybrid Scalper System  |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, Jules AI Agent"
 #property link      "https://github.com/your-repo"
-#property version   "2.02"
-#property description "GUI Panel to design and save chart themes dynamically."
+#property version   "2.03"
+#property description "GUI Panel to design and save chart themes dynamically. Pro Palette Edition."
 #property strict
 
 #include <Controls\Dialog.mqh>
@@ -16,18 +16,29 @@
 //--- Configuration File Name
 #define CONFIG_FILENAME "ChartDesigner_Config.bin"
 
-//--- Color Palette Array (25 Colors) - Soft Professional Theme Optimized
-color PALETTE_COLORS[25] = {
-   // Row 1: Backgrounds (Dark to Black)
-   C'10,10,10', C'20,20,20', C'30,30,30', clrBlack, clrMidnightBlue,
-   // Row 2: Bullish (Green Variants)
-   clrForestGreen, clrLimeGreen, clrGreen, clrSeaGreen, clrChartreuse,
-   // Row 3: Bearish (Red Variants)
-   clrFireBrick, clrRed, clrMaroon, clrCrimson, clrTomato,
-   // Row 4: Neutral/Grid (Grays to White)
-   clrDimGray, clrGray, clrSilver, clrLightGray, clrWhite,
-   // Row 5: Accents/Text
-   clrGold, clrOrange, clrDeepPink, clrBlueViolet, clrRoyalBlue
+//--- Expanded Color Palette (100 Colors) - Soft Professional & Gradients
+// Organized in rows of 10 for the grid
+color PALETTE_COLORS[100] = {
+   // Row 1: Grayscale (Dark to Light)
+   C'0,0,0', C'10,10,10', C'20,20,20', C'30,30,30', C'40,40,40', C'60,60,60', clrDimGray, clrGray, clrSilver, clrWhite,
+   // Row 2: Reds/Pinks (Bearish)
+   C'40,0,0', clrMaroon, clrDarkRed, clrFireBrick, clrRed, clrCrimson, clrTomato, clrSalmon, clrHotPink, clrDeepPink,
+   // Row 3: Greens (Bullish)
+   C'0,40,0', clrDarkGreen, clrForestGreen, clrGreen, clrLimeGreen, clrLime, clrChartreuse, clrSpringGreen, clrSeaGreen, clrMediumSeaGreen,
+   // Row 4: Blues (Dark to Light)
+   C'0,0,40', clrMidnightBlue, clrNavy, clrDarkBlue, clrMediumBlue, clrBlue, clrRoyalBlue, clrDodgerBlue, clrDeepSkyBlue, clrCyan,
+   // Row 5: Purples/Violets
+   clrIndigo, clrPurple, clrDarkViolet, clrBlueViolet, clrDarkOrchid, clrMediumOrchid, clrMagenta, clrFuchsia, clrViolet, clrPlum,
+   // Row 6: Yellows/Oranges
+   clrSaddleBrown, clrSienna, clrChocolate, clrDarkOrange, clrOrangeRed, clrOrange, clrGold, clrYellow, clrKhaki, clrLemonChiffon,
+   // Row 7: Teals/Cyans
+   clrTeal, clrDarkCyan, clrLightSeaGreen, clrCadetBlue, clrDarkTurquoise, clrMediumTurquoise, clrTurquoise, clrAqua, clrAquamarine, clrPaleTurquoise,
+   // Row 8: Browns/Beiges (Earth Tones)
+   clrBrown, clrRosyBrown, clrIndianRed, clrSandyBrown, clrTan, clrBurlyWood, clrWheat, clrNavajoWhite, clrMoccasin, clrBisque,
+   // Row 9: Dark "Pro" Background Candidates
+   C'5,5,10', C'10,15,20', C'15,10,15', C'5,20,20', C'18,18,18', C'25,25,25', C'35,35,40', C'45,45,50', C'20,30,40', C'40,30,20',
+   // Row 10: Special Markers
+   clrAliceBlue, clrMintCream, clrHoneydew, clrIvory, clrBeige, clrLavender, clrLavenderBlush, clrMistyRose, clrSnow, clrGhostWhite
 };
 
 //--- Theme Structure for Persistence
@@ -39,7 +50,7 @@ struct ChartTheme {
    color bull_wick;
    color bear_wick;
    color text_color;
-   int   show_grid;       // Use int for easier binary compatibility
+   int   show_grid;
    int   show_ohlc;
    int   show_period_sep;
    int   show_bid;
@@ -68,18 +79,19 @@ private:
    CButton           m_tog_ohlc;
    CButton           m_tog_sep;
 
-   // Palette Buttons (5x5 Grid)
-   CButton           m_palette[25];
+   // Palette Buttons (100 Colors)
+   CButton           m_palette[100];
    CButton           m_btn_close_palette;
 
    // Action Buttons
    CButton           m_btn_save_tpl;
+   CButton           m_btn_close_panel;
 
    // State
-   string            m_active_target; // "BG", "GRID", "BULL_BODY", etc.
-   ChartTheme        m_theme;         // Local theme instance
+   string            m_active_target;
+   ChartTheme        m_theme;
 
-   // Layout Base Coordinates (Absolute)
+   // Layout
    int               m_base_x;
    int               m_base_y;
 
@@ -122,26 +134,22 @@ bool CChartDesignerPanel::Create(const long chart,const string name,const int su
   {
    if(!CAppDialog::Create(chart,name,subwin,x1,y1,x2,y2)) return(false);
 
-   // Store base coordinates for absolute positioning calculation
    m_base_x = x1;
    m_base_y = y1;
 
-   // Internal Layout Offsets (Relative to Panel Top-Left)
    int x = 10;
-   int y = 30; // Leave room for title bar
+   int y = 30; // Title bar offset
    int w = 90;
    int h = 25;
    int gap = 5;
 
    //--- Status Label
-   // Create uses Absolute Coordinates
-   if(!m_lbl_status.Create(chart,name+"Status",subwin, m_base_x + x, m_base_y + y, m_base_x + x + 200, m_base_y + y + 20)) return(false);
+   if(!m_lbl_status.Create(chart,name+"Status",subwin, m_base_x + x, m_base_y + y, m_base_x + x + 250, m_base_y + y + 20)) return(false);
    m_lbl_status.Text("Select an element to color...");
    Add(m_lbl_status);
-   y += 30;
+   y += 25;
 
    //--- Row 1: BG & Grid
-   // CreateCategoryButton expects ABSOLUTE coordinates for Create() call
    CreateCategoryButton(m_btn_bg, "BtnBG", "Background", m_base_x + x, m_base_y + y, w, h);
    CreateCategoryButton(m_btn_grid, "BtnGrid", "Grid Color", m_base_x + x+w+gap, m_base_y + y, w, h);
    y += h + gap;
@@ -160,25 +168,23 @@ bool CChartDesignerPanel::Create(const long chart,const string name,const int su
    CreateCategoryButton(m_btn_text, "BtnText", "Text/Fg", m_base_x + x, m_base_y + y, w, h);
    y += h + gap + 10;
 
-   //--- Palette Area (Initially Hidden)
-   // 5x5 Grid
-   int p_size = 30;
+   //--- Palette Area (100 Colors - 10x10 Grid)
+   int p_size = 22; // Smaller size to fit
    int p_gap = 2;
-   int start_y = y; // Relative Y start of palette
+   int start_y = y;
 
-   for(int i=0; i<25; i++) {
-      int row = i / 5;
-      int col = i % 5;
+   for(int i=0; i<100; i++) {
+      int row = i / 10; // 10 columns
+      int col = i % 10;
 
-      // Calculate Absolute Coordinates for each palette button
       int abs_px = m_base_x + x + (col * (p_size + p_gap));
       int abs_py = m_base_y + start_y + (row * (p_size + p_gap));
 
       CreatePaletteButton(i, abs_px, abs_py, p_size);
    }
 
-   // Palette Close Button (Small X)
-   int close_x = m_base_x + x + (5*(p_size+p_gap)) + 5;
+   // Palette Close Button
+   int close_x = m_base_x + x + (10*(p_size+p_gap)) + 5;
    int close_y = m_base_y + start_y;
    if(!m_btn_close_palette.Create(chart, m_name+"PalClose", subwin, close_x, close_y, close_x + 20, close_y + 20)) return(false);
    m_btn_close_palette.Text("X");
@@ -186,7 +192,7 @@ bool CChartDesignerPanel::Create(const long chart,const string name,const int su
    m_btn_close_palette.Color(clrWhite);
    Add(m_btn_close_palette);
 
-   y += (5 * (p_size + p_gap)) + 15;
+   y += (10 * (p_size + p_gap)) + 15;
 
    //--- Toggles
    CreateCategoryButton(m_tog_grid, "TogGrid", "Grid: ON", m_base_x + x, m_base_y + y, 60, h);
@@ -202,47 +208,39 @@ bool CChartDesignerPanel::Create(const long chart,const string name,const int su
    Add(m_btn_save_tpl);
 
    // Initialize State
-   ShowPalette(false); // Hide palette initially
-   LoadConfiguration(); // Load from file
-   ApplyToChart();      // Apply loaded settings
+   ShowPalette(false);
+   LoadConfiguration();
+   ApplyToChart();
 
    return(true);
   }
 
 //+------------------------------------------------------------------+
-//| Helper: Create Category Button                                   |
+//| Helpers                                                          |
 //+------------------------------------------------------------------+
 bool CChartDesignerPanel::CreateCategoryButton(CButton &btn, string name, string text, int x, int y, int w, int h)
   {
-   // x, y MUST be Absolute Coordinates here
    if(!btn.Create(ChartID(), m_name+name, 0, x, y, x+w, y+h)) return(false);
    btn.Text(text);
    Add(btn);
    return(true);
   }
 
-//+------------------------------------------------------------------+
-//| Helper: Create Palette Button                                    |
-//+------------------------------------------------------------------+
 bool CChartDesignerPanel::CreatePaletteButton(int index, int x, int y, int size)
   {
-   // x, y MUST be Absolute Coordinates here
    if(!m_palette[index].Create(ChartID(), m_name+"Pal"+IntegerToString(index), 0, x, y, x+size, y+size)) return(false);
-   m_palette[index].Text("");
+   m_palette[index].Text(""); // Space to ensure clickability? User said text empty is ok but visibility...
    m_palette[index].ColorBackground(PALETTE_COLORS[index]);
    Add(m_palette[index]);
    return(true);
   }
 
-//+------------------------------------------------------------------+
-//| Show/Hide Palette                                                |
-//+------------------------------------------------------------------+
 void CChartDesignerPanel::ShowPalette(bool show)
   {
-   for(int i=0; i<25; i++) {
+   for(int i=0; i<100; i++) {
       if(show) {
          m_palette[i].Show();
-         m_palette[i].BringToTop(); // Ensure visible over other elements
+         m_palette[i].BringToTop();
       }
       else m_palette[i].Hide();
    }
@@ -262,7 +260,7 @@ bool CChartDesignerPanel::OnEvent(const int id,const long &lparam,const double &
   {
    if(id == CHARTEVENT_OBJECT_CLICK) {
 
-      //--- Category Buttons
+      // Category Logic
       if(sparam == m_btn_bg.Name())        { m_active_target="BG"; ShowPalette(true); UpdateStatus("Set Background Color..."); return(true); }
       if(sparam == m_btn_grid.Name())      { m_active_target="GRID"; ShowPalette(true); UpdateStatus("Set Grid Color..."); return(true); }
       if(sparam == m_btn_bull_body.Name()) { m_active_target="BULL_BODY"; ShowPalette(true); UpdateStatus("Set Bull Body Color..."); return(true); }
@@ -271,50 +269,31 @@ bool CChartDesignerPanel::OnEvent(const int id,const long &lparam,const double &
       if(sparam == m_btn_bear_wick.Name()) { m_active_target="BEAR_WICK"; ShowPalette(true); UpdateStatus("Set Bear Wick Color..."); return(true); }
       if(sparam == m_btn_text.Name())      { m_active_target="TEXT"; ShowPalette(true); UpdateStatus("Set Text Color..."); return(true); }
 
-      //--- Palette Close
       if(sparam == m_btn_close_palette.Name()) { ShowPalette(false); UpdateStatus("Palette Closed."); return(true); }
 
-      //--- Palette Clicks
-      for(int i=0; i<25; i++) {
+      // Palette Logic
+      for(int i=0; i<100; i++) {
          if(sparam == m_palette[i].Name()) {
             OnPaletteClick(PALETTE_COLORS[i]);
             return(true);
          }
       }
 
-      //--- Toggles
-      if(sparam == m_tog_grid.Name()) {
-         m_theme.show_grid = !m_theme.show_grid;
-         ApplyToChart(); SaveConfiguration();
-         return(true);
-      }
-      if(sparam == m_tog_ohlc.Name()) {
-         m_theme.show_ohlc = !m_theme.show_ohlc;
-         ApplyToChart(); SaveConfiguration();
-         return(true);
-      }
-      if(sparam == m_tog_sep.Name()) {
-         m_theme.show_period_sep = !m_theme.show_period_sep;
-         ApplyToChart(); SaveConfiguration();
-         return(true);
-      }
+      // Toggles
+      if(sparam == m_tog_grid.Name()) { m_theme.show_grid = !m_theme.show_grid; ApplyToChart(); SaveConfiguration(); return(true); }
+      if(sparam == m_tog_ohlc.Name()) { m_theme.show_ohlc = !m_theme.show_ohlc; ApplyToChart(); SaveConfiguration(); return(true); }
+      if(sparam == m_tog_sep.Name())  { m_theme.show_period_sep = !m_theme.show_period_sep; ApplyToChart(); SaveConfiguration(); return(true); }
 
-      //--- Save TPL
+      // Save
       if(sparam == m_btn_save_tpl.Name()) {
-         if(ChartSaveTemplate(0, "default.tpl")) {
-             MessageBox("Template 'default.tpl' Saved!", "Success", MB_OK);
-         } else {
-             MessageBox("Failed to save template.", "Error", MB_ICONERROR);
-         }
+         if(ChartSaveTemplate(0, "default.tpl")) MessageBox("Template 'default.tpl' Saved!", "Success", MB_OK);
+         else MessageBox("Failed to save template.", "Error", MB_ICONERROR);
          return(true);
       }
    }
    return(CAppDialog::OnEvent(id,lparam,dparam,sparam));
 }
 
-//+------------------------------------------------------------------+
-//| Handle Palette Click                                             |
-//+------------------------------------------------------------------+
 void CChartDesignerPanel::OnPaletteClick(color c)
   {
    if(m_active_target == "BG") m_theme.bg_color = c;
@@ -327,23 +306,16 @@ void CChartDesignerPanel::OnPaletteClick(color c)
 
    ApplyToChart();
    SaveConfiguration();
-
-   ShowPalette(false); // Hide palette
+   ShowPalette(false);
    m_active_target = "";
    UpdateStatus("Color Applied.");
   }
 
-//+------------------------------------------------------------------+
-//| Update Status Label                                              |
-//+------------------------------------------------------------------+
 void CChartDesignerPanel::UpdateStatus(string text)
   {
    m_lbl_status.Text(text);
   }
 
-//+------------------------------------------------------------------+
-//| Apply Settings to Chart                                          |
-//+------------------------------------------------------------------+
 void CChartDesignerPanel::ApplyToChart()
   {
    long chart = ChartID();
@@ -354,28 +326,18 @@ void CChartDesignerPanel::ApplyToChart()
    ChartSetInteger(chart, CHART_COLOR_CHART_UP, m_theme.bull_wick);
    ChartSetInteger(chart, CHART_COLOR_CHART_DOWN, m_theme.bear_wick);
    ChartSetInteger(chart, CHART_COLOR_FOREGROUND, m_theme.text_color);
-
    ChartSetInteger(chart, CHART_SHOW_GRID, (long)m_theme.show_grid);
    ChartSetInteger(chart, CHART_SHOW_OHLC, (long)m_theme.show_ohlc);
    ChartSetInteger(chart, CHART_SHOW_PERIOD_SEP, (long)m_theme.show_period_sep);
-
-   // Mode: Candles
    ChartSetInteger(chart, CHART_MODE, CHART_CANDLES);
-
-   // Update Buttons Text
    m_tog_grid.Text(m_theme.show_grid ? "Grid: ON" : "Grid: OFF");
    m_tog_ohlc.Text(m_theme.show_ohlc ? "OHLC: ON" : "OHLC: OFF");
    m_tog_sep.Text(m_theme.show_period_sep ? "Sep: ON" : "Sep: OFF");
-
    ChartRedraw(chart);
   }
 
-//+------------------------------------------------------------------+
-//| Load Configuration from File                                     |
-//+------------------------------------------------------------------+
 void CChartDesignerPanel::LoadConfiguration()
   {
-   // 1. Set Defaults (Soft Professional)
    m_theme.bg_color = C'20,20,20';
    m_theme.grid_color = clrDimGray;
    m_theme.bull_body = clrForestGreen;
@@ -387,34 +349,22 @@ void CChartDesignerPanel::LoadConfiguration()
    m_theme.show_ohlc = 1;
    m_theme.show_period_sep = 1;
 
-   // 2. Try Load
    int handle = FileOpen(CONFIG_FILENAME, FILE_READ|FILE_BIN);
    if(handle != INVALID_HANDLE) {
-      if(FileReadStruct(handle, m_theme) > 0) {
-         Print("Configuration loaded successfully.");
-      }
+      if(FileReadStruct(handle, m_theme) > 0) Print("Config loaded.");
       FileClose(handle);
-   } else {
-      Print("No config file found, using defaults.");
    }
   }
 
-//+------------------------------------------------------------------+
-//| Save Configuration to File                                       |
-//+------------------------------------------------------------------+
 void CChartDesignerPanel::SaveConfiguration()
   {
    int handle = FileOpen(CONFIG_FILENAME, FILE_WRITE|FILE_BIN);
    if(handle != INVALID_HANDLE) {
       FileWriteStruct(handle, m_theme);
       FileClose(handle);
-      Print("Configuration saved.");
-   } else {
-      Print("Error saving config: ", GetLastError());
    }
   }
 
-//--- GLOBAL INSTANCE
 CChartDesignerPanel ExtDialog;
 
 //+------------------------------------------------------------------+
@@ -422,33 +372,34 @@ CChartDesignerPanel ExtDialog;
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   // Safe coordinates for default creation
-   if(!ExtDialog.Create(0,"ChartDesigner",0,60,60,60+240,60+500))
+   // Dynamic Positioning: Top-Right
+   long chart_w = ChartGetInteger(0, CHART_WIDTH_IN_PIXELS);
+   // Panel Width approx 300px
+   int width = 280;
+   int height = 550; // Taller for 100 colors
+
+   // Position at Top Right: x = Width - PanelWidth - Margin
+   int x1 = (int)chart_w - width - 10;
+   int y1 = 40; // Top margin
+
+   if(x1 < 0) x1 = 10; // Safety for small windows
+
+   if(!ExtDialog.Create(0,"ChartDesigner",0,x1,y1,x1+width,y1+height))
       return(INIT_FAILED);
 
    ExtDialog.Run();
    return(INIT_SUCCEEDED);
   }
 
-//+------------------------------------------------------------------+
-//| Expert deinitialization function                                 |
-//+------------------------------------------------------------------+
 void OnDeinit(const int reason)
   {
    ExtDialog.Destroy(reason);
   }
 
-//+------------------------------------------------------------------+
-//| Expert tick function                                             |
-//+------------------------------------------------------------------+
 void OnTick()
   {
-   // Necessary for EA compilation compliance
   }
 
-//+------------------------------------------------------------------+
-//| ChartEvent function                                              |
-//+------------------------------------------------------------------+
 void OnChartEvent(const int id,
                   const long &lparam,
                   const double &dparam,
