@@ -153,12 +153,19 @@ bool CSimplePanel::CreateCategoryButton(CButton &btn, string name, string text, 
 
 bool CSimplePanel::CreatePaletteButton(int index, int x, int y, int size)
 {
+   // Use standard Create for positioning relative to dialog client area
    if(!m_palette[index].Create(m_chart_id, m_name+"Pal"+IntegerToString(index), m_subwin, x, y, x+size, y+size)) return(false);
-   m_palette[index].Text(" "); // Space needed for visibility
+
+   m_palette[index].Text(" "); // Space needed for button visibility
    m_palette[index].ColorBackground(PALETTE_COLORS[index]);
+
+   // Add to container
    Add(GetPointer(m_palette[index]));
-   // Re-apply background color after adding to dialog ensures visibility
+
+   // FORCE VISIBILITY: Standard Library often hides new controls or resets colors
+   m_palette[index].Show();
    m_palette[index].ColorBackground(PALETTE_COLORS[index]);
+
    return(true);
 }
 
