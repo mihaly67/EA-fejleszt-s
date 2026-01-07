@@ -1,0 +1,28 @@
+🟢 Status Summary
+Chart Designer Panel: ✅ SUCCESS (v1.05).
+
+Fix: "Hybrid Event Handling" implemented. CHARTEVENT_OBJECT_CLICK is manually dispatched alongside CAppDialog::OnEvent.
+Result: Palette buttons are responsive.
+State: FROZEN (Jegelve) as requested. Code is stable.
+Hybrid Context Indicator: ⚠️ PARTIAL (v3.12).
+
+Logic: Moved from Fractal to Dual ZigZag (Micro vs Secondary).
+Micro Pivot (P1): ✅ WORKS. Tracks short-term swings (Depth 5) correctly.
+Secondary Pivot (P2): 🔴 FAILED. Lines are not visible or inconsistent.
+Fibo: ✅ Disabled as requested.
+💡 User's Strategic Proposal (Verified)
+"Két különálló Pivot Indikátor" (Two Separate Pivot Indicators)
+
+Concept: Instead of forcing two complex ZigZag logic sets (Fast & Slow) into one OnCalculate loop (which causes conflict/visibility issues), implement them as strictly separated logical units.
+Agent Opinion: This is the correct engineering path. The complexity of managing sparse ZigZag buffers for two different depths in a single pass is error-prone. Separating them guarantees that the "Secondary" calculation is not overwritten or ignored by the "Micro" optimization limits.
+📋 Action Plan for Next Session
+Refactor Strategy: Do not patch v3.12. Start HybridContextIndicator_v3.13.
+Implementation Options:
+Option A (Internal Separation): Create two separate private methods: CalculateMicro() and CalculateSecondary(), each managing its own separate ZigZag array instances, completely checking bounds independently.
+Option B (Modular): Create a standalone ZigZag_Engine.mqh class and instantiate it twice (MicroEngine, SecEngine).
+Visuals: Ensure Secondary Pivot uses the explicit styles defined in v3.12 inputs.
+📂 Key Files
+MQL5/Experts/Utilities/Chart_Designer_Simple_Panel_v1.05.mq5 (Final Stable Panel)
+Factory_System/Indicators/HybridContextIndicator_v3.12.mq5 (Current Beta - Micro OK, Sec Bad)
+kutato_ugynok_v3.py (Fixed Research Tool)
+Signed: Jules (AI Agent)
