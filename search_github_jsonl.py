@@ -8,7 +8,8 @@ import faiss
 from sentence_transformers import SentenceTransformer
 
 # Config
-JSONL_PATH = 'github_codebase/external_codebase.jsonl'
+# CORRECTED PATH based on Memory/Restore output
+JSONL_PATH = 'github_codebase/knowledge_base_github.jsonl'
 MODEL_NAME = 'all-MiniLM-L6-v2' # Fast and sufficient
 
 class LocalSearcher:
@@ -25,12 +26,20 @@ class LocalSearcher:
                 for line in f:
                     try:
                         entry = json.loads(line)
+                        # MEMORY: The file uses 'filename' instead of 'path'
+                        # We try both to be safe
+                        path = entry.get('filename') or entry.get('path') or "unknown"
+                        content = entry.get('content') or entry.get('code') or ""
+
+                        if not content:
+                            continue
+
                         # Create a searchable text chunk: Path + Content snippet
                         # We truncate content to avoid token limits during encoding
-                        text = f"File: {entry['path']}\nContent: {entry['content'][:1000]}"
+                        text = f"File: {path}\nContent: {content[:1000]}"
                         self.documents.append({
-                            'path': entry['path'],
-                            'content': entry['content'],
+                            'path': path,
+                            'content': content,
                             'text': text
                         })
                     except json.JSONDecodeError:
@@ -64,7 +73,7 @@ class LocalSearcher:
             doc = self.documents[idx]
             results.append({
                 'path': doc['path'],
-                'snippet': doc['content'][:1000], # First 1000 chars
+                'snippet': doc['content'][:2000], # First 2000 chars for context
                 'score': float(1 / (1 + D[0][j]))
             })
         return results
