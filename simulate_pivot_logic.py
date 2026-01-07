@@ -1,51 +1,114 @@
-from datetime import datetime, timedelta
+import random
 
-def get_start_of_bar(dt, timeframe_minutes):
-    total_minutes = dt.hour * 60 + dt.minute
-    start_minute = (total_minutes // timeframe_minutes) * timeframe_minutes
-    return dt.replace(hour=start_minute // 60, minute=start_minute % 60, second=0, microsecond=0)
+# --- CONFIG ---
+DATA_LEN = 1000
+MICRO_DEPTH = 5
+SEC_DEPTH = 30
+LOOKBACK = 200
 
-def simulate():
-    # Simulation Start: 10:00 to 11:00
-    base_time = datetime(2023, 10, 27, 10, 0, 0)
+# --- MOCK DATA ---
+highs = [100.0] * DATA_LEN
+lows = [90.0] * DATA_LEN
+closes = [95.0] * DATA_LEN
 
-    print(f"{'Time':<10} | {'Pri(M15) Ref':<15} | {'Sec(M30) Ref':<15} | {'Ter(H1) Ref':<15} | {'Note'}")
-    print("-" * 80)
+# Generate random walk
+for i in range(1, DATA_LEN):
+    delta = (random.random() - 0.5) * 2.0
+    closes[i] = closes[i-1] + delta
+    highs[i] = closes[i] + random.random()
+    lows[i] = closes[i] - random.random()
 
-    prev_pri = None
-    prev_sec = None
+# --- ALGORITHM REPLICATION ---
 
-    for i in range(65): # 65 minutes
-        current_time = base_time + timedelta(minutes=i)
+def calculate_zigzag(depth, length, h, l):
+    zz_h = [0.0] * length
+    zz_l = [0.0] * length
 
-        # 1. Primary (M15)
-        # In code: iBarShift(..., current_time) -> returns index of M15 bar containing current_time.
-        # iTime(...) returns the OPEN time of that bar.
-        t_pri = get_start_of_bar(current_time, 15)
+    # Simple highest/lowest scan logic (ignoring Deviation/Backstep for simplicity in this test)
+    # We just want to see if the loops work.
+    for i in range(depth, length):
+        # High Check
+        local_h = h[i]
+        is_high = True
+        for k in range(1, depth + 1):
+            if h[i-k] > local_h:
+                is_high = False; break
+        if is_high: zz_h[i] = local_h
 
-        # 2. Secondary (M30) - Cascading Reference
-        # In code: iBarShift(..., t_pri) -> returns index of M30 bar containing t_pri.
-        # iTime(...) returns the OPEN time of that bar.
-        t_sec = get_start_of_bar(t_pri, 30)
+        # Low Check
+        local_l = l[i]
+        is_low = True
+        for k in range(1, depth + 1):
+            if l[i-k] < local_l:
+                is_low = False; break
+        if is_low: zz_l[i] = local_l
 
-        # 3. Tertiary (H1) - Cascading Reference
-        t_ter = get_start_of_bar(t_pri, 60)
+    return zz_h, zz_l
 
-        # Formatting
-        time_s = current_time.strftime("%H:%M")
-        pri_s = t_pri.strftime("%H:%M")
-        sec_s = t_sec.strftime("%H:%M")
-        ter_s = t_ter.strftime("%H:%M")
+def calculate_pivots(zz_h, zz_l, length):
+    r1 = [0.0] * length
+    s1 = [0.0] * length
+    p = [0.0] * length
 
-        note = ""
-        if pri_s != prev_pri and prev_pri is not None:
-            note = "<< Pri Step"
-        if sec_s != prev_sec and prev_sec is not None:
-            note += " << Sec Step"
+    for i in range(length):
+        # Lookback Logic
+        search_limit = 200
 
-        print(f"{time_s:<10} | {pri_s:<15} | {sec_s:<15} | {ter_s:<15} | {note}")
+        curr_r = 0.0
+        # Find R1
+        for k in range(i, max(-1, i - search_limit), -1):
+            if zz_h[k] != 0:
+                curr_r = zz_h[k]
+                break
 
-        prev_pri = pri_s
-        prev_sec = sec_s
+        curr_s = 0.0
+        # Find S1
+        for k in range(i, max(-1, i - search_limit), -1):
+            if zz_l[k] != 0:
+                curr_s = zz_l[k]
+                break
 
-simulate()
+        r1[i] = curr_r
+        s1[i] = curr_s
+        p[i] = (curr_r + curr_s + closes[i]) / 3.0
+
+    return r1, s1, p
+
+# --- RUN TEST ---
+print("Running Pivot Simulation...")
+
+# 1. Micro
+print(f"Calculating Micro (Depth {MICRO_DEPTH})...")
+m_zz_h, m_zz_l = calculate_zigzag(MICRO_DEPTH, DATA_LEN, highs, lows)
+m_r1, m_s1, m_p = calculate_pivots(m_zz_h, m_zz_l, DATA_LEN)
+
+# 2. Secondary
+print(f"Calculating Secondary (Depth {SEC_DEPTH})...")
+s_zz_h, s_zz_l = calculate_zigzag(SEC_DEPTH, DATA_LEN, highs, lows)
+s_r1, s_s1, s_p = calculate_pivots(s_zz_h, s_zz_l, DATA_LEN)
+
+# --- VERIFICATION ---
+# Check last 10 bars
+print("\n--- RESULTS (Last 10 Bars) ---")
+print(f"{'Idx':<5} | {'Micro R1':<10} | {'Micro S1':<10} | {'Sec R1':<10} | {'Sec S1':<10}")
+for i in range(DATA_LEN - 10, DATA_LEN):
+    print(f"{i:<5} | {m_r1[i]:<10.2f} | {m_s1[i]:<10.2f} | {s_r1[i]:<10.2f} | {s_s1[i]:<10.2f}")
+
+# Sanity Check
+# Secondary levels should change LESS frequently than Micro levels
+m_changes = 0
+s_changes = 0
+for i in range(1, DATA_LEN):
+    if m_r1[i] != m_r1[i-1]: m_changes += 1
+    if s_r1[i] != s_r1[i-1]: s_changes += 1
+
+print(f"\nMicro Changes: {m_changes}")
+print(f"Sec Changes:   {s_changes}")
+
+if s_changes < m_changes and s_changes > 0:
+    print("✅ SUCCESS: Secondary ZigZag is slower (more stable) than Micro.")
+else:
+    print("❌ FAILURE: Secondary Logic seems wrong (same speed or zero).")
+
+if 0 in s_r1[DATA_LEN-50:]:
+    print("⚠️ WARNING: Zeros detected in R1 buffer (Lookback too short or Depth too high for data?)")
