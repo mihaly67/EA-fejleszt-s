@@ -300,13 +300,23 @@ void UpdateAutoFibo(const int rates_total, const datetime &time[], const double 
    int found_count = 0;
 
    // Scan backwards from last bar
+   // Logic: Skip the very first non-empty value (Active/Floating Leg)
+   // We want the confirmed swing.
+   // Sequence in History: [Active] -> [End Confirmed] -> [Start Confirmed] ...
+   // So:
+   // Index 0 found = Active (Skip)
+   // Index 1 found = End Confirmed (p2) (Corresponds to InpFiboMicroHistory=0)
+   // Index 2 found = Start Confirmed (p1)
+
+   int target_idx = InpFiboMicroHistory + 1; // +1 to skip active leg
+
    for(int i=rates_total-1; i>=0; i--) {
       double val = zz_buffer[i];
       if(val != 0 && val != EMPTY_VALUE) {
-         if(found_count == InpFiboMicroHistory) {
+         if(found_count == target_idx) {
              p2_idx = i;
          }
-         if(found_count == InpFiboMicroHistory + 1) {
+         if(found_count == target_idx + 1) {
              p1_idx = i;
              break;
          }
@@ -323,6 +333,7 @@ void UpdateAutoFibo(const int rates_total, const datetime &time[], const double 
       ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
       ObjectSetInteger(0, name, OBJPROP_COLOR, clrGold);
       ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+      ObjectSetInteger(0, name, OBJPROP_RAY_RIGHT, true); // Ray Right Enabled
 
       // Set Levels (Fixed 0..100 logic)
       ObjectSetInteger(0, name, OBJPROP_LEVELS, 6);
