@@ -285,7 +285,7 @@ double FindHistoricSupport(const double &buffer[], const double &low[], int star
 //+------------------------------------------------------------------+
 //| Update Auto Fibo Object                                          |
 //+------------------------------------------------------------------+
-void UpdateAutoFibo(const int rates_total, const datetime &time[], const double &zz_buffer[])
+void UpdateAutoFibo(const int rates_total, const datetime &time[], const double &zz_buffer[], const double &close[])
 {
    string name = "MicroFibo";
 
@@ -294,19 +294,10 @@ void UpdateAutoFibo(const int rates_total, const datetime &time[], const double 
       return;
    }
 
-   // 1. Find Points
+   // 1. Find Points (Base Swing)
    int p2_idx = -1; // End Point (Newer)
    int p1_idx = -1; // Start Point (Older)
    int found_count = 0;
-
-   // Scan backwards from last bar
-   // Logic: Skip the very first non-empty value (Active/Floating Leg)
-   // We want the confirmed swing.
-   // Sequence in History: [Active] -> [End Confirmed] -> [Start Confirmed] ...
-   // So:
-   // Index 0 found = Active (Skip)
-   // Index 1 found = End Confirmed (p2) (Corresponds to InpFiboMicroHistory=0)
-   // Index 2 found = Start Confirmed (p1)
 
    int target_idx = InpFiboMicroHistory + 1; // +1 to skip active leg
 
@@ -325,6 +316,67 @@ void UpdateAutoFibo(const int rates_total, const datetime &time[], const double 
    }
 
    if(p1_idx == -1 || p2_idx == -1) return; // Not enough history
+
+   // 2. Logic to Extend Fibo if Price Breaks 0 or 100
+   double level0 = zz_buffer[p1_idx];
+   double level100 = zz_buffer[p2_idx];
+   double current_price = close[rates_total-1];
+
+   // Scenario A: Up Trend (Start=Low, End=High) -> Level0 < Level100
+   if(level0 < level100) {
+       // Breakout Up (Price > 100)
+       if(current_price > level100) {
+           // Search backwards from p2_idx-1 for a higher peak
+           for(int k=p2_idx-1; k>=0; k--) {
+               if(zz_buffer[k] != 0 && zz_buffer[k] != EMPTY_VALUE) {
+                   if(zz_buffer[k] > current_price) {
+                       // Found a higher historic peak that encloses price
+                       p2_idx = k; // Move End Point
+                       break;
+                   }
+               }
+           }
+       }
+       // Breakdown Down (Price < 0)
+       if(current_price < level0) {
+           // Search backwards from p1_idx-1 for a lower valley
+           for(int k=p1_idx-1; k>=0; k--) {
+               if(zz_buffer[k] != 0 && zz_buffer[k] != EMPTY_VALUE) {
+                   if(zz_buffer[k] < current_price) {
+                       p1_idx = k; // Move Start Point
+                       break;
+                   }
+               }
+           }
+       }
+   }
+   // Scenario B: Down Trend (Start=High, End=Low) -> Level0 > Level100
+   else {
+       // Breakout Down (Price < 100) - Remember 100 is Low here
+       if(current_price < level100) {
+           // Search backwards from p2_idx-1 for a lower valley
+           for(int k=p2_idx-1; k>=0; k--) {
+               if(zz_buffer[k] != 0 && zz_buffer[k] != EMPTY_VALUE) {
+                   if(zz_buffer[k] < current_price) {
+                       p2_idx = k; // Move End Point
+                       break;
+                   }
+               }
+           }
+       }
+       // Breakout Up (Price > 0) - Remember 0 is High here
+       if(current_price > level0) {
+            // Search backwards from p1_idx-1 for a higher peak
+            for(int k=p1_idx-1; k>=0; k--) {
+               if(zz_buffer[k] != 0 && zz_buffer[k] != EMPTY_VALUE) {
+                   if(zz_buffer[k] > current_price) {
+                       p1_idx = k; // Move Start Point
+                       break;
+                   }
+               }
+           }
+       }
+   }
 
    // Create if missing
    if(ObjectFind(0, name) < 0) {
@@ -505,10 +557,12 @@ int OnCalculate(const int rates_total,
              TerR1[i] = curr_r; TerS1[i] = curr_s; TerP[i] = (curr_r + curr_s + close[i])/3.0;
          }
       }
+   }
 
-      //--- AUTO FIBO UPDATE (Only Last Bar/Tick)
-      // Call this outside the loop, once per tick, after buffers are populated
-      UpdateAutoFibo(rates_total, time, MicroZZBuffer);
+   //--- AUTO FIBO UPDATE (Only Last Bar/Tick)
+   // Call this outside the loop, once per tick, after buffers are populated
+   if(InpShowPivots) {
+       UpdateAutoFibo(rates_total, time, MicroZZBuffer, close);
    }
 
    //--- 3. Trends (Standard EMA)
