@@ -88,6 +88,10 @@ input bool               InpShowPivots         = true; // Master Switch: Enable/
 input bool               InpShowTrends         = true; // Master Switch: Enable/Disable EMAs
 input int                InpMaxHistoryBars     = 5000; // Deep scan limit for historical levels
 
+input group              "=== Auto Fibo Settings ==="
+input bool               InpShowFibo           = false; // Master Fibo Switch (Micro Only)
+input int                InpFiboMicroHistory   = 0;     // History Steps (0=Current Swing, 1=Prev, etc.)
+
 input group              "=== Micro ZigZag (Fast) Settings ==="
 input int                InpMicroDepth         = 5;
 input int                InpMicroDeviation     = 5;
@@ -279,6 +283,99 @@ double FindHistoricSupport(const double &buffer[], const double &low[], int star
 }
 
 //+------------------------------------------------------------------+
+//| Update Auto Fibo Object                                          |
+//+------------------------------------------------------------------+
+void UpdateAutoFibo(const int rates_total, const datetime &time[], const double &zz_buffer[])
+{
+   string name = "MicroFibo";
+
+   if(!InpShowFibo) {
+      if(ObjectFind(0, name) >= 0) ObjectDelete(0, name);
+      return;
+   }
+
+   // 1. Find Points
+   int p2_idx = -1; // End Point (Newer)
+   int p1_idx = -1; // Start Point (Older)
+   int found_count = 0;
+
+   // Scan backwards from last bar
+   for(int i=rates_total-1; i>=0; i--) {
+      double val = zz_buffer[i];
+      if(val != 0 && val != EMPTY_VALUE) {
+         if(found_count == InpFiboMicroHistory) {
+             p2_idx = i;
+         }
+         if(found_count == InpFiboMicroHistory + 1) {
+             p1_idx = i;
+             break;
+         }
+         found_count++;
+      }
+   }
+
+   if(p1_idx == -1 || p2_idx == -1) return; // Not enough history
+
+   // Create if missing
+   if(ObjectFind(0, name) < 0) {
+      ObjectCreate(0, name, OBJ_FIBO, 0, 0, 0, 0, 0);
+      ObjectSetInteger(0, name, OBJPROP_SELECTABLE, true);
+      ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
+      ObjectSetInteger(0, name, OBJPROP_COLOR, clrGold);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+
+      // Set Levels (Fixed 0..100 logic)
+      ObjectSetInteger(0, name, OBJPROP_LEVELS, 6);
+
+      // Start = 0.0
+      ObjectSetDouble(0, name, OBJPROP_LEVELVALUE, 0, 0.0);
+      ObjectSetString(0, name, OBJPROP_LEVELTEXT, 0, "0.0 (Start)");
+
+      ObjectSetDouble(0, name, OBJPROP_LEVELVALUE, 1, 0.236);
+      ObjectSetString(0, name, OBJPROP_LEVELTEXT, 1, "23.6");
+
+      ObjectSetDouble(0, name, OBJPROP_LEVELVALUE, 2, 0.382);
+      ObjectSetString(0, name, OBJPROP_LEVELTEXT, 2, "38.2");
+
+      ObjectSetDouble(0, name, OBJPROP_LEVELVALUE, 3, 0.500);
+      ObjectSetString(0, name, OBJPROP_LEVELTEXT, 3, "50.0");
+
+      ObjectSetDouble(0, name, OBJPROP_LEVELVALUE, 4, 0.618);
+      ObjectSetString(0, name, OBJPROP_LEVELTEXT, 4, "61.8");
+
+      // End = 1.0
+      ObjectSetDouble(0, name, OBJPROP_LEVELVALUE, 5, 1.0);
+      ObjectSetString(0, name, OBJPROP_LEVELTEXT, 5, "100.0 (End)");
+   }
+
+   // Update Coordinates
+   // P1 = Start (Time A, Price A)
+   // P2 = End (Time B, Price B)
+   // This aligns with Level 0.0 at P1 and 1.0 at P2 ?
+   // Verification: In MT5, Level values are coefficients of vector P1->P2.
+   // So Value 0.0 is at P1, Value 1.0 is at P2. Correct.
+
+   long t1 = ObjectGetInteger(0, name, OBJPROP_TIME, 0);
+   long t2 = ObjectGetInteger(0, name, OBJPROP_TIME, 1);
+   double pr1 = ObjectGetDouble(0, name, OBJPROP_PRICE, 0);
+   double pr2 = ObjectGetDouble(0, name, OBJPROP_PRICE, 1);
+
+   // Only update if changed to avoid flickering/CPU load
+   if(t1 != time[p1_idx] || t2 != time[p2_idx] ||
+      MathAbs(pr1 - zz_buffer[p1_idx]) > _Point ||
+      MathAbs(pr2 - zz_buffer[p2_idx]) > _Point)
+   {
+      ObjectSetDouble(0, name, OBJPROP_PRICE, 0, zz_buffer[p1_idx]); // Start
+      ObjectSetInteger(0, name, OBJPROP_TIME, 0, time[p1_idx]);
+
+      ObjectSetDouble(0, name, OBJPROP_PRICE, 1, zz_buffer[p2_idx]); // End
+      ObjectSetInteger(0, name, OBJPROP_TIME, 1, time[p2_idx]);
+
+      ChartRedraw();
+   }
+}
+
+//+------------------------------------------------------------------+
 //| Custom indicator iteration function                              |
 //+------------------------------------------------------------------+
 int OnCalculate(const int rates_total,
@@ -397,6 +494,10 @@ int OnCalculate(const int rates_total,
              TerR1[i] = curr_r; TerS1[i] = curr_s; TerP[i] = (curr_r + curr_s + close[i])/3.0;
          }
       }
+
+      //--- AUTO FIBO UPDATE (Only Last Bar/Tick)
+      // Call this outside the loop, once per tick, after buffers are populated
+      UpdateAutoFibo(rates_total, time, MicroZZBuffer);
    }
 
    //--- 3. Trends (Standard EMA)
@@ -416,6 +517,9 @@ void OnDeinit(const int reason)
    if(micro_zz_handle != INVALID_HANDLE) IndicatorRelease(micro_zz_handle);
    if(sec_zz_handle   != INVALID_HANDLE) IndicatorRelease(sec_zz_handle);
    if(ter_zz_handle   != INVALID_HANDLE) IndicatorRelease(ter_zz_handle);
+
+   // Clean up Fibo
+   ObjectDelete(0, "MicroFibo");
 
    ArrayFree(MicroZZBuffer);
    ArrayFree(SecZZBuffer);
