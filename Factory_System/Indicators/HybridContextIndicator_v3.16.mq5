@@ -106,7 +106,7 @@ input int                InpSecDepth           = 30;
 input int                InpSecDeviation       = 10;
 input int                InpSecBackstep        = 5;
 input ENUM_LINE_STYLE    InpSecStyle           = STYLE_DASHDOT;
-input int                InpSecWidth           = 1;
+input int                InpSecWidth           = 2; // Increased visibility
 input color              InpSecColorR1         = clrRed;
 input color              InpSecColorS1         = clrGreen;
 
@@ -169,6 +169,10 @@ int OnInit()
    SetIndexBuffer(3, SecP, INDICATOR_DATA);
    SetIndexBuffer(4, SecR1, INDICATOR_DATA);
    SetIndexBuffer(5, SecS1, INDICATOR_DATA);
+
+   PlotIndexSetDouble(3, PLOT_EMPTY_VALUE, 0.0);
+   PlotIndexSetDouble(4, PLOT_EMPTY_VALUE, 0.0);
+   PlotIndexSetDouble(5, PLOT_EMPTY_VALUE, 0.0);
 
    PlotIndexSetInteger(3, PLOT_LINE_STYLE, InpSecStyle);
    PlotIndexSetInteger(3, PLOT_LINE_WIDTH, InpSecWidth);
