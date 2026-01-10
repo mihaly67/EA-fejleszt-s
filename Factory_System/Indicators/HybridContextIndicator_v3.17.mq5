@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                    HybridContextIndicator_v3.17.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 3.17 (Historical Breakout Search + Fixes)            |
+//|      Verzió: 3.17 (Cascading Breakout Fix)                        |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
@@ -495,6 +495,11 @@ int OnCalculate(const int rates_total,
 
       for(int i = start; i < rates_total; i++)
       {
+         // --- INIT CASCADING THRESHOLDS ---
+         // If a tier is disabled, the threshold passes through unchanged.
+         double limit_R = close[i];
+         double limit_S = close[i];
+
          // 1. MICRO
          if(InpUseMicro && micro_zz_handle != INVALID_HANDLE) {
              double prev_r = (i > 0) ? MicroR1[i-1] : high[i];
@@ -502,33 +507,28 @@ int OnCalculate(const int rates_total,
              double curr_r = prev_r;
              double curr_s = prev_s;
 
-             // Logic: If close breaks R, search up. If close breaks S, search down.
-             // Also always check if a NEW local ZigZag pivot formed at 'i' (MicroZZBuffer[i]).
-
-             // A) New Pivot formed at 'i'? Update immediately.
              if (MicroZZBuffer[i] != 0 && MicroZZBuffer[i] != EMPTY_VALUE) {
-                 if (MathAbs(MicroZZBuffer[i] - high[i]) < _Point) curr_r = MicroZZBuffer[i]; // New High
-                 if (MathAbs(MicroZZBuffer[i] - low[i]) < _Point)  curr_s = MicroZZBuffer[i]; // New Low
+                 if (MathAbs(MicroZZBuffer[i] - high[i]) < _Point) curr_r = MicroZZBuffer[i];
+                 if (MathAbs(MicroZZBuffer[i] - low[i]) < _Point)  curr_s = MicroZZBuffer[i];
              }
 
-             // B) Breakout Check (Override)
-             if (close[i] > curr_r) {
-                 // Breakout Up -> Find Historic Higher
-                 double hist = FindHistoricResistance(MicroZZBuffer, high, i, close[i]);
-                 if (hist != -1.0) curr_r = hist;
-                 else curr_r = high[i]; // Trail if ATH
+             // Standard Breakout Logic against PRICE (limit_R/limit_S)
+             if (limit_R > curr_r) {
+                 double hist = FindHistoricResistance(MicroZZBuffer, high, i, limit_R);
+                 if (hist != -1.0) curr_r = hist; else curr_r = high[i];
              }
-
-             if (close[i] < curr_s) {
-                 // Breakdown Down -> Find Historic Lower
-                 double hist = FindHistoricSupport(MicroZZBuffer, low, i, close[i]);
-                 if (hist != -1.0) curr_s = hist;
-                 else curr_s = low[i]; // Trail if ATL
+             if (limit_S < curr_s) {
+                 double hist = FindHistoricSupport(MicroZZBuffer, low, i, limit_S);
+                 if (hist != -1.0) curr_s = hist; else curr_s = low[i];
              }
 
              MicroR1[i] = curr_r; MicroS1[i] = curr_s; MicroP[i] = (curr_r + curr_s + close[i])/3.0;
+
+             // Update Thresholds for next tier
+             limit_R = curr_r;
+             limit_S = curr_s;
+
          } else {
-             // Disabled or invalid
              MicroR1[i] = EMPTY_VALUE; MicroS1[i] = EMPTY_VALUE; MicroP[i] = EMPTY_VALUE;
          }
 
@@ -544,16 +544,30 @@ int OnCalculate(const int rates_total,
                  if (MathAbs(SecZZBuffer[i] - low[i]) < _Point)  curr_s = SecZZBuffer[i];
              }
 
-             if (close[i] > curr_r) {
-                 double hist = FindHistoricResistance(SecZZBuffer, high, i, close[i]);
-                 if (hist != -1.0) curr_r = hist; else curr_r = high[i];
+             // Cascading Breakout: Must be OUTSIDE the previous tier (limit_R/limit_S)
+             // Check if Secondary R is "inside" or "equal" to Micro R
+             if (curr_r <= limit_R) {
+                 // Push Out! Find next historic Secondary R > limit_R
+                 double hist = FindHistoricResistance(SecZZBuffer, high, i, limit_R);
+                 if (hist != -1.0) curr_r = hist; else curr_r = limit_R + _Point; // Force separation if ATH
+             } else {
+                  // Normal breakout check against Price? No, against limit_R is stronger.
+                  // But wait, if price broke it naturally, limit_R (from Micro) would have moved up too.
+                  // So we strictly enforce curr_r > limit_R.
+                  // Double check: if price spikes, Micro jumps up. Secondary must jump up too.
+                  // The condition (curr_r <= limit_R) covers this.
              }
-             if (close[i] < curr_s) {
-                 double hist = FindHistoricSupport(SecZZBuffer, low, i, close[i]);
-                 if (hist != -1.0) curr_s = hist; else curr_s = low[i];
+
+             if (curr_s >= limit_S) { // Support is "inside" if >= Micro S
+                 double hist = FindHistoricSupport(SecZZBuffer, low, i, limit_S);
+                 if (hist != -1.0) curr_s = hist; else curr_s = limit_S - _Point;
              }
 
              SecR1[i] = curr_r; SecS1[i] = curr_s; SecP[i] = (curr_r + curr_s + close[i])/3.0;
+
+             limit_R = curr_r;
+             limit_S = curr_s;
+
          } else {
              SecR1[i] = EMPTY_VALUE; SecS1[i] = EMPTY_VALUE; SecP[i] = EMPTY_VALUE;
          }
@@ -570,16 +584,17 @@ int OnCalculate(const int rates_total,
                  if (MathAbs(TerZZBuffer[i] - low[i]) < _Point)  curr_s = TerZZBuffer[i];
              }
 
-             if (close[i] > curr_r) {
-                 double hist = FindHistoricResistance(TerZZBuffer, high, i, close[i]);
-                 if (hist != -1.0) curr_r = hist; else curr_r = high[i];
+             if (curr_r <= limit_R) {
+                 double hist = FindHistoricResistance(TerZZBuffer, high, i, limit_R);
+                 if (hist != -1.0) curr_r = hist; else curr_r = limit_R + _Point;
              }
-             if (close[i] < curr_s) {
-                 double hist = FindHistoricSupport(TerZZBuffer, low, i, close[i]);
-                 if (hist != -1.0) curr_s = hist; else curr_s = low[i];
+             if (curr_s >= limit_S) {
+                 double hist = FindHistoricSupport(TerZZBuffer, low, i, limit_S);
+                 if (hist != -1.0) curr_s = hist; else curr_s = limit_S - _Point;
              }
 
              TerR1[i] = curr_r; TerS1[i] = curr_s; TerP[i] = (curr_r + curr_s + close[i])/3.0;
+
          } else {
              TerR1[i] = EMPTY_VALUE; TerS1[i] = EMPTY_VALUE; TerP[i] = EMPTY_VALUE;
          }
@@ -587,7 +602,6 @@ int OnCalculate(const int rates_total,
    }
 
    //--- AUTO FIBO UPDATE (Only Last Bar/Tick)
-   // Call this outside the loop, once per tick, after buffers are populated
    if(InpShowPivots) {
        UpdateAutoFibo(rates_total, time, MicroZZBuffer, close);
    }
