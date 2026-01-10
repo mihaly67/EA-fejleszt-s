@@ -48,10 +48,15 @@ int OnInit()
    SetIndexBuffer(0, FearBuffer, INDICATOR_DATA);
    SetIndexBuffer(1, GreedBuffer, INDICATOR_DATA);
 
-   // Internal calculations need buffers? No, we can recalculate or use dynamic arrays.
-   // But standard ZigZag/WVF doesn't need to store full history for normalization if we loop efficiently.
-   // Ideally, we use INDICATOR_CALCULATIONS to store Raw values for the Max search.
-   // Let's add them.
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid WVF v1.3");
+
+   // Set Levels: 0, +/- 20, +/- 30
+   IndicatorSetInteger(INDICATOR_LEVELS, 5);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 0, 0.0);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 1, 20.0);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 2, 30.0);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 3, -20.0);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 4, -30.0);
 
    return INIT_SUCCEEDED;
 }
