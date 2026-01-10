@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                    HybridContextIndicator_v3.17.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 3.17 (Cascading Breakout Fix)                        |
+//|      Verzió: 3.17 (Cascading Breakout Fix + Buffer Logic)         |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
@@ -133,10 +133,14 @@ double      SecP[], SecR1[], SecS1[];
 double      TerP[], TerR1[], TerS1[];
 double      TrendFast[], TrendSlow[];
 
-//--- ZigZag Helper Buffers (Internal)
-double      MicroZZBuffer[];
-double      SecZZBuffer[];
-double      TerZZBuffer[];
+//--- ZigZag Helper Buffers (Internal Arrays, not indicator_buffers)
+double      MicroHigh[], MicroLow[];
+double      SecHigh[], SecLow[];
+double      TerHigh[], TerLow[];
+
+// For Fibo
+double      MicroLine[], SecLine[], TerLine[];
+
 
 //--- Global Handles
 int         micro_zz_handle = INVALID_HANDLE;
@@ -254,7 +258,7 @@ int OnInit()
 //+------------------------------------------------------------------+
 //| Find Next Historic Resistance > Price                            |
 //+------------------------------------------------------------------+
-double FindHistoricResistance(const double &buffer[], const double &high[], int start_idx, double price_level)
+double FindHistoricResistance(const double &buffer[], int start_idx, double price_level)
 {
    // Loop backwards from start_idx to limit
    int limit = start_idx - InpMaxHistoryBars;
@@ -263,15 +267,11 @@ double FindHistoricResistance(const double &buffer[], const double &high[], int 
    for (int k = start_idx; k >= limit; k--)
    {
       double val = buffer[k];
-      // Check if it's a valid ZigZag High
+      // Check if it's a valid ZigZag High (Buffer should contain only Highs or 0)
       if (val != 0 && val != EMPTY_VALUE)
       {
-          // Is it a High? (Match with High price)
-          if(MathAbs(val - high[k]) < _Point)
-          {
-             // Is it higher than our breakout price?
-             if (val > price_level) return val;
-          }
+          // It's a Peak. Is it higher than our trigger level?
+          if (val > price_level) return val;
       }
    }
    return -1.0; // Not found (ATH)
@@ -280,7 +280,7 @@ double FindHistoricResistance(const double &buffer[], const double &high[], int 
 //+------------------------------------------------------------------+
 //| Find Next Historic Support < Price                               |
 //+------------------------------------------------------------------+
-double FindHistoricSupport(const double &buffer[], const double &low[], int start_idx, double price_level)
+double FindHistoricSupport(const double &buffer[], int start_idx, double price_level)
 {
    int limit = start_idx - InpMaxHistoryBars;
    if (limit < 0) limit = 0;
@@ -291,12 +291,7 @@ double FindHistoricSupport(const double &buffer[], const double &low[], int star
       // Check if it's a valid ZigZag Low
       if (val != 0 && val != EMPTY_VALUE)
       {
-          // Is it a Low?
-          if(MathAbs(val - low[k]) < _Point)
-          {
-             // Is it lower than our breakdown price?
-             if (val < price_level) return val;
-          }
+          if (val < price_level) return val;
       }
    }
    return -1.0; // Not found (ATL)
@@ -305,7 +300,7 @@ double FindHistoricSupport(const double &buffer[], const double &low[], int star
 //+------------------------------------------------------------------+
 //| Update Auto Fibo Object                                          |
 //+------------------------------------------------------------------+
-void UpdateAutoFibo(const int rates_total, const datetime &time[], const double &zz_buffer[], const double &close[])
+void UpdateAutoFibo(const int rates_total, const datetime &time[], const double &high_buf[], const double &low_buf[], const double &close[])
 {
    string name = "MicroFibo";
 
@@ -317,29 +312,45 @@ void UpdateAutoFibo(const int rates_total, const datetime &time[], const double 
    // 1. Find Points (Base Swing)
    int p2_idx = -1; // End Point (Newer)
    int p1_idx = -1; // Start Point (Older)
+
+   // Search Backwards for Last 2 Peaks/Valleys
    int found_count = 0;
+   int target_idx = InpFiboMicroHistory + 1; // 1 = Last completed leg
 
-   int target_idx = InpFiboMicroHistory + 1; // +1 to skip active leg
-
+   // We need to merge Highs and Lows into a single timeline of "Swings"
+   // Iterate backwards and pick the first valid point from EITHER buffer
    for(int i=rates_total-1; i>=0; i--) {
-      double val = zz_buffer[i];
-      if(val != 0 && val != EMPTY_VALUE) {
-         if(found_count == target_idx) {
-             p2_idx = i;
-         }
-         if(found_count == target_idx + 1) {
-             p1_idx = i;
-             break;
-         }
-         found_count++;
-      }
+       bool is_high = (high_buf[i] != 0 && high_buf[i] != EMPTY_VALUE);
+       bool is_low = (low_buf[i] != 0 && low_buf[i] != EMPTY_VALUE);
+
+       if(is_high || is_low) {
+           if(found_count == target_idx) {
+               p2_idx = i;
+           }
+           else if(found_count == target_idx + 1) {
+               p1_idx = i;
+               break;
+           }
+           found_count++;
+       }
    }
 
    if(p1_idx == -1 || p2_idx == -1) return; // Not enough history
 
-   // 2. Logic to Extend Fibo if Price Breaks 0 or 100
-   double level0 = zz_buffer[p1_idx];
-   double level100 = zz_buffer[p2_idx];
+   // 2. Determine Levels
+   double level0 = 0.0;
+   double level100 = 0.0;
+
+   // Check what we found at p1_idx
+   if (high_buf[p1_idx] != 0 && high_buf[p1_idx] != EMPTY_VALUE) level0 = high_buf[p1_idx];
+   else level0 = low_buf[p1_idx];
+
+   // Check what we found at p2_idx
+   if (high_buf[p2_idx] != 0 && high_buf[p2_idx] != EMPTY_VALUE) level100 = high_buf[p2_idx];
+   else level100 = low_buf[p2_idx];
+
+
+   // 3. Logic to Extend Fibo if Price Breaks 0 or 100
    double current_price = close[rates_total-1];
 
    // Scenario A: Up Trend (Start=Low, End=High) -> Level0 < Level100
@@ -348,9 +359,8 @@ void UpdateAutoFibo(const int rates_total, const datetime &time[], const double 
        if(current_price > level100) {
            // Search backwards from p2_idx-1 for a higher peak
            for(int k=p2_idx-1; k>=0; k--) {
-               if(zz_buffer[k] != 0 && zz_buffer[k] != EMPTY_VALUE) {
-                   if(zz_buffer[k] > current_price) {
-                       // Found a higher historic peak that encloses price
+               if(high_buf[k] != 0 && high_buf[k] != EMPTY_VALUE) {
+                   if(high_buf[k] > current_price) {
                        p2_idx = k; // Move End Point
                        break;
                    }
@@ -361,8 +371,8 @@ void UpdateAutoFibo(const int rates_total, const datetime &time[], const double 
        if(current_price < level0) {
            // Search backwards from p1_idx-1 for a lower valley
            for(int k=p1_idx-1; k>=0; k--) {
-               if(zz_buffer[k] != 0 && zz_buffer[k] != EMPTY_VALUE) {
-                   if(zz_buffer[k] < current_price) {
+               if(low_buf[k] != 0 && low_buf[k] != EMPTY_VALUE) {
+                   if(low_buf[k] < current_price) {
                        p1_idx = k; // Move Start Point
                        break;
                    }
@@ -376,8 +386,8 @@ void UpdateAutoFibo(const int rates_total, const datetime &time[], const double 
        if(current_price < level100) {
            // Search backwards from p2_idx-1 for a lower valley
            for(int k=p2_idx-1; k>=0; k--) {
-               if(zz_buffer[k] != 0 && zz_buffer[k] != EMPTY_VALUE) {
-                   if(zz_buffer[k] < current_price) {
+               if(low_buf[k] != 0 && low_buf[k] != EMPTY_VALUE) {
+                   if(low_buf[k] < current_price) {
                        p2_idx = k; // Move End Point
                        break;
                    }
@@ -388,8 +398,8 @@ void UpdateAutoFibo(const int rates_total, const datetime &time[], const double 
        if(current_price > level0) {
             // Search backwards from p1_idx-1 for a higher peak
             for(int k=p1_idx-1; k>=0; k--) {
-               if(zz_buffer[k] != 0 && zz_buffer[k] != EMPTY_VALUE) {
-                   if(zz_buffer[k] > current_price) {
+               if(high_buf[k] != 0 && high_buf[k] != EMPTY_VALUE) {
+                   if(high_buf[k] > current_price) {
                        p1_idx = k; // Move Start Point
                        break;
                    }
@@ -397,6 +407,11 @@ void UpdateAutoFibo(const int rates_total, const datetime &time[], const double 
            }
        }
    }
+
+   // Re-read values in case index changed
+   if (high_buf[p1_idx] != 0 && high_buf[p1_idx] != EMPTY_VALUE) level0 = high_buf[p1_idx]; else level0 = low_buf[p1_idx];
+   if (high_buf[p2_idx] != 0 && high_buf[p2_idx] != EMPTY_VALUE) level100 = high_buf[p2_idx]; else level100 = low_buf[p2_idx];
+
 
    // Create if missing
    if(ObjectFind(0, name) < 0) {
@@ -432,26 +447,19 @@ void UpdateAutoFibo(const int rates_total, const datetime &time[], const double 
    }
 
    // Update Coordinates
-   // P1 = Start (Time A, Price A)
-   // P2 = End (Time B, Price B)
-   // This aligns with Level 0.0 at P1 and 1.0 at P2 ?
-   // Verification: In MT5, Level values are coefficients of vector P1->P2.
-   // So Value 0.0 is at P1, Value 1.0 is at P2. Correct.
-
    long t1 = ObjectGetInteger(0, name, OBJPROP_TIME, 0);
    long t2 = ObjectGetInteger(0, name, OBJPROP_TIME, 1);
    double pr1 = ObjectGetDouble(0, name, OBJPROP_PRICE, 0);
    double pr2 = ObjectGetDouble(0, name, OBJPROP_PRICE, 1);
 
-   // Only update if changed to avoid flickering/CPU load
    if(t1 != time[p1_idx] || t2 != time[p2_idx] ||
-      MathAbs(pr1 - zz_buffer[p1_idx]) > _Point ||
-      MathAbs(pr2 - zz_buffer[p2_idx]) > _Point)
+      MathAbs(pr1 - level0) > _Point ||
+      MathAbs(pr2 - level100) > _Point)
    {
-      ObjectSetDouble(0, name, OBJPROP_PRICE, 0, zz_buffer[p1_idx]); // Start
+      ObjectSetDouble(0, name, OBJPROP_PRICE, 0, level0); // Start
       ObjectSetInteger(0, name, OBJPROP_TIME, 0, time[p1_idx]);
 
-      ObjectSetDouble(0, name, OBJPROP_PRICE, 1, zz_buffer[p2_idx]); // End
+      ObjectSetDouble(0, name, OBJPROP_PRICE, 1, level100); // End
       ObjectSetInteger(0, name, OBJPROP_TIME, 1, time[p2_idx]);
 
       ChartRedraw();
@@ -477,15 +485,29 @@ int OnCalculate(const int rates_total,
    //--- PIVOT CALCULATION (Only if Enabled)
    if(InpShowPivots)
    {
-      // Resize
-      if(ArraySize(MicroZZBuffer) < rates_total) ArrayResize(MicroZZBuffer, rates_total);
-      if(ArraySize(SecZZBuffer) < rates_total) ArrayResize(SecZZBuffer, rates_total);
-      if(InpUseTertiary && ArraySize(TerZZBuffer) < rates_total) ArrayResize(TerZZBuffer, rates_total);
+      // Resize Internal Arrays
+      if(ArraySize(MicroHigh) < rates_total) {
+          ArrayResize(MicroHigh, rates_total); ArrayResize(MicroLow, rates_total); ArrayResize(MicroLine, rates_total);
+          ArrayResize(SecHigh, rates_total);   ArrayResize(SecLow, rates_total);   ArrayResize(SecLine, rates_total);
+          if(InpUseTertiary) { ArrayResize(TerHigh, rates_total); ArrayResize(TerLow, rates_total); ArrayResize(TerLine, rates_total); }
+      }
 
-      // Copy Data
-      if(micro_zz_handle != INVALID_HANDLE) CopyBuffer(micro_zz_handle, 0, 0, rates_total, MicroZZBuffer);
-      if(sec_zz_handle != INVALID_HANDLE) CopyBuffer(sec_zz_handle, 0, 0, rates_total, SecZZBuffer);
-      if(InpUseTertiary && ter_zz_handle != INVALID_HANDLE) CopyBuffer(ter_zz_handle, 0, 0, rates_total, TerZZBuffer);
+      // Copy Data (Buffer 0=Line, 1=High, 2=Low for standard ZigZag)
+      if(micro_zz_handle != INVALID_HANDLE) {
+          CopyBuffer(micro_zz_handle, 0, 0, rates_total, MicroLine);
+          CopyBuffer(micro_zz_handle, 1, 0, rates_total, MicroHigh);
+          CopyBuffer(micro_zz_handle, 2, 0, rates_total, MicroLow);
+      }
+      if(sec_zz_handle != INVALID_HANDLE) {
+          CopyBuffer(sec_zz_handle, 0, 0, rates_total, SecLine);
+          CopyBuffer(sec_zz_handle, 1, 0, rates_total, SecHigh);
+          CopyBuffer(sec_zz_handle, 2, 0, rates_total, SecLow);
+      }
+      if(InpUseTertiary && ter_zz_handle != INVALID_HANDLE) {
+          CopyBuffer(ter_zz_handle, 0, 0, rates_total, TerLine);
+          CopyBuffer(ter_zz_handle, 1, 0, rates_total, TerHigh);
+          CopyBuffer(ter_zz_handle, 2, 0, rates_total, TerLow);
+      }
 
       // Loop
       int lookback = 300;
@@ -507,18 +529,18 @@ int OnCalculate(const int rates_total,
              double curr_r = prev_r;
              double curr_s = prev_s;
 
-             if (MicroZZBuffer[i] != 0 && MicroZZBuffer[i] != EMPTY_VALUE) {
-                 if (MathAbs(MicroZZBuffer[i] - high[i]) < _Point) curr_r = MicroZZBuffer[i];
-                 if (MathAbs(MicroZZBuffer[i] - low[i]) < _Point)  curr_s = MicroZZBuffer[i];
-             }
+             // Use High/Low Buffers for Peak Detection
+             // A) New Pivot formed at 'i'?
+             if (MicroHigh[i] != 0 && MicroHigh[i] != EMPTY_VALUE) curr_r = MicroHigh[i];
+             if (MicroLow[i]  != 0 && MicroLow[i]  != EMPTY_VALUE) curr_s = MicroLow[i];
 
              // Standard Breakout Logic against PRICE (limit_R/limit_S)
              if (limit_R > curr_r) {
-                 double hist = FindHistoricResistance(MicroZZBuffer, high, i, limit_R);
+                 double hist = FindHistoricResistance(MicroHigh, i, limit_R); // Use High Buffer
                  if (hist != -1.0) curr_r = hist; else curr_r = high[i];
              }
              if (limit_S < curr_s) {
-                 double hist = FindHistoricSupport(MicroZZBuffer, low, i, limit_S);
+                 double hist = FindHistoricSupport(MicroLow, i, limit_S); // Use Low Buffer
                  if (hist != -1.0) curr_s = hist; else curr_s = low[i];
              }
 
@@ -539,27 +561,19 @@ int OnCalculate(const int rates_total,
              double curr_r = prev_r;
              double curr_s = prev_s;
 
-             if (SecZZBuffer[i] != 0 && SecZZBuffer[i] != EMPTY_VALUE) {
-                 if (MathAbs(SecZZBuffer[i] - high[i]) < _Point) curr_r = SecZZBuffer[i];
-                 if (MathAbs(SecZZBuffer[i] - low[i]) < _Point)  curr_s = SecZZBuffer[i];
-             }
+             if (SecHigh[i] != 0 && SecHigh[i] != EMPTY_VALUE) curr_r = SecHigh[i];
+             if (SecLow[i]  != 0 && SecLow[i]  != EMPTY_VALUE) curr_s = SecLow[i];
 
              // Cascading Breakout: Must be OUTSIDE the previous tier (limit_R/limit_S)
              // Check if Secondary R is "inside" or "equal" to Micro R
              if (curr_r <= limit_R) {
                  // Push Out! Find next historic Secondary R > limit_R
-                 double hist = FindHistoricResistance(SecZZBuffer, high, i, limit_R);
+                 double hist = FindHistoricResistance(SecHigh, i, limit_R); // Use High Buffer
                  if (hist != -1.0) curr_r = hist; else curr_r = limit_R + _Point; // Force separation if ATH
-             } else {
-                  // Normal breakout check against Price? No, against limit_R is stronger.
-                  // But wait, if price broke it naturally, limit_R (from Micro) would have moved up too.
-                  // So we strictly enforce curr_r > limit_R.
-                  // Double check: if price spikes, Micro jumps up. Secondary must jump up too.
-                  // The condition (curr_r <= limit_R) covers this.
              }
 
              if (curr_s >= limit_S) { // Support is "inside" if >= Micro S
-                 double hist = FindHistoricSupport(SecZZBuffer, low, i, limit_S);
+                 double hist = FindHistoricSupport(SecLow, i, limit_S); // Use Low Buffer
                  if (hist != -1.0) curr_s = hist; else curr_s = limit_S - _Point;
              }
 
@@ -579,17 +593,15 @@ int OnCalculate(const int rates_total,
              double curr_r = prev_r;
              double curr_s = prev_s;
 
-             if (TerZZBuffer[i] != 0 && TerZZBuffer[i] != EMPTY_VALUE) {
-                 if (MathAbs(TerZZBuffer[i] - high[i]) < _Point) curr_r = TerZZBuffer[i];
-                 if (MathAbs(TerZZBuffer[i] - low[i]) < _Point)  curr_s = TerZZBuffer[i];
-             }
+             if (TerHigh[i] != 0 && TerHigh[i] != EMPTY_VALUE) curr_r = TerHigh[i];
+             if (TerLow[i]  != 0 && TerLow[i]  != EMPTY_VALUE) curr_s = TerLow[i];
 
              if (curr_r <= limit_R) {
-                 double hist = FindHistoricResistance(TerZZBuffer, high, i, limit_R);
+                 double hist = FindHistoricResistance(TerHigh, i, limit_R);
                  if (hist != -1.0) curr_r = hist; else curr_r = limit_R + _Point;
              }
              if (curr_s >= limit_S) {
-                 double hist = FindHistoricSupport(TerZZBuffer, low, i, limit_S);
+                 double hist = FindHistoricSupport(TerLow, i, limit_S);
                  if (hist != -1.0) curr_s = hist; else curr_s = limit_S - _Point;
              }
 
@@ -603,7 +615,7 @@ int OnCalculate(const int rates_total,
 
    //--- AUTO FIBO UPDATE (Only Last Bar/Tick)
    if(InpShowPivots) {
-       UpdateAutoFibo(rates_total, time, MicroZZBuffer, close);
+       UpdateAutoFibo(rates_total, time, MicroHigh, MicroLow, close); // Passed proper buffers
    }
 
    //--- 3. Trends (Standard EMA)
@@ -627,7 +639,8 @@ void OnDeinit(const int reason)
    // Clean up Fibo
    ObjectDelete(0, "MicroFibo");
 
-   ArrayFree(MicroZZBuffer);
-   ArrayFree(SecZZBuffer);
-   ArrayFree(TerZZBuffer);
+   // Clean up Internal Arrays
+   ArrayFree(MicroHigh); ArrayFree(MicroLow); ArrayFree(MicroLine);
+   ArrayFree(SecHigh);   ArrayFree(SecLow);   ArrayFree(SecLine);
+   ArrayFree(TerHigh);   ArrayFree(TerLow);   ArrayFree(TerLine);
 }
