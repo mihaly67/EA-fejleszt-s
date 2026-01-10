@@ -86,7 +86,7 @@
 input group              "=== Global Switches ==="
 input bool               InpShowPivots         = true; // Master Switch: Enable/Disable All Pivots
 input bool               InpShowTrends         = true; // Master Switch: Enable/Disable EMAs
-input int                InpMaxHistoryBars     = 5000; // Deep scan limit for historical levels
+input int                InpMaxHistoryBars     = 50000; // Deep scan limit for historical levels
 
 input group              "=== Auto Fibo Settings ==="
 input bool               InpShowFibo           = false; // Master Fibo Switch (Micro Only)
