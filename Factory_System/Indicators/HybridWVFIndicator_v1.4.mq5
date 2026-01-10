@@ -26,6 +26,19 @@ input group              "=== WVF Settings ==="
 input int                InpPeriod             = 22;    // Lookback Period
 input int                InpNormalizationRange = 480;   // Range to find Max WVF for Scaling (Bars)
 
+// *** INTERPRETATION / ÉRTELMEZÉS ***
+// Positive Bars (Green, 0 to 100): "Fear" / "Panic".
+// - Measures price drops from recent Highs.
+// - High values (> 20-30) indicate potential Market Bottoms (Buying Opportunity).
+//
+// Negative Bars (Red, 0 to -100): "Euphoria" / "Greed".
+// - Measures price rallies from recent Lows.
+// - Low values (< -20 to -30) indicate potential Market Tops (Selling Opportunity).
+//
+// Levels:
+// +/- 20: High Alert Zone
+// +/- 30: Extreme Alert Zone (Strong Reversal Probability)
+
 //--- Buffers
 double      WVFBuffer[];      // Unified Buffer (Positive/Negative)
 double      ColorBuffer[];    // Color Index
