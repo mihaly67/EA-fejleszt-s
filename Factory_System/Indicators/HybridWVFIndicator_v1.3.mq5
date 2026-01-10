@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                     HybridWVFIndicator_v1.3.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 1.3 (Bidirectional WVF - Soft Colors)                |
+//|      Verzió: 1.3 (Bidirectional WVF - Fixed Scale)                |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
@@ -10,19 +10,21 @@
 #property indicator_separate_window
 #property indicator_buffers 2
 #property indicator_plots   2
+#property indicator_minimum -100
+#property indicator_maximum 100
 
-//--- Plot 1: Up Fear (FOMO/Euphoria) - Soft Green
-#property indicator_label1  "WVF Up (Euphoria)"
+//--- Plot 1: Fear/Panic (Market Bottoms) -> Positive -> Green (Buy Opp)
+#property indicator_label1  "WVF Fear (Panic)"
 #property indicator_type1   DRAW_HISTOGRAM
 #property indicator_style1  STYLE_SOLID
-#property indicator_color1  clrForestGreen // Softer than LimeGreen
+#property indicator_color1  clrForestGreen // Fear = Opportunity
 #property indicator_width1  3
 
-//--- Plot 2: Down Fear (Panic) - Soft Red
-#property indicator_label2  "WVF Down (Panic)"
+//--- Plot 2: Euphoria/Greed (Market Tops) -> Negative -> Red (Sell Danger)
+#property indicator_label2  "WVF Euphoria (Greed)"
 #property indicator_type2   DRAW_HISTOGRAM
 #property indicator_style2  STYLE_SOLID
-#property indicator_color2  clrFireBrick // Softer than Red
+#property indicator_color2  clrFireBrick // Greed = Danger
 #property indicator_width2  3
 
 //--- Input Parameters
@@ -31,24 +33,26 @@ input int                InpPeriod             = 22;    // Lookback Period
 input double             InpMultiplier         = 1.0;   // Scaling Multiplier (Default 1.0 = Percent)
 
 //--- Buffers
-double      UpBuffer[];
-double      DownBuffer[];
+double      FearBuffer[];     // Positive (0 to 100)
+double      GreedBuffer[];    // Negative (0 to -100)
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
 //+------------------------------------------------------------------+
 int OnInit()
 {
-   SetIndexBuffer(0, UpBuffer, INDICATOR_DATA);
-   SetIndexBuffer(1, DownBuffer, INDICATOR_DATA);
+   SetIndexBuffer(0, FearBuffer, INDICATOR_DATA);
+   SetIndexBuffer(1, GreedBuffer, INDICATOR_DATA);
 
    IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid WVF v1.3");
 
-   // Set levels for reference
-   IndicatorSetInteger(INDICATOR_LEVELS, 3);
-   IndicatorSetDouble(INDICATOR_LEVELVALUE, 0, 20);
-   IndicatorSetDouble(INDICATOR_LEVELVALUE, 1, 30);
-   IndicatorSetDouble(INDICATOR_LEVELVALUE, 2, -20); // Downside reference
+   // Set Levels: 0, +/- 20, +/- 30
+   IndicatorSetInteger(INDICATOR_LEVELS, 5);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 0, 0.0);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 1, 20.0);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 2, 30.0);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 3, -20.0);
+   IndicatorSetDouble(INDICATOR_LEVELVALUE, 4, -30.0);
 
    return INIT_SUCCEEDED;
 }
@@ -85,25 +89,29 @@ int OnCalculate(const int rates_total,
            if(close[j] < min_close) min_close = close[j];
        }
 
-       // 1. Calculate Downside WVF (Panic)
-       // Formula: (HighestClose - Low) / HighestClose * 100
-       double down_wvf = 0.0;
+       // 1. Calculate Panic (Fear) -> POSITIVE
+       // Standard WVF Formula: (HighestClose - Low) / HighestClose * 100
+       double panic_val = 0.0;
        if(max_close > 0)
        {
-           down_wvf = (max_close - low[i]) / max_close * 100.0 * InpMultiplier;
+           panic_val = (max_close - low[i]) / max_close * 100.0 * InpMultiplier;
        }
 
-       // 2. Calculate Upside WVF (Euphoria)
-       // Formula: (High - LowestClose) / LowestClose * 100
-       double up_wvf = 0.0;
+       // 2. Calculate Euphoria (Greed) -> NEGATIVE
+       // Inverse Formula: (High - LowestClose) / LowestClose * 100
+       double greed_val = 0.0;
        if(min_close > 0)
        {
-           up_wvf = (high[i] - min_close) / min_close * 100.0 * InpMultiplier;
+           greed_val = (high[i] - min_close) / min_close * 100.0 * InpMultiplier;
        }
 
+       // Clamp to 100/-100 visual range
+       if(panic_val > 100.0) panic_val = 100.0;
+       if(greed_val > 100.0) greed_val = 100.0;
+
        // Map to Buffers
-       UpBuffer[i] = up_wvf;        // Positive Green Bars
-       DownBuffer[i] = -down_wvf;   // Negative Red Bars
+       FearBuffer[i] = panic_val;        // Positive (Green)
+       GreedBuffer[i] = -greed_val;      // Negative (Red)
    }
 
    return rates_total;

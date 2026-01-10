@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                    HybridContextIndicator_v3.17.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 3.17 (Cascading Breakout Fix + Buffer Logic)         |
+//|      Verzió: 3.17 (Cascading Breakout Fix + Buffer Logic + Tuning)|
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
@@ -92,11 +92,16 @@ input group              "=== Auto Fibo Settings ==="
 input bool               InpShowFibo           = false; // Master Fibo Switch (Micro Only)
 input int                InpFiboMicroHistory   = 0;     // History Steps (0=Current Swing, 1=Prev, etc.)
 
+// Explanation of ZigZag Parameters:
+// Depth: Sensitivity (Min bars to search). Lower = Faster/Noisier. Higher = Slower/Smoother.
+// Deviation: Noise Filter (Min points price change to form new leg). Crucial for vertical separation in cascading logic.
+// Backstep: Bar Filter (Min bars between High/Low). Prevents "cluster" pivots.
+
 input group              "=== Micro ZigZag (Fast) Settings ==="
 input bool               InpUseMicro           = true; // Toggle Micro Pivot
-input int                InpMicroDepth         = 5;
-input int                InpMicroDeviation     = 5;
-input int                InpMicroBackstep      = 3;
+input int                InpMicroDepth         = 3;    // Default: 3 (Very Sensitive)
+input int                InpMicroDeviation     = 5;    // Price Change Threshold
+input int                InpMicroBackstep      = 3;    // Min bars between peaks
 input ENUM_LINE_STYLE    InpMicroStyle         = STYLE_DOT;
 input int                InpMicroWidth         = 1;
 input color              InpMicroColorR1       = clrRed;
@@ -104,8 +109,8 @@ input color              InpMicroColorS1       = clrGreen;
 
 input group              "=== Secondary ZigZag (Slow) Settings ==="
 input bool               InpUseSecondary       = true; // Toggle Secondary Pivot
-input int                InpSecDepth           = 30;
-input int                InpSecDeviation       = 10;
+input int                InpSecDepth           = 10;   // Default: 10 (Medium Term)
+input int                InpSecDeviation       = 10;   // Higher deviation = Larger swings
 input int                InpSecBackstep        = 5;
 input ENUM_LINE_STYLE    InpSecStyle           = STYLE_DASHDOT;
 input int                InpSecWidth           = 1; // Corrected: Must be 1 for non-solid styles in MT5
@@ -114,7 +119,7 @@ input color              InpSecColorS1         = clrGreen;
 
 input group              "=== Tertiary ZigZag (Trend) Settings ==="
 input bool               InpUseTertiary        = true; // Toggle Third Pivot
-input int                InpTerDepth           = 60;
+input int                InpTerDepth           = 20;   // Default: 20 (Long Term)
 input int                InpTerDeviation       = 10;
 input int                InpTerBackstep        = 5;
 input ENUM_LINE_STYLE    InpTerStyle           = STYLE_SOLID;
