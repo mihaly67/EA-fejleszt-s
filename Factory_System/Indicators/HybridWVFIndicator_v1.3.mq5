@@ -58,6 +58,9 @@ int OnInit()
    IndicatorSetDouble(INDICATOR_LEVELVALUE, 3, -20.0);
    IndicatorSetDouble(INDICATOR_LEVELVALUE, 4, -30.0);
 
+   // Set Level Color to DimGray
+   IndicatorSetInteger(INDICATOR_LEVELCOLOR, 0, clrDimGray);
+
    return INIT_SUCCEEDED;
 }
 
