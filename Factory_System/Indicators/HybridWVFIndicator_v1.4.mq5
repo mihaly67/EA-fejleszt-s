@@ -12,6 +12,7 @@
 #property indicator_plots   1
 #property indicator_minimum -100
 #property indicator_maximum 100
+#property indicator_levelcolor clrDimGray
 
 //--- Plot 1: WVF Histogram (Color)
 #property indicator_label1  "WVF Sentiment"

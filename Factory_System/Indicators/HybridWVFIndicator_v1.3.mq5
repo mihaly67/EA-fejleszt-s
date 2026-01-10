@@ -12,6 +12,7 @@
 #property indicator_plots   2
 #property indicator_minimum -100
 #property indicator_maximum 100
+#property indicator_levelcolor clrDimGray
 
 //--- Plot 1: Fear/Panic (Market Bottoms) -> Positive -> Green (Buy Opp)
 #property indicator_label1  "WVF Fear (Panic)"
