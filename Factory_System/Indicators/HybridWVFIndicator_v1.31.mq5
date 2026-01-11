@@ -64,11 +64,11 @@ enum ENUM_COLOR_METHOD {
 //--- Inputs
 input group              "=== WVF Settings ==="
 input int                InpPeriod       = 22;     // WVF Period (Volatility)
-input int                InpNormPeriod   = 480;    // Normalization History (Bars) - SCALING FIX
+input int                InpNormPeriod   = 480;    // Normalization History (Bars)
 
 input group              "=== Panic Logic (Positive vs Negative) ==="
 input ENUM_PANIC_METHOD  InpPanicMethod  = PANIC_DYNAMIC_STD;
-input double             InpPanicFactor  = 2.0;    // Panic Threshold (StdDev Mult or Fixed Level)
+input double             InpPanicFactor  = 1.0;    // Panic Threshold (Default 1.0)
 input int                InpPanicMA      = 50;     // MA Period for Panic Detection (if used)
 
 input group              "=== Color Logic (Red vs Green) ==="
@@ -154,7 +154,7 @@ int OnCalculate(const int rates_total,
        WVFBuffer[i] = wvf_val;
 
        // 2. Determine Panic Threshold (Dynamic)
-       double threshold = 999.0; // Default high
+       double threshold = 9999.0; // Init high
 
        if (InpPanicMethod == PANIC_DYNAMIC_STD) {
            double sum = 0;
@@ -166,7 +166,7 @@ int OnCalculate(const int rates_total,
        else if (InpPanicMethod == PANIC_MA_CROSS) {
            double sum = 0;
            for(int k=0; k<InpPanicMA; k++) if(i-k >=0) sum += WVFBuffer[i-k];
-           threshold = sum / InpPanicMA;
+           threshold = sum / InpPanicMA; // Simple MA
        }
        else if (InpPanicMethod == PANIC_FIXED_LEVEL) {
            threshold = InpPanicFactor;
@@ -191,18 +191,17 @@ int OnCalculate(const int rates_total,
        }
 
        // 5. SCALING FIX (Dynamic Normalization)
-       // Find the max WVF in recent history to normalize to 0-100 range
        double max_wvf = GetHighest(WVFBuffer, i, InpNormPeriod);
-       if (max_wvf == 0) max_wvf = 1.0; // Prevent div zero
+       if (max_wvf <= 0.00001) max_wvf = 1.0; // Fix DivZero
 
        double output_val = (wvf_val / max_wvf) * 100.0;
 
-       // Clamp just in case
        if(output_val > 100.0) output_val = 100.0;
 
        if (is_panic) {
            // PANIC -> NEGATIVE (Fear)
-           ValBuffer[i] = -output_val;
+           // Explicitly set negative sign!
+           ValBuffer[i] = -1.0 * output_val;
        } else {
            // FLOW -> POSITIVE (Joy)
            ValBuffer[i] = output_val;
