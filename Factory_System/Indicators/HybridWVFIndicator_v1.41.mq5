@@ -20,14 +20,14 @@
       - Túlfeszített, pánikszerű mozgás. A piac fél (vagy FOMO).
 
    PARAMÉTEREZÉS (Scalper Optimalizáció):
-   - Trend Logic: Hogyan döntsük el, hogy Pánik vagy Öröm van?
-     - DYNAMIC_STD: Bollinger-szerű sáv (Alapértelmezett).
-     - MA_CROSS: Ha a WVF átlépi a saját mozgóátlagát -> Pánik.
-     - FIXED_LEVEL: Ha a WVF átlép egy fix szintet -> Pánik.
+   - Trend Logic (Panic Switch):
+     - DYNAMIC_STD (Bollinger-szerű): Ha a WVF kilép a sávból -> Pánik.
+     - MA_CROSS (EMA): Ha a WVF átlépi az átlagát -> Pánik.
+     - FIXED_LEVEL: Ha a WVF > Szint -> Pánik.
 
-   - Color Logic: Mi alapján legyen Piros vagy Zöld?
-     - CANDLE_COLOR: Az aktuális gyertya színe (Close > Open).
-     - MA_TREND: Az árfolyam viszonya egy mozgóátlaghoz (Simább).
+   - Color Logic:
+     - CANDLE_COLOR: Gyertya színe.
+     - MA_TREND: Árfolyam vs Mozgóátlag.
 */
 
 #property indicator_separate_window
@@ -51,36 +51,36 @@
 
 //--- Enums
 enum ENUM_PANIC_METHOD {
-    PANIC_DYNAMIC_STD, // Dynamic (StdDev)
-    PANIC_MA_CROSS,    // MA Crossover
+    PANIC_DYNAMIC_STD, // Dynamic (Bollinger)
+    PANIC_MA_CROSS,    // MA Cross (EMA Switch)
     PANIC_FIXED_LEVEL  // Fixed Level
 };
 
 enum ENUM_COLOR_METHOD {
-    COLOR_CANDLE,      // Candle Color (Close vs Open)
+    COLOR_CANDLE,      // Candle Color
     COLOR_MA_TREND     // Price vs MA
 };
 
 //--- Inputs
 input group              "=== WVF Settings ==="
-input int                InpPeriod       = 22;     // WVF Period (Volatility)
-input int                InpNormPeriod   = 480;    // Normalization History (Bars) - SCALING FIX
+input int                InpPeriod       = 22;     // WVF Period
+input int                InpNormPeriod   = 480;    // Scaling History (Bars)
 
 input group              "=== Panic Logic (Positive vs Negative) ==="
 input ENUM_PANIC_METHOD  InpPanicMethod  = PANIC_DYNAMIC_STD;
-input double             InpPanicFactor  = 2.0;    // Panic Threshold (StdDev Mult or Fixed Level)
-input int                InpPanicMA      = 50;     // MA Period for Panic Detection (if used)
+input double             InpPanicFactor  = 2.0;    // Threshold (Multiplier or Level)
+input int                InpPanicMA      = 50;     // MA Period (for MA Cross mode)
 
 input group              "=== Color Logic (Red vs Green) ==="
 input ENUM_COLOR_METHOD  InpColorMethod  = COLOR_CANDLE;
-input int                InpColorMA      = 9;      // MA Period for Color Trend (if used)
+input int                InpColorMA      = 9;      // MA Period (for Trend Color)
 
 //--- Buffers
 double      ValBuffer[];
 double      ColorBuffer[];
-double      WVFBuffer[]; // Calc
-double      ThresholdBuffer[]; // Calc (Bollinger Upper)
-double      MABuffer[]; // Temp buffer for MA calc
+double      WVFBuffer[];
+double      ThresholdBuffer[];
+double      MABuffer[];
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
@@ -153,8 +153,8 @@ int OnCalculate(const int rates_total,
 
        WVFBuffer[i] = wvf_val;
 
-       // 2. Determine Panic Threshold (Dynamic)
-       double threshold = 999.0; // Default high
+       // 2. Determine Panic Threshold (Dynamic Switch)
+       double threshold = 999.0;
 
        if (InpPanicMethod == PANIC_DYNAMIC_STD) {
            double sum = 0;
@@ -179,7 +179,6 @@ int OnCalculate(const int rates_total,
 
        // 4. Direction: Bull or Bear? (Color)
        bool is_bear = false;
-
        if (InpColorMethod == COLOR_CANDLE) {
            is_bear = (close[i] < open[i]);
        }
@@ -191,13 +190,10 @@ int OnCalculate(const int rates_total,
        }
 
        // 5. SCALING FIX (Dynamic Normalization)
-       // Find the max WVF in recent history to normalize to 0-100 range
        double max_wvf = GetHighest(WVFBuffer, i, InpNormPeriod);
-       if (max_wvf == 0) max_wvf = 1.0; // Prevent div zero
+       if (max_wvf == 0) max_wvf = 1.0;
 
        double output_val = (wvf_val / max_wvf) * 100.0;
-
-       // Clamp just in case
        if(output_val > 100.0) output_val = 100.0;
 
        if (is_panic) {
@@ -210,10 +206,8 @@ int OnCalculate(const int rates_total,
 
        // Color Logic
        if (is_bear) {
-           // RED (Falling)
            ColorBuffer[i] = is_panic ? 2.0 : 0.0;
        } else {
-           // GREEN (Rising)
            ColorBuffer[i] = is_panic ? 3.0 : 1.0;
        }
    }
