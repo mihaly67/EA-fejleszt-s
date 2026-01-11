@@ -21,7 +21,7 @@
 
    PARAMÉTEREZÉS (Scalper Optimalizáció):
    - Trend Logic: Hogyan döntsük el, hogy Pánik vagy Öröm van?
-     - DYNAMIC_STD: Bollinger-szerű sáv (Alapértelmezett).
+     - BOLLINGER (Dynamic Std): Ha a WVF kilép a Bollinger szalagból -> Pánik.
      - MA_CROSS: Ha a WVF átlépi a saját mozgóátlagát -> Pánik.
      - FIXED_LEVEL: Ha a WVF átlép egy fix szintet -> Pánik.
 
@@ -51,7 +51,7 @@
 
 //--- Enums
 enum ENUM_PANIC_METHOD {
-    PANIC_DYNAMIC_STD, // Dynamic (StdDev)
+    PANIC_BOLLINGER,   // Bollinger Bands Logic (Dynamic StdDev)
     PANIC_MA_CROSS,    // MA Crossover
     PANIC_FIXED_LEVEL  // Fixed Level
 };
@@ -67,8 +67,8 @@ input int                InpPeriod       = 22;     // WVF Period (Volatility)
 input int                InpNormPeriod   = 480;    // Normalization History (Bars)
 
 input group              "=== Panic Logic (Positive vs Negative) ==="
-input ENUM_PANIC_METHOD  InpPanicMethod  = PANIC_DYNAMIC_STD;
-input double             InpPanicFactor  = 1.5;    // Panic Threshold (Slightly increased to 1.5)
+input ENUM_PANIC_METHOD  InpPanicMethod  = PANIC_BOLLINGER;
+input double             InpPanicFactor  = 1.5;    // Panic Threshold (StdDev for Bollinger or Level)
 input int                InpPanicMA      = 50;     // MA Period for Panic Detection (if used)
 
 input group              "=== Color Logic (Red vs Green) ==="
@@ -157,12 +157,12 @@ int OnCalculate(const int rates_total,
        // 2. Determine Panic Threshold (Dynamic)
        double threshold = 9999.0; // Init high
 
-       if (InpPanicMethod == PANIC_DYNAMIC_STD) {
+       if (InpPanicMethod == PANIC_BOLLINGER) {
            double sum = 0;
            for(int k=0; k<InpPeriod; k++) if(i-k >=0) sum += WVFBuffer[i-k];
            double ma = sum / InpPeriod;
            double std = GetStdDev(WVFBuffer, i, InpPeriod, ma);
-           threshold = ma + (std * InpPanicFactor);
+           threshold = ma + (std * InpPanicFactor); // Bollinger Upper Band Logic
        }
        else if (InpPanicMethod == PANIC_MA_CROSS) {
            double sum = 0;
@@ -177,7 +177,7 @@ int OnCalculate(const int rates_total,
 
        // 3. Logic: Flow (Joy) vs Panic (Fear)
        bool is_panic = (wvf_val > threshold);
-       bool is_strong_panic = (wvf_val > threshold * InpStrongMult); // New logic for vivid color
+       bool is_strong_panic = (wvf_val > threshold * InpStrongMult);
 
        // 4. Direction: Bull or Bear? (Color)
        bool is_bear = false;
@@ -193,7 +193,7 @@ int OnCalculate(const int rates_total,
 
        // 5. SCALING FIX (Dynamic Normalization)
        double max_wvf = GetHighest(WVFBuffer, i, InpNormPeriod);
-       if (max_wvf <= 0.00001) max_wvf = 1.0; // Fix DivZero
+       if (max_wvf <= 0.00001) max_wvf = 1.0;
 
        double output_val = (wvf_val / max_wvf) * 100.0;
        if(output_val > 100.0) output_val = 100.0;
@@ -208,13 +208,9 @@ int OnCalculate(const int rates_total,
 
        // Color Logic - EQUALIZED
        if (is_bear) {
-           // RED (Falling)
-           // Only use StrongRed (2.0) if Strong Panic condition is met
-           ColorBuffer[i] = is_strong_panic ? 2.0 : 0.0; // 0 = Standard FireBrick
+           ColorBuffer[i] = is_strong_panic ? 2.0 : 0.0;
        } else {
-           // GREEN (Rising)
-           // Only use StrongGreen (3.0) if Strong Panic condition is met
-           ColorBuffer[i] = is_strong_panic ? 3.0 : 1.0; // 1 = Standard ForestGreen
+           ColorBuffer[i] = is_strong_panic ? 3.0 : 1.0;
        }
    }
 
