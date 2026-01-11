@@ -68,12 +68,13 @@ input int                InpNormPeriod   = 480;    // Normalization History (Bar
 
 input group              "=== Panic Logic (Positive vs Negative) ==="
 input ENUM_PANIC_METHOD  InpPanicMethod  = PANIC_DYNAMIC_STD;
-input double             InpPanicFactor  = 1.0;    // Panic Threshold (Default 1.0)
+input double             InpPanicFactor  = 1.5;    // Panic Threshold (Slightly increased to 1.5)
 input int                InpPanicMA      = 50;     // MA Period for Panic Detection (if used)
 
 input group              "=== Color Logic (Red vs Green) ==="
 input ENUM_COLOR_METHOD  InpColorMethod  = COLOR_CANDLE;
 input int                InpColorMA      = 9;      // MA Period for Color Trend (if used)
+input double             InpStrongMult   = 1.2;    // Strong Color Multiplier (e.g. 1.2x Threshold)
 
 //--- Buffers
 double      ValBuffer[];
@@ -176,10 +177,10 @@ int OnCalculate(const int rates_total,
 
        // 3. Logic: Flow (Joy) vs Panic (Fear)
        bool is_panic = (wvf_val > threshold);
+       bool is_strong_panic = (wvf_val > threshold * InpStrongMult); // New logic for vivid color
 
        // 4. Direction: Bull or Bear? (Color)
        bool is_bear = false;
-
        if (InpColorMethod == COLOR_CANDLE) {
            is_bear = (close[i] < open[i]);
        }
@@ -195,25 +196,25 @@ int OnCalculate(const int rates_total,
        if (max_wvf <= 0.00001) max_wvf = 1.0; // Fix DivZero
 
        double output_val = (wvf_val / max_wvf) * 100.0;
-
        if(output_val > 100.0) output_val = 100.0;
 
        if (is_panic) {
            // PANIC -> NEGATIVE (Fear)
-           // Explicitly set negative sign!
            ValBuffer[i] = -1.0 * output_val;
        } else {
            // FLOW -> POSITIVE (Joy)
            ValBuffer[i] = output_val;
        }
 
-       // Color Logic
+       // Color Logic - EQUALIZED
        if (is_bear) {
            // RED (Falling)
-           ColorBuffer[i] = is_panic ? 2.0 : 0.0;
+           // Only use StrongRed (2.0) if Strong Panic condition is met
+           ColorBuffer[i] = is_strong_panic ? 2.0 : 0.0; // 0 = Standard FireBrick
        } else {
            // GREEN (Rising)
-           ColorBuffer[i] = is_panic ? 3.0 : 1.0;
+           // Only use StrongGreen (3.0) if Strong Panic condition is met
+           ColorBuffer[i] = is_strong_panic ? 3.0 : 1.0; // 1 = Standard ForestGreen
        }
    }
 
