@@ -64,6 +64,7 @@ enum ENUM_COLOR_METHOD {
 //--- Inputs
 input group              "=== WVF Settings ==="
 input int                InpPeriod       = 22;     // WVF Period (Volatility)
+input int                InpNormPeriod   = 480;    // Normalization History (Bars) - SCALING FIX
 
 input group              "=== Panic Logic (Positive vs Negative) ==="
 input ENUM_PANIC_METHOD  InpPanicMethod  = PANIC_DYNAMIC_STD;
@@ -139,9 +140,9 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
 {
-   if(rates_total < InpPeriod * 2 || rates_total < InpPanicMA || rates_total < InpColorMA) return 0;
+   if(rates_total < InpPeriod * 2 || rates_total < InpPanicMA || rates_total < InpColorMA || rates_total < InpNormPeriod) return 0;
 
-   int start = (prev_calculated > 0) ? prev_calculated - 1 : MathMax(InpPeriod, MathMax(InpPanicMA, InpColorMA));
+   int start = (prev_calculated > 0) ? prev_calculated - 1 : MathMax(InpNormPeriod, MathMax(InpPeriod, MathMax(InpPanicMA, InpColorMA)));
 
    for(int i = start; i < rates_total; i++)
    {
@@ -154,7 +155,6 @@ int OnCalculate(const int rates_total,
 
        // 2. Determine Panic Threshold (Dynamic)
        double threshold = 999.0; // Default high
-       double panic_ma_val = 0.0;
 
        if (InpPanicMethod == PANIC_DYNAMIC_STD) {
            double sum = 0;
@@ -166,11 +166,10 @@ int OnCalculate(const int rates_total,
        else if (InpPanicMethod == PANIC_MA_CROSS) {
            double sum = 0;
            for(int k=0; k<InpPanicMA; k++) if(i-k >=0) sum += WVFBuffer[i-k];
-           panic_ma_val = sum / InpPanicMA;
-           threshold = panic_ma_val;
+           threshold = sum / InpPanicMA;
        }
        else if (InpPanicMethod == PANIC_FIXED_LEVEL) {
-           threshold = InpPanicFactor; // User sets level directly
+           threshold = InpPanicFactor;
        }
 
        ThresholdBuffer[i] = threshold;
@@ -185,18 +184,20 @@ int OnCalculate(const int rates_total,
            is_bear = (close[i] < open[i]);
        }
        else if (InpColorMethod == COLOR_MA_TREND) {
-           // Calculate Simple MA for Price
            double sum_p = 0;
            for(int k=0; k<InpColorMA; k++) if(i-k >=0) sum_p += close[i-k];
            double ma_p = sum_p / InpColorMA;
            is_bear = (close[i] < ma_p);
        }
 
-       // 5. Final Output
-       double output_val = wvf_val;
+       // 5. SCALING FIX (Dynamic Normalization)
+       // Find the max WVF in recent history to normalize to 0-100 range
+       double max_wvf = GetHighest(WVFBuffer, i, InpNormPeriod);
+       if (max_wvf == 0) max_wvf = 1.0; // Prevent div zero
 
-       // Scaling for visualization (fit to +/- 100 approx)
-       output_val *= 5.0;
+       double output_val = (wvf_val / max_wvf) * 100.0;
+
+       // Clamp just in case
        if(output_val > 100.0) output_val = 100.0;
 
        if (is_panic) {
@@ -210,10 +211,10 @@ int OnCalculate(const int rates_total,
        // Color Logic
        if (is_bear) {
            // RED (Falling)
-           ColorBuffer[i] = is_panic ? 2.0 : 0.0; // 2=StrongRed(if needed) or just Red
+           ColorBuffer[i] = is_panic ? 2.0 : 0.0;
        } else {
            // GREEN (Rising)
-           ColorBuffer[i] = is_panic ? 3.0 : 1.0; // 3=StrongGreen or just Green
+           ColorBuffer[i] = is_panic ? 3.0 : 1.0;
        }
    }
 
