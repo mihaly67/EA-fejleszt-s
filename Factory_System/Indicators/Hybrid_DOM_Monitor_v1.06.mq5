@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                        Hybrid_DOM_Monitor_v1.04.mq5 |
+//|                                        Hybrid_DOM_Monitor_v1.06.mq5 |
 //|                                                      Jules Agent |
 //|                                   Hybrid System - Orderflow Monitor|
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent"
 #property link      "https://mql5.com"
-#property version   "1.04"
+#property version   "1.06"
 #property indicator_chart_window
 #property indicator_plots 0
 
@@ -26,6 +26,7 @@ input int InpDepthLimit = 5;                    // Mélység szűrő (csak az el
 input long InpVolumeFilter = 5000;              // Zajszűrő: ennél nagyobb volument figyelmen kívül hagy (CFD falak)
 input int InpSimHistory = 100;                  // Szimuláció: Hány tickre visszamenőleg?
 input double InpImbalanceThreshold = 60.0;      // Túlsúly küszöb (%) a színezéshez
+input bool InpSimUseTickVolume = true;          // Szimulációnál: Ha real_volume=0, használja a tick_volume-ot?
 
 input group "Megjelenítés"
 input ENUM_BASE_CORNER InpCorner = CORNER_LEFT_LOWER;   // Panel pozíció (Alap: Bal Alsó)
@@ -192,21 +193,37 @@ double CalculateDOMImbalance(const MqlBookInfo &book[])
   }
 
 //+------------------------------------------------------------------+
-//| Logika: Szimuláció Frissítése (Javított)                         |
+//| Logika: Szimuláció Frissítése (Javított v1.06)                   |
 //+------------------------------------------------------------------+
 void UpdateSimulation(const MqlTick &tick)
   {
-   // Szűrés: Csak akkor tekintjük kereskedésnek, ha van volumen,
-   // VAGY ha a flagek kifejezetten jelzik.
-   // Puszta árfolyam változás (Quote update) nem kereskedés.
-
+   // Szűrés:
+   // 1. Irány meghatározása (Flags vagy Ár)
    bool isBuy = (tick.flags & TICK_FLAG_BUY) != 0;
    bool isSell = (tick.flags & TICK_FLAG_SELL) != 0;
-   bool hasVolume = (tick.volume_real > 0 || tick.volume > 0);
 
-   // Ha nincs flag és nincs volumen, akkor ez csak egy Quote (Bid/Ask) update.
-   // Ezt figyelmen kívül hagyjuk a szimulációban, különben eltorzítja az eredményt ("Always Red").
-   if(!isBuy && !isSell && !hasVolume) return;
+   // 2. Volumen meghatározása
+   // Sokan csak Tick Volument (1) küldenek CFD-n
+   long vol = (long)tick.volume_real;
+   if(vol == 0 && InpSimUseTickVolume) vol = (long)tick.volume; // Fallback
+
+   // JAVÍTÁS (v1.06):
+   // Csak akkor dobjuk el, ha NINCS volumen ÉS NINCS flag ÉS árfolyam SEM változott.
+   // Ha az ár változott (last), akkor még mindig lehet Price Action alapján következtetni.
+
+   static double last_price = 0;
+
+   // Ha első futás, inicializáljuk
+   if(last_price == 0)
+     {
+      last_price = tick.last;
+      return;
+     }
+
+   bool priceChanged = (tick.last != last_price);
+
+   // Ha nincs semmi érdemleges (se volumen, se flag, se ármozgás), akkor kilépünk.
+   if(vol == 0 && !isBuy && !isSell && !priceChanged) return;
 
    // Shift history
    for(int i=InpSimHistory-1; i>0; i--)
@@ -220,27 +237,24 @@ void UpdateSimulation(const MqlTick &tick)
    else if(isSell) type = -1;
    else
      {
-      // Ha nincs flag, de van volumen, próbáljuk kitalálni az árból
-      if(tick.last > tick.bid) type = 1; // Ask közelében -> Buy
-      else if(tick.last < tick.ask) type = -1; // Bid közelében -> Sell
+      // Fallback logika (Flags nélkül)
+      // Ha van volumen, de nincs flag -> Árfolyam-mozgásból következtetünk
+      if(tick.last > tick.bid) type = 1; // Ask-hoz közelebb -> Buy
+      else if(tick.last < tick.ask) type = -1; // Bid-hez közelebb -> Sell
       else
         {
-         // Ha pont középen van (ritka), vagy spreaden belül
-         // Megnézzük az előző tickhez képest
-         static double last_price = 0;
-         if(last_price > 0)
-           {
-            if(tick.last > last_price) type = 1;
-            else if(tick.last < last_price) type = -1;
-           }
+         // Spreaden belül -> Előző árhoz képest
+         if(tick.last > last_price) type = 1;
+         else if(tick.last < last_price) type = -1;
+         // Ha egyenlő, akkor 0 marad (semleges)
         }
      }
 
-   static double save_last_price = 0;
-   save_last_price = tick.last;
+   // JAVÍTÁS: Mindig frissítjük a last_price-t
+   last_price = tick.last;
 
-   g_tick_history[0].volume = (long)tick.volume_real;
-   if(g_tick_history[0].volume == 0) g_tick_history[0].volume = 1; // Fallback ha van flag de nincs volumen
+   // Mentés a pufferbe
+   g_tick_history[0].volume = (vol > 0) ? vol : 1; // Ha valamiért mégis 0 lenne de van típusa (Price Action), legyen 1
    g_tick_history[0].type = type;
   }
 
