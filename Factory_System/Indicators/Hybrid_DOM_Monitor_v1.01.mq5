@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                                        Hybrid_DOM_Monitor_v1.0.mq5 |
+//|                                        Hybrid_DOM_Monitor_v1.01.mq5 |
 //|                                                      Jules Agent |
 //|                                   Hybrid System - Orderflow Monitor|
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent"
 #property link      "https://mql5.com"
-#property version   "1.00"
+#property version   "1.01"
 #property indicator_chart_window
 #property indicator_plots 0
 
@@ -19,13 +19,8 @@ enum ENUM_DOM_MODE
    MODE_SIMULATION   // Szimuláció (Tick Flow alapján)
   };
 
-enum ENUM_PANEL_CORNER
-  {
-   CORNER_LEFT_UPPER,
-   CORNER_LEFT_LOWER,
-   CORNER_RIGHT_UPPER,
-   CORNER_RIGHT_LOWER
-  };
+// MQL5 Standard Library már tartalmazza az ENUM_BASE_CORNER-t, ezért azt használjuk közvetlenül
+// Törölve: ENUM_PANEL_CORNER definíció
 
 // --- Bemeneti paraméterek ---
 input group "Beállítások"
@@ -34,7 +29,7 @@ input int InpSimHistory = 100;                  // Szimuláció: Hány tickre vi
 input double InpImbalanceThreshold = 60.0;      // Túlsúly küszöb (%) a színezéshez
 
 input group "Megjelenítés"
-input ENUM_PANEL_CORNER InpCorner = CORNER_RIGHT_UPPER; // Panel pozíció
+input ENUM_BASE_CORNER InpCorner = CORNER_RIGHT_UPPER;  // Panel pozíció
 input int InpXOffset = 10;                              // X eltolás
 input int InpYOffset = 50;                              // Y eltolás
 input color InpColorBuy = clrMediumSeaGreen;            // Vevő szín
@@ -209,8 +204,11 @@ void UpdateSimulation(const MqlTick &tick)
 
    // Új elem
    int type = 0;
-   if((tick.flags & TICK_FLAG_BUY) || (tick.last > tick.bid)) type = 1;       // Vétel (Ask-on kötés)
-   else if((tick.flags & TICK_FLAG_SELL) || (tick.last < tick.ask)) type = -1; // Eladás (Bid-en kötés)
+   bool isBuy = (tick.flags & TICK_FLAG_BUY) != 0;
+   bool isSell = (tick.flags & TICK_FLAG_SELL) != 0;
+
+   if(isBuy || (tick.last > tick.bid)) type = 1;       // Vétel (Ask-on kötés)
+   else if(isSell || (tick.last < tick.ask)) type = -1; // Eladás (Bid-en kötés)
 
    // Ha nincs flag és ár nem mozdult, próbáljuk kitalálni az árváltozásból
    static double last_price = 0;
