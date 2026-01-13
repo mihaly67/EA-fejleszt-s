@@ -25,7 +25,8 @@ enum ENUM_DOM_MODE
 // --- Bemeneti paraméterek ---
 input group "Beállítások"
 input ENUM_DOM_MODE InpMode = MODE_AUTO_DETECT; // Működési mód
-input int InpDepthLimit = 5;                    // Mélység szűrő (csak az első N szint)
+input int InpSignalDepth = 1;                   // JEL Mélység: Csak az első N szintet figyeli a Flow-hoz (1 = Best Bid/Ask)
+input int InpVisualDepth = 5;                   // VIZUÁLIS Mélység: Ennyi szintet jelenít meg a 'Real DOM' módban
 input long InpVolumeFilter = 5000;              // Zajszűrő: ennél nagyobb volument figyelmen kívül hagy
 input int InpSimHistory = 100;                  // Szimuláció: Hány tickre visszamenőleg?
 input double InpImbalanceThreshold = 60.0;      // Túlsúly küszöb (%)
@@ -40,9 +41,9 @@ input ENUM_BASE_CORNER InpCorner = CORNER_LEFT_LOWER;   // Panel pozíció
 input int InpXOffset = 50;                              // X eltolás
 input int InpYOffset = 100;                             // Y eltolás
 input color InpColorBg = clrDarkSlateGray;              // Háttérszín (Kontrasztos)
-input color InpColorBuy = clrMediumSeaGreen;            // Vevő szín
-input color InpColorSell = clrCrimson;                  // Eladó szín
-input color InpColorNeutral = clrSilver;                // Semleges/Marker szín
+input color InpColorBuy = clrMediumSeaGreen;            // Vevő (Bull) szín
+input color InpColorSell = clrCrimson;                  // Eladó (Bear) szín
+input color InpColorNeutral = clrWhite;                 // Semleges/Marker szín (Fehér a láthatóságért)
 input color InpTextColor = clrWhite;                    // Szöveg szín
 
 // --- Indicator Buffers (EA Interface) ---
@@ -58,6 +59,8 @@ string g_obj_bar_buy = "HybridDOM_BarBuy";
 string g_obj_bar_sell = "HybridDOM_BarSell";
 string g_obj_center = "HybridDOM_Center";
 string g_obj_text = "HybridDOM_Text";
+string g_obj_label_buy = "HybridDOM_LabelBuy";
+string g_obj_label_sell = "HybridDOM_LabelSell";
 
 // DOM Snapshot a Delta számításhoz
 struct DOMLevel {
@@ -111,6 +114,7 @@ int OnInit()
      }
 
    CreatePanel();
+   EventSetTimer(1); // Heartbeat: 1 másodpercenként frissít
    return(INIT_SUCCEEDED);
   }
 
@@ -119,8 +123,19 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
   {
+   EventKillTimer();
    if(g_subscribed) MarketBookRelease(_Symbol);
    ObjectsDeleteAll(0, "HybridDOM_");
+   ChartRedraw();
+  }
+
+//+------------------------------------------------------------------+
+//| Timer Event (Heartbeat to fix freezing)                          |
+//+------------------------------------------------------------------+
+void OnTimer()
+  {
+   // Ha 'MODE_REAL_DOM' módban vagyunk, vagy 'AUTO'-ban, akkor is frissítsük a vizuált,
+   // hogy biztosan ne fagyjon be a kép.
    ChartRedraw();
   }
 
@@ -200,8 +215,7 @@ void OnBookEvent(const string &symbol)
   }
 
 //+------------------------------------------------------------------+
-//| Logic: Hybrid Liquidity Delta (v1.08)                            |
-//| Comparison of current DOM vs Previous Snapshot                   |
+//| Logic: Hybrid Liquidity Delta (Symmetric & Depth-Limited)        |
 //+------------------------------------------------------------------+
 bool ProcessHybridLiquidity(const MqlBookInfo &book[])
   {
@@ -212,39 +226,26 @@ bool ProcessHybridLiquidity(const MqlBookInfo &book[])
    if(ArraySize(g_last_dom) == 0)
      {
       SaveSnapshot(book);
-      return false; // Első futásnál nincs mihez hasonlítani
+      return false;
      }
 
    // 2. Összehasonlítás (Delta Keresés)
-   // Iteráljuk végig a szinteket a DepthLimit-ig
-   int limit = MathMin(size, InpDepthLimit);
-
-   // Egyszerűsített összehasonlítás: Ár alapú keresés a snapshotban
-   // Mivel a DOM sorrend változhat, ár szerint kell párosítani.
+   // !!! FONTOS: Csak az InpSignalDepth mélységig vizsgálódunk a jelekhez !!!
+   int limit = MathMin(size, InpSignalDepth);
 
    for(int i=0; i<limit; i++)
      {
-      // Szűrés
+      // Szűrés (bár ha Depth=1, akkor ez kevésbé kritikus)
       if(book[i].volume > InpVolumeFilter) continue;
 
-      // Keressük meg ezt az árat a régi snapshotban
       long old_vol = GetVolumeFromSnapshot(book[i].price, book[i].type);
       long new_vol = book[i].volume;
 
       long delta = new_vol - old_vol;
 
-      // Ha nincs változás, tovább
       if(delta == 0) continue;
 
-      // --- Értelmezés ---
-      // Ha a volumen NŐTT -> Limit order hozzáadása (Support/Resistance erősödés)
-      // Ha a volumen CSÖKKENT -> Order kivétele vagy Execution (Market order ette meg)
-
-      // V1.08 Egyszerűsítés: Csak a hozzáadott likviditást tekintjük "Szándéknak"
-      // Execution (csökkenés) már látszik az OnTick-ben (elvileg), bár CFD-nél nem biztos.
-      // A felhasználó kérése: "Ki kell hozni a maximumot".
-      // Tehát: Minden változást jelnek veszünk.
-
+      // --- Szimmetrikus Értelmezés ---
       if(InpTrackLiquidityChanges)
         {
          int signal_type = 0;
@@ -252,21 +253,21 @@ bool ProcessHybridLiquidity(const MqlBookInfo &book[])
          // BID Oldal (Vevők)
          if(book[i].type == BOOK_TYPE_BUY || book[i].type == BOOK_TYPE_BUY_MARKET)
            {
-            if(delta > 0) signal_type = 1;  // Support Building (Bullish)
-            // if(delta < 0) signal_type = -1; // Support Pulling/Hit (Bearish?) - Ez zajos lehet, egyelőre csak a növekedést figyeljük
+            if(delta > 0) signal_type = 1;  // Support Added (Bullish)
+            if(delta < 0) signal_type = -1; // Support Removed (Bearish)
            }
 
          // ASK Oldal (Eladók)
          if(book[i].type == BOOK_TYPE_SELL || book[i].type == BOOK_TYPE_SELL_MARKET)
            {
-            if(delta > 0) signal_type = -1; // Resistance Building (Bearish)
+            if(delta > 0) signal_type = -1; // Resistance Added (Bearish)
+            if(delta < 0) signal_type = 1;  // Resistance Removed (Bullish)
            }
 
          if(signal_type != 0)
            {
-            // A delta mértékével súlyozzuk? Vagy fix?
-            // CFD-nél a delta kicsi lehet, maradjunk a szintetikus fixnél, vagy a delta felénél.
-            long weight = (long)MathMax(1, MathAbs(delta) / 10); // Pl. 10 lot változás = 1 egység
+            // Delta súlyozás
+            long weight = (long)MathMax(1, MathAbs(delta) / 10);
             if(weight < InpSyntheticTickVolume) weight = InpSyntheticTickVolume;
 
             AddTickToHistory(signal_type, weight);
@@ -275,8 +276,7 @@ bool ProcessHybridLiquidity(const MqlBookInfo &book[])
         }
      }
 
-   // 3. Best Price változás (v1.07 logika megtartása - Aggresszió)
-   // Ez kezeli azt, ha az ár "elugrik", amit a fenti ciklus nem feltétlenül lát (mert új árszint jön be)
+   // 3. Best Price Aggression (Marad a régi logika is)
    CheckBestPriceChange(book, activity_detected);
 
    // 4. Snapshot Frissítése
@@ -305,7 +305,7 @@ long GetVolumeFromSnapshot(double price, int type)
    int size = ArraySize(g_last_dom);
    for(int i=0; i<size; i++)
      {
-      // Pontos ár egyezés (double összehasonlításnál óvatosan, de DOM árak diszkrétek)
+      // Pontos ár egyezés (double)
       if(MathAbs(g_last_dom[i].price - price) < _Point/2 && g_last_dom[i].type == type)
         {
          return g_last_dom[i].volume;
@@ -398,7 +398,7 @@ void ProcessRealTick(const MqlTick &tick)
   }
 
 //+------------------------------------------------------------------+
-//| Logika: DOM Imbalance Számítás (Hagyományos)                     |
+//| Logika: DOM Imbalance Számítás (Visual/Static)                   |
 //+------------------------------------------------------------------+
 double CalculateDOMImbalance(const MqlBookInfo &book[])
   {
@@ -408,17 +408,18 @@ double CalculateDOMImbalance(const MqlBookInfo &book[])
    int bid_count = 0;
    int ask_count = 0;
 
+   // Itt használjuk az InpVisualDepth-et!
    for(int i=0; i<size; i++)
      {
       if(book[i].volume > InpVolumeFilter) continue;
 
       if(book[i].type == BOOK_TYPE_BUY || book[i].type == BOOK_TYPE_BUY_MARKET)
         {
-         if(bid_count < InpDepthLimit) { total_bid += book[i].volume; bid_count++; }
+         if(bid_count < InpVisualDepth) { total_bid += book[i].volume; bid_count++; }
         }
       if(book[i].type == BOOK_TYPE_SELL || book[i].type == BOOK_TYPE_SELL_MARKET)
         {
-         if(ask_count < InpDepthLimit) { total_ask += book[i].volume; ask_count++; }
+         if(ask_count < InpVisualDepth) { total_ask += book[i].volume; ask_count++; }
         }
      }
 
@@ -493,9 +494,9 @@ void CreatePanel()
    int x = InpXOffset;
    int y = InpYOffset;
    int w = 220;
-   int h = 40;
+   int h = 60; // Növelt magasság a szövegeknek
    int bar_h = 20;
-   int bar_y = y + 20;
+   int bar_y = y + 30;
 
    // 1. Háttér (Kontrasztos)
    ObjectCreate(0, g_obj_bg, OBJ_RECTANGLE_LABEL, 0, 0, 0);
@@ -508,15 +509,16 @@ void CreatePanel()
    ObjectSetInteger(0, g_obj_bg, OBJPROP_BORDER_TYPE, BORDER_FLAT);
    ObjectSetInteger(0, g_obj_bg, OBJPROP_BACK, false); // Előtérben legyen
 
-   // 2. Középvonal (Jól látható)
+   // 2. Középvonal (Széles és Fehér)
    ObjectCreate(0, g_obj_center, OBJ_RECTANGLE_LABEL, 0, 0, 0);
    ObjectSetInteger(0, g_obj_center, OBJPROP_CORNER, InpCorner);
    ObjectSetInteger(0, g_obj_center, OBJPROP_XDISTANCE, x + w/2 - 1);
-   ObjectSetInteger(0, g_obj_center, OBJPROP_YDISTANCE, bar_y);
-   ObjectSetInteger(0, g_obj_center, OBJPROP_XSIZE, 2);
-   ObjectSetInteger(0, g_obj_center, OBJPROP_YSIZE, bar_h);
+   ObjectSetInteger(0, g_obj_center, OBJPROP_YDISTANCE, bar_y - 2); // Kicsit túllóg
+   ObjectSetInteger(0, g_obj_center, OBJPROP_XSIZE, 3); // Vastagabb!
+   ObjectSetInteger(0, g_obj_center, OBJPROP_YSIZE, bar_h + 4);
    ObjectSetInteger(0, g_obj_center, OBJPROP_BGCOLOR, InpColorNeutral);
    ObjectSetInteger(0, g_obj_center, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, g_obj_center, OBJPROP_ZORDER, 10); // Minden felett
 
    // 3. Bal Sáv (Sell)
    ObjectCreate(0, g_obj_bar_sell, OBJ_RECTANGLE_LABEL, 0, 0, 0);
@@ -544,7 +546,22 @@ void CreatePanel()
    ObjectSetInteger(0, g_obj_text, OBJPROP_XDISTANCE, x + 5);
    ObjectSetInteger(0, g_obj_text, OBJPROP_YDISTANCE, y + 2);
    ObjectSetInteger(0, g_obj_text, OBJPROP_COLOR, InpTextColor);
-   ObjectSetString(0, g_obj_text, OBJPROP_TEXT, "Waiting for Hybrid Data...");
+   ObjectSetString(0, g_obj_text, OBJPROP_TEXT, "Init...");
    ObjectSetString(0, g_obj_text, OBJPROP_FONT, "Arial");
-   ObjectSetInteger(0, g_obj_text, OBJPROP_FONTSIZE, 10);
+   ObjectSetInteger(0, g_obj_text, OBJPROP_FONTSIZE, 9);
+
+   // 6. Címkék (BUY / SELL)
+   ObjectCreate(0, g_obj_label_sell, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, g_obj_label_sell, OBJPROP_CORNER, InpCorner);
+   ObjectSetInteger(0, g_obj_label_sell, OBJPROP_XDISTANCE, x + 10);
+   ObjectSetInteger(0, g_obj_label_sell, OBJPROP_YDISTANCE, bar_y + bar_h + 2);
+   ObjectSetInteger(0, g_obj_label_sell, OBJPROP_COLOR, InpColorSell);
+   ObjectSetString(0, g_obj_label_sell, OBJPROP_TEXT, "SELL");
+
+   ObjectCreate(0, g_obj_label_buy, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, g_obj_label_buy, OBJPROP_CORNER, InpCorner);
+   ObjectSetInteger(0, g_obj_label_buy, OBJPROP_XDISTANCE, x + w - 40);
+   ObjectSetInteger(0, g_obj_label_buy, OBJPROP_YDISTANCE, bar_y + bar_h + 2);
+   ObjectSetInteger(0, g_obj_label_buy, OBJPROP_COLOR, InpColorBuy);
+   ObjectSetString(0, g_obj_label_buy, OBJPROP_TEXT, "BUY");
   }
