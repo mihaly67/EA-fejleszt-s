@@ -5,7 +5,9 @@ import json
 import argparse
 import re
 import os
-from kutato import RAGSearcher, GITHUB_JSONL, MT_LIBS_JSONL, LAYERING_JSONL
+# Fix import error by not importing missing constants or defining them here if needed
+# But for now, just import the class
+from kutato import RAGSearcher
 
 # --- CONFIGURATION ---
 DEFAULT_DEPTH = 3
@@ -27,23 +29,25 @@ class DeepResearcher:
         """Simple heuristic to find related technical terms for deeper search."""
         queries = []
 
+        # --- DOM / OrderBook Heuristics ---
+        if "MarketBook" in text or "OrderBook" in text:
+            queries.append("MQL5 MarketBookGet implementation")
+            queries.append("MQL5 OnBookEvent handling")
+            queries.append("Depth of Market visualization MQL5")
+
+        if "Level 2" in text or "L2" in text:
+             queries.append("MQL5 Level 2 data handling")
+
+        if "DoEasy" in text:
+            queries.append("DoEasy library DOM implementation")
+
+        if "synthetic" in text or "simulation" in text:
+            queries.append("Generate synthetic ticks from DOM MQL5")
+
         # --- GUI / PANEL Heuristics ---
         derived = re.findall(r'class\s+(\w+)\s*:\s*public\s+(CAppDialog|CWnd|CButton|CEdit|CLabel)', text)
         for d in derived:
              queries.append(f"MQL5 {d[0]} class implementation")
-
-        if "OnEvent" in text or "ChartEvent" in text:
-            queries.append("MQL5 CAppDialog OnEvent overriding")
-            queries.append("MQL5 CHARTEVENT_OBJECT_CLICK handling")
-
-        if re.search(r'CWnd\s*\*\s*\w+\s*\[\s*\]', text) or re.search(r'CButton\s+\w+\s*\[\s*\]', text):
-             queries.append("MQL5 CAppDialog dynamic control array")
-             queries.append("MQL5 create controls in loop")
-
-        # --- ALGO Heuristics ---
-        algos = re.findall(r'\b(JMA|HMA|ALMA|Kalman|ZeroLag|T3|DEMA|TEMA)\b', text, re.IGNORECASE)
-        for algo in algos:
-            queries.append(f"MQL5 {algo} smoothing algorithm")
 
         return list(set(queries))
 
@@ -84,6 +88,7 @@ class DeepResearcher:
                     print(f"   ❌ Error searching '{query}' in {scope}: {e}")
 
         if next_level_queries:
+            # Filter and limit
             next_level_queries = list(set(next_level_queries))
             next_level_queries = next_level_queries[:5]
             self.search_recursive(next_level_queries, current_depth + 1)
