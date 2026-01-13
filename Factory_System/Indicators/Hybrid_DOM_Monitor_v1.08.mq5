@@ -23,7 +23,7 @@ struct Item {
 enum ENUM_DOM_MODE
   {
    MODE_AUTO_DETECT, // Automatikus: Real DOM + Hybrid Ticks
-   MODE_REAL_DOM,    // Csak Valós DOM (Static View) - Ezt használjuk a Multi-Levelhez
+   MODE_REAL_DOM,    // Csak Valós DOM (Static View)
    MODE_SIMULATION   // Csak Tick alapú szimuláció (Fallback)
   };
 
@@ -47,7 +47,7 @@ input color InpTextColor = clrWhite;                    // Szöveg szín
 // --- Globális változók ---
 bool g_has_dom = false;
 bool g_subscribed = false;
-int g_visual_depth = 5; // Shadow variable for Inputs
+int g_visual_depth = 5;
 
 string g_obj_bg = "HybridDOM_BG";
 string g_obj_text = "HybridDOM_Text";
@@ -57,12 +57,18 @@ string g_bars_buy[];
 string g_bars_sell[];
 string g_labels[];
 
+// Layout Constants
+const int ROW_HEIGHT = 12; // Csökkentve 15 -> 12 (20%-kal kisebb)
+const int ROW_GAP = 3;
+const int HEADER_HEIGHT = 25;
+const int LABEL_WIDTH = 25;
+const int BAR_MAX_WIDTH = 90; // Oldalanként
+
 // --- Init ---
 int OnInit()
   {
    ObjectsDeleteAll(0, "HybridDOM_");
 
-   // Clamp Visual Depth
    g_visual_depth = InpVisualDepth;
    if(g_visual_depth > 10) g_visual_depth = 10;
    if(g_visual_depth < 1) g_visual_depth = 1;
@@ -71,7 +77,6 @@ int OnInit()
    ArrayResize(g_bars_sell, g_visual_depth);
    ArrayResize(g_labels, g_visual_depth);
 
-   // Subscribe
    if(InpMode != MODE_SIMULATION)
      {
       if(MarketBookAdd(_Symbol)) g_subscribed = true;
@@ -109,8 +114,6 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
   {
-   // Hybrid Ticks (Price Action) fallback Logic could go here,
-   // but for Multi-Level visuals we need Real DOM mostly.
    return(rates_total);
   }
 
@@ -132,13 +135,15 @@ void UpdateMultiLevelVisuals(const MqlBookInfo &book[])
   {
    int size = ArraySize(book);
 
-   // 1. Collect
    Item all_bids[];
    Item all_asks[];
 
+   long max_volume_in_view = 1; // Hogy elkerüljük a 0-val osztást
+
+   // 1. Collect & Find Max
    for(int i=0; i<size; i++)
      {
-      if(book[i].volume > InpVolumeFilter) continue; // Filter Walls
+      if(book[i].volume > InpVolumeFilter) continue;
 
       if(book[i].type == BOOK_TYPE_BUY || book[i].type == BOOK_TYPE_BUY_MARKET)
         {
@@ -158,18 +163,27 @@ void UpdateMultiLevelVisuals(const MqlBookInfo &book[])
    SortBids(all_bids);
    SortAsks(all_asks);
 
-   // 3. Map to Levels
+   // 3. Determine Scaling Factor (Max Volume among visible levels)
+   for(int i=0; i<g_visual_depth; i++)
+     {
+      long b = (i < ArraySize(all_bids)) ? all_bids[i].volume : 0;
+      long a = (i < ArraySize(all_asks)) ? all_asks[i].volume : 0;
+      if(b > max_volume_in_view) max_volume_in_view = b;
+      if(a > max_volume_in_view) max_volume_in_view = a;
+     }
+
+   // 4. Map to Levels
    for(int i=0; i<g_visual_depth; i++)
      {
       long b_vol = (i < ArraySize(all_bids)) ? all_bids[i].volume : 0;
       long a_vol = (i < ArraySize(all_asks)) ? all_asks[i].volume : 0;
 
-      DrawLevelBar(i, b_vol, a_vol);
+      DrawLevelBar(i, b_vol, a_vol, max_volume_in_view);
      }
   }
 
 // --- Sorting Helpers ---
-void SortBids(Item &arr[]) // Descending
+void SortBids(Item &arr[])
   {
    int n = ArraySize(arr);
    for(int i=0; i<n-1; i++)
@@ -180,7 +194,7 @@ void SortBids(Item &arr[]) // Descending
          }
   }
 
-void SortAsks(Item &arr[]) // Ascending
+void SortAsks(Item &arr[])
   {
    int n = ArraySize(arr);
    for(int i=0; i<n-1; i++)
@@ -192,41 +206,35 @@ void SortAsks(Item &arr[]) // Ascending
   }
 
 // --- Drawing ---
-void DrawLevelBar(int level, long bid_vol, long ask_vol)
+void DrawLevelBar(int level, long bid_vol, long ask_vol, long max_vol_scale)
   {
-   // Objects
    string obj_b = g_bars_buy[level];
    string obj_s = g_bars_sell[level];
    string obj_l = g_labels[level];
 
-   // Calculate Imbalance for this Level
-   long total = bid_vol + ask_vol;
-
-   int max_width_half = 100; // 100 px per side
-   int center_x = InpXOffset + 110; // Panel width 220, center 110
+   int center_x = InpXOffset + LABEL_WIDTH + BAR_MAX_WIDTH;
 
    int b_len = 0;
    int s_len = 0;
 
-   if(total > 0)
+   // Scaling Logic: Relative to Max Volume
+   // Ez megoldja a "Level 1 kis volumen = Teljes Sáv" hibát.
+   if(max_vol_scale > 0)
      {
-      double b_ratio = (double)bid_vol / (double)total;
-      double a_ratio = (double)ask_vol / (double)total;
+      double b_ratio = (double)bid_vol / (double)max_vol_scale;
+      double a_ratio = (double)ask_vol / (double)max_vol_scale;
 
-      b_len = (int)(b_ratio * max_width_half);
-      s_len = (int)(a_ratio * max_width_half);
+      b_len = (int)(b_ratio * BAR_MAX_WIDTH);
+      s_len = (int)(a_ratio * BAR_MAX_WIDTH);
      }
 
    // Update Objects
-   // Sell Bar (Left)
    ObjectSetInteger(0, obj_s, OBJPROP_XSIZE, s_len);
    ObjectSetInteger(0, obj_s, OBJPROP_XDISTANCE, center_x - s_len);
 
-   // Buy Bar (Right)
    ObjectSetInteger(0, obj_b, OBJPROP_XSIZE, b_len);
-   // XDISTANCE stays center_x
 
-   // Label
+   // Label update with volume info?
    string txt = StringFormat("L%d", level+1);
    ObjectSetString(0, obj_l, OBJPROP_TEXT, txt);
   }
@@ -236,10 +244,9 @@ void CreateMultiLevelPanel()
   {
    int x = InpXOffset;
    int y = InpYOffset;
-   int row_h = 15;
-   int gap = 2;
-   int w = 220;
-   int h = (row_h + gap) * g_visual_depth + 30; // +Header
+   int w = LABEL_WIDTH + 2 * BAR_MAX_WIDTH + 10; // ~215
+   // Dinamikus Magasság: Header + Sorok + Margó
+   int h = HEADER_HEIGHT + (g_visual_depth * (ROW_HEIGHT + ROW_GAP)) + 5;
 
    // Background
    ObjectCreate(0, g_obj_bg, OBJ_RECTANGLE_LABEL, 0, 0, 0);
@@ -259,14 +266,13 @@ void CreateMultiLevelPanel()
    ObjectSetString(0, g_obj_text, OBJPROP_TEXT, "DOM Levels");
    ObjectSetInteger(0, g_obj_text, OBJPROP_COLOR, InpTextColor);
 
-   int start_y = y + 25;
-   int center_x = x + 110;
+   int start_y = y + HEADER_HEIGHT;
+   int center_x = x + LABEL_WIDTH + BAR_MAX_WIDTH;
 
    for(int i=0; i<g_visual_depth; i++)
      {
-      int row_y = start_y + i*(row_h+gap);
+      int row_y = start_y + i*(ROW_HEIGHT+ROW_GAP);
 
-      // Init Array Names
       g_bars_sell[i] = "HybridDOM_S_" + (string)i;
       g_bars_buy[i]  = "HybridDOM_B_" + (string)i;
       g_labels[i]    = "HybridDOM_L_" + (string)i;
@@ -274,10 +280,10 @@ void CreateMultiLevelPanel()
       // Sell Bar (Left)
       ObjectCreate(0, g_bars_sell[i], OBJ_RECTANGLE_LABEL, 0, 0, 0);
       ObjectSetInteger(0, g_bars_sell[i], OBJPROP_CORNER, InpCorner);
-      ObjectSetInteger(0, g_bars_sell[i], OBJPROP_XDISTANCE, center_x); // Starts at 0 width
+      ObjectSetInteger(0, g_bars_sell[i], OBJPROP_XDISTANCE, center_x);
       ObjectSetInteger(0, g_bars_sell[i], OBJPROP_YDISTANCE, row_y);
       ObjectSetInteger(0, g_bars_sell[i], OBJPROP_XSIZE, 0);
-      ObjectSetInteger(0, g_bars_sell[i], OBJPROP_YSIZE, row_h);
+      ObjectSetInteger(0, g_bars_sell[i], OBJPROP_YSIZE, ROW_HEIGHT);
       ObjectSetInteger(0, g_bars_sell[i], OBJPROP_BGCOLOR, InpColorSell);
       ObjectSetInteger(0, g_bars_sell[i], OBJPROP_BORDER_TYPE, BORDER_FLAT);
 
@@ -287,7 +293,7 @@ void CreateMultiLevelPanel()
       ObjectSetInteger(0, g_bars_buy[i], OBJPROP_XDISTANCE, center_x);
       ObjectSetInteger(0, g_bars_buy[i], OBJPROP_YDISTANCE, row_y);
       ObjectSetInteger(0, g_bars_buy[i], OBJPROP_XSIZE, 0);
-      ObjectSetInteger(0, g_bars_buy[i], OBJPROP_YSIZE, row_h);
+      ObjectSetInteger(0, g_bars_buy[i], OBJPROP_YSIZE, ROW_HEIGHT);
       ObjectSetInteger(0, g_bars_buy[i], OBJPROP_BGCOLOR, InpColorBuy);
       ObjectSetInteger(0, g_bars_buy[i], OBJPROP_BORDER_TYPE, BORDER_FLAT);
 
@@ -295,7 +301,7 @@ void CreateMultiLevelPanel()
       ObjectCreate(0, g_labels[i], OBJ_LABEL, 0, 0, 0);
       ObjectSetInteger(0, g_labels[i], OBJPROP_CORNER, InpCorner);
       ObjectSetInteger(0, g_labels[i], OBJPROP_XDISTANCE, x + 2);
-      ObjectSetInteger(0, g_labels[i], OBJPROP_YDISTANCE, row_y);
+      ObjectSetInteger(0, g_labels[i], OBJPROP_YDISTANCE, row_y - 1);
       ObjectSetString(0, g_labels[i], OBJPROP_TEXT, "L"+(string)(i+1));
       ObjectSetInteger(0, g_labels[i], OBJPROP_COLOR, clrSilver);
       ObjectSetInteger(0, g_labels[i], OBJPROP_FONTSIZE, 8);
