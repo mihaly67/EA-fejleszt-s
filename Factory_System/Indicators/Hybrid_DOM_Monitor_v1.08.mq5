@@ -6,18 +6,17 @@
 #property copyright "Jules Agent"
 #property link      "https://mql5.com"
 #property version   "1.08"
-#property description "Hybrid Tick & Liquidity Delta Monitor"
-#property description "Tracks Price Changes AND Volume Changes in DOM"
+#property description "Hybrid Tick Monitor (Restored v1.07 Logic)"
+#property description "Tracks Price Changes (Best Bid/Ask) & Real DOM"
 #property indicator_chart_window
-#property indicator_buffers 3
-#property indicator_plots 0 // No standard lines, visual panel only
+#property indicator_plots 0
 
 #include <Charts/Chart.mqh>
 
 // --- Enumok ---
 enum ENUM_DOM_MODE
   {
-   MODE_AUTO_DETECT, // Automatikus: Real DOM + Hybrid Ticks (Price + Vol Delta)
+   MODE_AUTO_DETECT, // Automatikus: Real DOM + Hybrid Ticks (Price Action)
    MODE_REAL_DOM,    // Csak Valós DOM (Static View)
    MODE_SIMULATION   // Csak Tick alapú szimuláció
   };
@@ -25,31 +24,27 @@ enum ENUM_DOM_MODE
 // --- Bemeneti paraméterek ---
 input group "Beállítások"
 input ENUM_DOM_MODE InpMode = MODE_AUTO_DETECT; // Működési mód
-input int InpSignalDepth = 1;                   // JEL Mélység: Csak az első N szintet figyeli a Flow-hoz (1 = Best Bid/Ask)
-input int InpVisualDepth = 5;                   // VIZUÁLIS Mélység: Ennyi szintet jelenít meg a 'Real DOM' módban
+input int InpDepthLimit = 5;                    // Mélység szűrő (Real DOM módhoz)
 input long InpVolumeFilter = 5000;              // Zajszűrő: ennél nagyobb volument figyelmen kívül hagy
 input int InpSimHistory = 100;                  // Szimuláció: Hány tickre visszamenőleg?
 input double InpImbalanceThreshold = 60.0;      // Túlsúly küszöb (%)
 input bool InpSimUseTickVolume = true;          // Szimulációnál: Ha real_volume=0, használja a tick_volume-ot?
 
 input group "Hybrid Logic"
-input long InpSyntheticTickVolume = 1;          // Alap szintetikus volumen
-input bool InpTrackLiquidityChanges = true;     // DOM Volumen változások figyelése (Delta)
+input long InpSyntheticTickVolume = 1;          // Alap szintetikus volumen (Price Change esetén)
 
 input group "Megjelenítés"
 input ENUM_BASE_CORNER InpCorner = CORNER_LEFT_LOWER;   // Panel pozíció
 input int InpXOffset = 50;                              // X eltolás
 input int InpYOffset = 100;                             // Y eltolás
 input color InpColorBg = clrDarkSlateGray;              // Háttérszín (Kontrasztos)
-input color InpColorBuy = clrMediumSeaGreen;            // Vevő (Bull) szín
-input color InpColorSell = clrCrimson;                  // Eladó (Bear) szín
-input color InpColorNeutral = clrWhite;                 // Semleges/Marker szín (Fehér a láthatóságért)
+input color InpColorBuy = clrMediumSeaGreen;            // Vevő szín
+input color InpColorSell = clrCrimson;                  // Eladó szín
+input color InpColorNeutral = clrWhite;                 // Semleges/Marker szín
 input color InpTextColor = clrWhite;                    // Szöveg szín
 
 // --- Indicator Buffers (EA Interface) ---
-double BufferImbalance[]; // Index 0: Current Imbalance % (-100 to +100)
-double BufferBuyFlow[];   // Index 1: Buy Volume Flow
-double BufferSellFlow[];  // Index 2: Sell Volume Flow
+// (Optional: can be added back if needed, currently keeping it simple like v1.07)
 
 // --- Globális változók ---
 bool g_has_dom = false;
@@ -62,13 +57,9 @@ string g_obj_text = "HybridDOM_Text";
 string g_obj_label_buy = "HybridDOM_LabelBuy";
 string g_obj_label_sell = "HybridDOM_LabelSell";
 
-// DOM Snapshot a Delta számításhoz
-struct DOMLevel {
-   double price;
-   long volume;
-   int type;
-};
-DOMLevel g_last_dom[]; // Előző állapot másolata
+// Hybrid Tick State
+double g_last_best_bid = 0.0;
+double g_last_best_ask = 0.0;
 
 // Szimulációs puffer
 struct TickData {
@@ -86,35 +77,29 @@ long g_total_ask_display = 0;
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   // Buffer Mapping
-   SetIndexBuffer(0, BufferImbalance, INDICATOR_DATA);
-   SetIndexBuffer(1, BufferBuyFlow, INDICATOR_DATA);
-   SetIndexBuffer(2, BufferSellFlow, INDICATOR_DATA);
+   ObjectsDeleteAll(0, "HybridDOM_");
 
-   // Init Arrays
    ArrayResize(g_tick_history, InpSimHistory);
    for(int i=0; i<InpSimHistory; i++) { g_tick_history[i].volume = 0; g_tick_history[i].type = 0; }
 
-   // Init DOM Snapshot
-   ArrayResize(g_last_dom, 0);
-
-   ObjectsDeleteAll(0, "HybridDOM_");
+   g_last_best_bid = 0.0;
+   g_last_best_ask = 0.0;
 
    if(InpMode != MODE_SIMULATION)
      {
       if(MarketBookAdd(_Symbol))
         {
          g_subscribed = true;
-         Print("Hybrid DOM v1.08: MarketBook feliratkozás OK (Full Liquidity Tracking).");
+         Print("Hybrid DOM v1.08 (Restored): MarketBook feliratkozás OK.");
         }
       else
         {
-         Print("Hybrid DOM v1.08: MarketBook Hiba! Csak Tick módban fut.");
+         Print("Hybrid DOM: Hiba! Csak Tick módban fut.");
         }
      }
 
    CreatePanel();
-   EventSetTimer(1); // Heartbeat: 1 másodpercenként frissít
+   EventSetTimer(1); // Heartbeat a fagyás ellen
    return(INIT_SUCCEEDED);
   }
 
@@ -130,13 +115,11 @@ void OnDeinit(const int reason)
   }
 
 //+------------------------------------------------------------------+
-//| Timer Event (Heartbeat to fix freezing)                          |
+//| Timer Event                                                      |
 //+------------------------------------------------------------------+
 void OnTimer()
   {
-   // Ha 'MODE_REAL_DOM' módban vagyunk, vagy 'AUTO'-ban, akkor is frissítsük a vizuált,
-   // hogy biztosan ne fagyjon be a kép.
-   ChartRedraw();
+   ChartRedraw(); // Force update UI
   }
 
 //+------------------------------------------------------------------+
@@ -153,30 +136,23 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
   {
-   // --- Real Tick Processing ---
    MqlTick last_tick;
    if(SymbolInfoTick(_Symbol, last_tick))
      {
       ProcessRealTick(last_tick);
      }
 
-   // --- Visualization & EA Output ---
    if(InpMode != MODE_REAL_DOM)
      {
       double imb = CalculateSimulationImbalance();
       UpdateVisuals(imb, "Hybrid Flow");
-
-      // EA Output (Save to buffer 0 of current bar)
-      BufferImbalance[rates_total-1] = imb;
-      BufferBuyFlow[rates_total-1] = (double)g_total_bid_display;
-      BufferSellFlow[rates_total-1] = (double)g_total_ask_display;
      }
 
    return(rates_total);
   }
 
 //+------------------------------------------------------------------+
-//| BookEvent function (Liquidity Delta Logic)                       |
+//| BookEvent function                                               |
 //+------------------------------------------------------------------+
 void OnBookEvent(const string &symbol)
   {
@@ -190,11 +166,10 @@ void OnBookEvent(const string &symbol)
         {
          g_has_dom = true;
 
-         // A) Hybrid: Price Action + Liquidity Delta
+         // A) Hybrid Tick (v1.07 Logika: Price Action Only)
          if(InpMode == MODE_AUTO_DETECT)
            {
-            bool updated = ProcessHybridLiquidity(book);
-
+            bool updated = ProcessHybridTicks(book);
             if(updated)
               {
                double imb = CalculateSimulationImbalance();
@@ -203,7 +178,7 @@ void OnBookEvent(const string &symbol)
               }
            }
 
-         // B) Real DOM (Static View)
+         // B) Real DOM
          if(InpMode == MODE_REAL_DOM)
            {
             double imbalance = CalculateDOMImbalance(book);
@@ -215,136 +190,61 @@ void OnBookEvent(const string &symbol)
   }
 
 //+------------------------------------------------------------------+
-//| Logic: Hybrid Liquidity Delta (Symmetric & Depth-Limited)        |
+//| Logic: Hybrid Tick (Restored v1.07)                              |
 //+------------------------------------------------------------------+
-bool ProcessHybridLiquidity(const MqlBookInfo &book[])
+bool ProcessHybridTicks(const MqlBookInfo &book[])
   {
-   bool activity_detected = false;
-   int size = ArraySize(book);
-
-   // 1. Snapshot inicializálás, ha üres
-   if(ArraySize(g_last_dom) == 0)
-     {
-      SaveSnapshot(book);
-      return false;
-     }
-
-   // 2. Összehasonlítás (Delta Keresés)
-   // !!! FONTOS: Csak az InpSignalDepth mélységig vizsgálódunk a jelekhez !!!
-   int limit = MathMin(size, InpSignalDepth);
-
-   for(int i=0; i<limit; i++)
-     {
-      // Szűrés (bár ha Depth=1, akkor ez kevésbé kritikus)
-      if(book[i].volume > InpVolumeFilter) continue;
-
-      long old_vol = GetVolumeFromSnapshot(book[i].price, book[i].type);
-      long new_vol = book[i].volume;
-
-      long delta = new_vol - old_vol;
-
-      if(delta == 0) continue;
-
-      // --- Szimmetrikus Értelmezés ---
-      if(InpTrackLiquidityChanges)
-        {
-         int signal_type = 0;
-
-         // BID Oldal (Vevők)
-         if(book[i].type == BOOK_TYPE_BUY || book[i].type == BOOK_TYPE_BUY_MARKET)
-           {
-            if(delta > 0) signal_type = 1;  // Support Added (Bullish)
-            if(delta < 0) signal_type = -1; // Support Removed (Bearish)
-           }
-
-         // ASK Oldal (Eladók)
-         if(book[i].type == BOOK_TYPE_SELL || book[i].type == BOOK_TYPE_SELL_MARKET)
-           {
-            if(delta > 0) signal_type = -1; // Resistance Added (Bearish)
-            if(delta < 0) signal_type = 1;  // Resistance Removed (Bullish)
-           }
-
-         if(signal_type != 0)
-           {
-            // Delta súlyozás
-            long weight = (long)MathMax(1, MathAbs(delta) / 10);
-            if(weight < InpSyntheticTickVolume) weight = InpSyntheticTickVolume;
-
-            AddTickToHistory(signal_type, weight);
-            activity_detected = true;
-           }
-        }
-     }
-
-   // 3. Best Price Aggression (Marad a régi logika is)
-   CheckBestPriceChange(book, activity_detected);
-
-   // 4. Snapshot Frissítése
-   SaveSnapshot(book);
-
-   return activity_detected;
-  }
-
-//+------------------------------------------------------------------+
-//| Helper: Snapshot kezelés                                         |
-//+------------------------------------------------------------------+
-void SaveSnapshot(const MqlBookInfo &book[])
-  {
-   int size = ArraySize(book);
-   ArrayResize(g_last_dom, size);
-   for(int i=0; i<size; i++)
-     {
-      g_last_dom[i].price = book[i].price;
-      g_last_dom[i].volume = book[i].volume;
-      g_last_dom[i].type = book[i].type;
-     }
-  }
-
-long GetVolumeFromSnapshot(double price, int type)
-  {
-   int size = ArraySize(g_last_dom);
-   for(int i=0; i<size; i++)
-     {
-      // Pontos ár egyezés (double)
-      if(MathAbs(g_last_dom[i].price - price) < _Point/2 && g_last_dom[i].type == type)
-        {
-         return g_last_dom[i].volume;
-        }
-     }
-   return 0; // Új árszint
-  }
-
-//+------------------------------------------------------------------+
-//| Logic: Best Price Aggression (v1.07 Legacy)                      |
-//+------------------------------------------------------------------+
-void CheckBestPriceChange(const MqlBookInfo &book[], bool &activity_flag)
-  {
-   static double last_best_bid = 0;
-   static double last_best_ask = 0;
-
    double best_bid = 0;
-   double best_ask = DBL_MAX;
-
+   double best_ask = 0;
    int size = ArraySize(book);
+
+   // Keressük a legjobb árakat
+   double max_bid = 0;
+   double min_ask = DBL_MAX;
+   bool found_bid = false;
+   bool found_ask = false;
+
    for(int i=0; i<size; i++)
      {
-      if(book[i].type == BOOK_TYPE_BUY) if(book[i].price > best_bid) best_bid = book[i].price;
-      if(book[i].type == BOOK_TYPE_SELL) if(book[i].price < best_ask) best_ask = book[i].price;
+      if(book[i].type == BOOK_TYPE_BUY || book[i].type == BOOK_TYPE_BUY_MARKET)
+        {
+         if(book[i].price > max_bid) max_bid = book[i].price;
+         found_bid = true;
+        }
+      if(book[i].type == BOOK_TYPE_SELL || book[i].type == BOOK_TYPE_SELL_MARKET)
+        {
+         if(book[i].price < min_ask) min_ask = book[i].price;
+         found_ask = true;
+        }
      }
 
-   if(best_bid == 0 || best_ask == DBL_MAX) return;
+   if(!found_bid || !found_ask) return false;
 
-   if(last_best_bid != 0)
+   best_bid = max_bid;
+   best_ask = min_ask;
+
+   if(g_last_best_bid == 0.0) { g_last_best_bid = best_bid; g_last_best_ask = best_ask; return false; }
+
+   bool tick_generated = false;
+
+   // A) Buy Pressure: Bid Price Increase
+   if(best_bid > g_last_best_bid)
      {
-      if(best_bid > last_best_bid) { AddTickToHistory(1, InpSyntheticTickVolume); activity_flag = true; }
-     }
-   if(last_best_ask != 0)
-     {
-      if(best_ask < last_best_ask) { AddTickToHistory(-1, InpSyntheticTickVolume); activity_flag = true; }
+      AddTickToHistory(1, InpSyntheticTickVolume);
+      tick_generated = true;
      }
 
-   last_best_bid = best_bid;
-   last_best_ask = best_ask;
+   // B) Sell Pressure: Ask Price Decrease
+   if(best_ask < g_last_best_ask)
+     {
+      AddTickToHistory(-1, InpSyntheticTickVolume);
+      tick_generated = true;
+     }
+
+   g_last_best_bid = best_bid;
+   g_last_best_ask = best_ask;
+
+   return tick_generated;
   }
 
 //+------------------------------------------------------------------+
@@ -398,7 +298,7 @@ void ProcessRealTick(const MqlTick &tick)
   }
 
 //+------------------------------------------------------------------+
-//| Logika: DOM Imbalance Számítás (Visual/Static)                   |
+//| Logika: DOM Imbalance Számítás (Standard)                        |
 //+------------------------------------------------------------------+
 double CalculateDOMImbalance(const MqlBookInfo &book[])
   {
@@ -408,18 +308,17 @@ double CalculateDOMImbalance(const MqlBookInfo &book[])
    int bid_count = 0;
    int ask_count = 0;
 
-   // Itt használjuk az InpVisualDepth-et!
    for(int i=0; i<size; i++)
      {
       if(book[i].volume > InpVolumeFilter) continue;
 
       if(book[i].type == BOOK_TYPE_BUY || book[i].type == BOOK_TYPE_BUY_MARKET)
         {
-         if(bid_count < InpVisualDepth) { total_bid += book[i].volume; bid_count++; }
+         if(bid_count < InpDepthLimit) { total_bid += book[i].volume; bid_count++; }
         }
       if(book[i].type == BOOK_TYPE_SELL || book[i].type == BOOK_TYPE_SELL_MARKET)
         {
-         if(ask_count < InpVisualDepth) { total_ask += book[i].volume; ask_count++; }
+         if(ask_count < InpDepthLimit) { total_ask += book[i].volume; ask_count++; }
         }
      }
 
@@ -450,7 +349,7 @@ double CalculateSimulationImbalance()
   }
 
 //+------------------------------------------------------------------+
-//| Megjelenítés (Vizuális Fixek v1.08)                              |
+//| Megjelenítés                                                     |
 //+------------------------------------------------------------------+
 void UpdateVisuals(double imbalance_percent, string source_label)
   {
@@ -494,11 +393,11 @@ void CreatePanel()
    int x = InpXOffset;
    int y = InpYOffset;
    int w = 220;
-   int h = 60; // Növelt magasság a szövegeknek
+   int h = 60; // Hely a feliratoknak
    int bar_h = 20;
    int bar_y = y + 30;
 
-   // 1. Háttér (Kontrasztos)
+   // 1. Háttér
    ObjectCreate(0, g_obj_bg, OBJ_RECTANGLE_LABEL, 0, 0, 0);
    ObjectSetInteger(0, g_obj_bg, OBJPROP_CORNER, InpCorner);
    ObjectSetInteger(0, g_obj_bg, OBJPROP_XDISTANCE, x);
@@ -507,18 +406,17 @@ void CreatePanel()
    ObjectSetInteger(0, g_obj_bg, OBJPROP_YSIZE, h);
    ObjectSetInteger(0, g_obj_bg, OBJPROP_BGCOLOR, InpColorBg);
    ObjectSetInteger(0, g_obj_bg, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-   ObjectSetInteger(0, g_obj_bg, OBJPROP_BACK, false); // Előtérben legyen
+   ObjectSetInteger(0, g_obj_bg, OBJPROP_BACK, false);
 
-   // 2. Középvonal (Széles és Fehér)
+   // 2. Középvonal (Fehér, de vékonyabb, elegánsabb)
    ObjectCreate(0, g_obj_center, OBJ_RECTANGLE_LABEL, 0, 0, 0);
    ObjectSetInteger(0, g_obj_center, OBJPROP_CORNER, InpCorner);
    ObjectSetInteger(0, g_obj_center, OBJPROP_XDISTANCE, x + w/2 - 1);
-   ObjectSetInteger(0, g_obj_center, OBJPROP_YDISTANCE, bar_y - 2); // Kicsit túllóg
-   ObjectSetInteger(0, g_obj_center, OBJPROP_XSIZE, 3); // Vastagabb!
+   ObjectSetInteger(0, g_obj_center, OBJPROP_YDISTANCE, bar_y - 2);
+   ObjectSetInteger(0, g_obj_center, OBJPROP_XSIZE, 2);
    ObjectSetInteger(0, g_obj_center, OBJPROP_YSIZE, bar_h + 4);
    ObjectSetInteger(0, g_obj_center, OBJPROP_BGCOLOR, InpColorNeutral);
-   ObjectSetInteger(0, g_obj_center, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-   ObjectSetInteger(0, g_obj_center, OBJPROP_ZORDER, 10); // Minden felett
+   ObjectSetInteger(0, g_obj_center, OBJPROP_ZORDER, 10);
 
    // 3. Bal Sáv (Sell)
    ObjectCreate(0, g_obj_bar_sell, OBJ_RECTANGLE_LABEL, 0, 0, 0);
@@ -550,18 +448,20 @@ void CreatePanel()
    ObjectSetString(0, g_obj_text, OBJPROP_FONT, "Arial");
    ObjectSetInteger(0, g_obj_text, OBJPROP_FONTSIZE, 9);
 
-   // 6. Címkék (BUY / SELL)
+   // 6. Címkék (Láthatóak, de diszkrétek)
    ObjectCreate(0, g_obj_label_sell, OBJ_LABEL, 0, 0, 0);
    ObjectSetInteger(0, g_obj_label_sell, OBJPROP_CORNER, InpCorner);
    ObjectSetInteger(0, g_obj_label_sell, OBJPROP_XDISTANCE, x + 10);
    ObjectSetInteger(0, g_obj_label_sell, OBJPROP_YDISTANCE, bar_y + bar_h + 2);
-   ObjectSetInteger(0, g_obj_label_sell, OBJPROP_COLOR, InpColorSell);
+   ObjectSetInteger(0, g_obj_label_sell, OBJPROP_COLOR, clrSilver); // Diszkrétebb szín
    ObjectSetString(0, g_obj_label_sell, OBJPROP_TEXT, "SELL");
+   ObjectSetInteger(0, g_obj_label_sell, OBJPROP_FONTSIZE, 8);
 
    ObjectCreate(0, g_obj_label_buy, OBJ_LABEL, 0, 0, 0);
    ObjectSetInteger(0, g_obj_label_buy, OBJPROP_CORNER, InpCorner);
-   ObjectSetInteger(0, g_obj_label_buy, OBJPROP_XDISTANCE, x + w - 40);
+   ObjectSetInteger(0, g_obj_label_buy, OBJPROP_XDISTANCE, x + w - 35);
    ObjectSetInteger(0, g_obj_label_buy, OBJPROP_YDISTANCE, bar_y + bar_h + 2);
-   ObjectSetInteger(0, g_obj_label_buy, OBJPROP_COLOR, InpColorBuy);
+   ObjectSetInteger(0, g_obj_label_buy, OBJPROP_COLOR, clrSilver); // Diszkrétebb szín
    ObjectSetString(0, g_obj_label_buy, OBJPROP_TEXT, "BUY");
+   ObjectSetInteger(0, g_obj_label_buy, OBJPROP_FONTSIZE, 8);
   }
