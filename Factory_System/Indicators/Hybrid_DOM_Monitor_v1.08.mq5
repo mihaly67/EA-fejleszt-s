@@ -29,6 +29,7 @@ input int InpDepthLimit = 5;                    // Mélység szűrő (csak az el
 input long InpVolumeFilter = 5000;              // Zajszűrő: ennél nagyobb volument figyelmen kívül hagy
 input int InpSimHistory = 100;                  // Szimuláció: Hány tickre visszamenőleg?
 input double InpImbalanceThreshold = 60.0;      // Túlsúly küszöb (%)
+input bool InpSimUseTickVolume = true;          // Szimulációnál: Ha real_volume=0, használja a tick_volume-ot?
 
 input group "Hybrid Logic"
 input long InpSyntheticTickVolume = 1;          // Alap szintetikus volumen
@@ -516,7 +517,6 @@ void CreatePanel()
    ObjectSetInteger(0, g_obj_center, OBJPROP_YSIZE, bar_h);
    ObjectSetInteger(0, g_obj_center, OBJPROP_BGCOLOR, InpColorNeutral);
    ObjectSetInteger(0, g_obj_center, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-   ObjectSetInteger(0, g_obj_center, OBJPROP_ZORDER, 10); // Legfelül
 
    // 3. Bal Sáv (Sell)
    ObjectCreate(0, g_obj_bar_sell, OBJ_RECTANGLE_LABEL, 0, 0, 0);
@@ -547,5 +547,4 @@ void CreatePanel()
    ObjectSetString(0, g_obj_text, OBJPROP_TEXT, "Waiting for Hybrid Data...");
    ObjectSetString(0, g_obj_text, OBJPROP_FONT, "Arial");
    ObjectSetInteger(0, g_obj_text, OBJPROP_FONTSIZE, 10);
-   ObjectSetInteger(0, g_obj_text, OBJPROP_ZORDER, 11);
   }
