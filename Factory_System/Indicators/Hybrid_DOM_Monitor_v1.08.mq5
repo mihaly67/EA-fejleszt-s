@@ -13,6 +13,12 @@
 
 #include <Charts/Chart.mqh>
 
+// --- Struct Definition (Global) ---
+struct Item {
+   double price;
+   long volume;
+};
+
 // --- Enumok ---
 enum ENUM_DOM_MODE
   {
@@ -41,6 +47,8 @@ input color InpTextColor = clrWhite;                    // Szöveg szín
 // --- Globális változók ---
 bool g_has_dom = false;
 bool g_subscribed = false;
+int g_visual_depth = 5; // Shadow variable for Inputs
+
 string g_obj_bg = "HybridDOM_BG";
 string g_obj_text = "HybridDOM_Text";
 
@@ -54,12 +62,14 @@ int OnInit()
   {
    ObjectsDeleteAll(0, "HybridDOM_");
 
-   if(InpVisualDepth > 10) InpVisualDepth = 10;
-   if(InpVisualDepth < 1) InpVisualDepth = 1;
+   // Clamp Visual Depth
+   g_visual_depth = InpVisualDepth;
+   if(g_visual_depth > 10) g_visual_depth = 10;
+   if(g_visual_depth < 1) g_visual_depth = 1;
 
-   ArrayResize(g_bars_buy, InpVisualDepth);
-   ArrayResize(g_bars_sell, InpVisualDepth);
-   ArrayResize(g_labels, InpVisualDepth);
+   ArrayResize(g_bars_buy, g_visual_depth);
+   ArrayResize(g_bars_sell, g_visual_depth);
+   ArrayResize(g_labels, g_visual_depth);
 
    // Subscribe
    if(InpMode != MODE_SIMULATION)
@@ -122,31 +132,7 @@ void UpdateMultiLevelVisuals(const MqlBookInfo &book[])
   {
    int size = ArraySize(book);
 
-   // Separate Bids and Asks
-   // Note: MqlBookInfo is usually ordered by price.
-   // Sell (Ask) prices are higher, Buy (Bid) prices are lower.
-   // We need to sort/filter them into Levels (1 = Best, 2 = Next Best, etc.)
-
-   long bids[]; ArrayResize(bids, InpVisualDepth); ArrayInitialize(bids, 0);
-   long asks[]; ArrayResize(asks, InpVisualDepth); ArrayInitialize(asks, 0);
-
-   int bid_idx = 0;
-   int ask_idx = 0;
-
-   // Sort/Find Levels
-   // Standard MT5 Book:
-   // - SELLs are typically at the start (Descending price?) or End?
-   // Let's iterate and classify.
-   // Correct way: Best Bid is highest Bid price. Best Ask is lowest Ask price.
-
-   // Strategy: Find Max Bid and Min Ask, then next max, etc.
-   // But simpler: The array is usually sorted.
-   // Sells: Price Ascending (Lowest Ask first? No, usually ordered by type)
-
-   // Robust Logic: Collect all Bids and Asks, Sort them.
-
    // 1. Collect
-   struct Item { double price; long volume; };
    Item all_bids[];
    Item all_asks[];
 
@@ -169,13 +155,11 @@ void UpdateMultiLevelVisuals(const MqlBookInfo &book[])
      }
 
    // 2. Sort
-   // Bids: Descending Price (Highest = Best = Level 1)
-   // Asks: Ascending Price (Lowest = Best = Level 1)
    SortBids(all_bids);
    SortAsks(all_asks);
 
    // 3. Map to Levels
-   for(int i=0; i<InpVisualDepth; i++)
+   for(int i=0; i<g_visual_depth; i++)
      {
       long b_vol = (i < ArraySize(all_bids)) ? all_bids[i].volume : 0;
       long a_vol = (i < ArraySize(all_asks)) ? all_asks[i].volume : 0;
@@ -226,18 +210,8 @@ void DrawLevelBar(int level, long bid_vol, long ask_vol)
 
    if(total > 0)
      {
-      // Proportional to volume share? Or normalized to max width?
-      // User wants to see "dominance".
-      // Let's use simple scaling: 100% width = Max possible? No.
-      // Let's use Share % * Width.
-
       double b_ratio = (double)bid_vol / (double)total;
       double a_ratio = (double)ask_vol / (double)total;
-
-      // If total volume is tiny, bars should be small?
-      // Or just show pure ratio? pure ratio is better for "Imbalance".
-      // But we can scale by volume relative to "Average"?
-      // Let's stick to simple Ratio for now (Imbalance).
 
       b_len = (int)(b_ratio * max_width_half);
       s_len = (int)(a_ratio * max_width_half);
@@ -252,7 +226,7 @@ void DrawLevelBar(int level, long bid_vol, long ask_vol)
    ObjectSetInteger(0, obj_b, OBJPROP_XSIZE, b_len);
    // XDISTANCE stays center_x
 
-   // Label (Optional: Update text with Volume?)
+   // Label
    string txt = StringFormat("L%d", level+1);
    ObjectSetString(0, obj_l, OBJPROP_TEXT, txt);
   }
@@ -265,7 +239,7 @@ void CreateMultiLevelPanel()
    int row_h = 15;
    int gap = 2;
    int w = 220;
-   int h = (row_h + gap) * InpVisualDepth + 30; // +Header
+   int h = (row_h + gap) * g_visual_depth + 30; // +Header
 
    // Background
    ObjectCreate(0, g_obj_bg, OBJ_RECTANGLE_LABEL, 0, 0, 0);
@@ -288,7 +262,7 @@ void CreateMultiLevelPanel()
    int start_y = y + 25;
    int center_x = x + 110;
 
-   for(int i=0; i<InpVisualDepth; i++)
+   for(int i=0; i<g_visual_depth; i++)
      {
       int row_y = start_y + i*(row_h+gap);
 
