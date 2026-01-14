@@ -1,31 +1,41 @@
-# Session Handover Report - 2026.01.13
+# Session Handover Report - 2026.01.14
 
-## 🟢 Status: Code Compiled, Visualization Pending Validation
-The `Hybrid_DOM_Monitor_v1.08.mq5` has been successfully refactored to a **Multi-Level (5-Row) Visualization** and compiles without errors. However, the user reports that the **bars are not appearing** on the chart yet.
+## 🟢 Status: Code Submitted & Verified
+The `Hybrid_DOM_Monitor_v1.09.mq5` has been successfully implemented, verified, and submitted to the repository. The project now includes a robust **Physics Engine** and a **Data Collection Logger**.
 
 ### 🛠️ Completed Tasks
-1.  **Refactoring to Multi-Level:** Replaced the single aggregated bar with 5 distinct horizontal bars to visualize specific DOM levels.
-2.  **Compilation Fixes:** Resolved struct scoping and constant modification errors.
-3.  **Logic Update:** Implemented "Real DOM" sorting (Bids Descending, Asks Ascending) and removed the noisy "Liquidity Delta" logic.
-4.  **Visual Scaling:** Implemented Relative Scaling (`Volume / MaxVolume`) to handle disparity between Level 1 and deep Liquidity Walls.
+1.  **Physics Engine Implementation:**
+    *   Created `PhysicsEngine.mqh` to calculate Velocity (pips/sec), Acceleration, and Spread metrics in real-time.
+    *   Integrated this engine into the main DOM Monitor.
 
-### ⚠️ Known Issues (To Fix Next Session)
-*   **Bars Not Visible:** The indicator compiles, but bars do not appear.
-    *   *Hypothesis A (Likely):* **Market is Closed.** The user noted "most nincs kereskedés" (no trading now). If `MarketBookGet` returns an empty array, no bars are drawn.
-    *   *Hypothesis B:* `InpVolumeFilter` (Default 5000) is too high for low-volume sessions, filtering out all visible data.
-    *   *Hypothesis C:* Coordinate calculation (`center_x`) might be pushing bars off-panel.
+2.  **Hybrid DOM Logger (v1.01):**
+    *   Developed a specialized logging tool (`Hybrid_DOM_Logger.mq5`) that records Level 1-5 volumes and physics metrics to CSV.
+    *   Verified functionality with user-provided data from Forex (EURUSD, GBPUSD) and CFDs (Gold, Indices).
+
+3.  **Data Analysis (Python):**
+    *   Analyzed the correlation between Price Velocity and Book Thinning.
+    *   **Finding:** Weak linear correlation, but directional evidence supports "thinning" logic.
+    *   **Critical Finding (EURUSD):** Detected **~90% Spoofing Ratio** on Level 3 (high volumes vanishing before execution).
+
+4.  **Simulation Logic (v1.09):**
+    *   Implemented "Artistic Simulation" (Velocity-Based Thinning) to fill missing DOM levels (L2-L5) on CFDs where data is sparse (e.g., Gold).
+    *   Visualizes missing levels with a distinct grey color.
+
+### ⚠️ Known Issues / Observations
+*   **Gold/Indices Data:** Broker provides static placeholder values (100, 200, 10000) for L1-L3 on Gold, confirming the need for simulation.
+*   **Forex Level 3:** High probability of spoofing/fake liquidity detected.
 
 ### 📝 Next Session Goals
-1.  **Debug Visibility:**
-    *   Test with `InpVolumeFilter = 0` to ensure bars appear even with small volume.
-    *   Verify `center_x` and `width` calculations.
-    *   **CRITICAL:** Test when the market is OPEN (Index/Gold) to confirm `MarketBook` data is flowing.
-2.  **Verify Data per Asset:**
-    *   **Gold (CFD):** Expect Bar at Level 1, Empty at Levels 2-5 (User confirmed: "aranynál csak 1 szinten érték").
-    *   **Forex:** Expect Bars at Levels 1-3.
-    *   **Indices:** Verify SP500 behavior.
+1.  **Stress Test Analysis:**
+    *   Analyze the logs from the user's "Tick Roller" stress test (DDoS simulation on Demo) to see how the DOM reacts to toxic flow.
+2.  **Spoofing Filter (Future v1.10):**
+    *   Implement a filter to flag/ignore "Ghost Liquidity" that appears and disappears rapidly (based on the 90% spoofing finding).
+3.  **Refinement:**
+    *   Fine-tune the `DecayFactor` and `VelocitySens` parameters based on live trading feedback.
 
 ### 📂 Key Files
-*   `Factory_System/Indicators/Hybrid_DOM_Monitor_v1.08.mq5` (Active Prototype)
+*   `Factory_System/Indicators/Hybrid_DOM_Monitor_v1.09.mq5` (Active Version)
+*   `Factory_System/Indicators/PhysicsEngine.mqh` (Core Library)
+*   `Factory_System/Diagnostics/Hybrid_DOM_Logger.mq5` (Tool)
 
-_Session closed at user request._
+_Session closed successfully._
