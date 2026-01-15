@@ -90,8 +90,8 @@ int OnInit()
    // Init Lot
    g_current_lot = NormalizeLot(InpBaseLot);
 
-   // Init Log
-   g_log_handle = FileOpen("Trojan_Horse_Log.csv", FILE_CSV|FILE_WRITE|FILE_SHARE_READ|FILE_COMMON);
+   // Init Log (Saved to local MQL5/Files)
+   g_log_handle = FileOpen("Trojan_Horse_Log.csv", FILE_CSV|FILE_WRITE|FILE_SHARE_READ);
    if(g_log_handle != INVALID_HANDLE)
       FileWrite(g_log_handle, "Time,MS,Action,Ticket,Price,Vol,Profit,Comment");
 
@@ -205,7 +205,7 @@ void OnTick()
    // Check Max Positions
    if(CountPositions() >= InpMaxPositions)
      {
-      if(!InpCloseProfitOnly) CloseOldest(); // FIFO if strict limit
+      if(!InpCloseProfitOnly) CloseWorstLoser(); // Close biggest loser to free up space
       g_last_price = bid;
       return;
      }
@@ -267,24 +267,29 @@ void CloseAll()
    Print("Trojan: All positions closed.");
   }
 
-void CloseOldest()
+void CloseWorstLoser()
   {
-   ulong oldest_t = 0;
-   datetime oldest_time = TimeCurrent() + 1000;
+   ulong worst_ticket = 0;
+   double min_profit = 1000000.0; // Start high
 
    for(int i=0; i<PositionsTotal(); i++)
      {
       if(m_position.SelectByIndex(i) && m_position.Symbol()==_Symbol && m_position.Magic()==InpMagicNumber)
         {
-         if(m_position.Time() < oldest_time)
+         double p = m_position.Profit();
+         if(p < min_profit)
            {
-            oldest_time = m_position.Time();
-            oldest_t = m_position.Ticket();
+            min_profit = p;
+            worst_ticket = m_position.Ticket();
            }
         }
      }
 
-   if(oldest_t > 0) m_trade.PositionClose(oldest_t);
+   if(worst_ticket > 0)
+     {
+      Print("Trojan: Max positions reached. Closing worst loser (#", worst_ticket, ") Profit: ", min_profit);
+      m_trade.PositionClose(worst_ticket);
+     }
   }
 
 int CountPositions()
