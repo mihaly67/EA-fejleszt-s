@@ -1,41 +1,37 @@
-# Session Handover Report - 2026.01.14
+# Session Handover Report - 2026.01.15
 
-## 🟢 Status: Code Submitted & Verified
-The `Hybrid_DOM_Monitor_v1.09.mq5` has been successfully implemented, verified, and submitted to the repository. The project now includes a robust **Physics Engine** and a **Data Collection Logger**.
+## 🟢 Status: Analysis Complete & TickRoller Updated
+The extensive data analysis of DOM behavior during market turns has been completed, and the `TickRoller` Expert Advisor has been upgraded with "Trojan Horse" features for the next phase of stress testing.
 
 ### 🛠️ Completed Tasks
-1.  **Physics Engine Implementation:**
-    *   Created `PhysicsEngine.mqh` to calculate Velocity (pips/sec), Acceleration, and Spread metrics in real-time.
-    *   Integrated this engine into the main DOM Monitor.
+1.  **Detailed Spoofing Analysis (v2 & v3):**
+    *   Analyzed real market logs (EURUSD, GBPUSD) provided by the user.
+    *   **Level 3 Findings:** Confirmed **>90% Spoofing Ratio** for large orders (>80M volume) near pivot points. These orders vanish without execution.
+    *   **Level 1-2 Findings:** Discovered a contrasting **"Wall Building"** behavior. In ~30-40% of turns, inner liquidity significantly *increases* to block price, rather than spoofing.
 
-2.  **Hybrid DOM Logger (v1.01):**
-    *   Developed a specialized logging tool (`Hybrid_DOM_Logger.mq5`) that records Level 1-5 volumes and physics metrics to CSV.
-    *   Verified functionality with user-provided data from Forex (EURUSD, GBPUSD) and CFDs (Gold, Indices).
+2.  **TickRoller v3.08 (Trojan Horse Edition):**
+    *   Updated the user's existing EA with advanced stealth and management features.
+    *   **Profit-Only Closing:** Implemented logic to strictly close profitable positions (e.g., >500 EUR) while leaving losing trades open to stress the book imbalance. Includes a **Retry Loop** to handle slippage/requotes.
+    *   **Stealth Mode:** Added randomization for trade intervals (100-1000ms) and lot sizes (+/- %) to evade algorithmic detection.
+    *   **Logging:** Integrated CSV logging to `TickRoller_Log.csv` for precise correlation with DOM data.
 
-3.  **Data Analysis (Python):**
-    *   Analyzed the correlation between Price Velocity and Book Thinning.
-    *   **Finding:** Weak linear correlation, but directional evidence supports "thinning" logic.
-    *   **Critical Finding (EURUSD):** Detected **~90% Spoofing Ratio** on Level 3 (high volumes vanishing before execution).
+3.  **Codebase Maintenance:**
+    *   Converted the uploaded UTF-16 source file to UTF-8.
+    *   Created `analyze_spoofing_v2.py` and `analyze_inner_book.py` for reproducible data analysis.
 
-4.  **Simulation Logic (v1.09):**
-    *   Implemented "Artistic Simulation" (Velocity-Based Thinning) to fill missing DOM levels (L2-L5) on CFDs where data is sparse (e.g., Gold).
-    *   Visualizes missing levels with a distinct grey color.
-
-### ⚠️ Known Issues / Observations
-*   **Gold/Indices Data:** Broker provides static placeholder values (100, 200, 10000) for L1-L3 on Gold, confirming the need for simulation.
-*   **Forex Level 3:** High probability of spoofing/fake liquidity detected.
+### 📊 Key Analysis Findings
+*   **L3 Strategy:** The market maker algorithm likely uses Level 3 for "baiting" (Spoofing).
+*   **L2 Strategy:** Level 2 is used for "blocking" (Wall Building).
+*   **Counter-Strategy:** The "Trojan Horse" EA is designed to test if the algorithm reacts to *account profitability* (closing winners) or *server load* (order frequency).
 
 ### 📝 Next Session Goals
-1.  **Stress Test Analysis:**
-    *   Analyze the logs from the user's "Tick Roller" stress test (DDoS simulation on Demo) to see how the DOM reacts to toxic flow.
-2.  **Spoofing Filter (Future v1.10):**
-    *   Implement a filter to flag/ignore "Ghost Liquidity" that appears and disappears rapidly (based on the 90% spoofing finding).
-3.  **Refinement:**
-    *   Fine-tune the `DecayFactor` and `VelocitySens` parameters based on live trading feedback.
+1.  **Stress Test Execution:** User will run `TickRoller_v3.08` on live/demo markets.
+2.  **Correlation Analysis:** Compare `TickRoller_Log.csv` with `Hybrid_DOM_Logger` output to detect algorithmic reactions (Spread widening, Liquidity pull).
+3.  **Hybrid DOM Monitor v1.10:** Implement the **"Spoofing Filter"** based on the L3 findings (marking ghost liquidity) and potentially a **"Wall Detector"** for L2.
 
 ### 📂 Key Files
-*   `Factory_System/Indicators/Hybrid_DOM_Monitor_v1.09.mq5` (Active Version)
-*   `Factory_System/Indicators/PhysicsEngine.mqh` (Core Library)
-*   `Factory_System/Diagnostics/Hybrid_DOM_Logger.mq5` (Tool)
+*   `Factory_System/Experts/TickRoller_v3.08.mq5` (Active EA)
+*   `analyze_spoofing_v2.py` (L3 Analysis Script)
+*   `analyze_inner_book.py` (L1/L2 Analysis Script)
 
 _Session closed successfully._
