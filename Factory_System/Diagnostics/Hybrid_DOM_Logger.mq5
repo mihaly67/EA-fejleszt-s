@@ -43,7 +43,12 @@ int OnInit()
      }
 
    // 2. Open CSV File
-   string filename = InpFileNamePrefix + "_" + _Symbol + "_" + IntegerToString((long)TimeCurrent()) + ".csv";
+   // Format: Prefix_Symbol_YYYY.MM.DD_HH.MM.SS.csv
+   string time_str = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
+   StringReplace(time_str, ":", ".");
+   StringReplace(time_str, " ", "_");
+   string filename = InpFileNamePrefix + "_" + _Symbol + "_" + time_str + ".csv";
+
    g_file_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI);
 
    if(g_file_handle == INVALID_HANDLE)
