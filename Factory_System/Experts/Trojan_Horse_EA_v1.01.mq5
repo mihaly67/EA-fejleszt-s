@@ -29,11 +29,11 @@ enum ENUM_EA_STATE
 
 enum ENUM_TRADING_MODE
   {
-   MODE_COUNTER_TICK, // Price Up -> Sell
-   MODE_SAME_TICK,    // Price Up -> Buy
-   MODE_ALWAYS_BUY,   // Always Buy
-   MODE_ALWAYS_SELL,  // Always Sell
-   MODE_RANDOM        // Random Direction
+   MODE_ALWAYS_BUY,     // Mindig Vétel (Always Buy)
+   MODE_ALWAYS_SELL,    // Mindig Eladás (Always Sell)
+   MODE_COUNTER_TICK,   // Tickkel Ellentétes (Price Up -> Sell, Price Down -> Buy)
+   MODE_FOLLOW_TICK,    // Tickkel Azonos (Price Up -> Buy, Price Down -> Sell)
+   MODE_RANDOM          // Random (Véletlenszerű)
   };
 
 //--- Inputs
@@ -230,15 +230,31 @@ void OnTick()
 
    // Direction Logic
    ENUM_ORDER_TYPE dir = ORDER_TYPE_BUY;
-   bool up = (bid > g_last_price);
+   bool up = (bid > g_last_price); // True if Price Up (Ask/Bid moved up?) - Using Bid for direction
 
    switch(InpMode)
      {
-      case MODE_ALWAYS_BUY: dir = ORDER_TYPE_BUY; break;
-      case MODE_ALWAYS_SELL: dir = ORDER_TYPE_SELL; break;
-      case MODE_SAME_TICK: dir = up ? ORDER_TYPE_BUY : ORDER_TYPE_SELL; break;
-      case MODE_COUNTER_TICK: dir = up ? ORDER_TYPE_SELL : ORDER_TYPE_BUY; break;
-      case MODE_RANDOM: dir = (MathRand()%2==0) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL; break;
+      case MODE_ALWAYS_BUY:
+         dir = ORDER_TYPE_BUY;
+         break;
+
+      case MODE_ALWAYS_SELL:
+         dir = ORDER_TYPE_SELL;
+         break;
+
+      case MODE_FOLLOW_TICK:
+         // Tickkel Azonos: Ha nőtt az ár -> Vétel, ha csökkent -> Eladás
+         dir = up ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+         break;
+
+      case MODE_COUNTER_TICK:
+         // Tickkel Ellentétes: Ha nőtt az ár -> Eladás, ha csökkent -> Vétel
+         dir = up ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
+         break;
+
+      case MODE_RANDOM:
+         dir = (MathRand()%2==0) ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
+         break;
      }
 
    // Lot Calculation
