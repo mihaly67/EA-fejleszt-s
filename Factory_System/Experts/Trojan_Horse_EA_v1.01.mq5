@@ -119,10 +119,8 @@ int OnInit()
 
    if(g_log_handle != INVALID_HANDLE)
      {
-      // Header: EA Columns + DOM/Physics Columns
-      string header = "Time,MS,Action,Ticket,TradePrice,TradeVol,Profit,Comment,";
-      header += "BestBid,BestAsk,Velocity,Acceleration,Spread,";
-      header += "BidV1,BidV2,BidV3,BidV4,BidV5,AskV1,AskV2,AskV3,AskV4,AskV5\r\n";
+      // Unified Header: Time,MS,Action,Ticket,TradePrice,TradeVol,Profit,Comment,BestBid,BestAsk,Velocity,Acceleration,Spread,BidV1..5,AskV1..5
+      string header = "Time,MS,Action,Ticket,TradePrice,TradeVol,Profit,Comment,BestBid,BestAsk,Velocity,Acceleration,Spread,BidV1,BidV2,BidV3,BidV4,BidV5,AskV1,AskV2,AskV3,AskV4,AskV5\r\n";
       FileWriteString(g_log_handle, header);
       FileFlush(g_log_handle); // Flush header to ensure file creation is visible
       Print("Trojan Horse: Log file created: ", filename);
@@ -383,7 +381,7 @@ void Log(string action, ulong ticket, double price, double vol, double profit)
    string ms = IntegerToString(GetTickCount()%1000);
 
    // Base EA Log
-   string ea_part = StringFormat("%s.%s,%s,%d,%.5f,%.2f,%.2f", t, ms, action, ticket, price, vol, profit);
+   string ea_part = StringFormat("%s,%s,%s,%d,%.5f,%.2f,%.2f,%s", t, ms, action, ticket, price, vol, profit, InpComment);
 
    // DOM & Physics Snapshot
    string dom_part = GetDOMSnapshot();
