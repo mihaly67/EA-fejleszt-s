@@ -51,13 +51,8 @@ int OnInit()
    string filename = InpFileNamePrefix + "_" + _Symbol + "_" + time_str + ".csv";
 
    ResetLastError();
-   g_file_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_COMMON); // Try FILE_COMMON to be sure user sees it
-
-   if(g_file_handle == INVALID_HANDLE)
-     {
-      // Fallback to local folder if COMMON fails (e.g. permission)
-      g_file_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI);
-     }
+   // Reverted to simple local FileOpen
+   g_file_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI);
 
    if(g_file_handle == INVALID_HANDLE)
      {
@@ -210,7 +205,7 @@ void WriteLog(const MqlBookInfo &book[])
    line += "\r\n";
 
    FileWriteString(g_file_handle, line);
-   // FileFlush(g_file_handle); // Omitted for speed as per preference
+   FileFlush(g_file_handle); // Forced flush for reliability
   }
 
 // --- Sorting ---
