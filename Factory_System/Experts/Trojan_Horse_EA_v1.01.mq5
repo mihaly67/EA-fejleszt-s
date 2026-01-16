@@ -113,7 +113,11 @@ int OnInit()
    g_current_lot = NormalizeLot(InpBaseLot);
 
    // Init Log (Saved to local MQL5/Files)
-   string filename = "Trojan_Horse_Log_" + _Symbol + "_" + IntegerToString((long)TimeCurrent()) + ".csv";
+   string time_str = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
+   StringReplace(time_str, ":", ".");
+   StringReplace(time_str, " ", "_");
+   string filename = "Trojan_Horse_Log_" + _Symbol + "_" + time_str + ".csv";
+
    // Using FILE_TXT | FILE_ANSI to match Hybrid_DOM_Logger and ensure manual CSV formatting works correctly
    g_log_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI);
 
