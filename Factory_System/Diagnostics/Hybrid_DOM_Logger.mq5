@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent"
 #property link      "https://mql5.com"
-#property version   "1.01"
+#property version   "1.02"
 #property indicator_chart_window
 #property indicator_plots 0
 
@@ -52,8 +52,10 @@ int OnInit()
       return(INIT_FAILED);
      }
 
-   // 3. Write Header
-   string header = "TimeMS,BestBid,BestAsk,Velocity,Acceleration,Spread,BidV1,BidV2,BidV3,BidV4,BidV5,AskV1,AskV2,AskV3,AskV4,AskV5\r\n";
+   // 3. Write Header (Unified Schema with Trojan Horse EA)
+   // Trade Cols: Time,MS,Action,Ticket,TradePrice,TradeVol,Profit,Comment
+   // Market Cols: BestBid,BestAsk,Velocity,Acceleration,Spread,BidV1..5,AskV1..5
+   string header = "Time,MS,Action,Ticket,TradePrice,TradeVol,Profit,Comment,BestBid,BestAsk,Velocity,Acceleration,Spread,BidV1,BidV2,BidV3,BidV4,BidV5,AskV1,AskV2,AskV3,AskV4,AskV5\r\n";
    FileWriteString(g_file_handle, header);
    FileFlush(g_file_handle);
 
@@ -154,7 +156,15 @@ void WriteLog(const MqlBookInfo &book[])
    PhysicsState phys = g_physics.GetState();
 
    // 4. Prepare Data Line
-   string line = IntegerToString(GetTickCount()) + ","; // TimeMS
+
+   // Time Columns
+   string t = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
+   string ms = IntegerToString(GetTickCount()%1000);
+   string line = t + "," + ms + ",";
+
+   // Trade Columns (Dummy for Logger)
+   // Action,Ticket,TradePrice,TradeVol,Profit,Comment
+   line += "LOG,0,0.0,0.0,0.0,Logger,";
 
    // Best Prices
    double best_bid = (bid_cnt > 0) ? bids[0].price : 0.0;
@@ -187,7 +197,7 @@ void WriteLog(const MqlBookInfo &book[])
    line += "\r\n";
 
    FileWriteString(g_file_handle, line);
-   FileFlush(g_file_handle);
+   // FileFlush(g_file_handle); // Omitted for speed as per preference
   }
 
 // --- Sorting ---
