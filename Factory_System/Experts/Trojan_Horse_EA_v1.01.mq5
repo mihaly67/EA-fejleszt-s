@@ -121,12 +121,8 @@ int OnInit()
 
    // Using FILE_TXT | FILE_ANSI to match Hybrid_DOM_Logger and ensure manual CSV formatting works correctly
    ResetLastError();
-   g_log_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_COMMON);
-
-   if(g_log_handle == INVALID_HANDLE)
-     {
-      g_log_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI);
-     }
+   // Reverted to simple local FileOpen to ensure reliability in sandbox/user environment
+   g_log_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI);
 
    if(g_log_handle != INVALID_HANDLE)
      {
@@ -135,6 +131,7 @@ int OnInit()
       FileWriteString(g_log_handle, header);
       FileFlush(g_log_handle); // Flush header to ensure file creation is visible
       Print("Trojan Horse: Log file created: ", filename);
+      Print("Path: MQL5\\Files\\", filename);
      }
    else
      {
@@ -415,7 +412,7 @@ void Log(string action, ulong ticket, double price, double vol, double profit)
 
    // Write
    FileWriteString(g_log_handle, ea_part + "," + dom_part + "\r\n");
-   // No FileFlush for performance
+   FileFlush(g_log_handle); // Forced flush to ensure data visibility immediately
   }
 
 //+------------------------------------------------------------------+
