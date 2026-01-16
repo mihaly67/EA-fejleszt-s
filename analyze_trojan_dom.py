@@ -4,146 +4,149 @@ import os
 import glob
 from datetime import datetime, timedelta
 
-# Unified Schema for both Trojan Horse EA and Hybrid DOM Logger
+# Unified Schema
 # 0:Time, 1:MS, 2:Action, 3:Ticket, 4:TradePrice, 5:TradeVol, 6:Profit, 7:Comment
 # 8:BestBid, 9:BestAsk, 10:Velocity, 11:Acceleration, 12:Spread
 # 13-17: BidV1-5, 18-22: AskV1-5
 
-def find_latest_log(directory="MQL5/Files", prefix="Trojan_Horse_Log_"):
-    search_pattern = os.path.join(directory, prefix + "*.csv")
-    files = glob.glob(search_pattern)
-    if not files:
-        # Try local directory
-        search_pattern = os.path.join(".", prefix + "*.csv")
-        files = glob.glob(search_pattern)
-
-    if not files: return None
-    return max(files, key=os.path.getctime)
-
 def parse_row(row):
     try:
         data = {}
-        # Basic Safety Check
         if len(row) < 23: return None
 
         data['Time'] = row[0]
         data['MS'] = int(row[1])
         data['Action'] = row[2]
 
-        # Trade Data (Might be 0/NA for Logger)
         try: data['Ticket'] = int(row[3])
         except: data['Ticket'] = 0
 
         try: data['TradePrice'] = float(row[4])
         except: data['TradePrice'] = 0.0
 
-        # Market Data
-        data['BestBid'] = float(row[8])
-        data['BestAsk'] = float(row[9])
-        data['Velocity'] = float(row[10])
-        data['Spread'] = float(row[12])
+        try: data['TradeVol'] = float(row[5])
+        except: data['TradeVol'] = 0.0
+
+        try: data['Profit'] = float(row[6])
+        except: data['Profit'] = 0.0
+
+        try: data['BestBid'] = float(row[8])
+        except: data['BestBid'] = 0.0
+
+        try: data['BestAsk'] = float(row[9])
+        except: data['BestAsk'] = 0.0
+
+        try: data['Velocity'] = float(row[10])
+        except: data['Velocity'] = 0.0
+
+        try: data['Spread'] = float(row[12])
+        except: data['Spread'] = 0.0
 
         # Depths
-        data['BidDepth'] = sum([int(row[i]) for i in range(13, 18)])
-        data['AskDepth'] = sum([int(row[i]) for i in range(18, 23)])
+        try:
+            data['BidDepth'] = sum([int(row[i]) for i in range(13, 18)])
+            data['AskDepth'] = sum([int(row[i]) for i in range(18, 23)])
+        except:
+            data['BidDepth'] = 0
+            data['AskDepth'] = 0
 
-        # Timestamp Construction
+        # Timestamp
         dt_str = f"{data['Time']}"
         try:
+             # Handle formats: "2026.01.16 22:33:35" or similar
              dt = datetime.strptime(dt_str, "%Y.%m.%d %H:%M:%S")
         except:
-             dt = datetime.now()
+             try:
+                 dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+             except:
+                 return None # Invalid date
 
         data['Timestamp'] = dt + timedelta(milliseconds=data['MS'])
         return data
     except Exception as e:
         return None
 
-def analyze_stealth(trades):
-    print("\n--- Stealth Mode Analysis (Trades Only) ---")
-    if len(trades) < 2:
-        print("Not enough trades for interval analysis.")
+def analyze_phase(phase_name, trades):
+    print(f"\n--- Analysis: {phase_name} ---")
+    if not trades:
+        print("No trades in this phase.")
         return
 
-    intervals = []
-    for i in range(1, len(trades)):
-        t1 = trades[i-1]['Timestamp']
-        t2 = trades[i]['Timestamp']
-        diff = (t2 - t1).total_seconds()
-        intervals.append(diff)
+    count = len(trades)
+    total_vol = sum(t['TradeVol'] for t in trades)
+    avg_vol = total_vol / count
 
-    avg = sum(intervals) / len(intervals)
-    variance = sum([((x - avg) ** 2) for x in intervals]) / len(intervals)
-    std_dev = math.sqrt(variance)
+    # Slippage Estimate (Price vs Expected? We only have execution price.
+    # We can assume spread is a proxy for cost/slippage risk).
+    avg_spread = sum(t['Spread'] for t in trades) / count
 
-    print(f"Total Trades: {len(trades)}")
-    print(f"Avg Interval: {avg:.4f} sec")
-    print(f"StdDev Interval: {std_dev:.4f} sec")
+    # Velocity at entry
+    avg_vel = sum(abs(t['Velocity']) for t in trades) / count
 
-def analyze_market(rows, label="Rows"):
-    print(f"\n--- Market Context ({label}) ---")
-    if not rows: return
+    # Profit (Realized)
+    closed_trades = [t for t in trades if "CLOSE" in t['Action']]
+    total_profit = sum(t['Profit'] for t in closed_trades) if closed_trades else 0.0
 
-    avg_vel = sum(r['Velocity'] for r in rows) / len(rows)
-    avg_spread = sum(r['Spread'] for r in rows) / len(rows)
-    avg_bid_d = sum(r['BidDepth'] for r in rows) / len(rows)
-    avg_ask_d = sum(r['AskDepth'] for r in rows) / len(rows)
+    print(f"Trades: {count} (Execs: {len([t for t in trades if t['Action']=='OPEN'])})")
+    print(f"Avg Vol: {avg_vol:.2f} | Total Vol: {total_vol:.2f}")
+    print(f"Avg Spread at Event: {avg_spread:.1f} pts")
+    print(f"Avg Velocity at Event: {avg_vel:.5f}")
+    print(f"Total Realized Profit: {total_profit:.2f}")
 
-    print(f"Count: {len(rows)}")
-    print(f"Avg Velocity: {avg_vel:.5f}")
-    print(f"Avg Spread: {avg_spread:.2f}")
-    print(f"Avg Bid Depth: {avg_bid_d:.0f}")
-    print(f"Avg Ask Depth: {avg_ask_d:.0f}")
+    # Impact Analysis?
+    # If high volume trades have higher spread or velocity, that's impact.
+
 
 def main():
-    # Detect both types of logs
-    trojan_file = find_latest_log(prefix="Trojan_Horse_Log_")
-    dom_file = find_latest_log(prefix="Hybrid_DOM_Log_")
+    log_dir = "test_logs"
+    if not os.path.exists(log_dir):
+        print(f"Directory {log_dir} not found. Running on current dir.")
+        log_dir = "."
 
-    files_to_analyze = []
-    if trojan_file: files_to_analyze.append(("Trojan EA", trojan_file))
-    if dom_file: files_to_analyze.append(("DOM Logger", dom_file))
+    # Files identified by user timestamps
+    # 1. 0.01 Lot (22:33:35)
+    # 2. Slippage/TP Config (22:39:38)
+    # 3. 100 Lot Stress (22:47:02)
+    # DOM Logger (22:34:58)
 
-    if not files_to_analyze:
-        print("No logs found. Generating dummy test file...")
-        dummy_name = "Trojan_Horse_Log_TEST_Unified.csv"
-        with open(dummy_name, "w") as f:
-            f.write("Time,MS,Action,Ticket,TradePrice,TradeVol,Profit,Comment,BestBid,BestAsk,Velocity,Acceleration,Spread,B1,B2,B3,B4,B5,A1,A2,A3,A4,A5\n")
-            f.write("2024.01.01 12:00:00,100,OPEN,1,1.05,0.1,0,Test,1.049,1.051,0.0001,0,10,100,100,100,100,100,200,200,200,200,200\n")
-            f.write("2024.01.01 12:00:01,200,OPEN,2,1.05,0.1,0,Test,1.049,1.051,0.0002,0,10,100,100,100,100,100,200,200,200,200,200\n")
-        files_to_analyze.append(("Dummy Test", dummy_name))
+    files = glob.glob(os.path.join(log_dir, "*.csv"))
 
-    for label, filepath in files_to_analyze:
-        print(f"\n==========================================")
-        print(f"Analyzing {label}: {filepath}")
-        print(f"==========================================")
+    phases = {
+        "Phase 1 (0.01 Lot)": [],
+        "Phase 2 (Config Change)": [],
+        "Phase 3 (100 Lot Stress)": [],
+        "DOM Logger Background": []
+    }
 
-        trades = []
-        market_rows = []
-
+    for f in files:
+        fname = os.path.basename(f)
+        data = []
         try:
-            with open(filepath, 'r') as f:
-                reader = csv.reader(f)
-                header = next(reader, None)
+            with open(f, 'r') as csvfile:
+                reader = csv.reader(csvfile)
+                next(reader, None) # Skip Header
                 for row in reader:
                     if not row: continue
-                    data = parse_row(row)
-                    if data:
-                        market_rows.append(data) # All rows have market data
-                        if data['Action'] == 'OPEN':
-                            trades.append(data)
+                    d = parse_row(row)
+                    if d: data.append(d)
         except Exception as e:
-            print(f"Error reading {filepath}: {e}")
+            print(f"Error reading {f}: {e}")
             continue
 
-        analyze_market(market_rows, "All Ticks/Events")
-        if trades:
-            analyze_stealth(trades)
-        else:
-            print("No trades found in this log.")
+        if "Hybrid_DOM_Log" in fname:
+            phases["DOM Logger Background"].extend(data)
+        elif "Trojan_Horse_Log" in fname:
+            # Sort by timestamp to be sure, but filename hints are strong
+            if "223335" in fname:
+                phases["Phase 1 (0.01 Lot)"] = data
+            elif "223938" in fname:
+                phases["Phase 2 (Config Change)"] = data
+            elif "224702" in fname:
+                phases["Phase 3 (100 Lot Stress)"] = data
 
-    if "TEST_Unified" in files_to_analyze[0][1]:
-        os.remove(files_to_analyze[0][1])
+    # Analyze Each Phase
+    for name, data in phases.items():
+        analyze_phase(name, data)
 
 if __name__ == "__main__":
     main()
