@@ -145,6 +145,20 @@ int OnInit()
    // Random Seed
    MathSrand(GetTickCount());
 
+   // Auto-Start Logger
+   int logger_handle = iCustom(NULL, 0, "Factory_System\\Diagnostics\\Hybrid_DOM_Logger");
+   if(logger_handle != INVALID_HANDLE)
+     {
+      if(!ChartIndicatorAdd(0, 0, logger_handle))
+         Print("Trojan Horse: Failed to attach Logger! Error: ", GetLastError());
+      else
+         Print("Trojan Horse: Hybrid_DOM_Logger attached successfully.");
+     }
+   else
+     {
+      Print("Trojan Horse: Failed to load Logger handle! Error: ", GetLastError());
+     }
+
    Print("Trojan Horse v1.01 Initialized. Stealth: ", InpStealthMode);
    return(INIT_SUCCEEDED);
   }
@@ -274,9 +288,10 @@ void OnTick()
    // Check Max Positions
    if(CountPositions() >= InpMaxPositions)
      {
-      if(!InpCloseProfitOnly) CloseWorstLoser(); // Close biggest loser to free up space
-      g_last_price = bid;
-      return;
+      // Force Close Worst Loser (User Requirement: Immediate swap)
+      CloseWorstLoser();
+      // Do NOT return here. Proceed to Open Logic to maintain flow.
+      // g_last_price = bid; // Do not update last price, let execution happen
      }
 
    // Execute
@@ -306,11 +321,17 @@ void ManageProfit()
                // Retry Loop
                for(int k=0; k<InpRetryAttempts; k++)
                  {
+                  ResetLastError();
                   if(m_trade.PositionClose(ticket))
                     {
                      Log("CLOSE_PROFIT", ticket, m_position.PriceOpen(), m_position.Volume(), profit);
                      Print("Trojan: Closed Profit ", profit, " Ticket: ", ticket);
                      break;
+                    }
+                  else
+                    {
+                     Print("Trojan: Close Failed! Ticket: ", ticket, " Profit: ", profit,
+                           " Error: ", GetLastError(), " RetCode: ", m_trade.ResultRetcode());
                     }
                   Sleep(10);
                   m_symbol.RefreshRates();
