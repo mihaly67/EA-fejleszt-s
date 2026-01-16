@@ -43,13 +43,21 @@ int OnInit()
      }
 
    // 2. Open CSV File
-   // Format: Prefix_Symbol_YYYY.MM.DD_HH.MM.SS.csv
+   // Format: Prefix_Symbol_YYYYMMDD_HHMMSS.csv (Simplified to avoid OS issues)
    string time_str = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
-   StringReplace(time_str, ":", ".");
+   StringReplace(time_str, ":", "");
    StringReplace(time_str, " ", "_");
+   StringReplace(time_str, ".", ""); // Remove dots for cleanest filename
    string filename = InpFileNamePrefix + "_" + _Symbol + "_" + time_str + ".csv";
 
-   g_file_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI);
+   ResetLastError();
+   g_file_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_COMMON); // Try FILE_COMMON to be sure user sees it
+
+   if(g_file_handle == INVALID_HANDLE)
+     {
+      // Fallback to local folder if COMMON fails (e.g. permission)
+      g_file_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI);
+     }
 
    if(g_file_handle == INVALID_HANDLE)
      {
