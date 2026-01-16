@@ -114,15 +114,22 @@ int OnInit()
 
    // Init Log (Saved to local MQL5/Files)
    string filename = "Trojan_Horse_Log_" + _Symbol + "_" + IntegerToString((long)TimeCurrent()) + ".csv";
-   g_log_handle = FileOpen(filename, FILE_CSV|FILE_WRITE|FILE_SHARE_READ);
+   // Using FILE_TXT | FILE_ANSI to match Hybrid_DOM_Logger and ensure manual CSV formatting works correctly
+   g_log_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI);
 
    if(g_log_handle != INVALID_HANDLE)
      {
       // Header: EA Columns + DOM/Physics Columns
       string header = "Time,MS,Action,Ticket,TradePrice,TradeVol,Profit,Comment,";
       header += "BestBid,BestAsk,Velocity,Acceleration,Spread,";
-      header += "BidV1,BidV2,BidV3,BidV4,BidV5,AskV1,AskV2,AskV3,AskV4,AskV5";
-      FileWrite(g_log_handle, header);
+      header += "BidV1,BidV2,BidV3,BidV4,BidV5,AskV1,AskV2,AskV3,AskV4,AskV5\r\n";
+      FileWriteString(g_log_handle, header);
+      FileFlush(g_log_handle); // Flush header to ensure file creation is visible
+      Print("Trojan Horse: Log file created: ", filename);
+     }
+   else
+     {
+      Print("Trojan Horse: Failed to create log file! Error: ", GetLastError());
      }
 
    // UI
@@ -382,7 +389,7 @@ void Log(string action, ulong ticket, double price, double vol, double profit)
    string dom_part = GetDOMSnapshot();
 
    // Write
-   FileWrite(g_log_handle, ea_part + "," + dom_part);
+   FileWriteString(g_log_handle, ea_part + "," + dom_part + "\r\n");
    // No FileFlush for performance
   }
 
