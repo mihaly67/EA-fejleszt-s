@@ -6,8 +6,8 @@ import sys
 from datetime import datetime
 
 # --- Configuration ---
-LOG_DIR = "test_logs"  # Default directory, falls back to current if not found
-OUTPUT_DIR = "analysis_output"
+LOG_DIR = "test_logs/crypto_test"  # Default directory, falls back to current if not found
+OUTPUT_DIR = "analysis_output_crypto"
 
 def find_latest_logs(directory):
     """Finds the most recent Trojan_Horse and Hybrid_DOM logs."""
