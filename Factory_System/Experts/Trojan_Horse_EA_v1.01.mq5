@@ -68,6 +68,7 @@ double        g_last_price = 0.0;
 double        g_current_lot = 0.01;
 ulong         g_next_trade_tick = 0;
 int           g_log_handle = INVALID_HANDLE;
+int           g_logger_handle = INVALID_HANDLE; // Handle for the Logger Indicator
 bool          g_book_subscribed = false;
 
 //--- Struct to hold simplified level data (Local to avoid conflict if already defined)
@@ -176,8 +177,14 @@ void OnDeinit(const int reason)
 
    DestroyPanel();
 
-   // Full Chart Cleanup as requested
-   ObjectsDeleteAll(0, -1, -1);
+   // Targeted Chart Cleanup (Only Trojan Objects)
+   ObjectsDeleteAll(0, Prefix);
+
+   // Remove Auto-Started Logger
+   if(ChartIndicatorDelete(0, 0, "Hybrid_DOM_Logger_Service"))
+      Print("Trojan Horse: Logger Service removed.");
+   else
+      Print("Trojan Horse: Logger Service not found or failed to remove.");
 
    if(g_book_subscribed) MarketBookRelease(_Symbol);
    if(g_log_handle != INVALID_HANDLE) FileClose(g_log_handle);
