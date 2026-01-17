@@ -30,6 +30,9 @@ struct LevelData {
 //+------------------------------------------------------------------+
 int OnInit()
   {
+   // 0. Set ShortName for remote management (Deletion by EA)
+   IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid_DOM_Logger_Service");
+
    // 1. Subscribe to DOM
    if(MarketBookAdd(_Symbol))
      {
