@@ -100,6 +100,24 @@ string ObjBtnTrojanSell = Prefix + "TrojanSell";
 string ObjEditDecoy = Prefix + "EditDecoy";
 string ObjEditTrojan = Prefix + "EditTrojan";
 
+//--- Forward Declarations
+void ManualTrade(ENUM_ORDER_TYPE dir, double lot, string type);
+void ManageProfit();
+void CloseAll();
+void CloseWorstLoser();
+int CountPositions();
+double NormalizeLot(double lot);
+void SetState(ENUM_EA_STATE s);
+void Log(string action, ulong ticket, double price, double vol, double profit);
+string GetDOMSnapshot();
+void SortBids(LevelData &arr[], int count);
+void SortAsks(LevelData &arr[], int count);
+void CreatePanel();
+void CreateBtn(string name, string text, int x, int y, int w, color bg);
+void CreateEdit(string name, string text, int x, int y, int w);
+void UpdateUI();
+void DestroyPanel();
+
 //+------------------------------------------------------------------+
 //| Initialization                                                   |
 //+------------------------------------------------------------------+
@@ -316,6 +334,17 @@ void CloseWorstLoser()
         }
      }
    if(worst_ticket > 0) m_trade.PositionClose(worst_ticket);
+  }
+
+int CountPositions()
+  {
+   int cnt = 0;
+   for(int i=0; i<PositionsTotal(); i++)
+     {
+      if(m_position.SelectByIndex(i) && m_position.Symbol()==_Symbol && m_position.Magic()==InpMagicNumber)
+         cnt++;
+     }
+   return cnt;
   }
 
 double NormalizeLot(double lot)
