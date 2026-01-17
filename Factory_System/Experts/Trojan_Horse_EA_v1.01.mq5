@@ -56,6 +56,9 @@ input int           InpMinIntervalMS     = 100;    // Min Time between trades
 input int           InpMaxIntervalMS     = 1000;   // Max Time between trades
 input double        InpLotVarPercent     = 0.0;    // Lot Variation % (0-100)
 
+input group "Diagnostics"
+input bool          InpAutoStartLogger   = false;  // Auto-Start DOM Logger?
+
 input group "Panel UI"
 input int           InpX                 = 10;
 input int           InpY                 = 80;
