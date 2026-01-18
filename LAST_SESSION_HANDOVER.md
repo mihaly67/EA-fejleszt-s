@@ -10,7 +10,7 @@
     *   **Native History Disabled:** `CHART_SHOW_TRADE_HISTORY = false`.
     *   **Custom Engine:** Uses `OnTradeTransaction` to draw arrows/lines for *current* trades only.
     *   **Cleanup:** All custom objects are automatically deleted on exit.
-*   **GUI Findings:** The invisible EA icon is identified as an **MT5 Client/Template Glitch**, likely due to the reinstall or corrupted template configuration, not an EA code error.
+*   **GUI Findings (Confirmed):** The invisible EA icon is an **Alpha Blending / Rendering Issue** specific to the environment (Wine / Graphics Driver / MT5 Update), not a code defect.
 
 ## 🛠 System Changes
 
@@ -21,12 +21,12 @@
 
 ## 📝 User Instructions (Next Session)
 
-### 1. Fix "Invisible EA Icon" (Client Side)
-Since the code is fine, try these steps to fix the MT5 display:
-1.  **Reset Template:** Right-click chart -> Templates -> *Default*. Does the icon appear?
-2.  **Toggle Descriptions:** Press `F8` -> *Show* -> Check "Show object descriptions".
-3.  **Reset Toolbars:** View -> Toolbars -> Customize -> Reset.
-4.  **Re-Apply Template:** Once the icon is visible on a clean chart, re-apply your custom `configure chart template`. If it disappears again, the template file itself might be corrupted or incompatible with the new MT5 version.
+### 1. Fix "Invisible EA Icon" (Environment Side)
+**Diagnosis:** Confirmed Alpha Blending / Wine / Driver issue.
+**Workarounds:**
+*   Try disabling "Hardware Acceleration" in the wine config if possible.
+*   Try a different Chart Template (Simple/Default) to see if simplified rendering helps.
+*   Ignore the visual glitch as functionality (clicking the area) is preserved.
 
 ### 2. Verify Trojan Visualization
 *   Run the EA.
