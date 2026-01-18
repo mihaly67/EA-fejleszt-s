@@ -74,6 +74,7 @@ ENUM_EA_STATE     g_state = STATE_STOPPED;
 ENUM_TRADING_MODE g_auto_mode = MODE_COUNTER_TICK; // Live Auto Mode Variable
 double            g_last_price = 0.0;
 double            g_current_lot = 0.01;
+double            g_auto_lot = 0.01;   // Live Auto Lot Variable
 ulong             g_next_trade_tick = 0;
 int               g_log_handle = INVALID_HANDLE;
 bool              g_book_subscribed = false;
@@ -92,6 +93,7 @@ string ObjStat = Prefix + "Status";
 string ObjBtnAuto = Prefix + "BtnAuto";
 string ObjBtnManual = Prefix + "BtnManual";
 string ObjBtnStop = Prefix + "BtnStop"; // Acts as "Stop & Close All"
+string ObjEditAutoLot = Prefix + "EditAutoLot"; // New Auto Lot Edit
 // Auto Mode Strategy Switcher
 string ObjBtnModeBuy = Prefix + "ModeBuy";
 string ObjBtnModeSell = Prefix + "ModeSell";
@@ -143,6 +145,7 @@ int OnInit()
 
    // Init Runtime Globals
    g_auto_mode = InpAutoMode;
+   g_auto_lot = InpBaseLot;
 
    // Init Log
    string time_str = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
@@ -225,6 +228,19 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
       ObjectSetInteger(0, sparam, OBJPROP_STATE, false); // Unpress
       UpdateUI();
      }
+   // On-The-Fly Lot Edits
+   else if(id == CHARTEVENT_OBJECT_ENDEDIT)
+     {
+      if(sparam == ObjEditAutoLot)
+        {
+         double val = StringToDouble(ObjectGetString(0, ObjEditAutoLot, OBJPROP_TEXT));
+         if(val > 0)
+           {
+            g_auto_lot = NormalizeLot(val);
+            Print("Trojan: Auto Lot Updated to ", g_auto_lot);
+           }
+        }
+     }
   }
 
 //+------------------------------------------------------------------+
@@ -277,9 +293,9 @@ void OnTick()
    // Max Position Logic
    if(CountPositions() >= InpMaxPositions) CloseWorstLoser();
 
-   if(m_trade.PositionOpen(_Symbol, dir, NormalizeLot(InpBaseLot), m_symbol.Ask(), 0, 0, InpComment))
+   if(m_trade.PositionOpen(_Symbol, dir, NormalizeLot(g_auto_lot), m_symbol.Ask(), 0, 0, InpComment))
      {
-      Log("AUTO_OPEN", 0, m_symbol.Ask(), InpBaseLot, 0);
+      Log("AUTO_OPEN", 0, m_symbol.Ask(), g_auto_lot, 0);
      }
 
    g_last_price = bid;
@@ -458,28 +474,30 @@ void CreatePanel()
 
    // --- TOP ROW: MAIN CONTROLS ---
    CreateBtn(ObjBtnAuto, "AUTO", InpX+10, InpY+30, 60, clrDimGray);
+   CreateEdit(ObjEditAutoLot, DoubleToString(InpBaseLot, 2), InpX+10, InpY+65, 50); // New Auto Lot Edit (moved down slightly)
    CreateBtn(ObjBtnManual, "MANUAL", InpX+80, InpY+30, 60, clrDimGray);
    CreateBtn(ObjBtnStop, "CLOSE ALL", InpX+150, InpY+30, 70, clrRed);
 
    // --- NEW ROW: STRATEGY SWITCHER (Small Buttons) ---
-   // Y = 70. 5 Buttons. Width ~40px each.
-   CreateBtn(ObjBtnModeBuy, "[BUY]", InpX+10, InpY+70, 40, clrDimGray, 7);
-   CreateBtn(ObjBtnModeSell, "[SELL]", InpX+52, InpY+70, 40, clrDimGray, 7);
-   CreateBtn(ObjBtnModeCounter, "[CNTR]", InpX+94, InpY+70, 40, clrDimGray, 7);
-   CreateBtn(ObjBtnModeFollow, "[FLLW]", InpX+136, InpY+70, 40, clrDimGray, 7);
-   CreateBtn(ObjBtnModeRandom, "[RND]", InpX+178, InpY+70, 40, clrDimGray, 7);
+   // Y = 100. 5 Buttons. Width ~40px each. (Shifted down to make room for Edit Box)
+   int rowY = InpY + 100;
+   CreateBtn(ObjBtnModeBuy, "[BUY]", InpX+10, rowY, 40, clrDimGray, 7);
+   CreateBtn(ObjBtnModeSell, "[SELL]", InpX+52, rowY, 40, clrDimGray, 7);
+   CreateBtn(ObjBtnModeCounter, "[CNTR]", InpX+94, rowY, 40, clrDimGray, 7);
+   CreateBtn(ObjBtnModeFollow, "[FLLW]", InpX+136, rowY, 40, clrDimGray, 7);
+   CreateBtn(ObjBtnModeRandom, "[RND]", InpX+178, rowY, 40, clrDimGray, 7);
 
    // --- MANUAL ROW 1: DECOY (Small) ---
-   // Shifted down to Y=110
-   CreateEdit(ObjEditDecoy, DoubleToString(InpDecoyLot, 2), InpX+10, InpY+110, 50);
-   CreateBtn(ObjBtnDecoyBuy, "S-BUY", InpX+70, InpY+110, 70, clrGreen);
-   CreateBtn(ObjBtnDecoySell, "S-SELL", InpX+150, InpY+110, 70, clrRed);
+   // Shifted down to Y=140
+   CreateEdit(ObjEditDecoy, DoubleToString(InpDecoyLot, 2), InpX+10, rowY+40, 50);
+   CreateBtn(ObjBtnDecoyBuy, "S-BUY", InpX+70, rowY+40, 70, clrGreen);
+   CreateBtn(ObjBtnDecoySell, "S-SELL", InpX+150, rowY+40, 70, clrRed);
 
    // --- MANUAL ROW 2: TROJAN (Big) ---
-   // Shifted down to Y=150
-   CreateEdit(ObjEditTrojan, DoubleToString(InpTrojanLot, 1), InpX+10, InpY+150, 50);
-   CreateBtn(ObjBtnTrojanBuy, "T-BUY", InpX+70, InpY+150, 70, clrGreen);
-   CreateBtn(ObjBtnTrojanSell, "T-SELL", InpX+150, InpY+150, 70, clrRed);
+   // Shifted down to Y=180
+   CreateEdit(ObjEditTrojan, DoubleToString(InpTrojanLot, 1), InpX+10, rowY+80, 50);
+   CreateBtn(ObjBtnTrojanBuy, "T-BUY", InpX+70, rowY+80, 70, clrGreen);
+   CreateBtn(ObjBtnTrojanSell, "T-SELL", InpX+150, rowY+80, 70, clrRed);
   }
 
 void CreateBtn(string name, string text, int x, int y, int w, color bg, int fontSize)
