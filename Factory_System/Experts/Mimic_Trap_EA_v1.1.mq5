@@ -5,17 +5,19 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent & User"
 #property link      "https://www.mql5.com"
-#property version   "1.00"
+#property version   "1.10"
 #property strict
 
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
 #include <Trade\PositionInfo.mqh>
+#include "../Indicators/PhysicsEngine.mqh"
 
 //--- Objects
 CTrade        m_trade;
 CSymbolInfo   m_symbol;
 CPositionInfo m_position;
+PhysicsEngine m_physics(50);
 
 //--- Inputs
 input group "Strategy Settings"
@@ -44,6 +46,14 @@ ENUM_ORDER_TYPE   g_trap_direction = ORDER_TYPE_BUY; // The INTENDED Winner
 int               g_trap_counter_ticks = 0;
 ulong             g_trap_expire_time = 0;
 double            g_last_price = 0.0;
+int               g_log_handle = INVALID_HANDLE;
+bool              g_book_subscribed = false;
+
+//--- Struct to hold simplified level data
+struct LevelData {
+   double price;
+   long volume;
+};
 
 //--- GUI Objects
 string Prefix = "Mimic_";
@@ -63,6 +73,10 @@ void ArmTrap(ENUM_ORDER_TYPE dir);
 void ExecuteTrap();
 void CloseAll();
 double NormalizeLot(double lot);
+void Log(string action, ulong ticket, double price, double vol, double profit);
+string GetDOMSnapshot();
+void SortBids(LevelData &arr[], int count);
+void SortAsks(LevelData &arr[], int count);
 
 //+------------------------------------------------------------------+
 //| Initialization                                                   |
@@ -76,6 +90,27 @@ int OnInit()
    if(!m_symbol.Name(_Symbol)) return INIT_FAILED;
    m_symbol.RefreshRates();
 
+   if(MarketBookAdd(_Symbol)) g_book_subscribed = true;
+   else Print("Mimic: Failed to subscribe to MarketBook!");
+
+   // Init Log
+   string time_str = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
+   StringReplace(time_str, ":", "");
+   StringReplace(time_str, " ", "_");
+   StringReplace(time_str, ".", "");
+   string filename = "Mimic_Trap_Log_" + _Symbol + "_" + time_str + ".csv";
+
+   ResetLastError();
+   g_log_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI);
+
+   if(g_log_handle != INVALID_HANDLE)
+     {
+      string header = "Time,MS,Action,Ticket,TradePrice,TradeVol,Profit,Comment,BestBid,BestAsk,Velocity,Acceleration,Spread,BidV1,BidV2,BidV3,BidV4,BidV5,AskV1,AskV2,AskV3,AskV4,AskV5\r\n";
+      FileWriteString(g_log_handle, header);
+      FileFlush(g_log_handle);
+      Print("Mimic: Log file created: ", filename);
+     }
+
    // --- CLEANUP & HYGIENE ---
    ChartSetInteger(0, CHART_SHOW_TRADE_HISTORY, false); // No ghost objects
    CleanupChart();
@@ -83,7 +118,7 @@ int OnInit()
    CreatePanel();
    UpdateUI();
 
-   Print("Mimic Trap EA v1.0 Initialized.");
+   Print("Mimic Trap EA v1.1 Initialized.");
    return(INIT_SUCCEEDED);
   }
 
@@ -94,6 +129,8 @@ void OnDeinit(const int reason)
   {
    DestroyPanel();
    CleanupChart();
+   if(g_book_subscribed) MarketBookRelease(_Symbol);
+   if(g_log_handle != INVALID_HANDLE) FileClose(g_log_handle);
   }
 
 void CleanupChart()
@@ -153,6 +190,11 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
 //+------------------------------------------------------------------+
 void OnTick()
   {
+   MqlTick tick;
+   if(SymbolInfoTick(_Symbol, tick)) {
+      m_physics.Update(tick);
+   }
+
    m_symbol.RefreshRates();
    double bid = m_symbol.Bid();
 
@@ -235,13 +277,17 @@ void ExecuteTrap()
    double d_lot = NormalizeLot(InpDecoyLot);
 
    for(int i=0; i<InpDecoyCount; i++) {
-      if(m_trade.PositionOpen(_Symbol, decoy_dir, d_lot, (decoy_dir==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), 0, 0, InpComment+"_Decoy"))
+      if(m_trade.PositionOpen(_Symbol, decoy_dir, d_lot, (decoy_dir==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), 0, 0, InpComment+"_Decoy")) {
+         Log("DECOY_OPEN", 0, (decoy_dir==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), d_lot, 0);
          Sleep(20); // Minimal spacing
+      }
    }
 
    // 2. TROJAN PHASE (Real Direction)
    double t_lot = NormalizeLot(InpTrojanLot);
-   m_trade.PositionOpen(_Symbol, g_trap_direction, t_lot, (g_trap_direction==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), 0, 0, InpComment+"_Trojan");
+   if(m_trade.PositionOpen(_Symbol, g_trap_direction, t_lot, (g_trap_direction==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), 0, 0, InpComment+"_Trojan")) {
+      Log("TROJAN_OPEN", 0, (g_trap_direction==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), t_lot, 0);
+   }
 
    PlaySound("ok.wav");
    Print("Mimic: TRAP EXECUTED!");
@@ -251,8 +297,14 @@ void ExecuteTrap()
 void CloseAll()
   {
    for(int i=PositionsTotal()-1; i>=0; i--) {
-      if(m_position.SelectByIndex(i) && m_position.Symbol()==_Symbol && m_position.Magic()==InpMagicNumber)
-         m_trade.PositionClose(m_position.Ticket());
+      if(m_position.SelectByIndex(i) && m_position.Symbol()==_Symbol && m_position.Magic()==InpMagicNumber) {
+         double p = m_position.Profit();
+         double pr = m_position.PriceOpen();
+         double v = m_position.Volume();
+         ulong t = m_position.Ticket();
+         if(m_trade.PositionClose(t))
+            Log("CLOSE_ALL", t, pr, v, p);
+      }
    }
    Print("Mimic: All positions closed.");
   }
@@ -325,6 +377,58 @@ void UpdateUI()
    }
    ChartRedraw();
   }
+
+//+------------------------------------------------------------------+
+//| Logging & Physics                                                |
+//+------------------------------------------------------------------+
+void Log(string action, ulong ticket, double price, double vol, double profit)
+  {
+   if(g_log_handle == INVALID_HANDLE) return;
+   string t = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
+   string ms = IntegerToString(GetTickCount()%1000);
+   string ea_part = StringFormat("%s,%s,%s,%d,%.5f,%.2f,%.2f,%s", t, ms, action, ticket, price, vol, profit, InpComment);
+   string dom_part = GetDOMSnapshot();
+   FileWriteString(g_log_handle, ea_part + "," + dom_part + "\r\n");
+   FileFlush(g_log_handle);
+  }
+
+string GetDOMSnapshot()
+  {
+   MqlBookInfo book[];
+   LevelData bids[]; LevelData asks[];
+   double best_bid=0, best_ask=0;
+   long bid_v[5]={0}, ask_v[5]={0};
+
+   if(g_book_subscribed && MarketBookGet(_Symbol, book))
+     {
+      int size = ArraySize(book);
+      ArrayResize(bids, size); ArrayResize(asks, size);
+      int b=0, a=0;
+      for(int i=0; i<size; i++) {
+         if(book[i].type == BOOK_TYPE_BUY || book[i].type == BOOK_TYPE_BUY_MARKET) { bids[b].price=book[i].price; bids[b].volume=book[i].volume; b++; }
+         else if(book[i].type == BOOK_TYPE_SELL || book[i].type == BOOK_TYPE_SELL_MARKET) { asks[a].price=book[i].price; asks[a].volume=book[i].volume; a++; }
+      }
+      SortBids(bids, b); SortAsks(asks, a);
+      if(b>0) best_bid=bids[0].price;
+      if(a>0) best_ask=asks[0].price;
+      for(int i=0; i<5; i++) {
+         if(i<b) bid_v[i]=bids[i].volume;
+         if(i<a) ask_v[i]=asks[i].volume;
+      }
+     }
+   PhysicsState p = m_physics.GetState();
+   string s = DoubleToString(best_bid,_Digits)+","+DoubleToString(best_ask,_Digits)+","+DoubleToString(p.velocity,5)+","+DoubleToString(p.acceleration,5)+","+DoubleToString(p.spread_avg,1)+",";
+   for(int i=0;i<5;i++) s+=IntegerToString(bid_v[i])+",";
+   for(int i=0;i<5;i++) { s+=IntegerToString(ask_v[i]); if(i<4) s+=","; }
+   return s;
+  }
+
+void SortBids(LevelData &arr[], int count) {
+   for(int i=0; i<count-1; i++) for(int j=0; j<count-i-1; j++) if(arr[j].price < arr[j+1].price) { LevelData t=arr[j]; arr[j]=arr[j+1]; arr[j+1]=t; }
+}
+void SortAsks(LevelData &arr[], int count) {
+   for(int i=0; i<count-1; i++) for(int j=0; j<count-i-1; j++) if(arr[j].price > arr[j+1].price) { LevelData t=arr[j]; arr[j]=arr[j+1]; arr[j+1]=t; }
+}
 
 void DestroyPanel()
   {
