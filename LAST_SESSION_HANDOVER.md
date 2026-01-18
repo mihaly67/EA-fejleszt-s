@@ -1,38 +1,40 @@
-# Handover Report - Trojan Horse & Analysis Suite V3
+# Handover Report - Trojan Horse v3.0 & Broker Analysis
 
 ## 📅 Session Summary
 **Focus:**
-1. Validating the "Multi-Log" analysis capability using historical EURUSD stress test data (3 EA logs + 1 DOM log).
-2. Finalizing the Python Analysis Suite (`analyze_trojan_dom_v3.py`) to handle complex testing sessions.
+1.  **Broker Logic Analysis:** Reverse-engineering the broker's response to stress (100 Lot orders) using historical logs.
+2.  **Trojan Horse EA v3.0:** Upgrading the testing tool to support "Hybrid" (Manual + Auto) strategies with advanced UI controls.
 
 **Outcome:**
-*   **Analysis Suite V3:** The new script successfully merges multiple disjoint EA log files (representing different test phases like "0.01 Lot" vs "100 Lot") into a single coherent timeline against the DOM data.
-*   **Validation:** Processed the provided EURUSD dataset (533 trades across 3 phases). The visualization accurately reflects the sequential nature of the test.
-*   **Readiness:** The system is fully ready for complex, multi-stage stress testing on live markets (Crypto or Forex).
+*   **Analysis:** Identified "Elastic Defense" strategy (Broker absorbs flow via Price Drift + Deep Liquidity, no execution lag).
+*   **Tooling:** Delivered `Trojan_Horse_EA_v3.0.mq5` with a fully functional GUI for real-time stress testing.
 
 ## 🛠 System Changes
 
-### 1. Analysis Suite (V3)
-*   **File:** `analyze_trojan_dom_v3.py`
-*   **Improvements:**
-    *   **Multi-File Support:** Automatically detects and merges *all* `Trojan_Horse_Log` files in the target directory, sorting them by time.
-    *   **Phase Identification:** Tags each trade with its source file timestamp (e.g., "Phase 223335"), allowing distinct analysis of different test settings.
-    *   **Unified Visualization:** Plots the entire session on a single timeline, making it easy to spot trends (e.g., Velocity increasing as phases progress).
+### 1. Trojan Horse EA v3.0 (New!)
+*   **File:** `Factory_System/Experts/Trojan_Horse_EA_v3.0.mq5`
+*   **Key Features:**
+    *   **Manual Mode:** Toggle between AUTO (Algorithm) and MANUAL (Human).
+    *   **Dual-Row Manual Panel:** Dedicated buttons for "Decoy" (Small Lot) and "Trojan" (Big Lot) trades.
+    *   **Strategy Switcher:** On-the-fly buttons to change Auto logic (`[BUY]`, `[SELL]`, `[CNTR]`, `[FLLW]`, `[RND]`) without restarting.
+    *   **Live Parameter Editing:** Lot sizes (Auto & Manual) can be updated instantly via the panel text boxes.
+    *   **Fresh Pricing:** Manual execution now explicitly calls `RefreshRates()` to prevent "Off Quotes" errors.
 
-## 📊 Validation Results (EURUSD)
-*   **Dataset:** 3 EA Logs (Phase 1, 2, 3) + 1 DOM Log.
-*   **Performance:**
-    *   Merged 533 trades.
-    *   Generated `velocity_trades_multi.png`: Shows clusters of trades corresponding to the 3 distinct testing bursts.
-    *   Generated `liquidity_depth.png`: Visualizes the background liquidity environment during these bursts.
+### 2. Broker Analysis Suite
+*   **File:** `analyze_broker_logic.py`
+*   **Output:** `analysis_output_eurusd/BROKER_LOGIC_SUMMARY_HU.md`
+*   **Findings:**
+    *   **Latency:** No lag during stress (1.7s vs 2.8s baseline).
+    *   **Price:** +26 Point Drift during attack (Broker passes risk to price).
+    *   **Liquidity:** Spoofing Ratio increased (Level 1 thin, Levels 2-5 thick).
 
-## 📝 User Instructions
-1.  **Run Test:** Use `Trojan_Horse_EA` to run your stress test phases. (You can stop/start the EA to change settings; it will generate new log files).
-2.  **Collect Data:** Put all generated `.csv` files (EA logs and the DOM log) into a folder.
-3.  **Analyze:** Run `python3 analyze_trojan_dom_v3.py`.
-4.  **View Results:** Open the `analysis_output_eurusd/` (or configured output) folder to see the combined charts.
+## 📝 User Instructions (Next Session)
+1.  **Test v3.0:** Deploy `Trojan_Horse_EA_v3.0` on a demo chart (e.g., Crypto or Forex).
+2.  **Verify UI:** Check that clicking the Strategy Buttons (`[BUY]`, `[CNTR]`) changes the status text and behavior.
+3.  **Verify Live Edit:** Change the "Auto Lot" from 0.01 to 0.05 in the box, press Enter, and confirm the next auto-trade uses the new size.
+4.  **Execute Strategy:** Use the Manual "S-BUY" buttons to create noise, then "T-BUY" for the Trojan entry, and observe the broker's reaction in the logs.
 
 ## 📂 File Manifest
-*   `analyze_trojan_dom_v3.py` (The definitive analysis tool)
-*   `test_logs/eurusd_test/` (Validation Data)
-*   `analysis_output_eurusd/` (Generated Charts)
+*   `Factory_System/Experts/Trojan_Horse_EA_v3.0.mq5` (The definitive EA)
+*   `analyze_broker_logic.py` (Analysis Tool)
+*   `analysis_output_eurusd/BROKER_LOGIC_SUMMARY_HU.md` (Findings)
