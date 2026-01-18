@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent & User"
 #property link      "https://www.mql5.com"
-#property version   "3.10"
+#property version   "3.20"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -85,7 +85,8 @@ int               g_log_handle = INVALID_HANDLE;
 bool              g_book_subscribed = false;
 
 //--- Trap State
-bool              g_trap_active = false;
+bool              g_mimic_mode_enabled = false; // UI Toggle State
+bool              g_trap_active = false;        // Logic State (Waiting for ticks)
 ENUM_ORDER_TYPE   g_trap_direction = ORDER_TYPE_BUY; // The INTENDED Winner
 int               g_trap_counter_ticks = 0;
 ulong             g_trap_expire_time = 0;
@@ -253,11 +254,20 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
 
       // Trap Toggle
       else if(sparam == ObjBtnTrap) {
-         // Toggle visual state only, logic handled in Manual buttons
-         bool active = (bool)ObjectGetInteger(0, ObjBtnTrap, OBJPROP_STATE);
-         ObjectSetInteger(0, ObjBtnTrap, OBJPROP_BGCOLOR, active ? clrRed : clrDimGray);
-         ObjectSetString(0, ObjBtnTrap, OBJPROP_TEXT, active ? "TRAP: ON" : "TRAP: OFF");
-         if(!active) g_trap_active = false; // Force disable if toggled off
+         g_mimic_mode_enabled = !g_mimic_mode_enabled; // Toggle Global State
+
+         // Update Visuals
+         ObjectSetInteger(0, ObjBtnTrap, OBJPROP_STATE, g_mimic_mode_enabled);
+         ObjectSetInteger(0, ObjBtnTrap, OBJPROP_BGCOLOR, g_mimic_mode_enabled ? clrRed : clrDimGray);
+         ObjectSetString(0, ObjBtnTrap, OBJPROP_TEXT, g_mimic_mode_enabled ? "TRAP: ON" : "TRAP: OFF");
+
+         if(!g_mimic_mode_enabled) {
+            g_trap_active = false; // Force Disarm
+            Print("Trojan: Trap Mode DISABLED. Pending traps cleared.");
+         } else {
+            Print("Trojan: Trap Mode ENABLED. Use S-BUY/S-SELL to arm.");
+         }
+         UpdateUI();
       }
 
       // Strategy Switcher (On-The-Fly)
@@ -270,16 +280,15 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
       // Manual Trades
       else if(g_state == STATE_MANUAL_READY)
         {
-         bool trap_mode = (ObjectGetInteger(0, ObjBtnTrap, OBJPROP_BGCOLOR) == clrRed);
-
          if(sparam == ObjBtnDecoyBuy) {
-            if(trap_mode) ArmTrap(ORDER_TYPE_BUY);
+            if(g_mimic_mode_enabled) ArmTrap(ORDER_TYPE_BUY);
             else ManualTrade(ORDER_TYPE_BUY, StringToDouble(ObjectGetString(0, ObjEditDecoy, OBJPROP_TEXT)), "MANUAL_DECOY");
          }
          else if(sparam == ObjBtnDecoySell) {
-            if(trap_mode) ArmTrap(ORDER_TYPE_SELL);
+            if(g_mimic_mode_enabled) ArmTrap(ORDER_TYPE_SELL);
             else ManualTrade(ORDER_TYPE_SELL, StringToDouble(ObjectGetString(0, ObjEditDecoy, OBJPROP_TEXT)), "MANUAL_DECOY");
          }
+         // T-Buttons (Trojan) are always Direct Entry (Emergency/Override)
          else if(sparam == ObjBtnTrojanBuy) ManualTrade(ORDER_TYPE_BUY, StringToDouble(ObjectGetString(0, ObjEditTrojan, OBJPROP_TEXT)), "MANUAL_TROJAN");
          else if(sparam == ObjBtnTrojanSell) ManualTrade(ORDER_TYPE_SELL, StringToDouble(ObjectGetString(0, ObjEditTrojan, OBJPROP_TEXT)), "MANUAL_TROJAN");
         }
@@ -436,7 +445,7 @@ void ArmTrap(ENUM_ORDER_TYPE intended_dir)
    g_trap_expire_time = GetTickCount() + (InpTrapTimeout * 1000);
 
    string dir_str = (intended_dir == ORDER_TYPE_BUY) ? "BUY" : "SELL";
-   Print("Trojan: TRAP ARMED for ", dir_str, ". Waiting for ", InpMimicTriggerTicks, " counter ticks.");
+   Print("Trojan: TRAP ARMED for ", dir_str, ". Waiting for ", InpMimicTriggerTicks, " counter ticks (Price moving AGAINST target).");
    UpdateUI();
   }
 
