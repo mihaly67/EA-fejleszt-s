@@ -1,39 +1,38 @@
-# Handover Report - Trojan Horse v3.0 Visualization & GUI Findings
+# Handover Report - Trojan Horse v3.1 Mimic Trap
 
 ## 📅 Session Summary
 **Focus:**
-1.  **Trojan Horse EA v3.0 - Visualization:** Implemented a custom "Current Session Only" trade visualization engine to replace the persistent MT5 history (which caused "ghost objects" on restart).
-2.  **MT5 GUI Issue:** Investigated the "Invisible EA Icon" (clickable but not visible) reported by the user after an MT5 reinstall.
+1.  **Trojan Horse v3.1 Development:** Implemented the "Mimic Trap" strategy (Liquidity Piggybacking) as a semi-automated execution mode.
+2.  **Chart Hygiene:** Finalized the cleanup of persistent "ghost" trade history objects.
 
 **Outcome:**
-*   **Trojan Visualization:**
-    *   **Native History Disabled:** `CHART_SHOW_TRADE_HISTORY = false`.
-    *   **Custom Engine:** Uses `OnTradeTransaction` to draw arrows/lines for *current* trades only.
-    *   **Cleanup:** All custom objects are automatically deleted on exit.
-*   **GUI Findings:** The invisible EA icon is identified as an **MT5 Client/Template Glitch**, likely due to the reinstall or corrupted template configuration, not an EA code error.
+*   **Trojan Mimic Trap:** A new "TRAP" toggle on the UI arms the strategy. Instead of entering immediately, the EA waits for consecutive counter-ticks (default 2) to detect algorithmic "push" or "stops hunting". It then executes 3x Decoy trades (with the push) followed by 1x Trojan trade (against the push, with the real trend).
+*   **Chart Cleanup:** Native history is disabled (`CHART_SHOW_TRADE_HISTORY=false`), replaced by a custom, ephemeral visualization engine that cleans itself up on exit.
 
 ## 🛠 System Changes
 
-### 1. Trojan Horse EA v3.0
-*   **File:** `Factory_System/Experts/Trojan_Horse_EA_v3.0.mq5`
-*   **Feature:** Custom Visualization Engine & Aggressive Cleanup.
-*   **Status:** Production Ready.
+### 1. Trojan Horse EA v3.1
+*   **File:** `Factory_System/Experts/Trojan_Horse_EA_v3.1.mq5`
+*   **New Inputs:**
+    *   `InpMimicTriggerTicks` (Default: 2): Sensitivity (Consecutive counter-ticks needed).
+    *   `InpMimicDecoyCount` (Default: 3): Number of fake trades to send.
+    *   `InpTrapTimeout` (Default: 30): Safety timeout in seconds.
+*   **New UI:** "TRAP: OFF/ON" toggle button.
 
 ## 📝 User Instructions (Next Session)
 
-### 1. Fix "Invisible EA Icon" (Client Side)
-Since the code is fine, try these steps to fix the MT5 display:
-1.  **Reset Template:** Right-click chart -> Templates -> *Default*. Does the icon appear?
-2.  **Toggle Descriptions:** Press `F8` -> *Show* -> Check "Show object descriptions".
-3.  **Reset Toolbars:** View -> Toolbars -> Customize -> Reset.
-4.  **Re-Apply Template:** Once the icon is visible on a clean chart, re-apply your custom `configure chart template`. If it disappears again, the template file itself might be corrupted or incompatible with the new MT5 version.
-
-### 2. Verify Trojan Visualization
-*   Run the EA.
-*   Make a trade.
-*   Verify Blue/Red arrows appear.
-*   Remove the EA.
-*   Verify the chart is completely clean.
+### 1. Test "Mimic Trap"
+1.  **Analyze Trend:** Assume you see a **BULL** trend but want to wait for the "dip".
+2.  **Arm Trap:** Click **"TRAP: OFF"** -> Becomes **"TRAP: ON"**.
+3.  **Signal Direction:** Click **"S-BUY"** (Small Buy).
+    *   *Note:* No trade happens yet. Status shows "[TRAP ARMED]".
+4.  **Wait:** Watch the ticks.
+    *   The EA waits for **2 consecutive Bearish ticks** (price drops).
+5.  **Trigger:**
+    *   Once the drop happens, you should see:
+        *   3x **SELL** (Decoy) arrows appear instantly.
+        *   1x **BUY** (Trojan) arrow appears immediately after.
+    *   The TRAP toggles back to OFF automatically.
 
 ## 📂 File Manifest
-*   `Factory_System/Experts/Trojan_Horse_EA_v3.0.mq5`
+*   `Factory_System/Experts/Trojan_Horse_EA_v3.1.mq5`
