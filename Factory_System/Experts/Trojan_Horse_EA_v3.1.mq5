@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent & User"
 #property link      "https://www.mql5.com"
-#property version   "3.00"
+#property version   "3.10"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -49,6 +49,11 @@ input group "Trojan: Manual Tactics"
 input double        InpDecoyLot          = 0.01;   // 'Small' Button Lot
 input double        InpTrojanLot         = 1.0;    // 'Big' Button Lot
 
+input group "Trojan: Mimic Trap"
+input int           InpMimicTriggerTicks = 2;      // Ticks against us to trigger
+input int           InpMimicDecoyCount   = 3;      // Number of Decoy trades
+input int           InpTrapTimeout       = 30;     // Timeout (seconds) to reset trap
+
 input group "Trojan: Profit Management"
 input bool          InpCloseProfitOnly   = true;   // Close only winners?
 input double        InpMinProfit         = 500.0;  // Target Profit (Currency)
@@ -79,6 +84,12 @@ ulong             g_next_trade_tick = 0;
 int               g_log_handle = INVALID_HANDLE;
 bool              g_book_subscribed = false;
 
+//--- Trap State
+bool              g_trap_active = false;
+ENUM_ORDER_TYPE   g_trap_direction = ORDER_TYPE_BUY; // The INTENDED Winner
+int               g_trap_counter_ticks = 0;
+ulong             g_trap_expire_time = 0;
+
 //--- Struct to hold simplified level data
 struct LevelData {
    double price;
@@ -101,6 +112,7 @@ string ObjBtnModeCounter = Prefix + "ModeCounter";
 string ObjBtnModeFollow = Prefix + "ModeFollow";
 string ObjBtnModeRandom = Prefix + "ModeRandom";
 // Manual Grid
+string ObjBtnTrap = Prefix + "BtnTrap"; // Toggle Trap Mode
 string ObjBtnDecoyBuy = Prefix + "DecoyBuy";
 string ObjBtnDecoySell = Prefix + "DecoySell";
 string ObjBtnTrojanBuy = Prefix + "TrojanBuy";
@@ -111,6 +123,8 @@ string ObjEditTrojan = Prefix + "EditTrojan";
 
 //--- Forward Declarations
 void ManualTrade(ENUM_ORDER_TYPE dir, double lot, string type);
+void ArmTrap(ENUM_ORDER_TYPE intended_dir);
+void ExecuteTrap();
 void ManageProfit();
 void CloseAll();
 void CloseWorstLoser();
@@ -237,6 +251,15 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
       else if(sparam == ObjBtnManual) SetState(STATE_MANUAL_READY);
       else if(sparam == ObjBtnStop) { SetState(STATE_STOPPED); CloseAll(); }
 
+      // Trap Toggle
+      else if(sparam == ObjBtnTrap) {
+         // Toggle visual state only, logic handled in Manual buttons
+         bool active = (bool)ObjectGetInteger(0, ObjBtnTrap, OBJPROP_STATE);
+         ObjectSetInteger(0, ObjBtnTrap, OBJPROP_BGCOLOR, active ? clrRed : clrDimGray);
+         ObjectSetString(0, ObjBtnTrap, OBJPROP_TEXT, active ? "TRAP: ON" : "TRAP: OFF");
+         if(!active) g_trap_active = false; // Force disable if toggled off
+      }
+
       // Strategy Switcher (On-The-Fly)
       else if(sparam == ObjBtnModeBuy) SetAutoMode(MODE_ALWAYS_BUY);
       else if(sparam == ObjBtnModeSell) SetAutoMode(MODE_ALWAYS_SELL);
@@ -247,8 +270,16 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
       // Manual Trades
       else if(g_state == STATE_MANUAL_READY)
         {
-         if(sparam == ObjBtnDecoyBuy) ManualTrade(ORDER_TYPE_BUY, StringToDouble(ObjectGetString(0, ObjEditDecoy, OBJPROP_TEXT)), "MANUAL_DECOY");
-         else if(sparam == ObjBtnDecoySell) ManualTrade(ORDER_TYPE_SELL, StringToDouble(ObjectGetString(0, ObjEditDecoy, OBJPROP_TEXT)), "MANUAL_DECOY");
+         bool trap_mode = (ObjectGetInteger(0, ObjBtnTrap, OBJPROP_BGCOLOR) == clrRed);
+
+         if(sparam == ObjBtnDecoyBuy) {
+            if(trap_mode) ArmTrap(ORDER_TYPE_BUY);
+            else ManualTrade(ORDER_TYPE_BUY, StringToDouble(ObjectGetString(0, ObjEditDecoy, OBJPROP_TEXT)), "MANUAL_DECOY");
+         }
+         else if(sparam == ObjBtnDecoySell) {
+            if(trap_mode) ArmTrap(ORDER_TYPE_SELL);
+            else ManualTrade(ORDER_TYPE_SELL, StringToDouble(ObjectGetString(0, ObjEditDecoy, OBJPROP_TEXT)), "MANUAL_DECOY");
+         }
          else if(sparam == ObjBtnTrojanBuy) ManualTrade(ORDER_TYPE_BUY, StringToDouble(ObjectGetString(0, ObjEditTrojan, OBJPROP_TEXT)), "MANUAL_TROJAN");
          else if(sparam == ObjBtnTrojanSell) ManualTrade(ORDER_TYPE_SELL, StringToDouble(ObjectGetString(0, ObjEditTrojan, OBJPROP_TEXT)), "MANUAL_TROJAN");
         }
@@ -310,6 +341,39 @@ void OnTick()
 
    if(g_last_price == 0.0) { g_last_price = bid; return; }
 
+   // --- TRAP LOGIC ---
+   if(g_trap_active)
+     {
+      if(GetTickCount() > g_trap_expire_time) {
+         g_trap_active = false;
+         Print("Trojan: Trap Timeout. Reset.");
+         UpdateUI(); // To show status
+      }
+      else if(bid != g_last_price) {
+         // Check Direction
+         bool price_up = (bid > g_last_price);
+         bool price_down = (bid < g_last_price);
+
+         // We want COUNTER ticks to the intended direction
+         // If intended BUY, we wait for DOWN ticks.
+         // If intended SELL, we wait for UP ticks.
+         bool counter_move = (g_trap_direction == ORDER_TYPE_BUY && price_down) ||
+                             (g_trap_direction == ORDER_TYPE_SELL && price_up);
+
+         if(counter_move) {
+            g_trap_counter_ticks++;
+            Print("Trojan Trap: Counter Tick ", g_trap_counter_ticks, "/", InpMimicTriggerTicks);
+            if(g_trap_counter_ticks >= InpMimicTriggerTicks) {
+               ExecuteTrap();
+            }
+         } else {
+            // Price moved in our favor or flat? strict reset or loose?
+            // Strict: Reset if any tick is not counter.
+            g_trap_counter_ticks = 0;
+         }
+      }
+     }
+
    // Stealth Logic
    if(InpStealthMode)
      {
@@ -362,6 +426,39 @@ void ManualTrade(ENUM_ORDER_TYPE dir, double lot, string type)
      {
       Print("Trojan Manual Failed: ", GetLastError());
      }
+  }
+
+void ArmTrap(ENUM_ORDER_TYPE intended_dir)
+  {
+   g_trap_active = true;
+   g_trap_direction = intended_dir;
+   g_trap_counter_ticks = 0;
+   g_trap_expire_time = GetTickCount() + (InpTrapTimeout * 1000);
+
+   string dir_str = (intended_dir == ORDER_TYPE_BUY) ? "BUY" : "SELL";
+   Print("Trojan: TRAP ARMED for ", dir_str, ". Waiting for ", InpMimicTriggerTicks, " counter ticks.");
+   UpdateUI();
+  }
+
+void ExecuteTrap()
+  {
+   g_trap_active = false; // Disarm immediately
+
+   // 1. MIMIC: Send Decoys (Opposite Direction)
+   ENUM_ORDER_TYPE decoy_dir = (g_trap_direction == ORDER_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
+   double decoy_lot = NormalizeLot(InpDecoyLot);
+
+   for(int i=0; i<InpMimicDecoyCount; i++) {
+      ManualTrade(decoy_dir, decoy_lot, "MIMIC_DECOY");
+      Sleep(20); // Tiny delay to ensure distinct order arrival? Or remove for speed.
+   }
+
+   // 2. TROJAN: Send Real Trade (Intended Direction)
+   double trojan_lot = NormalizeLot(InpTrojanLot);
+   ManualTrade(g_trap_direction, trojan_lot, "MIMIC_TROJAN");
+
+   Print("Trojan: TRAP EXECUTED!");
+   UpdateUI();
   }
 
 void ManageProfit()
@@ -591,11 +688,12 @@ void CreatePanel()
    CreateBtn(ObjBtnModeFollow, "[FLLW]", InpX+136, rowY, 40, clrDimGray, 7);
    CreateBtn(ObjBtnModeRandom, "[RND]", InpX+178, rowY, 40, clrDimGray, 7);
 
-   // --- MANUAL ROW 1: DECOY (Small) ---
+   // --- MANUAL ROW 1: DECOY (Small) & TRAP ---
    // Shifted down to Y=140
-   CreateEdit(ObjEditDecoy, DoubleToString(InpDecoyLot, 2), InpX+10, rowY+40, 50);
-   CreateBtn(ObjBtnDecoyBuy, "S-BUY", InpX+70, rowY+40, 70, clrGreen);
-   CreateBtn(ObjBtnDecoySell, "S-SELL", InpX+150, rowY+40, 70, clrRed);
+   CreateBtn(ObjBtnTrap, "TRAP: OFF", InpX+10, rowY+40, 60, clrDimGray, 7); // Trap Toggle
+   CreateEdit(ObjEditDecoy, DoubleToString(InpDecoyLot, 2), InpX+75, rowY+40, 40); // Moved right
+   CreateBtn(ObjBtnDecoyBuy, "S-BUY", InpX+120, rowY+40, 50, clrGreen);
+   CreateBtn(ObjBtnDecoySell, "S-SELL", InpX+175, rowY+40, 50, clrRed);
 
    // --- MANUAL ROW 2: TROJAN (Big) ---
    // Shifted down to Y=180
@@ -635,7 +733,10 @@ void UpdateUI()
    // Update Status Text
    string st = "STOPPED";
    if(g_state == STATE_AUTO_ACTIVE) st = "AUTO RUNNING (" + EnumToString(g_auto_mode) + ")";
-   if(g_state == STATE_MANUAL_READY) st = "MANUAL READY";
+   if(g_state == STATE_MANUAL_READY) {
+      st = "MANUAL READY";
+      if(g_trap_active) st += " [TRAP ARMED]";
+   }
    ObjectSetString(0, ObjStat, OBJPROP_TEXT, "Status: " + st);
 
    // Highlight Main Mode
@@ -664,6 +765,6 @@ void DestroyPanel()
    ObjectDelete(0, ObjBG); ObjectDelete(0, ObjStat);
    ObjectDelete(0, ObjBtnAuto); ObjectDelete(0, ObjBtnManual); ObjectDelete(0, ObjBtnStop);
    ObjectDelete(0, ObjBtnModeBuy); ObjectDelete(0, ObjBtnModeSell); ObjectDelete(0, ObjBtnModeCounter); ObjectDelete(0, ObjBtnModeFollow); ObjectDelete(0, ObjBtnModeRandom);
-   ObjectDelete(0, ObjBtnDecoyBuy); ObjectDelete(0, ObjBtnDecoySell); ObjectDelete(0, ObjEditDecoy);
+   ObjectDelete(0, ObjBtnTrap); ObjectDelete(0, ObjBtnDecoyBuy); ObjectDelete(0, ObjBtnDecoySell); ObjectDelete(0, ObjEditDecoy);
    ObjectDelete(0, ObjBtnTrojanBuy); ObjectDelete(0, ObjBtnTrojanSell); ObjectDelete(0, ObjEditTrojan);
   }
