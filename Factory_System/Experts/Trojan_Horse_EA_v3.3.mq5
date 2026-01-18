@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent & User"
 #property link      "https://www.mql5.com"
-#property version   "3.20"
+#property version   "3.30"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -281,12 +281,18 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
       else if(g_state == STATE_MANUAL_READY)
         {
          if(sparam == ObjBtnDecoyBuy) {
+            ObjectSetInteger(0, sparam, OBJPROP_STATE, true); // Force visual press
+            PlaySound("tick.wav"); // Audio feedback
             if(g_mimic_mode_enabled) ArmTrap(ORDER_TYPE_BUY);
             else ManualTrade(ORDER_TYPE_BUY, StringToDouble(ObjectGetString(0, ObjEditDecoy, OBJPROP_TEXT)), "MANUAL_DECOY");
+            ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          }
          else if(sparam == ObjBtnDecoySell) {
+            ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
+            PlaySound("tick.wav");
             if(g_mimic_mode_enabled) ArmTrap(ORDER_TYPE_SELL);
             else ManualTrade(ORDER_TYPE_SELL, StringToDouble(ObjectGetString(0, ObjEditDecoy, OBJPROP_TEXT)), "MANUAL_DECOY");
+            ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          }
          // T-Buttons (Trojan) are always Direct Entry (Emergency/Override)
          else if(sparam == ObjBtnTrojanBuy) ManualTrade(ORDER_TYPE_BUY, StringToDouble(ObjectGetString(0, ObjEditTrojan, OBJPROP_TEXT)), "MANUAL_TROJAN");
@@ -446,12 +452,21 @@ void ArmTrap(ENUM_ORDER_TYPE intended_dir)
 
    string dir_str = (intended_dir == ORDER_TYPE_BUY) ? "BUY" : "SELL";
    Print("Trojan: TRAP ARMED for ", dir_str, ". Waiting for ", InpMimicTriggerTicks, " counter ticks (Price moving AGAINST target).");
+
+   // Visual Feedback: Turn the button Orange to show "Waiting"
+   if(intended_dir == ORDER_TYPE_BUY) ObjectSetInteger(0, ObjBtnDecoyBuy, OBJPROP_BGCOLOR, clrOrange);
+   else ObjectSetInteger(0, ObjBtnDecoySell, OBJPROP_BGCOLOR, clrOrange);
+
    UpdateUI();
   }
 
 void ExecuteTrap()
   {
    g_trap_active = false; // Disarm immediately
+
+   // Reset Button Colors
+   ObjectSetInteger(0, ObjBtnDecoyBuy, OBJPROP_BGCOLOR, clrGreen);
+   ObjectSetInteger(0, ObjBtnDecoySell, OBJPROP_BGCOLOR, clrRed);
 
    // 1. MIMIC: Send Decoys (Opposite Direction)
    ENUM_ORDER_TYPE decoy_dir = (g_trap_direction == ORDER_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
@@ -744,7 +759,10 @@ void UpdateUI()
    if(g_state == STATE_AUTO_ACTIVE) st = "AUTO RUNNING (" + EnumToString(g_auto_mode) + ")";
    if(g_state == STATE_MANUAL_READY) {
       st = "MANUAL READY";
-      if(g_trap_active) st += " [TRAP ARMED]";
+      if(g_trap_active) {
+         string dir = (g_trap_direction == ORDER_TYPE_BUY) ? "BUY" : "SELL";
+         st += " [TRAP ARMED: " + dir + "]";
+      }
    }
    ObjectSetString(0, ObjStat, OBJPROP_TEXT, "Status: " + st);
 
