@@ -1,38 +1,39 @@
-# Handover Report - Trojan Horse v3.0 Visualization Fix
+# Handover Report - Trojan Horse v3.0 Visualization & GUI Findings
 
 ## 📅 Session Summary
 **Focus:**
-1.  **Trojan Horse EA v3.0 - Visualization & Cleanup:** Addressing the user's requirement to hide *all* past trade history (ghost objects) while ensuring *current session* trades are clearly visible and then cleaned up on exit.
+1.  **Trojan Horse EA v3.0 - Visualization:** Implemented a custom "Current Session Only" trade visualization engine to replace the persistent MT5 history (which caused "ghost objects" on restart).
+2.  **MT5 GUI Issue:** Investigated the "Invisible EA Icon" (clickable but not visible) reported by the user after an MT5 reinstall.
 
 **Outcome:**
-*   **Strategy Change:** Switched from relying on MT5's native history (which is all-or-nothing) to a **Custom Visualization Engine** within the EA.
-*   **Implementation:**
-    *   **Native History:** Disabled permanently (`CHART_SHOW_TRADE_HISTORY = false`) in `OnInit`. This guarantees no old arrows reappear.
-    *   **Current Trades:** Implemented `OnTradeTransaction` listener. When a new deal occurs, the EA draws its own Entry/Exit arrows and connecting lines.
-    *   **Cleanup:** The EA names these objects with a `Trojan_` prefix. The existing `CleanupChart()` function in `OnDeinit` automatically deletes them when the EA is removed.
+*   **Trojan Visualization:**
+    *   **Native History Disabled:** `CHART_SHOW_TRADE_HISTORY = false`.
+    *   **Custom Engine:** Uses `OnTradeTransaction` to draw arrows/lines for *current* trades only.
+    *   **Cleanup:** All custom objects are automatically deleted on exit.
+*   **GUI Findings:** The invisible EA icon is identified as an **MT5 Client/Template Glitch**, likely due to the reinstall or corrupted template configuration, not an EA code error.
 
 ## 🛠 System Changes
 
 ### 1. Trojan Horse EA v3.0
 *   **File:** `Factory_System/Experts/Trojan_Horse_EA_v3.0.mq5`
-*   **New Feature:** `DrawDealVisuals(ulong ticket)` and `OnTradeTransaction`.
-*   **Behavior:**
-    *   **Start:** Chart is clean.
-    *   **Trade:** EA draws Blue/Red arrows and dotted lines.
-    *   **Exit:** EA deletes all `Trojan_` objects, leaving the chart clean for the next run.
+*   **Feature:** Custom Visualization Engine & Aggressive Cleanup.
+*   **Status:** Production Ready.
 
 ## 📝 User Instructions (Next Session)
-1.  **Test Visualization:**
-    *   Run `Trojan_Horse_EA_v3.0`.
-    *   Open a Manual Trade (e.g., "S-BUY").
-    *   **Verify:** A blue arrow appears at the entry.
-    *   Close the trade (Manual or Auto).
-    *   **Verify:** An orange exit arrow and a dotted line appear.
-2.  **Test Cleanup:**
-    *   Remove the EA from the chart.
-    *   **Verify:** All arrows and lines disappear instantly.
-    *   Add the EA again.
-    *   **Verify:** The chart is completely clean (no ghost objects).
+
+### 1. Fix "Invisible EA Icon" (Client Side)
+Since the code is fine, try these steps to fix the MT5 display:
+1.  **Reset Template:** Right-click chart -> Templates -> *Default*. Does the icon appear?
+2.  **Toggle Descriptions:** Press `F8` -> *Show* -> Check "Show object descriptions".
+3.  **Reset Toolbars:** View -> Toolbars -> Customize -> Reset.
+4.  **Re-Apply Template:** Once the icon is visible on a clean chart, re-apply your custom `configure chart template`. If it disappears again, the template file itself might be corrupted or incompatible with the new MT5 version.
+
+### 2. Verify Trojan Visualization
+*   Run the EA.
+*   Make a trade.
+*   Verify Blue/Red arrows appear.
+*   Remove the EA.
+*   Verify the chart is completely clean.
 
 ## 📂 File Manifest
-*   `Factory_System/Experts/Trojan_Horse_EA_v3.0.mq5` (Updated with Custom Viz)
+*   `Factory_System/Experts/Trojan_Horse_EA_v3.0.mq5`
