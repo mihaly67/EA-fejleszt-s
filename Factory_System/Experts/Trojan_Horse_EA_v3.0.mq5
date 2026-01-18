@@ -127,6 +127,7 @@ void CreateBtn(string name, string text, int x, int y, int w, color bg, int font
 void CreateEdit(string name, string text, int x, int y, int w);
 void UpdateUI();
 void DestroyPanel();
+void CleanupChart();
 
 //+------------------------------------------------------------------+
 //| Initialization                                                   |
@@ -189,12 +190,33 @@ void OnDeinit(const int reason)
    if(reason == REASON_REMOVE) CloseAll(); // Safety first
 
    DestroyPanel();
-   ObjectsDeleteAll(0, Prefix);
+   CleanupChart();
 
    if(InpAutoStartLogger) ChartIndicatorDelete(0, 0, "Hybrid_DOM_Logger_Service");
 
    if(g_book_subscribed) MarketBookRelease(_Symbol);
    if(g_log_handle != INVALID_HANDLE) FileClose(g_log_handle);
+  }
+
+void CleanupChart()
+  {
+   // 1. Delete EA UI
+   ObjectsDeleteAll(0, Prefix);
+
+   // 2. Delete Trade History Objects (Arrows & Lines)
+   int total = ObjectsTotal(0, -1, -1);
+   for(int i = total - 1; i >= 0; i--)
+     {
+      string name = ObjectName(0, i);
+      // Delete if it starts with '#' (Standard Trade Object) OR is a Trade Arrow
+      if(StringFind(name, "#") == 0 ||
+         ObjectGetInteger(0, name, OBJPROP_TYPE) == OBJ_ARROW_BUY ||
+         ObjectGetInteger(0, name, OBJPROP_TYPE) == OBJ_ARROW_SELL)
+        {
+         ObjectDelete(0, name);
+        }
+     }
+   ChartRedraw();
   }
 
 //+------------------------------------------------------------------+
