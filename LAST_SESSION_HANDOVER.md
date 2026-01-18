@@ -1,38 +1,37 @@
-# Handover Report - Trojan Horse v3.1 Mimic Trap
+# Handover Report - Trojan Horse v3.2 Mimic Trap Fix
 
 ## 📅 Session Summary
 **Focus:**
-1.  **Trojan Horse v3.1 Development:** Implemented the "Mimic Trap" strategy (Liquidity Piggybacking) as a semi-automated execution mode.
-2.  **Chart Hygiene:** Finalized the cleanup of persistent "ghost" trade history objects.
+1.  **Trojan Horse v3.1 Bug Fix:** Addressed user feedback that the "TRAP" toggle was unresponsive and the "Mimic Trap" logic was not firing when clicking S-BUY/S-SELL.
+2.  **Logic Robustness:** Replaced unreliable UI property polling with strict global state management.
 
 **Outcome:**
-*   **Trojan Mimic Trap:** A new "TRAP" toggle on the UI arms the strategy. Instead of entering immediately, the EA waits for consecutive counter-ticks (default 2) to detect algorithmic "push" or "stops hunting". It then executes 3x Decoy trades (with the push) followed by 1x Trojan trade (against the push, with the real trend).
-*   **Chart Cleanup:** Native history is disabled (`CHART_SHOW_TRADE_HISTORY=false`), replaced by a custom, ephemeral visualization engine that cleans itself up on exit.
+*   **Trojan Horse v3.2:**
+    *   **Fixed Trap Toggle:** The "TRAP: OFF/ON" button now reliably toggles the global `g_mimic_mode_enabled` variable.
+    *   **Fixed Trigger:** Clicking **S-BUY/S-SELL** (Small Buttons) when the Trap is ON now correctly arms the trap (instead of ignoring the click).
+    *   **Direct Entry Preserved:** **T-BUY/T-SELL** (Big Buttons) remain "Direct Entry" (Panic/Override) buttons, bypassing the trap logic even if it's armed. This is by design.
+    *   **Feedback:** Added `Print` messages to the "Experts" tab to confirm when the Trap is "ARMED", "EXECUTED", or "DISABLED".
 
 ## 🛠 System Changes
 
-### 1. Trojan Horse EA v3.1
-*   **File:** `Factory_System/Experts/Trojan_Horse_EA_v3.1.mq5`
-*   **New Inputs:**
-    *   `InpMimicTriggerTicks` (Default: 2): Sensitivity (Consecutive counter-ticks needed).
-    *   `InpMimicDecoyCount` (Default: 3): Number of fake trades to send.
-    *   `InpTrapTimeout` (Default: 30): Safety timeout in seconds.
-*   **New UI:** "TRAP: OFF/ON" toggle button.
+### 1. Trojan Horse EA v3.2
+*   **File:** `Factory_System/Experts/Trojan_Horse_EA_v3.2.mq5`
+*   **Fix:** Replaced `ObjectGetInteger` polling with `g_mimic_mode_enabled` global state.
+*   **Behavior:**
+    *   **Click TRAP:** Toggles ON/OFF. Prints status.
+    *   **Click S-BUY (Trap ON):** Arms trap for BUY (Waits for bear ticks). Prints "ARMED".
+    *   **Click S-BUY (Trap OFF):** Executes instant Small Buy.
+    *   **Click T-BUY:** Executes instant Big Buy (Always).
 
 ## 📝 User Instructions (Next Session)
 
-### 1. Test "Mimic Trap"
-1.  **Analyze Trend:** Assume you see a **BULL** trend but want to wait for the "dip".
-2.  **Arm Trap:** Click **"TRAP: OFF"** -> Becomes **"TRAP: ON"**.
-3.  **Signal Direction:** Click **"S-BUY"** (Small Buy).
-    *   *Note:* No trade happens yet. Status shows "[TRAP ARMED]".
-4.  **Wait:** Watch the ticks.
-    *   The EA waits for **2 consecutive Bearish ticks** (price drops).
-5.  **Trigger:**
-    *   Once the drop happens, you should see:
-        *   3x **SELL** (Decoy) arrows appear instantly.
-        *   1x **BUY** (Trojan) arrow appears immediately after.
-    *   The TRAP toggles back to OFF automatically.
+### 1. Test the Fix
+1.  **Toggle Trap:** Click the "TRAP" button. Verify it changes color (Red/Gray) and the text updates. Check the "Experts" tab for the confirmation message.
+2.  **Arm Trap:** With Trap ON, click "S-BUY".
+    *   **Verify:** No trade happens immediately.
+    *   **Check Log:** Look for "Trojan: TRAP ARMED for BUY..." in the Experts tab.
+3.  **Trigger:** Wait for the price to drop (2 ticks).
+    *   **Verify:** The EA fires the decoy sequence followed by the Trojan trade.
 
 ## 📂 File Manifest
-*   `Factory_System/Experts/Trojan_Horse_EA_v3.1.mq5`
+*   `Factory_System/Experts/Trojan_Horse_EA_v3.2.mq5`
