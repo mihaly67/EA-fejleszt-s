@@ -141,6 +141,11 @@ int OnInit()
    if(!m_symbol.Name(_Symbol)) return INIT_FAILED;
    m_symbol.RefreshRates();
 
+   // --- CLEANUP & SETTINGS ---
+   // Disable auto-history to prevent "Ghost Objects" (arrows/lines) from reappearing
+   ChartSetInteger(0, CHART_SHOW_TRADE_HISTORY, false);
+   CleanupChart(); // Clear any existing artifacts immediately
+
    if(MarketBookAdd(_Symbol)) g_book_subscribed = true;
    else Print("Trojan: Failed to subscribe to MarketBook!");
 
