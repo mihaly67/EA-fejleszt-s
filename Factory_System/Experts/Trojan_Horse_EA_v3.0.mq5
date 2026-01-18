@@ -128,6 +128,7 @@ void CreateEdit(string name, string text, int x, int y, int w);
 void UpdateUI();
 void DestroyPanel();
 void CleanupChart();
+void DrawDealVisuals(ulong deal_ticket);
 
 //+------------------------------------------------------------------+
 //| Initialization                                                   |
@@ -267,6 +268,20 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
             Print("Trojan: Auto Lot Updated to ", g_auto_lot);
            }
         }
+     }
+  }
+
+//+------------------------------------------------------------------+
+//| Trade Transaction                                                |
+//+------------------------------------------------------------------+
+void OnTradeTransaction(const MqlTradeTransaction& trans,
+                        const MqlTradeRequest& request,
+                        const MqlTradeResult& result)
+  {
+   // Visualize new deals manually since native history is disabled
+   if(trans.type == TRADE_TRANSACTION_DEAL_ADD)
+     {
+      DrawDealVisuals(trans.deal);
      }
   }
 
@@ -478,6 +493,68 @@ void SortBids(LevelData &arr[], int count) {
 void SortAsks(LevelData &arr[], int count) {
    for(int i=0; i<count-1; i++) for(int j=0; j<count-i-1; j++) if(arr[j].price > arr[j+1].price) { LevelData t=arr[j]; arr[j]=arr[j+1]; arr[j+1]=t; }
 }
+
+//+------------------------------------------------------------------+
+//| Visualization Helpers                                            |
+//+------------------------------------------------------------------+
+void DrawDealVisuals(ulong deal_ticket)
+  {
+   if(!HistoryDealSelect(deal_ticket)) return;
+
+   long reason = HistoryDealGetInteger(deal_ticket, DEAL_REASON);
+   long entry = HistoryDealGetInteger(deal_ticket, DEAL_ENTRY);
+   long type = HistoryDealGetInteger(deal_ticket, DEAL_TYPE);
+   double price = HistoryDealGetDouble(deal_ticket, DEAL_PRICE);
+   long time = HistoryDealGetInteger(deal_ticket, DEAL_TIME);
+   long pos_id = HistoryDealGetInteger(deal_ticket, DEAL_POSITION_ID);
+
+   string name_arrow = Prefix + "Arrow_" + (string)deal_ticket;
+   string name_line = Prefix + "Line_" + (string)deal_ticket;
+
+   // 1. Draw Entry Arrow
+   if(entry == DEAL_ENTRY_IN)
+     {
+      ENUM_OBJECT obj_type = (type == DEAL_TYPE_BUY) ? OBJ_ARROW_BUY : OBJ_ARROW_SELL;
+      ObjectCreate(0, name_arrow, obj_type, 0, (datetime)time, price);
+      // Optional: Set color if needed, but standard arrows are usually fine (Blue/Red)
+     }
+   // 2. Draw Exit Arrow & Line
+   else if(entry == DEAL_ENTRY_OUT || entry == DEAL_ENTRY_OUT_BY)
+     {
+      // Exit Arrow
+      ENUM_OBJECT obj_type = (type == DEAL_TYPE_BUY) ? OBJ_ARROW_BUY : OBJ_ARROW_SELL;
+      if(ObjectCreate(0, name_arrow, obj_type, 0, (datetime)time, price))
+        {
+         ObjectSetInteger(0, name_arrow, OBJPROP_COLOR, clrOrange); // Distinguish exits
+        }
+
+      // Connect to Entry
+      if(HistorySelectByPosition(pos_id))
+        {
+         int total = HistoryDealsTotal();
+         for(int i=0; i<total; i++)
+           {
+            ulong t = HistoryDealGetTicket(i);
+            if(HistoryDealGetInteger(t, DEAL_ENTRY) == DEAL_ENTRY_IN)
+              {
+               // Found Entry
+               datetime t_in = (datetime)HistoryDealGetInteger(t, DEAL_TIME);
+               double p_in = HistoryDealGetDouble(t, DEAL_PRICE);
+
+               // Draw Line
+               if(ObjectCreate(0, name_line, OBJ_TREND, 0, t_in, p_in, (datetime)time, price))
+                 {
+                  ObjectSetInteger(0, name_line, OBJPROP_COLOR, (p_in < price && type==DEAL_TYPE_SELL) || (p_in > price && type==DEAL_TYPE_BUY) ? clrRed : clrBlue); // Profit/Loss color?
+                  ObjectSetInteger(0, name_line, OBJPROP_RAY_RIGHT, false);
+                  ObjectSetInteger(0, name_line, OBJPROP_STYLE, STYLE_DOT);
+                 }
+               break;
+              }
+           }
+        }
+     }
+   ChartRedraw();
+  }
 
 //+------------------------------------------------------------------+
 //| GUI Implementation                                               |
