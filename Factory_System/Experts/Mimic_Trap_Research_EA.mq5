@@ -20,6 +20,13 @@ CSymbolInfo   m_symbol;
 CPositionInfo m_position;
 PhysicsEngine m_physics(50);
 
+//--- Enums
+enum ENUM_COLOR_LOGIC {
+    COLOR_SLOPE,     // Slope (Change from Prev Bar) - FASTEST
+    COLOR_CROSSOVER, // MACD > Signal (Classic) - LAGGING
+    COLOR_ZERO_CROSS // MACD > 0 (Simple)
+};
+
 //--- Inputs
 input group "Strategy Settings"
 input int           InpTriggerTicks      = 2;      // Consecutive ticks to trigger
@@ -37,19 +44,54 @@ input int           InpSlippage          = 10;
 input ulong         InpMagicNumber       = 999002; // Updated Magic for Research
 input string        InpComment           = "MimicResearch";
 
-input group "Hybrid Momentum Settings"
-input int           Mom_FastPeriod       = 3;
-input int           Mom_SlowPeriod       = 6;
-input int           Mom_SignalPeriod     = 13;
-input double        Mom_KalmanGain       = 1.0;
-input bool          Mom_EnableBoost      = true;
-input double        Mom_StochMixWeight   = 0.2;
+// === HYBRID MOMENTUM INPUTS (Exact Copy) ===
+input group              "--- MOMENTUM: Visual Settings ---"
+input ENUM_COLOR_LOGIC   Mom_InpColorLogic         = COLOR_SLOPE; // Color Logic Mode
 
-input group "Hybrid Flow Settings"
-input int           Flow_MFIPeriod       = 14;
-input int           Flow_DeltaSmooth     = 3;
-input double        Flow_DeltaScale      = 50.0;
-input double        Flow_VisualGain      = 3.0;
+input group              "--- MOMENTUM: Momentum Settings ---"
+input int                Mom_InpFastPeriod         = 3;      // Fast Period
+input int                Mom_InpSlowPeriod         = 6;      // Slow Period
+input int                Mom_InpSignalPeriod       = 13;     // Signal Period
+input ENUM_APPLIED_PRICE Mom_InpAppliedPrice       = PRICE_CLOSE;
+input double             Mom_InpKalmanGain         = 1.0;    // Kalman Gain
+input double             Mom_InpPhaseAdvance       = 0.5;    // Phase Advance (Speed Boost)
+
+input group              "--- MOMENTUM: Stochastic Mixing ---"
+input bool               Mom_InpEnableBoost        = true;   // Enable Stochastic Mix
+input double             Mom_InpStochMixWeight     = 0.2;    // Mixing Weight (0.0 - 1.0)
+input int                Mom_InpStochK             = 5;      // Stochastic K
+input int                Mom_InpStochD             = 3;      // Stochastic D
+input int                Mom_InpStochSlowing       = 3;      // Stochastic Slowing
+
+input group              "--- MOMENTUM: Normalization Settings ---"
+input int                Mom_InpNormPeriod         = 100;    // Normalization Lookback
+input double             Mom_InpNormSensitivity    = 1.0;    // Sensitivity
+
+// === HYBRID FLOW INPUTS (Exact Copy) ===
+input group              "--- FLOW: Scale Settings ---"
+input bool               Flow_InpUseFixedScale      = false;          // Use Fixed Scale? (False = Auto-Scale)
+input double             Flow_InpScaleMin           = -100.0;         // Fixed Min (if enabled)
+input double             Flow_InpScaleMax           = 200.0;          // Fixed Max (if enabled)
+
+input group              "--- FLOW: MFI Settings ---"
+input int                Flow_InpMFIPeriod          = 14;
+
+input group              "--- FLOW: VROC Settings ---"
+input bool               Flow_InpShowVROC           = true;
+input int                Flow_InpVROCPeriod         = 10;
+input double             Flow_InpVROCThreshold      = 20.0; // % Change to trigger alert color
+
+input group              "--- FLOW: Delta Settings ---"
+input bool               Flow_InpUseApproxDelta     = true;
+input int                Flow_InpDeltaSmooth        = 3;
+input int                Flow_InpNormalizationLen   = 100;    // Lookback for volume normalization
+input double             Flow_InpDeltaScaleFactor   = 50.0;   // Curve Influence Factor (Hybrid Strength)
+input double             Flow_InpHistogramVisualGain= 3.0;    // [NEW] Histogram Visual Multiplier (Doesn't affect Curve)
+
+input group              "--- VELOCITY & ACCEL (VA) Settings ---"
+input int                VA_InpPeriodV         = 14;          // Velocity period
+input int                VA_InpPeriodA         = 10;          // Acceleration period
+input ENUM_APPLIED_PRICE VA_InpAppliedPrice    = PRICE_CLOSE; // Applied price
 
 input group "Panel UI"
 input int           InpX                 = 10;
@@ -69,8 +111,10 @@ bool              g_book_subscribed = false;
 // Research Globals
 int               h_momentum = INVALID_HANDLE;
 int               h_flow = INVALID_HANDLE;
+int               h_va = INVALID_HANDLE;
 double            buf_mom_hist[], buf_mom_macd[], buf_mom_sig[];
 double            buf_flow_mfi[], buf_flow_delta[];
+double            buf_va_v[], buf_va_a[];
 string            g_current_phase = "IDLE";
 int               g_post_event_counter = 0;
 double            g_last_realized_pl = 0.0; // P/L from closed deals this tick
@@ -124,26 +168,25 @@ int OnInit()
    // Construct Paths
    string path_mom = InpIndPath + "HybridMomentumIndicator_v2.81";
    string path_flow = InpIndPath + "HybridFlowIndicator_v1.123";
+   string path_va = InpIndPath + "Hybrid_Velocity_Acceleration_VA";
 
    // Hybrid Momentum v2.81
-   // Inputs: ColorLogic(0), Fast, Slow, Sig, Price(1), Kalman, Phase(0.5), Boost, Weight, K(5), D(3), Slow(3), Norm(100), Sens(1.0)
-   // NOTE: The first parameter is an ENUM (int). MQL5 requires types to match exactly or be compatible.
-   // We pass 0 for COLOR_SLOPE.
+   // Passing parameters EXACTLY as defined in the indicator input list
    h_momentum = iCustom(_Symbol, _Period, path_mom,
-                        0,                    // InpColorLogic (COLOR_SLOPE)
-                        Mom_FastPeriod,       // InpFastPeriod
-                        Mom_SlowPeriod,       // InpSlowPeriod
-                        Mom_SignalPeriod,     // InpSignalPeriod
-                        PRICE_CLOSE,          // InpAppliedPrice
-                        Mom_KalmanGain,       // InpKalmanGain
-                        0.5,                  // InpPhaseAdvance (Fixed per request to match indicator default)
-                        Mom_EnableBoost,      // InpEnableBoost
-                        Mom_StochMixWeight,   // InpStochMixWeight
-                        5,                    // InpStochK (Fixed default)
-                        3,                    // InpStochD (Fixed default)
-                        3,                    // InpStochSlowing (Fixed default)
-                        100,                  // InpNormPeriod (Fixed default)
-                        1.0                   // InpNormSensitivity (Fixed default)
+                        Mom_InpColorLogic,
+                        Mom_InpFastPeriod,
+                        Mom_InpSlowPeriod,
+                        Mom_InpSignalPeriod,
+                        Mom_InpAppliedPrice,
+                        Mom_InpKalmanGain,
+                        Mom_InpPhaseAdvance,
+                        Mom_InpEnableBoost,
+                        Mom_InpStochMixWeight,
+                        Mom_InpStochK,
+                        Mom_InpStochD,
+                        Mom_InpStochSlowing,
+                        Mom_InpNormPeriod,
+                        Mom_InpNormSensitivity
                         );
 
    if(h_momentum == INVALID_HANDLE) {
@@ -158,20 +201,20 @@ int OnInit()
    }
 
    // Hybrid Flow v1.123
-   // Inputs: FixedScale(false), Min, Max, MFI, VROC(true), VROCPer(10), VROCThresh(20), ApproxDelta(true), Smooth, Norm(100), ScaleFactor, VisualGain
+   // Passing parameters EXACTLY as defined in the indicator input list
    h_flow = iCustom(_Symbol, _Period, path_flow,
-                    false,                // InpUseFixedScale
-                    -100.0,               // InpScaleMin
-                    200.0,                // InpScaleMax
-                    Flow_MFIPeriod,       // InpMFIPeriod
-                    true,                 // InpShowVROC
-                    10,                   // InpVROCPeriod
-                    20.0,                 // InpVROCThreshold
-                    true,                 // InpUseApproxDelta
-                    Flow_DeltaSmooth,     // InpDeltaSmooth
-                    100,                  // InpNormalizationLen
-                    Flow_DeltaScale,      // InpDeltaScaleFactor
-                    Flow_VisualGain       // InpHistogramVisualGain
+                    Flow_InpUseFixedScale,
+                    Flow_InpScaleMin,
+                    Flow_InpScaleMax,
+                    Flow_InpMFIPeriod,
+                    Flow_InpShowVROC,
+                    Flow_InpVROCPeriod,
+                    Flow_InpVROCThreshold,
+                    Flow_InpUseApproxDelta,
+                    Flow_InpDeltaSmooth,
+                    Flow_InpNormalizationLen,
+                    Flow_InpDeltaScaleFactor,
+                    Flow_InpHistogramVisualGain
                     );
 
    if(h_flow == INVALID_HANDLE) {
@@ -183,6 +226,25 @@ int OnInit()
    // Visualize Flow
    if(!ChartIndicatorAdd(0, 2, h_flow)) {
        Print("Failed to add HybridFlow to chart! Error: ", GetLastError());
+   }
+
+   // Velocity & Acceleration (VA)
+   // Inputs: PeriodV (uint), PeriodA (uint), AppliedPrice (ENUM)
+   h_va = iCustom(_Symbol, _Period, path_va,
+                  (uint)VA_InpPeriodV,
+                  (uint)VA_InpPeriodA,
+                  VA_InpAppliedPrice
+                  );
+
+   if(h_va == INVALID_HANDLE) {
+       Print("Failed to load VA! Path: ", path_va);
+       Print("Error: ", GetLastError());
+       return INIT_FAILED;
+   }
+
+   // Visualize VA (Subwindow 3)
+   if(!ChartIndicatorAdd(0, 3, h_va)) {
+       Print("Failed to add VA to chart! Error: ", GetLastError());
    }
 
 
@@ -198,8 +260,8 @@ int OnInit()
 
    if(g_log_handle != INVALID_HANDLE)
      {
-      // Header with Research Columns
-      string header = "Time,TickMS,Phase,Bid,Ask,Spread,Velocity,Acceleration,Mom_Hist,Mom_MACD,Mom_Sig,Flow_MFI,Flow_Delta,Floating_PL,Realized_PL,Action,DOM_Snapshot\r\n";
+      // Header with Research Columns + External VA
+      string header = "Time,TickMS,Phase,Bid,Ask,Spread,Velocity,Acceleration,Mom_Hist,Mom_MACD,Mom_Sig,Flow_MFI,Flow_Delta,Ext_VA_Vel,Ext_VA_Acc,Floating_PL,Realized_PL,Action,DOM_Snapshot\r\n";
       FileWriteString(g_log_handle, header);
       FileFlush(g_log_handle);
       Print("Mimic Research: Log file created: ", filename);
@@ -233,10 +295,12 @@ void OnDeinit(const int reason)
    // For research/session EAs, manual cleanup is often acceptable, but we'll try:
    ChartIndicatorDelete(0, 1, "Hybrid Momentum v2.81");
    ChartIndicatorDelete(0, 2, "Hybrid Flow v1.123");
+   ChartIndicatorDelete(0, 3, "VA"); // Shortname is "VA(per,per)" usually, this might miss partial matches but trying doesn't hurt.
 
    if(g_book_subscribed) MarketBookRelease(_Symbol);
    if(h_momentum != INVALID_HANDLE) IndicatorRelease(h_momentum);
    if(h_flow != INVALID_HANDLE) IndicatorRelease(h_flow);
+   if(h_va != INVALID_HANDLE) IndicatorRelease(h_va);
    if(g_log_handle != INVALID_HANDLE) FileClose(g_log_handle);
   }
 
@@ -544,6 +608,11 @@ void WriteLog()
    if(CopyBuffer(h_flow, 0, 0, 1, buf)>0) flow_mfi = buf[0];
    if(CopyBuffer(h_flow, 6, 0, 1, buf)>0) flow_delta = buf[0];
 
+   // VA (0=Vel, 1=Acc)
+   double va_v=0, va_a=0;
+   if(CopyBuffer(h_va, 0, 0, 1, buf)>0) va_v = buf[0];
+   if(CopyBuffer(h_va, 1, 0, 1, buf)>0) va_a = buf[0];
+
    // 2. Physics
    PhysicsState p = m_physics.GetState();
 
@@ -558,12 +627,13 @@ void WriteLog()
    // Note: 'Action' is now generic, specific trade actions are implicitly captured by P/L changes or Phase changes.
    // We can use g_last_realized_pl to flag an "EXIT" event if needed, but the column covers it.
 
-   string row = StringFormat("%s,%s,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s",
+   string row = StringFormat("%s,%s,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s",
        t, ms, g_current_phase,
        m_symbol.Bid(), m_symbol.Ask(), p.spread_avg,
        p.velocity, p.acceleration,
        mom_hist, mom_macd, mom_sig,
        flow_mfi, flow_delta,
+       va_v, va_a,
        float_pl, g_last_realized_pl,
        InpComment
    );
