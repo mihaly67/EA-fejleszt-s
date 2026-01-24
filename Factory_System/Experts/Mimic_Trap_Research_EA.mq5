@@ -45,7 +45,7 @@ input ulong         InpMagicNumber       = 999002; // Updated Magic for Research
 input string        InpComment           = "MimicResearch";
 
 // === HYBRID MOMENTUM INPUTS (Exact Copy from v2.81 Source) ===
-input group              "--- MOMENTUM: Visual Settings ---"
+input group              "--- MOMENTUM: Visual Settings ---" // Verified Synced with v2.81
 input ENUM_COLOR_LOGIC   Mom_InpColorLogic         = COLOR_SLOPE; // Color Logic Mode
 
 input group              "--- MOMENTUM: Momentum Settings ---"
@@ -89,8 +89,8 @@ input double             Flow_InpDeltaScaleFactor   = 50.0;   // Curve Influence
 input double             Flow_InpHistogramVisualGain= 3.0;    // [NEW] Histogram Visual Multiplier (Doesn't affect Curve)
 
 input group              "--- VELOCITY & ACCEL (VA) Settings ---"
-input int                VA_InpPeriodV         = 14;          // Velocity period
-input int                VA_InpPeriodA         = 10;          // Acceleration period
+input uint               VA_InpPeriodV         = 14;          // Velocity period
+input uint               VA_InpPeriodA         = 10;          // Acceleration period
 input ENUM_APPLIED_PRICE VA_InpAppliedPrice    = PRICE_CLOSE; // Applied price
 
 input group "Panel UI"
@@ -204,7 +204,7 @@ int OnInit()
 
    // Hybrid Flow v1.123
    // COMMENTED OUT FOR NOW AS REQUESTED TO FOCUS ON MOMENTUM
-   /*
+
    h_flow = iCustom(_Symbol, _Period, path_flow,
                     Flow_InpUseFixedScale,
                     Flow_InpScaleMin,
@@ -230,13 +230,13 @@ int OnInit()
    if(!ChartIndicatorAdd(0, 2, h_flow)) {
        Print("Failed to add HybridFlow to chart! Error: ", GetLastError());
    }
-   */
+
 
    // Velocity & Acceleration (VA)
    // Inputs: PeriodV (uint), PeriodA (uint), AppliedPrice (ENUM)
    h_va = iCustom(_Symbol, _Period, path_va,
-                  (uint)VA_InpPeriodV,
-                  (uint)VA_InpPeriodA,
+                  VA_InpPeriodV,
+                  VA_InpPeriodA,
                   VA_InpAppliedPrice
                   );
 
