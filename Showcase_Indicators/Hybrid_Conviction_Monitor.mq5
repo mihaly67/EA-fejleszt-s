@@ -26,11 +26,16 @@
 #property indicator_width2  2
 
 //--- Input Parameters (User's Golden Settings)
+input group              "=== DEMA Settings ==="
 input uint               InpFastPeriod         = 5;
 input uint               InpSlowPeriod         = 13;
 input double             InpDemaGain           = 1.0;    // EMA Mode
+
+input group              "=== Normalization ==="
 input uint               InpNormPeriod         = 500;
 input double             InpNormSensitivity    = 1.0;
+
+input group              "=== Phase Advance ==="
 input double             InpPhaseAdvance       = 2.0;    // High Aggression
 input uint               InpSmartSmooth        = 3;      // Velocity Smoothing for Smart Mode
 
