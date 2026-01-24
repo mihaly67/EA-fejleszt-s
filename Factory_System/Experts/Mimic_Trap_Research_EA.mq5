@@ -26,7 +26,7 @@ input int           InpTriggerTicks      = 2;      // Consecutive ticks to trigg
 input int           InpDecoyCount        = 3;      // Number of Decoy trades
 input int           InpTimeoutSec        = 60;     // Auto-reset trap after N seconds
 input int           InpPostEventTicks    = 30;     // Ticks to log after Trap Execution
-input string        InpIndPath           = "Factory_System\\Indicators\\"; // Indicator Path (relative to MQL5/Indicators)
+input string        InpIndPath           = "Jules\\"; // Indicator Path (relative to MQL5/Indicators)
 
 input group "Position Size"
 input double        InpDecoyLot          = 0.01;   // Decoy Lot (Fake Direction)
