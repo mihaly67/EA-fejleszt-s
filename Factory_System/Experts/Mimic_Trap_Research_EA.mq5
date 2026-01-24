@@ -48,12 +48,16 @@ input group              "--- WVF Settings ---"
 input uint               WVF_InpPeriod      =  22;               // Period
 input ENUM_DRAWING_STYLE WVF_InpDrawingType =  STYLE_DRAW_LINE;  // Drawing style
 
-input group              "--- HYBRID CONVICTION Settings ---"
+input group              "=== DEMA Settings ==="
 input uint               Conv_InpFastPeriod         = 5;
 input uint               Conv_InpSlowPeriod         = 13;
 input double             Conv_InpDemaGain           = 1.0;    // EMA Mode
+
+input group              "=== Normalization ==="
 input uint               Conv_InpNormPeriod         = 500;
 input double             Conv_InpNormSensitivity    = 1.0;
+
+input group              "=== Phase Advance ==="
 input double             Conv_InpPhaseAdvance       = 2.0;    // High Aggression
 input uint               Conv_InpSmartSmooth        = 3;      // Velocity Smoothing for Smart Mode
 
