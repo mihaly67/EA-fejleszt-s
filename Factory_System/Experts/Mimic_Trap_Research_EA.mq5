@@ -21,11 +21,11 @@ CPositionInfo m_position;
 PhysicsEngine m_physics(50);
 
 //--- Enums
-enum ENUM_COLOR_LOGIC {
-    COLOR_SLOPE,     // Slope (Change from Prev Bar) - FASTEST
-    COLOR_CROSSOVER, // MACD > Signal (Classic) - LAGGING
-    COLOR_ZERO_CROSS // MACD > 0 (Simple)
-};
+enum ENUM_DRAWING_STYLE
+  {
+   STYLE_DRAW_LINE   =  DRAW_COLOR_LINE,     // Line
+   STYLE_DRAW_HIST   =  DRAW_COLOR_HISTOGRAM // Histogramm
+  };
 
 //--- Inputs
 input group "Strategy Settings"
@@ -44,51 +44,9 @@ input int           InpSlippage          = 10;
 input ulong         InpMagicNumber       = 999002; // Updated Magic for Research
 input string        InpComment           = "MimicResearch";
 
-// === HYBRID MOMENTUM INPUTS (Exact Copy from v2.81 Source) ===
-// Source: Factory_System/Research_Freeze_20260124/HybridMomentumIndicator_v2.81.mq5
-input group              "--- MOMENTUM: Visual Settings ---"
-input int                Mom_InpColorLogic         = 0; // Color Logic Mode (0=Slope, 1=Crossover, 2=ZeroCross)
-
-input group              "--- MOMENTUM: Momentum Settings ---"
-input int                Mom_InpFastPeriod         = 3;      // Fast Period
-input int                Mom_InpSlowPeriod         = 6;      // Slow Period
-input int                Mom_InpSignalPeriod       = 13;     // Signal Period
-input ENUM_APPLIED_PRICE Mom_InpAppliedPrice       = PRICE_CLOSE;
-input double             Mom_InpKalmanGain         = 1.0;    // Kalman Gain
-input double             Mom_InpPhaseAdvance       = 0.5;    // Phase Advance (Speed Boost)
-
-input group              "--- MOMENTUM: Stochastic Mixing ---"
-input bool               Mom_InpEnableBoost        = true;   // Enable Stochastic Mix
-input double             Mom_InpStochMixWeight     = 0.2;    // Mixing Weight (0.0 - 1.0)
-input int                Mom_InpStochK             = 5;      // Stochastic K
-input int                Mom_InpStochD             = 3;      // Stochastic D
-input int                Mom_InpStochSlowing       = 3;      // Stochastic Slowing
-
-input group              "--- MOMENTUM: Normalization Settings ---"
-input int                Mom_InpNormPeriod         = 100;    // Normalization Lookback
-input double             Mom_InpNormSensitivity    = 1.0;    // Sensitivity
-
-// === HYBRID FLOW INPUTS (Exact Copy from v1.123 Source) ===
-// Source: Factory_System/Research_Freeze_20260124/HybridFlowIndicator_v1.123.mq5
-input group              "--- FLOW: Scale Settings ---"
-input bool               Flow_InpUseFixedScale      = false;          // Use Fixed Scale? (False = Auto-Scale)
-input double             Flow_InpScaleMin           = -100.0;         // Fixed Min (if enabled)
-input double             Flow_InpScaleMax           = 200.0;          // Fixed Max (if enabled)
-
-input group              "--- FLOW: MFI Settings ---"
-input int                Flow_InpMFIPeriod          = 14;
-
-input group              "--- FLOW: VROC Settings ---"
-input bool               Flow_InpShowVROC           = true;
-input int                Flow_InpVROCPeriod         = 10;
-input double             Flow_InpVROCThreshold      = 20.0; // % Change to trigger alert color
-
-input group              "--- FLOW: Delta Settings ---"
-input bool               Flow_InpUseApproxDelta     = true;
-input int                Flow_InpDeltaSmooth        = 3;
-input int                Flow_InpNormalizationLen   = 100;    // Lookback for volume normalization
-input double             Flow_InpDeltaScaleFactor   = 50.0;   // Curve Influence Factor (Hybrid Strength)
-input double             Flow_InpHistogramVisualGain= 3.0;    // [NEW] Histogram Visual Multiplier (Doesn't affect Curve)
+input group              "--- WVF Settings ---"
+input uint               WVF_InpPeriod      =  22;               // Period
+input ENUM_DRAWING_STYLE WVF_InpDrawingType =  STYLE_DRAW_LINE;  // Drawing style
 
 input group              "--- VELOCITY & ACCEL (VA) Settings ---"
 input uint               VA_InpPeriodV         = 14;          // Velocity period
@@ -111,12 +69,9 @@ int               g_log_handle = INVALID_HANDLE;
 bool              g_book_subscribed = false;
 
 // Research Globals
-int               h_momentum = INVALID_HANDLE;
-int               h_flow = INVALID_HANDLE;
+int               h_wvf = INVALID_HANDLE;
 int               h_va = INVALID_HANDLE;
-double            buf_mom_hist[], buf_mom_macd[], buf_mom_sig[];
-double            buf_flow_mfi[], buf_flow_delta[];
-double            buf_va_v[], buf_va_a[];
+double            buf_wvf[], buf_va_v[], buf_va_a[];
 string            g_current_phase = "IDLE";
 int               g_post_event_counter = 0;
 double            g_last_realized_pl = 0.0; // P/L from closed deals this tick
@@ -168,71 +123,26 @@ int OnInit()
 
    // --- INDICATOR HANDLES ---
    // Construct Paths
-   string path_mom = InpIndPath + "HybridMomentumIndicator_v2.81";
-   string path_flow = InpIndPath + "HybridFlowIndicator_v1.123";
+   string path_wvf = InpIndPath + "WVF";
    string path_va = InpIndPath + "Hybrid_Velocity_Acceleration_VA";
 
-   // Hybrid Momentum v2.81
-   // Passing parameters EXACTLY as defined in the indicator input list
-   // Explicit casting to match indicator input types (ENUMs as ints/enums, bools as bools)
-   // NOTE: InpAppliedPrice is ENUM_APPLIED_PRICE. InpColorLogic is ENUM_COLOR_LOGIC (custom).
-   h_momentum = iCustom(_Symbol, _Period, path_mom,
-                        Mom_InpColorLogic,            // int (Custom Enum)
-                        Mom_InpFastPeriod,
-                        Mom_InpSlowPeriod,
-                        Mom_InpSignalPeriod,
-                        Mom_InpAppliedPrice,          // ENUM_APPLIED_PRICE (Standard)
-                        Mom_InpKalmanGain,
-                        Mom_InpPhaseAdvance,
-                        (int)Mom_InpEnableBoost,      // bool -> cast to int for safety
-                        Mom_InpStochMixWeight,
-                        Mom_InpStochK,
-                        Mom_InpStochD,
-                        Mom_InpStochSlowing,
-                        Mom_InpNormPeriod,
-                        Mom_InpNormSensitivity
-                        );
+   // WVF (Showcase)
+   // Inputs: Period (uint), DrawingType (ENUM)
+   h_wvf = iCustom(_Symbol, _Period, path_wvf,
+                   WVF_InpPeriod,
+                   WVF_InpDrawingType // Passed as ENUM, strict typing
+                   );
 
-   if(h_momentum == INVALID_HANDLE) {
-       Print("Failed to load HybridMomentum! Path: ", path_mom);
+   if(h_wvf == INVALID_HANDLE) {
+       Print("Failed to load WVF! Path: ", path_wvf);
        Print("Error: ", GetLastError());
        return INIT_FAILED;
    }
 
-   // Visualize Momentum
-   if(!ChartIndicatorAdd(0, 1, h_momentum)) {
-       Print("Failed to add HybridMomentum to chart! Error: ", GetLastError());
+   // Visualize WVF
+   if(!ChartIndicatorAdd(0, 1, h_wvf)) {
+       Print("Failed to add WVF to chart! Error: ", GetLastError());
    }
-
-   // Hybrid Flow v1.123
-   // COMMENTED OUT FOR NOW AS REQUESTED TO FOCUS ON MOMENTUM
-
-   h_flow = iCustom(_Symbol, _Period, path_flow,
-                    (int)Flow_InpUseFixedScale,   // bool -> cast to int
-                    Flow_InpScaleMin,
-                    Flow_InpScaleMax,
-                    Flow_InpMFIPeriod,
-                    (int)Flow_InpShowVROC,        // bool -> cast to int
-                    Flow_InpVROCPeriod,
-                    Flow_InpVROCThreshold,
-                    (int)Flow_InpUseApproxDelta,  // bool -> cast to int
-                    Flow_InpDeltaSmooth,
-                    Flow_InpNormalizationLen,
-                    Flow_InpDeltaScaleFactor,
-                    Flow_InpHistogramVisualGain
-                    );
-
-   if(h_flow == INVALID_HANDLE) {
-       Print("Failed to load HybridFlow! Path: ", path_flow);
-       Print("Error: ", GetLastError());
-       return INIT_FAILED;
-   }
-
-   // Visualize Flow
-   if(!ChartIndicatorAdd(0, 2, h_flow)) {
-       Print("Failed to add HybridFlow to chart! Error: ", GetLastError());
-   }
-
 
    // Velocity & Acceleration (VA)
    // Inputs: PeriodV (uint), PeriodA (uint), AppliedPrice (ENUM)
@@ -248,8 +158,8 @@ int OnInit()
        return INIT_FAILED;
    }
 
-   // Visualize VA (Subwindow 3)
-   if(!ChartIndicatorAdd(0, 3, h_va)) {
+   // Visualize VA (Subwindow 2)
+   if(!ChartIndicatorAdd(0, 2, h_va)) {
        Print("Failed to add VA to chart! Error: ", GetLastError());
    }
 
@@ -266,8 +176,8 @@ int OnInit()
 
    if(g_log_handle != INVALID_HANDLE)
      {
-      // Header with Research Columns + External VA
-      string header = "Time,TickMS,Phase,Bid,Ask,Spread,Velocity,Acceleration,Mom_Hist,Mom_MACD,Mom_Sig,Flow_MFI,Flow_Delta,Ext_VA_Vel,Ext_VA_Acc,Floating_PL,Realized_PL,Action,DOM_Snapshot\r\n";
+      // Header with Research Columns + External VA + WVF
+      string header = "Time,TickMS,Phase,Bid,Ask,Spread,Velocity,Acceleration,WVF_Val,Ext_VA_Vel,Ext_VA_Acc,Floating_PL,Realized_PL,Action,DOM_Snapshot\r\n";
       FileWriteString(g_log_handle, header);
       FileFlush(g_log_handle);
       Print("Mimic Research: Log file created: ", filename);
@@ -293,19 +203,11 @@ void OnDeinit(const int reason)
    CleanupChart();
 
    // Remove Visualized Indicators
-   // Note: ChartIndicatorDelete requires the ShortName or Handle lookup.
-   // Since we added them to new subwindows (1 and 2), we can try to clean up.
-   // However, MT5 EAs often leave indicators if not explicitly named.
-   // Best practice: The IndicatorRelease releases the handle, but visual removal relies on the user or precise name matching.
-   // We will attempt to remove by name if possible, or just rely on the user to close the chart/template.
-   // For research/session EAs, manual cleanup is often acceptable, but we'll try:
-   ChartIndicatorDelete(0, 1, "Hybrid Momentum v2.81");
-   ChartIndicatorDelete(0, 2, "Hybrid Flow v1.123");
-   ChartIndicatorDelete(0, 3, "VA"); // Shortname is "VA(per,per)" usually, this might miss partial matches but trying doesn't hurt.
+   ChartIndicatorDelete(0, 1, "WVF");
+   ChartIndicatorDelete(0, 2, "VA");
 
    if(g_book_subscribed) MarketBookRelease(_Symbol);
-   if(h_momentum != INVALID_HANDLE) IndicatorRelease(h_momentum);
-   if(h_flow != INVALID_HANDLE) IndicatorRelease(h_flow);
+   if(h_wvf != INVALID_HANDLE) IndicatorRelease(h_wvf);
    if(h_va != INVALID_HANDLE) IndicatorRelease(h_va);
    if(g_log_handle != INVALID_HANDLE) FileClose(g_log_handle);
   }
@@ -601,18 +503,11 @@ void WriteLog()
    if(g_log_handle == INVALID_HANDLE) return;
 
    // 1. Get Indicator Values
-   double mom_hist=0, mom_macd=0, mom_sig=0;
-   double flow_mfi=0, flow_delta=0;
+   double wvf_val = 0;
 
-   // Momentum (0=Hist, 2=MACD, 3=Sig)
+   // WVF (0=Value)
    double buf[1];
-   if(CopyBuffer(h_momentum, 0, 0, 1, buf)>0) mom_hist = buf[0];
-   if(CopyBuffer(h_momentum, 2, 0, 1, buf)>0) mom_macd = buf[0];
-   if(CopyBuffer(h_momentum, 3, 0, 1, buf)>0) mom_sig  = buf[0];
-
-   // Flow (0=MFI, 6=RawDelta) -> v1.123
-   if(CopyBuffer(h_flow, 0, 0, 1, buf)>0) flow_mfi = buf[0];
-   if(CopyBuffer(h_flow, 6, 0, 1, buf)>0) flow_delta = buf[0];
+   if(CopyBuffer(h_wvf, 0, 0, 1, buf)>0) wvf_val = buf[0];
 
    // VA (0=Vel, 1=Acc)
    double va_v=0, va_a=0;
@@ -629,16 +524,12 @@ void WriteLog()
    string t = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
    string ms = IntegerToString(GetTickCount()%1000);
 
-   // Format: Time, TickMS, Phase, Bid, Ask, Spread, Vel, Acc, M_Hist, M_MACD, M_Sig, F_MFI, F_Delta, F_PL, C_PL, Action, DOM
-   // Note: 'Action' is now generic, specific trade actions are implicitly captured by P/L changes or Phase changes.
-   // We can use g_last_realized_pl to flag an "EXIT" event if needed, but the column covers it.
-
-   string row = StringFormat("%s,%s,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s",
+   // Format Updated for WVF
+   string row = StringFormat("%s,%s,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%s",
        t, ms, g_current_phase,
        m_symbol.Bid(), m_symbol.Ask(), p.spread_avg,
        p.velocity, p.acceleration,
-       mom_hist, mom_macd, mom_sig,
-       flow_mfi, flow_delta,
+       wvf_val,
        va_v, va_a,
        float_pl, g_last_realized_pl,
        InpComment
