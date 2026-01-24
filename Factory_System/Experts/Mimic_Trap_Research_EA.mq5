@@ -45,7 +45,8 @@ input ulong         InpMagicNumber       = 999002; // Updated Magic for Research
 input string        InpComment           = "MimicResearch";
 
 // === HYBRID MOMENTUM INPUTS (Exact Copy from v2.81 Source) ===
-input group              "--- MOMENTUM: Visual Settings ---" // Verified Synced with v2.81
+// Source: Factory_System/Research_Freeze_20260124/HybridMomentumIndicator_v2.81.mq5
+input group              "--- MOMENTUM: Visual Settings ---"
 input ENUM_COLOR_LOGIC   Mom_InpColorLogic         = COLOR_SLOPE; // Color Logic Mode
 
 input group              "--- MOMENTUM: Momentum Settings ---"
@@ -67,7 +68,8 @@ input group              "--- MOMENTUM: Normalization Settings ---"
 input int                Mom_InpNormPeriod         = 100;    // Normalization Lookback
 input double             Mom_InpNormSensitivity    = 1.0;    // Sensitivity
 
-// === HYBRID FLOW INPUTS (Exact Copy) ===
+// === HYBRID FLOW INPUTS (Exact Copy from v1.123 Source) ===
+// Source: Factory_System/Research_Freeze_20260124/HybridFlowIndicator_v1.123.mq5
 input group              "--- FLOW: Scale Settings ---"
 input bool               Flow_InpUseFixedScale      = false;          // Use Fixed Scale? (False = Auto-Scale)
 input double             Flow_InpScaleMin           = -100.0;         // Fixed Min (if enabled)
@@ -175,11 +177,11 @@ int OnInit()
    // Explicit casting to match indicator input types (ENUMs as ints/enums, bools as bools)
    // NOTE: InpAppliedPrice is ENUM_APPLIED_PRICE. InpColorLogic is ENUM_COLOR_LOGIC (custom).
    h_momentum = iCustom(_Symbol, _Period, path_mom,
-                        (int)Mom_InpColorLogic,       // ENUM_COLOR_LOGIC -> passed as int
+                        Mom_InpColorLogic,            // ENUM_COLOR_LOGIC -> passed directly
                         Mom_InpFastPeriod,
                         Mom_InpSlowPeriod,
                         Mom_InpSignalPeriod,
-                        (int)Mom_InpAppliedPrice,     // ENUM_APPLIED_PRICE -> passed as int
+                        Mom_InpAppliedPrice,          // ENUM_APPLIED_PRICE -> passed directly
                         Mom_InpKalmanGain,
                         Mom_InpPhaseAdvance,
                         Mom_InpEnableBoost,
