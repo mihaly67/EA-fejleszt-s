@@ -26,6 +26,7 @@ input int           InpTriggerTicks      = 2;      // Consecutive ticks to trigg
 input int           InpDecoyCount        = 3;      // Number of Decoy trades
 input int           InpTimeoutSec        = 60;     // Auto-reset trap after N seconds
 input int           InpPostEventTicks    = 30;     // Ticks to log after Trap Execution
+input string        InpIndPath           = "Factory_System\\Indicators\\"; // Indicator Path (relative to MQL5/Indicators)
 
 input group "Position Size"
 input double        InpDecoyLot          = 0.01;   // Decoy Lot (Fake Direction)
@@ -120,23 +121,35 @@ int OnInit()
    else Print("Mimic: Failed to subscribe to MarketBook!");
 
    // --- INDICATOR HANDLES ---
+   // Construct Paths
+   string path_mom = InpIndPath + "HybridMomentumIndicator_v2.81";
+   string path_flow = InpIndPath + "HybridFlowIndicator_v1.123";
+
    // Hybrid Momentum v2.81
    // Inputs: ColorLogic(0), Fast, Slow, Sig, Price(1), Kalman, Phase(0.5), Boost, Weight, K(5), D(3), Slow(3), Norm(100), Sens(1.0)
-   h_momentum = iCustom(_Symbol, _Period, "Factory_System\\Indicators\\HybridMomentumIndicator_v2.81",
+   h_momentum = iCustom(_Symbol, _Period, path_mom,
                         0, Mom_FastPeriod, Mom_SlowPeriod, Mom_SignalPeriod, PRICE_CLOSE,
                         Mom_KalmanGain, 0.5, Mom_EnableBoost, Mom_StochMixWeight,
                         5, 3, 3, 100, 1.0);
 
-   if(h_momentum == INVALID_HANDLE) { Print("Failed to load HybridMomentum!"); return INIT_FAILED; }
+   if(h_momentum == INVALID_HANDLE) {
+       Print("Failed to load HybridMomentum! Path: ", path_mom);
+       Print("Error: ", GetLastError());
+       return INIT_FAILED;
+   }
 
    // Hybrid Flow v1.123
    // Inputs: FixedScale(false), Min, Max, MFI, VROC(true), VROCPer(10), VROCThresh(20), ApproxDelta(true), Smooth, Norm(100), ScaleFactor, VisualGain
-   h_flow = iCustom(_Symbol, _Period, "Factory_System\\Indicators\\HybridFlowIndicator_v1.123",
+   h_flow = iCustom(_Symbol, _Period, path_flow,
                     false, -100.0, 200.0, Flow_MFIPeriod,
                     true, 10, 20.0,
                     true, Flow_DeltaSmooth, 100, Flow_DeltaScale, Flow_VisualGain);
 
-   if(h_flow == INVALID_HANDLE) { Print("Failed to load HybridFlow!"); return INIT_FAILED; }
+   if(h_flow == INVALID_HANDLE) {
+       Print("Failed to load HybridFlow! Path: ", path_flow);
+       Print("Error: ", GetLastError());
+       return INIT_FAILED;
+   }
 
 
    // Init Log (Session Based)
