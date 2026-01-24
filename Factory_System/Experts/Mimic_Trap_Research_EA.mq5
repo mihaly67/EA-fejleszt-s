@@ -138,6 +138,11 @@ int OnInit()
        return INIT_FAILED;
    }
 
+   // Visualize Momentum
+   if(!ChartIndicatorAdd(0, 1, h_momentum)) {
+       Print("Failed to add HybridMomentum to chart! Error: ", GetLastError());
+   }
+
    // Hybrid Flow v1.123
    // Inputs: FixedScale(false), Min, Max, MFI, VROC(true), VROCPer(10), VROCThresh(20), ApproxDelta(true), Smooth, Norm(100), ScaleFactor, VisualGain
    h_flow = iCustom(_Symbol, _Period, path_flow,
@@ -149,6 +154,11 @@ int OnInit()
        Print("Failed to load HybridFlow! Path: ", path_flow);
        Print("Error: ", GetLastError());
        return INIT_FAILED;
+   }
+
+   // Visualize Flow
+   if(!ChartIndicatorAdd(0, 2, h_flow)) {
+       Print("Failed to add HybridFlow to chart! Error: ", GetLastError());
    }
 
 
@@ -189,6 +199,17 @@ void OnDeinit(const int reason)
   {
    DestroyPanel();
    CleanupChart();
+
+   // Remove Visualized Indicators
+   // Note: ChartIndicatorDelete requires the ShortName or Handle lookup.
+   // Since we added them to new subwindows (1 and 2), we can try to clean up.
+   // However, MT5 EAs often leave indicators if not explicitly named.
+   // Best practice: The IndicatorRelease releases the handle, but visual removal relies on the user or precise name matching.
+   // We will attempt to remove by name if possible, or just rely on the user to close the chart/template.
+   // For research/session EAs, manual cleanup is often acceptable, but we'll try:
+   ChartIndicatorDelete(0, 1, "Hybrid Momentum v2.81");
+   ChartIndicatorDelete(0, 2, "Hybrid Flow v1.123");
+
    if(g_book_subscribed) MarketBookRelease(_Symbol);
    if(h_momentum != INVALID_HANDLE) IndicatorRelease(h_momentum);
    if(h_flow != INVALID_HANDLE) IndicatorRelease(h_flow);
