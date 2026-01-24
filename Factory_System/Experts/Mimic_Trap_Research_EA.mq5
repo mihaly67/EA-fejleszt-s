@@ -49,17 +49,17 @@ input uint               WVF_InpPeriod      =  22;               // Period
 input ENUM_DRAWING_STYLE WVF_InpDrawingType =  STYLE_DRAW_LINE;  // Drawing style
 
 input group              "=== DEMA Settings ==="
-input uint               Conv_InpFastPeriod         = 5;
-input uint               Conv_InpSlowPeriod         = 13;
-input double             Conv_InpDemaGain           = 1.0;    // EMA Mode
+input uint               InpFastPeriod         = 5;
+input uint               InpSlowPeriod         = 13;
+input double             InpDemaGain           = 1.0;    // EMA Mode
 
 input group              "=== Normalization ==="
-input uint               Conv_InpNormPeriod         = 500;
-input double             Conv_InpNormSensitivity    = 1.0;
+input uint               InpNormPeriod         = 500;
+input double             InpNormSensitivity    = 1.0;
 
 input group              "=== Phase Advance ==="
-input double             Conv_InpPhaseAdvance       = 2.0;    // High Aggression
-input uint               Conv_InpSmartSmooth        = 3;      // Velocity Smoothing for Smart Mode
+input double             InpPhaseAdvance       = 2.0;    // High Aggression
+input uint               InpSmartSmooth        = 3;      // Velocity Smoothing for Smart Mode
 
 input group              "--- VELOCITY & ACCEL (VA) Settings ---"
 input uint               VA_InpPeriodV         = 14;          // Velocity period
@@ -163,13 +163,13 @@ int OnInit()
    // Inputs: uint, uint, double, uint, double, double, uint
    // Explicit casting to ensure correct varargs alignment
    h_conviction = iCustom(_Symbol, _Period, path_conv,
-                          (uint)Conv_InpFastPeriod,
-                          (uint)Conv_InpSlowPeriod,
-                          (double)Conv_InpDemaGain,
-                          (uint)Conv_InpNormPeriod,
-                          (double)Conv_InpNormSensitivity,
-                          (double)Conv_InpPhaseAdvance,
-                          (uint)Conv_InpSmartSmooth
+                          (uint)InpFastPeriod,
+                          (uint)InpSlowPeriod,
+                          (double)InpDemaGain,
+                          (uint)InpNormPeriod,
+                          (double)InpNormSensitivity,
+                          (double)InpPhaseAdvance,
+                          (uint)InpSmartSmooth
                           );
 
    if(h_conviction == INVALID_HANDLE) {
