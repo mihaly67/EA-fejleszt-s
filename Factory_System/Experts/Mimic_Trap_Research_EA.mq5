@@ -44,7 +44,7 @@ input int           InpSlippage          = 10;
 input ulong         InpMagicNumber       = 999002; // Updated Magic for Research
 input string        InpComment           = "MimicResearch";
 
-// === HYBRID MOMENTUM INPUTS (Exact Copy) ===
+// === HYBRID MOMENTUM INPUTS (Exact Copy from v2.81 Source) ===
 input group              "--- MOMENTUM: Visual Settings ---"
 input ENUM_COLOR_LOGIC   Mom_InpColorLogic         = COLOR_SLOPE; // Color Logic Mode
 
@@ -203,7 +203,8 @@ int OnInit()
    }
 
    // Hybrid Flow v1.123
-   // Passing parameters EXACTLY as defined in the indicator input list
+   // COMMENTED OUT FOR NOW AS REQUESTED TO FOCUS ON MOMENTUM
+   /*
    h_flow = iCustom(_Symbol, _Period, path_flow,
                     Flow_InpUseFixedScale,
                     Flow_InpScaleMin,
@@ -229,6 +230,7 @@ int OnInit()
    if(!ChartIndicatorAdd(0, 2, h_flow)) {
        Print("Failed to add HybridFlow to chart! Error: ", GetLastError());
    }
+   */
 
    // Velocity & Acceleration (VA)
    // Inputs: PeriodV (uint), PeriodA (uint), AppliedPrice (ENUM)
