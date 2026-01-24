@@ -127,10 +127,24 @@ int OnInit()
 
    // Hybrid Momentum v2.81
    // Inputs: ColorLogic(0), Fast, Slow, Sig, Price(1), Kalman, Phase(0.5), Boost, Weight, K(5), D(3), Slow(3), Norm(100), Sens(1.0)
+   // NOTE: The first parameter is an ENUM (int). MQL5 requires types to match exactly or be compatible.
+   // We pass 0 for COLOR_SLOPE.
    h_momentum = iCustom(_Symbol, _Period, path_mom,
-                        0, Mom_FastPeriod, Mom_SlowPeriod, Mom_SignalPeriod, PRICE_CLOSE,
-                        Mom_KalmanGain, 0.5, Mom_EnableBoost, Mom_StochMixWeight,
-                        5, 3, 3, 100, 1.0);
+                        0,                    // InpColorLogic (COLOR_SLOPE)
+                        Mom_FastPeriod,       // InpFastPeriod
+                        Mom_SlowPeriod,       // InpSlowPeriod
+                        Mom_SignalPeriod,     // InpSignalPeriod
+                        PRICE_CLOSE,          // InpAppliedPrice
+                        Mom_KalmanGain,       // InpKalmanGain
+                        0.5,                  // InpPhaseAdvance (Fixed per request to match indicator default)
+                        Mom_EnableBoost,      // InpEnableBoost
+                        Mom_StochMixWeight,   // InpStochMixWeight
+                        5,                    // InpStochK (Fixed default)
+                        3,                    // InpStochD (Fixed default)
+                        3,                    // InpStochSlowing (Fixed default)
+                        100,                  // InpNormPeriod (Fixed default)
+                        1.0                   // InpNormSensitivity (Fixed default)
+                        );
 
    if(h_momentum == INVALID_HANDLE) {
        Print("Failed to load HybridMomentum! Path: ", path_mom);
@@ -146,9 +160,19 @@ int OnInit()
    // Hybrid Flow v1.123
    // Inputs: FixedScale(false), Min, Max, MFI, VROC(true), VROCPer(10), VROCThresh(20), ApproxDelta(true), Smooth, Norm(100), ScaleFactor, VisualGain
    h_flow = iCustom(_Symbol, _Period, path_flow,
-                    false, -100.0, 200.0, Flow_MFIPeriod,
-                    true, 10, 20.0,
-                    true, Flow_DeltaSmooth, 100, Flow_DeltaScale, Flow_VisualGain);
+                    false,                // InpUseFixedScale
+                    -100.0,               // InpScaleMin
+                    200.0,                // InpScaleMax
+                    Flow_MFIPeriod,       // InpMFIPeriod
+                    true,                 // InpShowVROC
+                    10,                   // InpVROCPeriod
+                    20.0,                 // InpVROCThreshold
+                    true,                 // InpUseApproxDelta
+                    Flow_DeltaSmooth,     // InpDeltaSmooth
+                    100,                  // InpNormalizationLen
+                    Flow_DeltaScale,      // InpDeltaScaleFactor
+                    Flow_VisualGain       // InpHistogramVisualGain
+                    );
 
    if(h_flow == INVALID_HANDLE) {
        Print("Failed to load HybridFlow! Path: ", path_flow);
