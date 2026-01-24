@@ -177,11 +177,11 @@ int OnInit()
    // Explicit casting to match indicator input types (ENUMs as ints/enums, bools as bools)
    // NOTE: InpAppliedPrice is ENUM_APPLIED_PRICE. InpColorLogic is ENUM_COLOR_LOGIC (custom).
    h_momentum = iCustom(_Symbol, _Period, path_mom,
-                        (int)Mom_InpColorLogic,       // ENUM_COLOR_LOGIC -> passed as int
+                        Mom_InpColorLogic,            // ENUM_COLOR_LOGIC -> passed directly
                         Mom_InpFastPeriod,
                         Mom_InpSlowPeriod,
                         Mom_InpSignalPeriod,
-                        (int)Mom_InpAppliedPrice,     // ENUM_APPLIED_PRICE -> passed as int
+                        Mom_InpAppliedPrice,          // ENUM_APPLIED_PRICE -> passed directly
                         Mom_InpKalmanGain,
                         Mom_InpPhaseAdvance,
                         Mom_InpEnableBoost,
