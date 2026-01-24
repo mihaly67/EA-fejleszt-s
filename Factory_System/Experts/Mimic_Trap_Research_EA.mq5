@@ -172,12 +172,14 @@ int OnInit()
 
    // Hybrid Momentum v2.81
    // Passing parameters EXACTLY as defined in the indicator input list
+   // Explicit casting to match indicator input types (ENUMs as ints/enums, bools as bools)
+   // NOTE: InpAppliedPrice is ENUM_APPLIED_PRICE. InpColorLogic is ENUM_COLOR_LOGIC (custom).
    h_momentum = iCustom(_Symbol, _Period, path_mom,
-                        Mom_InpColorLogic,
+                        (int)Mom_InpColorLogic,       // ENUM_COLOR_LOGIC -> passed as int
                         Mom_InpFastPeriod,
                         Mom_InpSlowPeriod,
                         Mom_InpSignalPeriod,
-                        Mom_InpAppliedPrice,
+                        (int)Mom_InpAppliedPrice,     // ENUM_APPLIED_PRICE -> passed as int
                         Mom_InpKalmanGain,
                         Mom_InpPhaseAdvance,
                         Mom_InpEnableBoost,
