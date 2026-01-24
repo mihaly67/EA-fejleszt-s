@@ -27,17 +27,17 @@
 
 //--- Input Parameters (User's Golden Settings)
 input group              "=== DEMA Settings ==="
-input int                InpFastPeriod         = 5;
-input int                InpSlowPeriod         = 13;
+input uint               InpFastPeriod         = 5;
+input uint               InpSlowPeriod         = 13;
 input double             InpDemaGain           = 1.0;    // EMA Mode
 
 input group              "=== Normalization ==="
-input int                InpNormPeriod         = 500;
+input uint               InpNormPeriod         = 500;
 input double             InpNormSensitivity    = 1.0;
 
 input group              "=== Phase Advance ==="
 input double             InpPhaseAdvance       = 2.0;    // High Aggression
-input int                InpSmartSmooth        = 3;      // Velocity Smoothing for Smart Mode
+input uint               InpSmartSmooth        = 3;      // Velocity Smoothing for Smart Mode
 
 //--- Buffers
 double      LegacyBuffer[];
