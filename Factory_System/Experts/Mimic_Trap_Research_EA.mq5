@@ -47,7 +47,7 @@ input string        InpComment           = "MimicResearch";
 // === HYBRID MOMENTUM INPUTS (Exact Copy from v2.81 Source) ===
 // Source: Factory_System/Research_Freeze_20260124/HybridMomentumIndicator_v2.81.mq5
 input group              "--- MOMENTUM: Visual Settings ---"
-input ENUM_COLOR_LOGIC   Mom_InpColorLogic         = COLOR_SLOPE; // Color Logic Mode
+input int                Mom_InpColorLogic         = 0; // Color Logic Mode (0=Slope, 1=Crossover, 2=ZeroCross)
 
 input group              "--- MOMENTUM: Momentum Settings ---"
 input int                Mom_InpFastPeriod         = 3;      // Fast Period
@@ -177,14 +177,14 @@ int OnInit()
    // Explicit casting to match indicator input types (ENUMs as ints/enums, bools as bools)
    // NOTE: InpAppliedPrice is ENUM_APPLIED_PRICE. InpColorLogic is ENUM_COLOR_LOGIC (custom).
    h_momentum = iCustom(_Symbol, _Period, path_mom,
-                        Mom_InpColorLogic,            // ENUM_COLOR_LOGIC -> passed directly
+                        Mom_InpColorLogic,            // int (Custom Enum)
                         Mom_InpFastPeriod,
                         Mom_InpSlowPeriod,
                         Mom_InpSignalPeriod,
-                        Mom_InpAppliedPrice,          // ENUM_APPLIED_PRICE -> passed directly
+                        Mom_InpAppliedPrice,          // ENUM_APPLIED_PRICE (Standard)
                         Mom_InpKalmanGain,
                         Mom_InpPhaseAdvance,
-                        Mom_InpEnableBoost,
+                        (int)Mom_InpEnableBoost,      // bool -> cast to int for safety
                         Mom_InpStochMixWeight,
                         Mom_InpStochK,
                         Mom_InpStochD,
@@ -208,14 +208,14 @@ int OnInit()
    // COMMENTED OUT FOR NOW AS REQUESTED TO FOCUS ON MOMENTUM
 
    h_flow = iCustom(_Symbol, _Period, path_flow,
-                    Flow_InpUseFixedScale,
+                    (int)Flow_InpUseFixedScale,   // bool -> cast to int
                     Flow_InpScaleMin,
                     Flow_InpScaleMax,
                     Flow_InpMFIPeriod,
-                    Flow_InpShowVROC,
+                    (int)Flow_InpShowVROC,        // bool -> cast to int
                     Flow_InpVROCPeriod,
                     Flow_InpVROCThreshold,
-                    Flow_InpUseApproxDelta,
+                    (int)Flow_InpUseApproxDelta,  // bool -> cast to int
                     Flow_InpDeltaSmooth,
                     Flow_InpNormalizationLen,
                     Flow_InpDeltaScaleFactor,
