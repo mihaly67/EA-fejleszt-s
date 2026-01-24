@@ -156,15 +156,16 @@ int OnInit()
    }
 
    // Hybrid Conviction Monitor
-   // Inputs: int, int, double, int, double, double, int
+   // Inputs: uint, uint, double, uint, double, double, uint
+   // Explicit casting to ensure correct varargs alignment
    h_conviction = iCustom(_Symbol, _Period, path_conv,
-                          Conv_InpFastPeriod,
-                          Conv_InpSlowPeriod,
-                          Conv_InpDemaGain,
-                          Conv_InpNormPeriod,
-                          Conv_InpNormSensitivity,
-                          Conv_InpPhaseAdvance,
-                          Conv_InpSmartSmooth
+                          (uint)Conv_InpFastPeriod,
+                          (uint)Conv_InpSlowPeriod,
+                          (double)Conv_InpDemaGain,
+                          (uint)Conv_InpNormPeriod,
+                          (double)Conv_InpNormSensitivity,
+                          (double)Conv_InpPhaseAdvance,
+                          (uint)Conv_InpSmartSmooth
                           );
 
    if(h_conviction == INVALID_HANDLE) {
