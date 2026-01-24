@@ -48,6 +48,15 @@ input group              "--- WVF Settings ---"
 input uint               WVF_InpPeriod      =  22;               // Period
 input ENUM_DRAWING_STYLE WVF_InpDrawingType =  STYLE_DRAW_LINE;  // Drawing style
 
+input group              "--- HYBRID CONVICTION Settings ---"
+input int                Conv_InpFastPeriod         = 5;
+input int                Conv_InpSlowPeriod         = 13;
+input double             Conv_InpDemaGain           = 1.0;    // EMA Mode
+input int                Conv_InpNormPeriod         = 500;
+input double             Conv_InpNormSensitivity    = 1.0;
+input double             Conv_InpPhaseAdvance       = 2.0;    // High Aggression
+input int                Conv_InpSmartSmooth        = 3;      // Velocity Smoothing for Smart Mode
+
 input group              "--- VELOCITY & ACCEL (VA) Settings ---"
 input uint               VA_InpPeriodV         = 14;          // Velocity period
 input uint               VA_InpPeriodA         = 10;          // Acceleration period
@@ -70,8 +79,10 @@ bool              g_book_subscribed = false;
 
 // Research Globals
 int               h_wvf = INVALID_HANDLE;
+int               h_conviction = INVALID_HANDLE;
 int               h_va = INVALID_HANDLE;
 double            buf_wvf[], buf_va_v[], buf_va_a[];
+double            buf_conv_legacy[], buf_conv_smart[];
 string            g_current_phase = "IDLE";
 int               g_post_event_counter = 0;
 double            g_last_realized_pl = 0.0; // P/L from closed deals this tick
@@ -124,10 +135,10 @@ int OnInit()
    // --- INDICATOR HANDLES ---
    // Construct Paths
    string path_wvf = InpIndPath + "WVF";
+   string path_conv = InpIndPath + "Hybrid_Conviction_Monitor";
    string path_va = InpIndPath + "Hybrid_Velocity_Acceleration_VA";
 
    // WVF (Showcase)
-   // Inputs: Period (uint), DrawingType (ENUM)
    h_wvf = iCustom(_Symbol, _Period, path_wvf,
                    WVF_InpPeriod,
                    WVF_InpDrawingType // Passed as ENUM, strict typing
@@ -144,8 +155,30 @@ int OnInit()
        Print("Failed to add WVF to chart! Error: ", GetLastError());
    }
 
+   // Hybrid Conviction Monitor
+   // Inputs: int, int, double, int, double, double, int
+   h_conviction = iCustom(_Symbol, _Period, path_conv,
+                          Conv_InpFastPeriod,
+                          Conv_InpSlowPeriod,
+                          Conv_InpDemaGain,
+                          Conv_InpNormPeriod,
+                          Conv_InpNormSensitivity,
+                          Conv_InpPhaseAdvance,
+                          Conv_InpSmartSmooth
+                          );
+
+   if(h_conviction == INVALID_HANDLE) {
+       Print("Failed to load Conviction! Path: ", path_conv);
+       Print("Error: ", GetLastError());
+       return INIT_FAILED;
+   }
+
+   // Visualize Conviction (Subwindow 2)
+   if(!ChartIndicatorAdd(0, 2, h_conviction)) {
+       Print("Failed to add Conviction to chart! Error: ", GetLastError());
+   }
+
    // Velocity & Acceleration (VA)
-   // Inputs: PeriodV (uint), PeriodA (uint), AppliedPrice (ENUM)
    h_va = iCustom(_Symbol, _Period, path_va,
                   VA_InpPeriodV,
                   VA_InpPeriodA,
@@ -158,8 +191,8 @@ int OnInit()
        return INIT_FAILED;
    }
 
-   // Visualize VA (Subwindow 2)
-   if(!ChartIndicatorAdd(0, 2, h_va)) {
+   // Visualize VA (Subwindow 3)
+   if(!ChartIndicatorAdd(0, 3, h_va)) {
        Print("Failed to add VA to chart! Error: ", GetLastError());
    }
 
@@ -176,8 +209,8 @@ int OnInit()
 
    if(g_log_handle != INVALID_HANDLE)
      {
-      // Header with Research Columns + External VA + WVF
-      string header = "Time,TickMS,Phase,Bid,Ask,Spread,Velocity,Acceleration,WVF_Val,Ext_VA_Vel,Ext_VA_Acc,Floating_PL,Realized_PL,Action,DOM_Snapshot\r\n";
+      // Header
+      string header = "Time,TickMS,Phase,Bid,Ask,Spread,Velocity,Acceleration,WVF_Val,Conv_Legacy,Conv_Smart,Ext_VA_Vel,Ext_VA_Acc,Floating_PL,Realized_PL,Action,DOM_Snapshot\r\n";
       FileWriteString(g_log_handle, header);
       FileFlush(g_log_handle);
       Print("Mimic Research: Log file created: ", filename);
@@ -204,10 +237,12 @@ void OnDeinit(const int reason)
 
    // Remove Visualized Indicators
    ChartIndicatorDelete(0, 1, "WVF");
-   ChartIndicatorDelete(0, 2, "VA");
+   ChartIndicatorDelete(0, 2, "Hybrid Conviction Monitor");
+   ChartIndicatorDelete(0, 3, "VA");
 
    if(g_book_subscribed) MarketBookRelease(_Symbol);
    if(h_wvf != INVALID_HANDLE) IndicatorRelease(h_wvf);
+   if(h_conviction != INVALID_HANDLE) IndicatorRelease(h_conviction);
    if(h_va != INVALID_HANDLE) IndicatorRelease(h_va);
    if(g_log_handle != INVALID_HANDLE) FileClose(g_log_handle);
   }
@@ -504,10 +539,16 @@ void WriteLog()
 
    // 1. Get Indicator Values
    double wvf_val = 0;
+   double conv_leg = 0;
+   double conv_smart = 0;
 
    // WVF (0=Value)
    double buf[1];
    if(CopyBuffer(h_wvf, 0, 0, 1, buf)>0) wvf_val = buf[0];
+
+   // Conviction (0=Legacy, 1=Smart)
+   if(CopyBuffer(h_conviction, 0, 0, 1, buf)>0) conv_leg = buf[0];
+   if(CopyBuffer(h_conviction, 1, 0, 1, buf)>0) conv_smart = buf[0];
 
    // VA (0=Vel, 1=Acc)
    double va_v=0, va_a=0;
@@ -524,12 +565,13 @@ void WriteLog()
    string t = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
    string ms = IntegerToString(GetTickCount()%1000);
 
-   // Format Updated for WVF
-   string row = StringFormat("%s,%s,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%s",
+   // Format Updated for WVF + Conviction
+   string row = StringFormat("%s,%s,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s",
        t, ms, g_current_phase,
        m_symbol.Bid(), m_symbol.Ask(), p.spread_avg,
        p.velocity, p.acceleration,
        wvf_val,
+       conv_leg, conv_smart,
        va_v, va_a,
        float_pl, g_last_realized_pl,
        InpComment
