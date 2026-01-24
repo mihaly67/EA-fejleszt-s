@@ -45,7 +45,8 @@ input ulong         InpMagicNumber       = 999002; // Updated Magic for Research
 input string        InpComment           = "MimicResearch";
 
 // === HYBRID MOMENTUM INPUTS (Exact Copy from v2.81 Source) ===
-input group              "--- MOMENTUM: Visual Settings ---" // Verified Synced with v2.81
+// Source: Factory_System/Research_Freeze_20260124/HybridMomentumIndicator_v2.81.mq5
+input group              "--- MOMENTUM: Visual Settings ---"
 input ENUM_COLOR_LOGIC   Mom_InpColorLogic         = COLOR_SLOPE; // Color Logic Mode
 
 input group              "--- MOMENTUM: Momentum Settings ---"
@@ -67,7 +68,8 @@ input group              "--- MOMENTUM: Normalization Settings ---"
 input int                Mom_InpNormPeriod         = 100;    // Normalization Lookback
 input double             Mom_InpNormSensitivity    = 1.0;    // Sensitivity
 
-// === HYBRID FLOW INPUTS (Exact Copy) ===
+// === HYBRID FLOW INPUTS (Exact Copy from v1.123 Source) ===
+// Source: Factory_System/Research_Freeze_20260124/HybridFlowIndicator_v1.123.mq5
 input group              "--- FLOW: Scale Settings ---"
 input bool               Flow_InpUseFixedScale      = false;          // Use Fixed Scale? (False = Auto-Scale)
 input double             Flow_InpScaleMin           = -100.0;         // Fixed Min (if enabled)
