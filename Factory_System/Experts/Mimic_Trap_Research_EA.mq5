@@ -6,7 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent & User"
 #property link      "https://www.mql5.com"
-#property version   "2.03"
+#property version   "2.04"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -160,51 +160,28 @@ int OnInit()
    }
 
    // ---------------------------------------------------------
-   // Hybrid Conviction Monitor - via IndicatorCreate (CORRECT)
+   // Hybrid Conviction Monitor - via Clean IndicatorCreate
    // ---------------------------------------------------------
-   // Technically correct method: Map strict inputs only.
-   // Ignore 'input group' (it is not a parameter).
-   // MqlParam logic: [0] = Path, [1..N] = Inputs
+   // FIXED: Inputs are now UNGROUPED in the indicator file.
+   // This guarantees 1-to-1 mapping. No hacks, no shifts.
 
-   MqlParam conv_params[8]; // 1 Path + 7 Inputs
+   MqlParam conv_params[8];
 
-   // [0] Path
    conv_params[0].type = TYPE_STRING;
    conv_params[0].string_value = path_conv;
 
-   // [1] InpFastPeriod (uint)
-   conv_params[1].type = TYPE_UINT;
-   conv_params[1].integer_value = InpFastPeriod;
+   conv_params[1].type = TYPE_UINT; conv_params[1].integer_value = InpFastPeriod;
+   conv_params[2].type = TYPE_UINT; conv_params[2].integer_value = InpSlowPeriod;
+   conv_params[3].type = TYPE_DOUBLE; conv_params[3].double_value = InpDemaGain;
+   conv_params[4].type = TYPE_UINT; conv_params[4].integer_value = InpNormPeriod;
+   conv_params[5].type = TYPE_DOUBLE; conv_params[5].double_value = InpNormSensitivity;
+   conv_params[6].type = TYPE_DOUBLE; conv_params[6].double_value = InpPhaseAdvance;
+   conv_params[7].type = TYPE_UINT; conv_params[7].integer_value = InpSmartSmooth;
 
-   // [2] InpSlowPeriod (uint)
-   conv_params[2].type = TYPE_UINT;
-   conv_params[2].integer_value = InpSlowPeriod;
-
-   // [3] InpDemaGain (double)
-   conv_params[3].type = TYPE_DOUBLE;
-   conv_params[3].double_value = InpDemaGain;
-
-   // [4] InpNormPeriod (uint)
-   conv_params[4].type = TYPE_UINT;
-   conv_params[4].integer_value = InpNormPeriod;
-
-   // [5] InpNormSensitivity (double)
-   conv_params[5].type = TYPE_DOUBLE;
-   conv_params[5].double_value = InpNormSensitivity;
-
-   // [6] InpPhaseAdvance (double)
-   conv_params[6].type = TYPE_DOUBLE;
-   conv_params[6].double_value = InpPhaseAdvance;
-
-   // [7] InpSmartSmooth (uint)
-   conv_params[7].type = TYPE_UINT;
-   conv_params[7].integer_value = InpSmartSmooth;
-
-   // Create using IND_CUSTOM
    h_conviction = IndicatorCreate(_Symbol, _Period, IND_CUSTOM, 8, conv_params);
 
    if(h_conviction == INVALID_HANDLE) {
-       Print("Failed to load Conviction (Correct)! Path: ", path_conv);
+       Print("Failed to load Conviction (Ungrouped)! Path: ", path_conv);
        Print("Error: ", GetLastError());
    }
 
@@ -258,7 +235,7 @@ int OnInit()
    CreatePanel();
    UpdateUI();
 
-   Print("Mimic Trap Research EA v2.03 Initialized.");
+   Print("Mimic Trap Research EA v2.04 (Stable) Initialized.");
    return(INIT_SUCCEEDED);
   }
 

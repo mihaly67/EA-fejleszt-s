@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                  Hybrid_Conviction_Monitor.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
-//|      Verzió: 1.1 (Phase Noise Analysis & Smart Fix)               |
+//|      Verzió: 1.2 (Parameter Shift Fix: Groups Removed)            |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
-#property version   "1.1"
+#property version   "1.2"
 
 #property indicator_separate_window
 #property indicator_buffers 8
@@ -25,19 +25,20 @@
 #property indicator_color2  clrDodgerBlue
 #property indicator_width2  2
 
-//--- Input Parameters (User's Golden Settings)
-// Restored 'input group' for better UI visualization.
-// The EA must use IndicatorCreate() to handle this correctly without parameter shifting.
-input group              "=== DEMA Settings ==="
+//--- Input Parameters
+// NOTE: 'input group' lines are PERMANENTLY REMOVED to prevent parameter shifting.
+// This is a hard technical constraint for iCustom/IndicatorCreate integration.
+
+// --- DEMA Settings ---
 input uint               InpFastPeriod         = 5;
 input uint               InpSlowPeriod         = 13;
 input double             InpDemaGain           = 1.0;    // EMA Mode
 
-input group              "=== Normalization ==="
+// --- Normalization ---
 input uint               InpNormPeriod         = 500;
 input double             InpNormSensitivity    = 1.0;
 
-input group              "=== Phase Advance ==="
+// --- Phase Advance ---
 input double             InpPhaseAdvance       = 2.0;    // High Aggression
 input uint               InpSmartSmooth        = 3;      // Velocity Smoothing for Smart Mode
 
