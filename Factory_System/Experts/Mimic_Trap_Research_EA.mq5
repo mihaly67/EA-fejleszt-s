@@ -6,7 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent & User"
 #property link      "https://www.mql5.com"
-#property version   "2.05"
+#property version   "2.06"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -27,6 +27,12 @@ enum ENUM_DRAWING_STYLE
    STYLE_DRAW_HIST   =  DRAW_COLOR_HISTOGRAM // Histogramm
   };
 
+enum ENUM_COLOR_LOGIC {
+    COLOR_SLOPE,     // Slope (Change from Prev Bar) - FASTEST
+    COLOR_CROSSOVER, // MACD > Signal (Classic) - LAGGING
+    COLOR_ZERO_CROSS // MACD > 0 (Simple)
+};
+
 //--- Inputs
 input group "Strategy Settings"
 input int           InpTriggerTicks      = 2;      // Consecutive ticks to trigger
@@ -44,19 +50,39 @@ input int           InpSlippage          = 10;
 input ulong         InpMagicNumber       = 999002; // Updated Magic for Research
 input string        InpComment           = "MimicResearch";
 
-input group              "=== DEMA Settings ==="
-input uint               InpFastPeriod         = 5;
-input uint               InpSlowPeriod         = 13;
-input double             InpDemaGain           = 1.0;    // EMA Mode
+// --- MOMENTUM (New) ---
+input group              "=== Momentum (v2.82) ==="
+input ENUM_COLOR_LOGIC   Mom_InpColorLogic     = COLOR_SLOPE; // [VISUAL] Color Logic Mode
+input int                Mom_InpFastPeriod     = 3;           // [MOMENTUM] Fast Period
+input int                Mom_InpSlowPeriod     = 6;           // [MOMENTUM] Slow Period
+input int                Mom_InpSignalPeriod   = 13;          // [MOMENTUM] Signal Period
+input ENUM_APPLIED_PRICE Mom_InpAppliedPrice   = PRICE_CLOSE; // [MOMENTUM] Applied Price
+input double             Mom_InpKalmanGain     = 1.0;         // [MOMENTUM] Kalman Gain
+input double             Mom_InpPhaseAdvance   = 0.5;         // [MOMENTUM] Phase Advance
+input bool               Mom_InpEnableBoost    = true;        // [STOCH] Enable Stochastic Mix
+input double             Mom_InpStochMixWeight = 0.2;         // [STOCH] Mixing Weight
+input int                Mom_InpStochK         = 5;           // [STOCH] Stochastic K
+input int                Mom_InpStochD         = 3;           // [STOCH] Stochastic D
+input int                Mom_InpStochSlowing   = 3;           // [STOCH] Stochastic Slowing
+input int                Mom_InpNormPeriod     = 100;         // [NORM] Normalization Lookback
+input double             Mom_InpNormSensitivity= 1.0;         // [NORM] Sensitivity
 
-input group              "=== Normalization ==="
-input uint               InpNormPeriod         = 500;
-input double             InpNormSensitivity    = 1.0;
+// --- FLOW (New) ---
+input group              "=== Flow (v1.124) ==="
+input bool               Flow_InpUseFixedScale       = false;   // [SCALE] Use Fixed Scale?
+input double             Flow_InpScaleMin            = -100.0;  // [SCALE] Fixed Min
+input double             Flow_InpScaleMax            = 200.0;   // [SCALE] Fixed Max
+input int                Flow_InpMFIPeriod           = 14;      // [MFI] Period
+input bool               Flow_InpShowVROC            = true;    // [VROC] Show VROC?
+input int                Flow_InpVROCPeriod          = 10;      // [VROC] Period
+input double             Flow_InpVROCThreshold       = 20.0;    // [VROC] Alert Threshold %
+input bool               Flow_InpUseApproxDelta      = true;    // [DELTA] Use Approx Delta
+input int                Flow_InpDeltaSmooth         = 3;       // [DELTA] Smoothing
+input int                Flow_InpNormalizationLen    = 100;     // [DELTA] Norm Length
+input double             Flow_InpDeltaScaleFactor    = 50.0;    // [DELTA] Curve Factor
+input double             Flow_InpHistogramVisualGain = 3.0;     // [DELTA] Visual Gain (Hist)
 
-input group              "=== Phase Advance ==="
-input double             InpPhaseAdvance       = 2.0;    // High Aggression
-input uint               InpSmartSmooth        = 3;      // Velocity Smoothing for Smart Mode
-
+// --- VA (Legacy) ---
 input group              "--- VELOCITY & ACCEL (VA) Settings ---"
 input uint               VA_InpPeriodV         = 14;          // Velocity period
 input uint               VA_InpPeriodA         = 10;          // Acceleration period
@@ -78,10 +104,9 @@ int               g_log_handle = INVALID_HANDLE;
 bool              g_book_subscribed = false;
 
 // Research Globals
-int               h_conviction = INVALID_HANDLE;
+int               h_momentum = INVALID_HANDLE;
+int               h_flow = INVALID_HANDLE;
 int               h_va = INVALID_HANDLE;
-double            buf_va_v[], buf_va_a[];
-double            buf_conv_legacy[], buf_conv_smart[];
 string            g_current_phase = "IDLE";
 int               g_post_event_counter = 0;
 double            g_last_realized_pl = 0.0; // P/L from closed deals this tick
@@ -133,41 +158,73 @@ int OnInit()
 
    // --- INDICATOR HANDLES ---
    // Construct Paths
-   string path_conv = InpIndPath + "Hybrid_Conviction_Monitor";
+   string path_mom = InpIndPath + "HybridMomentumIndicator_v2.82";
+   string path_flow = InpIndPath + "HybridFlowIndicator_v1.124";
    string path_va = InpIndPath + "Hybrid_Velocity_Acceleration_VA";
 
    // ---------------------------------------------------------
-   // Hybrid Conviction Monitor - via Clean IndicatorCreate
+   // Hybrid Momentum v2.82 (Subwindow 1)
    // ---------------------------------------------------------
-   // FIXED: Inputs are now UNGROUPED in the indicator file.
-   // This guarantees 1-to-1 mapping. No hacks, no shifts.
+   MqlParam mom_params[14];
+   mom_params[0].type = TYPE_STRING; mom_params[0].string_value = path_mom;
 
-   MqlParam conv_params[8];
+   mom_params[1].type = TYPE_INT;    mom_params[1].integer_value = Mom_InpColorLogic;
+   mom_params[2].type = TYPE_INT;    mom_params[2].integer_value = Mom_InpFastPeriod;
+   mom_params[3].type = TYPE_INT;    mom_params[3].integer_value = Mom_InpSlowPeriod;
+   mom_params[4].type = TYPE_INT;    mom_params[4].integer_value = Mom_InpSignalPeriod;
+   mom_params[5].type = TYPE_INT;    mom_params[5].integer_value = Mom_InpAppliedPrice;
+   mom_params[6].type = TYPE_DOUBLE; mom_params[6].double_value = Mom_InpKalmanGain;
+   mom_params[7].type = TYPE_DOUBLE; mom_params[7].double_value = Mom_InpPhaseAdvance;
+   mom_params[8].type = TYPE_BOOL;   mom_params[8].integer_value = Mom_InpEnableBoost;
+   mom_params[9].type = TYPE_DOUBLE; mom_params[9].double_value = Mom_InpStochMixWeight;
+   mom_params[10].type = TYPE_INT;   mom_params[10].integer_value = Mom_InpStochK;
+   mom_params[11].type = TYPE_INT;   mom_params[11].integer_value = Mom_InpStochD;
+   mom_params[12].type = TYPE_INT;   mom_params[12].integer_value = Mom_InpStochSlowing;
+   mom_params[13].type = TYPE_INT;   mom_params[13].integer_value = Mom_InpNormPeriod;
+   mom_params[14].type = TYPE_DOUBLE;mom_params[14].double_value = Mom_InpNormSensitivity;
+   // Note: If parameter count mismatches, IndicatorCreate will fail.
+   // Correct Count: 1 String + 13 Inputs = 14 Total.
 
-   conv_params[0].type = TYPE_STRING;
-   conv_params[0].string_value = path_conv;
+   h_momentum = IndicatorCreate(_Symbol, _Period, IND_CUSTOM, 15, mom_params); // Size is 15 (0-14)
 
-   conv_params[1].type = TYPE_UINT; conv_params[1].integer_value = InpFastPeriod;
-   conv_params[2].type = TYPE_UINT; conv_params[2].integer_value = InpSlowPeriod;
-   conv_params[3].type = TYPE_DOUBLE; conv_params[3].double_value = InpDemaGain;
-   conv_params[4].type = TYPE_UINT; conv_params[4].integer_value = InpNormPeriod;
-   conv_params[5].type = TYPE_DOUBLE; conv_params[5].double_value = InpNormSensitivity;
-   conv_params[6].type = TYPE_DOUBLE; conv_params[6].double_value = InpPhaseAdvance;
-   conv_params[7].type = TYPE_UINT; conv_params[7].integer_value = InpSmartSmooth;
-
-   h_conviction = IndicatorCreate(_Symbol, _Period, IND_CUSTOM, 8, conv_params);
-
-   if(h_conviction == INVALID_HANDLE) {
-       Print("Failed to load Conviction (Ungrouped)! Path: ", path_conv);
+   if(h_momentum == INVALID_HANDLE) {
+       Print("Failed to load Momentum! Path: ", path_mom);
        Print("Error: ", GetLastError());
+   } else {
+       if(!ChartIndicatorAdd(0, 1, h_momentum)) Print("Failed to add Momentum to chart!");
    }
 
-   // Visualize Conviction (Subwindow 1)
-   if(!ChartIndicatorAdd(0, 1, h_conviction)) {
-       Print("Failed to add Conviction to chart! Error: ", GetLastError());
+   // ---------------------------------------------------------
+   // Hybrid Flow v1.124 (Subwindow 2)
+   // ---------------------------------------------------------
+   MqlParam flow_params[13];
+   flow_params[0].type = TYPE_STRING; flow_params[0].string_value = path_flow;
+
+   flow_params[1].type = TYPE_BOOL;   flow_params[1].integer_value = Flow_InpUseFixedScale;
+   flow_params[2].type = TYPE_DOUBLE; flow_params[2].double_value = Flow_InpScaleMin;
+   flow_params[3].type = TYPE_DOUBLE; flow_params[3].double_value = Flow_InpScaleMax;
+   flow_params[4].type = TYPE_INT;    flow_params[4].integer_value = Flow_InpMFIPeriod;
+   flow_params[5].type = TYPE_BOOL;   flow_params[5].integer_value = Flow_InpShowVROC;
+   flow_params[6].type = TYPE_INT;    flow_params[6].integer_value = Flow_InpVROCPeriod;
+   flow_params[7].type = TYPE_DOUBLE; flow_params[7].double_value = Flow_InpVROCThreshold;
+   flow_params[8].type = TYPE_BOOL;   flow_params[8].integer_value = Flow_InpUseApproxDelta;
+   flow_params[9].type = TYPE_INT;    flow_params[9].integer_value = Flow_InpDeltaSmooth;
+   flow_params[10].type = TYPE_INT;   flow_params[10].integer_value = Flow_InpNormalizationLen;
+   flow_params[11].type = TYPE_DOUBLE; flow_params[11].double_value = Flow_InpDeltaScaleFactor;
+   flow_params[12].type = TYPE_DOUBLE; flow_params[12].double_value = Flow_InpHistogramVisualGain;
+
+   h_flow = IndicatorCreate(_Symbol, _Period, IND_CUSTOM, 13, flow_params);
+
+   if(h_flow == INVALID_HANDLE) {
+       Print("Failed to load Flow! Path: ", path_flow);
+       Print("Error: ", GetLastError());
+   } else {
+       if(!ChartIndicatorAdd(0, 2, h_flow)) Print("Failed to add Flow to chart!");
    }
 
-   // Velocity & Acceleration (VA)
+   // ---------------------------------------------------------
+   // Velocity & Acceleration (VA) (Subwindow 3)
+   // ---------------------------------------------------------
    h_va = iCustom(_Symbol, _Period, path_va,
                   VA_InpPeriodV,
                   VA_InpPeriodA,
@@ -180,8 +237,7 @@ int OnInit()
        return INIT_FAILED;
    }
 
-   // Visualize VA (Subwindow 2)
-   if(!ChartIndicatorAdd(0, 2, h_va)) {
+   if(!ChartIndicatorAdd(0, 3, h_va)) {
        Print("Failed to add VA to chart! Error: ", GetLastError());
    }
 
@@ -199,7 +255,7 @@ int OnInit()
    if(g_log_handle != INVALID_HANDLE)
      {
       // Header
-      string header = "Time,TickMS,Phase,Bid,Ask,Spread,Velocity,Acceleration,Conv_Legacy,Conv_Smart,Ext_VA_Vel,Ext_VA_Acc,Floating_PL,Realized_PL,Action,DOM_Snapshot\r\n";
+      string header = "Time,TickMS,Phase,Bid,Ask,Spread,Velocity,Acceleration,Mom_Hist,Mom_Macd,Mom_Sig,Flow_MFI,Flow_DUp,Flow_DDown,Ext_VA_Vel,Ext_VA_Acc,Floating_PL,Realized_PL,Action,DOM_Snapshot\r\n";
       FileWriteString(g_log_handle, header);
       FileFlush(g_log_handle);
       Print("Mimic Research: Log file created: ", filename);
@@ -212,7 +268,7 @@ int OnInit()
    CreatePanel();
    UpdateUI();
 
-   Print("Mimic Trap Research EA v2.05 (Stable) Initialized.");
+   Print("Mimic Trap Research EA v2.06 (Stable) Initialized.");
    return(INIT_SUCCEEDED);
   }
 
@@ -225,12 +281,18 @@ void OnDeinit(const int reason)
    CleanupChart();
 
    // Remove Visualized Indicators
-   ChartIndicatorDelete(0, 1, "Hybrid Conviction Monitor");
-   ChartIndicatorDelete(0, 2, "VA");
+   // Note: Subwindow index is approximate, better to delete by shortname if possible,
+   // or just delete the windows we know we created.
+   ChartIndicatorDelete(0, 1, "Hybrid Momentum v2.82");
+   ChartIndicatorDelete(0, 2, "Hybrid Flow v1.124");
+   ChartIndicatorDelete(0, 3, "VA");
 
    if(g_book_subscribed) MarketBookRelease(_Symbol);
-   if(h_conviction != INVALID_HANDLE) IndicatorRelease(h_conviction);
+
+   if(h_momentum != INVALID_HANDLE) IndicatorRelease(h_momentum);
+   if(h_flow != INVALID_HANDLE) IndicatorRelease(h_flow);
    if(h_va != INVALID_HANDLE) IndicatorRelease(h_va);
+
    if(g_log_handle != INVALID_HANDLE) FileClose(g_log_handle);
   }
 
@@ -525,13 +587,30 @@ void WriteLog()
    if(g_log_handle == INVALID_HANDLE) return;
 
    // 1. Get Indicator Values
-   double conv_leg = 0;
-   double conv_smart = 0;
+   double mom_hist = 0, mom_macd = 0, mom_sig = 0;
+   double flow_mfi = 0, flow_dup = 0, flow_ddown = 0;
 
-   // Conviction (0=Legacy, 1=Smart)
+   // Momentum (0=Hist, 2=MACD, 3=Sig) - Note: Buf 1 is Color
    double buf[1];
-   if(CopyBuffer(h_conviction, 0, 0, 1, buf)>0) conv_leg = buf[0];
-   if(CopyBuffer(h_conviction, 1, 0, 1, buf)>0) conv_smart = buf[0];
+   if(CopyBuffer(h_momentum, 0, 0, 1, buf)>0) mom_hist = buf[0];
+   if(CopyBuffer(h_momentum, 2, 0, 1, buf)>0) mom_macd = buf[0];
+   if(CopyBuffer(h_momentum, 3, 0, 1, buf)>0) mom_sig = buf[0];
+
+   // Flow (0=MFI, 2=DUpStart, 3=DUpEnd...)
+   // To get meaningful "Height", we need End - Start.
+   // But Flow buffers are complex. Let's log MFI (0) and maybe Raw Delta?
+   // Actually, the user likely wants to see the visible bars.
+   // Let's log MFI (0) and the effective Delta End values for Up(3)/Down(5) relative to 50.
+   // Alternatively, check calc buffers: 6=RawDelta, 7=HybridMFI
+
+   if(CopyBuffer(h_flow, 0, 0, 1, buf)>0) flow_mfi = buf[0];
+
+   double up_end=50, down_end=50;
+   if(CopyBuffer(h_flow, 3, 0, 1, buf)>0) up_end = buf[0];
+   if(CopyBuffer(h_flow, 5, 0, 1, buf)>0) down_end = buf[0];
+
+   flow_dup = up_end - 50.0;
+   flow_ddown = down_end - 50.0;
 
    // VA (0=Vel, 1=Acc)
    double va_v=0, va_a=0;
@@ -548,12 +627,13 @@ void WriteLog()
    string t = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
    string ms = IntegerToString(GetTickCount()%1000);
 
-   // Format Updated for WVF Removed
-   string row = StringFormat("%s,%s,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s",
+   // Header: ... Mom_Hist,Mom_Macd,Mom_Sig,Flow_MFI,Flow_DUp,Flow_DDown ...
+   string row = StringFormat("%s,%s,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s",
        t, ms, g_current_phase,
        m_symbol.Bid(), m_symbol.Ask(), p.spread_avg,
        p.velocity, p.acceleration,
-       conv_leg, conv_smart,
+       mom_hist, mom_macd, mom_sig,
+       flow_mfi, flow_dup, flow_ddown,
        va_v, va_a,
        float_pl, g_last_realized_pl,
        InpComment
