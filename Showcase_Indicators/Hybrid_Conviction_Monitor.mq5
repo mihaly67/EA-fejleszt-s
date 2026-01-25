@@ -132,15 +132,15 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
 {
-   if(rates_total < InpNormPeriod) return 0;
+   if(rates_total < (int)InpNormPeriod) return 0;
 
    int start = (prev_calculated > 0) ? prev_calculated - 1 : 0;
 
    // 1. Calculate Base Signal (MACD)
    for(int i = start; i < rates_total; i++)
    {
-       CalculateStep(i, close[i], InpFastPeriod, InpDemaGain, FastDema, FastEma1);
-       CalculateStep(i, close[i], InpSlowPeriod, InpDemaGain, SlowDema, SlowEma1);
+       CalculateStep(i, close[i], (int)InpFastPeriod, InpDemaGain, FastDema, FastEma1);
+       CalculateStep(i, close[i], (int)InpSlowPeriod, InpDemaGain, SlowDema, SlowEma1);
        RawMacd[i] = FastDema[i] - SlowDema[i];
    }
 
@@ -151,10 +151,10 @@ int OnCalculate(const int rates_total,
 
    for(int i = start; i < rates_total; i++)
    {
-       if(i < InpNormPeriod) { LegacyBuffer[i] = 0; SmartBuffer[i] = 0; continue; }
+       if(i < (int)InpNormPeriod) { LegacyBuffer[i] = 0; SmartBuffer[i] = 0; continue; }
 
        double sum = 0, sum_sq = 0;
-       for(int k = 0; k < InpNormPeriod; k++)
+       for(int k = 0; k < (int)InpNormPeriod; k++)
        {
            double val = RawMacd[i-k];
            sum += val;
@@ -177,7 +177,7 @@ int OnCalculate(const int rates_total,
        // Simple SMA of velocity
        double smooth_vel = 0;
        int v_count = 0;
-       for(int v = 0; v < InpSmartSmooth; v++)
+       for(int v = 0; v < (int)InpSmartSmooth; v++)
        {
            smooth_vel += (RawMacd[i-v] - RawMacd[i-v-1]);
            v_count++;
