@@ -6,7 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent & User"
 #property link      "https://www.mql5.com"
-#property version   "2.04"
+#property version   "2.05"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -44,10 +44,6 @@ input int           InpSlippage          = 10;
 input ulong         InpMagicNumber       = 999002; // Updated Magic for Research
 input string        InpComment           = "MimicResearch";
 
-input group              "--- WVF Settings ---"
-input uint               WVF_InpPeriod      =  22;               // Period
-input ENUM_DRAWING_STYLE WVF_InpDrawingType =  STYLE_DRAW_LINE;  // Drawing style
-
 input group              "=== DEMA Settings ==="
 input uint               InpFastPeriod         = 5;
 input uint               InpSlowPeriod         = 13;
@@ -82,10 +78,9 @@ int               g_log_handle = INVALID_HANDLE;
 bool              g_book_subscribed = false;
 
 // Research Globals
-int               h_wvf = INVALID_HANDLE;
 int               h_conviction = INVALID_HANDLE;
 int               h_va = INVALID_HANDLE;
-double            buf_wvf[], buf_va_v[], buf_va_a[];
+double            buf_va_v[], buf_va_a[];
 double            buf_conv_legacy[], buf_conv_smart[];
 string            g_current_phase = "IDLE";
 int               g_post_event_counter = 0;
@@ -138,26 +133,8 @@ int OnInit()
 
    // --- INDICATOR HANDLES ---
    // Construct Paths
-   string path_wvf = InpIndPath + "WVF";
    string path_conv = InpIndPath + "Hybrid_Conviction_Monitor";
    string path_va = InpIndPath + "Hybrid_Velocity_Acceleration_VA";
-
-   // WVF (Showcase)
-   h_wvf = iCustom(_Symbol, _Period, path_wvf,
-                   WVF_InpPeriod,
-                   WVF_InpDrawingType // Passed as ENUM, strict typing
-                   );
-
-   if(h_wvf == INVALID_HANDLE) {
-       Print("Failed to load WVF! Path: ", path_wvf);
-       Print("Error: ", GetLastError());
-       return INIT_FAILED;
-   }
-
-   // Visualize WVF
-   if(!ChartIndicatorAdd(0, 1, h_wvf)) {
-       Print("Failed to add WVF to chart! Error: ", GetLastError());
-   }
 
    // ---------------------------------------------------------
    // Hybrid Conviction Monitor - via Clean IndicatorCreate
@@ -185,8 +162,8 @@ int OnInit()
        Print("Error: ", GetLastError());
    }
 
-   // Visualize Conviction (Subwindow 2)
-   if(!ChartIndicatorAdd(0, 2, h_conviction)) {
+   // Visualize Conviction (Subwindow 1)
+   if(!ChartIndicatorAdd(0, 1, h_conviction)) {
        Print("Failed to add Conviction to chart! Error: ", GetLastError());
    }
 
@@ -203,8 +180,8 @@ int OnInit()
        return INIT_FAILED;
    }
 
-   // Visualize VA (Subwindow 3)
-   if(!ChartIndicatorAdd(0, 3, h_va)) {
+   // Visualize VA (Subwindow 2)
+   if(!ChartIndicatorAdd(0, 2, h_va)) {
        Print("Failed to add VA to chart! Error: ", GetLastError());
    }
 
@@ -222,7 +199,7 @@ int OnInit()
    if(g_log_handle != INVALID_HANDLE)
      {
       // Header
-      string header = "Time,TickMS,Phase,Bid,Ask,Spread,Velocity,Acceleration,WVF_Val,Conv_Legacy,Conv_Smart,Ext_VA_Vel,Ext_VA_Acc,Floating_PL,Realized_PL,Action,DOM_Snapshot\r\n";
+      string header = "Time,TickMS,Phase,Bid,Ask,Spread,Velocity,Acceleration,Conv_Legacy,Conv_Smart,Ext_VA_Vel,Ext_VA_Acc,Floating_PL,Realized_PL,Action,DOM_Snapshot\r\n";
       FileWriteString(g_log_handle, header);
       FileFlush(g_log_handle);
       Print("Mimic Research: Log file created: ", filename);
@@ -235,7 +212,7 @@ int OnInit()
    CreatePanel();
    UpdateUI();
 
-   Print("Mimic Trap Research EA v2.04 (Stable) Initialized.");
+   Print("Mimic Trap Research EA v2.05 (Stable) Initialized.");
    return(INIT_SUCCEEDED);
   }
 
@@ -248,12 +225,10 @@ void OnDeinit(const int reason)
    CleanupChart();
 
    // Remove Visualized Indicators
-   ChartIndicatorDelete(0, 1, "WVF");
-   ChartIndicatorDelete(0, 2, "Hybrid Conviction Monitor");
-   ChartIndicatorDelete(0, 3, "VA");
+   ChartIndicatorDelete(0, 1, "Hybrid Conviction Monitor");
+   ChartIndicatorDelete(0, 2, "VA");
 
    if(g_book_subscribed) MarketBookRelease(_Symbol);
-   if(h_wvf != INVALID_HANDLE) IndicatorRelease(h_wvf);
    if(h_conviction != INVALID_HANDLE) IndicatorRelease(h_conviction);
    if(h_va != INVALID_HANDLE) IndicatorRelease(h_va);
    if(g_log_handle != INVALID_HANDLE) FileClose(g_log_handle);
@@ -550,15 +525,11 @@ void WriteLog()
    if(g_log_handle == INVALID_HANDLE) return;
 
    // 1. Get Indicator Values
-   double wvf_val = 0;
    double conv_leg = 0;
    double conv_smart = 0;
 
-   // WVF (0=Value)
-   double buf[1];
-   if(CopyBuffer(h_wvf, 0, 0, 1, buf)>0) wvf_val = buf[0];
-
    // Conviction (0=Legacy, 1=Smart)
+   double buf[1];
    if(CopyBuffer(h_conviction, 0, 0, 1, buf)>0) conv_leg = buf[0];
    if(CopyBuffer(h_conviction, 1, 0, 1, buf)>0) conv_smart = buf[0];
 
@@ -577,12 +548,11 @@ void WriteLog()
    string t = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
    string ms = IntegerToString(GetTickCount()%1000);
 
-   // Format Updated for WVF + Conviction
-   string row = StringFormat("%s,%s,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s",
+   // Format Updated for WVF Removed
+   string row = StringFormat("%s,%s,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s",
        t, ms, g_current_phase,
        m_symbol.Bid(), m_symbol.Ask(), p.spread_avg,
        p.velocity, p.acceleration,
-       wvf_val,
        conv_leg, conv_smart,
        va_v, va_a,
        float_pl, g_last_realized_pl,

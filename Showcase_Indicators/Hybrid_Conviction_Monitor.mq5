@@ -30,17 +30,17 @@
 // This is a hard technical constraint for iCustom/IndicatorCreate integration.
 
 // --- DEMA Settings ---
-input uint               InpFastPeriod         = 5;
-input uint               InpSlowPeriod         = 13;
-input double             InpDemaGain           = 1.0;    // EMA Mode
+input uint               InpFastPeriod         = 5;      // [DEMA] Fast Period
+input uint               InpSlowPeriod         = 13;     // [DEMA] Slow Period
+input double             InpDemaGain           = 1.0;    // [DEMA] EMA Mode
 
 // --- Normalization ---
-input uint               InpNormPeriod         = 500;
-input double             InpNormSensitivity    = 1.0;
+input uint               InpNormPeriod         = 500;    // [NORM] Normalization Period
+input double             InpNormSensitivity    = 1.0;    // [NORM] Sensitivity
 
 // --- Phase Advance ---
-input double             InpPhaseAdvance       = 2.0;    // High Aggression
-input uint               InpSmartSmooth        = 3;      // Velocity Smoothing for Smart Mode
+input double             InpPhaseAdvance       = 2.0;    // [PHASE] High Aggression
+input uint               InpSmartSmooth        = 3;      // [PHASE] Velocity Smoothing
 
 //--- Buffers
 double      LegacyBuffer[];
