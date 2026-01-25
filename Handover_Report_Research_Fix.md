@@ -1,31 +1,31 @@
-# Handover Report - 2026.01.24 (Final)
+# Handover Report - 2026.01.24 (Corrected Final)
 **Status:** Resolved / Stable
-**Architecture:** `IndicatorCreate` Implementation
+**Architecture:** `IndicatorCreate` Implementation (Clean)
 
-## 🔬 The "Void/Placeholder" Hypothesis
-The user asked if `void` or `NULL` could be used to "trick" `iCustom` into filling the gap caused by `input group`.
-*   **Result:** **Negative.** MQL5's `iCustom` function expects parameters to match the defined `input` variables. `input group` is not a variable type. Passing extra parameters (like `NULL` or strings) typically results in a "Wrong parameters count" error or type mismatch, rather than correcting the internal offset.
-*   **Conclusion:** There is no safe way to "hack" `iCustom` to respect input groups.
+## 🔬 "Dummy String" Hypothesis - REJECTED
+Attempts to "shift" the parameter list by inserting dummy strings into the `IndicatorCreate` call (to account for visual groups) were technically unsound.
+*   **Result:** Type mismatch errors or critical failures.
+*   **Reason:** `IndicatorCreate` requires a 1-to-1 mapping with actual `input` variables. Groups are not variables.
 
-## 🛠️ The Final Solution: `IndicatorCreate`
+## 🛠️ The Final Solution: Clean `IndicatorCreate`
 To satisfy both requirements:
 1.  **Readability:** `input group` is kept in `Hybrid_Conviction_Monitor.mq5` (visual separators are active).
-2.  **Stability:** The EA (`Mimic_Trap_Research_EA.mq5`) now uses `IndicatorCreate()` instead of `iCustom()`.
+2.  **Stability:** The EA (`Mimic_Trap_Research_EA.mq5`) uses `IndicatorCreate()` with a **strict** parameter array.
 
 ### How it works
-Instead of blindly passing values, we define an explicit array of parameters:
+We explicitly define only the **7 real inputs** in the `MqlParam` array. We completely ignore the visual groups in the parameter construction.
 ```cpp
-MqlParam params[8];
+MqlParam params[8]; // 1 Path + 7 Real Inputs
 params[0].string_value = "Path/To/Indicator";
-params[1].integer_value = InpFastPeriod; // Explicitly targeting the first integer input
-...
+params[1].integer_value = InpFastPeriod; // Direct map to 1st variable
+// ...
 ```
-This method is immune to the "Parameter Shift" bug because it maps values by type and structure, bypassing the ambiguous varargs parsing of `iCustom`.
+This forces MQL5 to bind values to variables by type and sequence, bypassing the ambiguity that caused the "Parameter Shift" when using `iCustom`.
 
 ## 📦 System State
-*   **EA:** `Mimic_Trap_Research_EA.mq5` (v2.01) - Updated to use `IndicatorCreate`.
-*   **Indicator:** `Hybrid_Conviction_Monitor.mq5` (v1.1) - Groups restored (`input group` active), warnings fixed.
-*   **Environment:** Clean (Test scripts deleted).
+*   **EA:** `Mimic_Trap_Research_EA.mq5` (v2.03) - Updated to use `IndicatorCreate` (Clean).
+*   **Indicator:** `Hybrid_Conviction_Monitor.mq5` (v1.1) - Groups active (`input group`), warnings fixed.
+*   **Environment:** Clean.
 
 ## ✅ Verification
-The system is now robust against parameter shifting while maintaining the user's preferred visual layout in the indicator settings.
+The system correctly maps EA inputs to the Indicator without shifting, while preserving the visual groups in the Indicator's settings panel.
