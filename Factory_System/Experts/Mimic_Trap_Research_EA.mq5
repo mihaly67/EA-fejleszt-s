@@ -34,65 +34,62 @@ enum ENUM_COLOR_LOGIC {
 };
 
 //--- Inputs
-input group "Strategy Settings"
-input int           InpTriggerTicks      = 2;      // Consecutive ticks to trigger
-input int           InpDecoyCount        = 3;      // Number of Decoy trades
-input int           InpTimeoutSec        = 60;     // Auto-reset trap after N seconds
-input int           InpPostEventTicks    = 30;     // Ticks to log after Trap Execution
-input string        InpIndPath           = "Jules\\"; // Indicator Path (relative to MQL5/Indicators)
+// [Strategy Settings]
+input int           InpTriggerTicks      = 2;         // [Strategy] Consecutive ticks to trigger
+input int           InpDecoyCount        = 3;         // [Strategy] Number of Decoy trades
+input int           InpTimeoutSec        = 60;        // [Strategy] Auto-reset trap after N seconds
+input int           InpPostEventTicks    = 30;        // [Strategy] Ticks to log after Trap Execution
+input string        InpIndPath           = "Jules\\"; // [Strategy] Indicator Path
 
-input group "Position Size"
-input double        InpDecoyLot          = 0.01;   // Decoy Lot (Fake Direction)
-input double        InpTrojanLot         = 0.1;    // Trojan Lot (Real Direction)
+// [Position Size]
+input double        InpDecoyLot          = 0.01;   // [Position] Decoy Lot (Fake Direction)
+input double        InpTrojanLot         = 0.1;    // [Position] Trojan Lot (Real Direction)
 
-input group "Risk Management"
-input int           InpSlippage          = 10;
-input ulong         InpMagicNumber       = 999002; // Updated Magic for Research
-input string        InpComment           = "MimicResearch";
+// [Risk Management]
+input int           InpSlippage          = 10;     // [Risk] Slippage
+input ulong         InpMagicNumber       = 999002; // [Risk] Magic Number
+input string        InpComment           = "MimicResearch"; // [Risk] Comment
 
-// --- MOMENTUM (New) ---
-input group              "=== Momentum (v2.82) ==="
-input ENUM_COLOR_LOGIC   Mom_InpColorLogic     = COLOR_SLOPE; // [VISUAL] Color Logic Mode
-input int                Mom_InpFastPeriod     = 3;           // [MOMENTUM] Fast Period
-input int                Mom_InpSlowPeriod     = 6;           // [MOMENTUM] Slow Period
-input int                Mom_InpSignalPeriod   = 13;          // [MOMENTUM] Signal Period
-input ENUM_APPLIED_PRICE Mom_InpAppliedPrice   = PRICE_CLOSE; // [MOMENTUM] Applied Price
-input double             Mom_InpKalmanGain     = 1.0;         // [MOMENTUM] Kalman Gain
-input double             Mom_InpPhaseAdvance   = 0.5;         // [MOMENTUM] Phase Advance
-input bool               Mom_InpEnableBoost    = true;        // [STOCH] Enable Stochastic Mix
-input double             Mom_InpStochMixWeight = 0.2;         // [STOCH] Mixing Weight
-input int                Mom_InpStochK         = 5;           // [STOCH] Stochastic K
-input int                Mom_InpStochD         = 3;           // [STOCH] Stochastic D
-input int                Mom_InpStochSlowing   = 3;           // [STOCH] Stochastic Slowing
-input int                Mom_InpNormPeriod     = 100;         // [NORM] Normalization Lookback
-input double             Mom_InpNormSensitivity= 1.0;         // [NORM] Sensitivity
+// [Momentum Settings]
+input ENUM_COLOR_LOGIC   Mom_InpColorLogic     = COLOR_SLOPE; // [Momentum] Color Logic Mode
+input int                Mom_InpFastPeriod     = 3;           // [Momentum] Fast Period
+input int                Mom_InpSlowPeriod     = 6;           // [Momentum] Slow Period
+input int                Mom_InpSignalPeriod   = 13;          // [Momentum] Signal Period
+input ENUM_APPLIED_PRICE Mom_InpAppliedPrice   = PRICE_CLOSE; // [Momentum] Applied Price
+input double             Mom_InpKalmanGain     = 1.0;         // [Momentum] Kalman Gain
+input double             Mom_InpPhaseAdvance   = 0.5;         // [Momentum] Phase Advance
+input bool               Mom_InpEnableBoost    = true;        // [Momentum] Enable Stochastic Mix
+input double             Mom_InpStochMixWeight = 0.2;         // [Momentum] Mixing Weight
+input int                Mom_InpStochK         = 5;           // [Momentum] Stochastic K
+input int                Mom_InpStochD         = 3;           // [Momentum] Stochastic D
+input int                Mom_InpStochSlowing   = 3;           // [Momentum] Stochastic Slowing
+input int                Mom_InpNormPeriod     = 100;         // [Momentum] Norm Lookback
+input double             Mom_InpNormSensitivity= 1.0;         // [Momentum] Sensitivity
 
-// --- FLOW (New) ---
-input group              "=== Flow (v1.124) ==="
-input bool               Flow_InpUseFixedScale       = false;   // [SCALE] Use Fixed Scale?
-input double             Flow_InpScaleMin            = -100.0;  // [SCALE] Fixed Min
-input double             Flow_InpScaleMax            = 200.0;   // [SCALE] Fixed Max
-input int                Flow_InpMFIPeriod           = 14;      // [MFI] Period
-input bool               Flow_InpShowVROC            = true;    // [VROC] Show VROC?
-input int                Flow_InpVROCPeriod          = 10;      // [VROC] Period
-input double             Flow_InpVROCThreshold       = 20.0;    // [VROC] Alert Threshold %
-input bool               Flow_InpUseApproxDelta      = true;    // [DELTA] Use Approx Delta
-input int                Flow_InpDeltaSmooth         = 3;       // [DELTA] Smoothing
-input int                Flow_InpNormalizationLen    = 100;     // [DELTA] Norm Length
-input double             Flow_InpDeltaScaleFactor    = 50.0;    // [DELTA] Curve Factor
-input double             Flow_InpHistogramVisualGain = 3.0;     // [DELTA] Visual Gain (Hist)
+// [Flow Settings]
+input bool               Flow_InpUseFixedScale       = false;   // [Flow] Use Fixed Scale?
+input double             Flow_InpScaleMin            = -100.0;  // [Flow] Fixed Min
+input double             Flow_InpScaleMax            = 200.0;   // [Flow] Fixed Max
+input int                Flow_InpMFIPeriod           = 14;      // [Flow] MFI Period
+input bool               Flow_InpShowVROC            = true;    // [Flow] Show VROC?
+input int                Flow_InpVROCPeriod          = 10;      // [Flow] VROC Period
+input double             Flow_InpVROCThreshold       = 20.0;    // [Flow] VROC Alert Threshold %
+input bool               Flow_InpUseApproxDelta      = true;    // [Flow] Use Approx Delta
+input int                Flow_InpDeltaSmooth         = 3;       // [Flow] Delta Smoothing
+input int                Flow_InpNormalizationLen    = 100;     // [Flow] Delta Norm Length
+input double             Flow_InpDeltaScaleFactor    = 50.0;    // [Flow] Delta Curve Factor
+input double             Flow_InpHistogramVisualGain = 3.0;     // [Flow] Hist Visual Gain
 
-// --- VA (Legacy) ---
-input group              "--- VELOCITY & ACCEL (VA) Settings ---"
-input uint               VA_InpPeriodV         = 14;          // Velocity period
-input uint               VA_InpPeriodA         = 10;          // Acceleration period
-input ENUM_APPLIED_PRICE VA_InpAppliedPrice    = PRICE_CLOSE; // Applied price
+// [VA Settings]
+input uint               VA_InpPeriodV         = 14;          // [VA] Velocity period
+input uint               VA_InpPeriodA         = 10;          // [VA] Acceleration period
+input ENUM_APPLIED_PRICE VA_InpAppliedPrice    = PRICE_CLOSE; // [VA] Applied price
 
-input group "Panel UI"
-input int           InpX                 = 10;
-input int           InpY                 = 80;
-input color         InpBgColor           = clrDarkSlateGray;
-input color         InpTxtColor          = clrWhite;
+// [Panel UI]
+input int           InpX                 = 10;               // [UI] X Coordinate
+input int           InpY                 = 80;               // [UI] Y Coordinate
+input color         InpBgColor           = clrDarkSlateGray; // [UI] BG Color
+input color         InpTxtColor          = clrWhite;         // [UI] Text Color
 
 //--- Globals
 bool              g_trap_active = false;
@@ -165,7 +162,7 @@ int OnInit()
    // ---------------------------------------------------------
    // Hybrid Momentum v2.82 (Subwindow 1)
    // ---------------------------------------------------------
-   MqlParam mom_params[14];
+   MqlParam mom_params[15]; // Fixed: Size is 15 (0-14)
    mom_params[0].type = TYPE_STRING; mom_params[0].string_value = path_mom;
 
    mom_params[1].type = TYPE_INT;    mom_params[1].integer_value = Mom_InpColorLogic;
@@ -182,10 +179,8 @@ int OnInit()
    mom_params[12].type = TYPE_INT;   mom_params[12].integer_value = Mom_InpStochSlowing;
    mom_params[13].type = TYPE_INT;   mom_params[13].integer_value = Mom_InpNormPeriod;
    mom_params[14].type = TYPE_DOUBLE;mom_params[14].double_value = Mom_InpNormSensitivity;
-   // Note: If parameter count mismatches, IndicatorCreate will fail.
-   // Correct Count: 1 String + 13 Inputs = 14 Total.
 
-   h_momentum = IndicatorCreate(_Symbol, _Period, IND_CUSTOM, 15, mom_params); // Size is 15 (0-14)
+   h_momentum = IndicatorCreate(_Symbol, _Period, IND_CUSTOM, 15, mom_params); // Size is 15
 
    if(h_momentum == INVALID_HANDLE) {
        Print("Failed to load Momentum! Path: ", path_mom);
@@ -197,7 +192,7 @@ int OnInit()
    // ---------------------------------------------------------
    // Hybrid Flow v1.124 (Subwindow 2)
    // ---------------------------------------------------------
-   MqlParam flow_params[13];
+   MqlParam flow_params[13]; // Size is 13 (0-12)
    flow_params[0].type = TYPE_STRING; flow_params[0].string_value = path_flow;
 
    flow_params[1].type = TYPE_BOOL;   flow_params[1].integer_value = Flow_InpUseFixedScale;
