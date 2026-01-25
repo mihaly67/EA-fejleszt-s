@@ -1,31 +1,17 @@
-# Handover Report - Research Freeze (Parameter Fix)
+# Kutatási Jelentés & Átadás (2026.01.24) - Kiegészítés
 
-## 📅 Date: 2026.01.24
-**Session Status:** Closed due to persistent "Parameter Hallucination" in the EA inputs.
+## 🔍 Kiegészítő Kutatási Eredmények (`rag_theory`)
+A felhasználó kérésére mélyreható keresést végeztünk a `THEORY` adatbázisban a következő témákban:
+1.  **Indikátor Hívások (`iCustom`):** A dokumentáció (`mql5book.txt`, `mql5.txt`) megerősíti, hogy az `iCustom` automatikusan próbálja megfeleltetni a paramétereket, ha az indikátor neve sztring konstansként van megadva.
+2.  **Paraméter Átadás:** A "Parameter Shift" (elcsúszás) jelenségére, amelyet az `input group` okoz, **nincs explicit magyarázat** a hivatalos dokumentációban. Ez arra utal, hogy ez egy nem dokumentált viselkedés vagy platform-specifikus anomália ("undocumented behavior"), nem pedig a nyelv szándékolt tulajdonsága.
+3.  **Következtetés:** Az empirikus (tapasztalati) megoldásunk – az `input group` sorok kikommentelése – műszakilag a legbiztosabb eljárás, mivel megszünteti a bizonytalansági tényezőt (a csoportnevek "láthatatlan" paraméterként való értelmezését).
 
-## 📂 Data Freeze (Source of Truth)
-To prevent further errors, the relevant files have been isolated in:
-**`Factory_System/Research_Freeze_20260124/`**
+## 🛠️ Jelenlegi Állapot (Stabil)
+*   **EA:** `Mimic_Trap_Research_EA.mq5` (v2.00)
+    *   Visszaállítva a `Hybrid_Conviction_Monitor`, `WVF` és `VA` használatára.
+*   **Indikátor:** `Hybrid_Conviction_Monitor.mq5`
+    *   **Javítva:** Az `input group` sorok ki vannak kommentelve.
+    *   **Javítva:** Típuskonverziós (`int` cast) figyelmeztetések kezelve.
 
-### Contents:
-1.  `HybridMomentumIndicator_v2.81.mq5` (The Standard)
-2.  `HybridFlowIndicator_v1.123.mq5`
-3.  `Hybrid_Velocity_Acceleration_VA.mq5`
-4.  `Mimic_Trap_Research_EA.mq5` (The Buggy EA)
-
-## 🛠 Task for Next Session
-**FIX THE EA INPUTS.**
-
-The current EA code contains incorrect default values for the indicators (Hallucinations).
-*   *Example Error:* Stoch K is set to `100` (Hallucination) instead of `5` (Reality).
-*   *Example Error:* Momentum Period is `13` instead of `3`.
-
-**Instructions:**
-1.  Open `Factory_System/Research_Freeze_20260124/HybridMomentumIndicator_v2.81.mq5`.
-2.  Copy the `input` values **exactly**.
-3.  Open `Factory_System/Experts/Mimic_Trap_Research_EA.mq5`.
-4.  Overwrite the EA's input defaults with the copied values.
-5.  Do the same for `VA`.
-6.  Uncomment `HybridFlow` ONLY after Momentum is verified perfect.
-
-**Goal:** Visual consistency on the chart.
+## 📝 Teendők / Ajánlás
+Mivel a `THEORY` nem ad "tisztább" módszert az `input group` kezelésére `iCustom` hívásnál, a jelenlegi "Ungroup" megoldás a végleges javításnak tekinthető ebben a környezetben.
