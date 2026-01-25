@@ -364,6 +364,7 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
          g_current_phase = "IDLE";
          CloseAll();
          UpdateUI();
+         ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
         }
       ChartRedraw();
      }
