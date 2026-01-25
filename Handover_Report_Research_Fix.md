@@ -1,31 +1,35 @@
-# Handover Report - 2026.01.24 (Corrected Final)
-**Status:** Resolved / Stable
-**Architecture:** `IndicatorCreate` Implementation (Clean)
+# Handover Report - 2026.01.24 (Final & Next Steps)
+**Status:** Stable / Functional
+**Current Fix:** `Ungrouped` Parameters (Groups removed for stability)
 
-## 🔬 "Dummy String" Hypothesis - REJECTED
-Attempts to "shift" the parameter list by inserting dummy strings into the `IndicatorCreate` call (to account for visual groups) were technically unsound.
-*   **Result:** Type mismatch errors or critical failures.
-*   **Reason:** `IndicatorCreate` requires a 1-to-1 mapping with actual `input` variables. Groups are not variables.
+## 🛑 Summary of the "Parameter Shift" Issue
+*   **Problem:** Using `input group` in MQL5 indicators causes input parameter indexes to shift when called programmatically (`iCustom` or `IndicatorCreate`), leading to data corruption or type errors in the EA.
+*   **Verified Fact:** This behavior necessitates removing `input group` to guarantee EA stability.
 
-## 🛠️ The Final Solution: Clean `IndicatorCreate`
-To satisfy both requirements:
-1.  **Readability:** `input group` is kept in `Hybrid_Conviction_Monitor.mq5` (visual separators are active).
-2.  **Stability:** The EA (`Mimic_Trap_Research_EA.mq5`) uses `IndicatorCreate()` with a **strict** parameter array.
+## 💡 NEXT SESSION: The "Naming Convention" Solution
+The user specified a robust strategy to restore "readability" without using the broken `input group` feature.
 
-### How it works
-We explicitly define only the **7 real inputs** in the `MqlParam` array. We completely ignore the visual groups in the parameter construction.
+### 🎯 Strategy: Group Context in Parameters
+We will rename/comment the inputs so they appear grouped in the UI.
+
+**Plan A (Comment-based - Cleaner):**
+MQL5 uses trailing comments as UI labels.
 ```cpp
-MqlParam params[8]; // 1 Path + 7 Real Inputs
-params[0].string_value = "Path/To/Indicator";
-params[1].integer_value = InpFastPeriod; // Direct map to 1st variable
-// ...
+input uint InpFastPeriod = 5; // [DEMA] Fast Period
 ```
-This forces MQL5 to bind values to variables by type and sequence, bypassing the ambiguity that caused the "Parameter Shift" when using `iCustom`.
+*If this appears correctly in the panel, it is the preferred method.*
 
-## 📦 System State
-*   **EA:** `Mimic_Trap_Research_EA.mq5` (v2.03) - Updated to use `IndicatorCreate` (Clean).
-*   **Indicator:** `Hybrid_Conviction_Monitor.mq5` (v1.1) - Groups active (`input group`), warnings fixed.
-*   **Environment:** Clean.
+**Plan B (Variable Name - Fallback):**
+If comments are not sufficient, we rename the variables themselves.
+```cpp
+input uint InpFastPeriod_DEMA = 5;
+```
 
-## ✅ Verification
-The system correctly maps EA inputs to the Indicator without shifting, while preserving the visual groups in the Indicator's settings panel.
+### 📋 Action Items for Next Developer
+1.  **Refactor Indicator:** Apply Plan A to `Hybrid_Conviction_Monitor.mq5`.
+2.  **Sync EA:** Update `Mimic_Trap_Research_EA.mq5` to match any variable name changes (if Plan B is used).
+3.  **Verify:** Ensure the EA panel shows "meaningful" labels to the user.
+
+## 📦 System State (v2.04)
+*   **EA:** `Mimic_Trap_Research_EA.mq5` (v2.04) - Using `IndicatorCreate` with 7 strict parameters.
+*   **Indicator:** `Hybrid_Conviction_Monitor.mq5` (v1.2) - Ungrouped.
