@@ -162,7 +162,7 @@ int OnInit()
    // --- INDICATOR HANDLES ---
    // Construct Paths
    string path_mom = InpIndPath + "HybridMomentumIndicator_v2.82";
-   string path_flow = InpIndPath + "HybridFlowIndicator_v1.124";
+   string path_flow = InpIndPath + "HybridFlowIndicator_v1.125";
    string path_va = InpIndPath + "Hybrid_Velocity_Acceleration_VA";
 
    // ---------------------------------------------------------
