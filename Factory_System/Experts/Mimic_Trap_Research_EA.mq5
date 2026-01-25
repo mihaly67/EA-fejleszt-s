@@ -6,7 +6,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent & User"
 #property link      "https://www.mql5.com"
-#property version   "2.06"
+#property version   "2.07"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -127,6 +127,7 @@ void CreatePanel();
 void UpdateUI();
 void DestroyPanel();
 void CleanupChart();
+void RemoveIndicators(); // New robust cleanup function
 void DrawDealVisuals(ulong deal_ticket);
 void ArmTrap(ENUM_ORDER_TYPE dir);
 void ExecuteTrap();
@@ -143,6 +144,11 @@ double GetFloatingPL();
 //+------------------------------------------------------------------+
 int OnInit()
   {
+   // --- CLEANUP FIRST to prevent duplication ---
+   RemoveIndicators();
+   ChartSetInteger(0, CHART_SHOW_TRADE_HISTORY, false); // No ghost objects
+   CleanupChart(); // Deletes objects
+
    m_trade.SetExpertMagicNumber(InpMagicNumber);
    m_trade.SetMarginMode();
    m_trade.SetDeviationInPoints(InpSlippage);
@@ -256,14 +262,10 @@ int OnInit()
       Print("Mimic Research: Log file created: ", filename);
      }
 
-   // --- CLEANUP & HYGIENE ---
-   ChartSetInteger(0, CHART_SHOW_TRADE_HISTORY, false); // No ghost objects
-   CleanupChart();
-
    CreatePanel();
    UpdateUI();
 
-   Print("Mimic Trap Research EA v2.06 (Stable) Initialized.");
+   Print("Mimic Trap Research EA v2.07 (Stable) Initialized.");
    return(INIT_SUCCEEDED);
   }
 
@@ -274,13 +276,7 @@ void OnDeinit(const int reason)
   {
    DestroyPanel();
    CleanupChart();
-
-   // Remove Visualized Indicators
-   // Note: Subwindow index is approximate, better to delete by shortname if possible,
-   // or just delete the windows we know we created.
-   ChartIndicatorDelete(0, 1, "Hybrid Momentum v2.82");
-   ChartIndicatorDelete(0, 2, "Hybrid Flow v1.124");
-   ChartIndicatorDelete(0, 3, "VA");
+   RemoveIndicators(); // Use new robust cleanup
 
    if(g_book_subscribed) MarketBookRelease(_Symbol);
 
@@ -290,6 +286,35 @@ void OnDeinit(const int reason)
 
    if(g_log_handle != INVALID_HANDLE) FileClose(g_log_handle);
   }
+
+//+------------------------------------------------------------------+
+//| Robust Indicator Cleanup                                         |
+//+------------------------------------------------------------------+
+void RemoveIndicators()
+{
+    // Iterate through all windows
+    int windows = (int)ChartGetInteger(0, CHART_WINDOWS_TOTAL);
+    for (int w = windows - 1; w >= 0; w--) // Reverse order
+    {
+        // Iterate through all indicators in window
+        int total = ChartIndicatorsTotal(0, w);
+        for (int i = total - 1; i >= 0; i--) // Reverse order
+        {
+            string name = ChartIndicatorName(0, w, i);
+
+            // Check for our specific indicators (Partial match for robust detection)
+            // Note: VA(14,10) etc have parameters in short name
+            if (StringFind(name, "Hybrid Momentum") >= 0 ||
+                StringFind(name, "Hybrid Flow") >= 0 ||
+                StringFind(name, "VA(") >= 0 || // Matches VA(14,10)
+                StringFind(name, "WVF") >= 0)   // Clean old WVF too
+            {
+                ChartIndicatorDelete(0, w, name);
+                Print("Mimic: Removed Indicator: ", name);
+            }
+        }
+    }
+}
 
 void CleanupChart()
   {
