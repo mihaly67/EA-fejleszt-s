@@ -302,15 +302,22 @@ void RemoveIndicators()
         {
             string name = ChartIndicatorName(0, w, i);
 
+            // Normalize for case-insensitive check
+            string name_lower = name;
+            StringToLower(name_lower);
+
             // Check for our specific indicators (Partial match for robust detection)
-            // Note: VA(14,10) etc have parameters in short name
-            if (StringFind(name, "Hybrid Momentum") >= 0 ||
-                StringFind(name, "Hybrid Flow") >= 0 ||
-                StringFind(name, "VA(") >= 0 || // Matches VA(14,10)
-                StringFind(name, "WVF") >= 0)   // Clean old WVF too
+            // Broader matching to ensure cleanup on parameter change
+            if (StringFind(name_lower, "hybrid momentum") >= 0 ||
+                StringFind(name_lower, "hybrid flow") >= 0 ||
+                StringFind(name_lower, "va(") >= 0 ||
+                StringFind(name_lower, "wvf") >= 0 ||
+                StringFind(name_lower, "hybrid_") >= 0) // Catch file-based names
             {
-                ChartIndicatorDelete(0, w, name);
-                Print("Mimic: Removed Indicator: ", name);
+                if(ChartIndicatorDelete(0, w, name))
+                    Print("Mimic: Removed Indicator: ", name, " (Window ", w, ")");
+                else
+                    Print("Mimic: Failed to remove: ", name, " Error: ", GetLastError());
             }
         }
     }
@@ -347,26 +354,35 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
         {
          // Visual Click Feedback
          ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
+         ChartRedraw(); // Force update to show pressed state
+         Sleep(100);    // 100ms delay for visual effect
          PlaySound("tick.wav");
          ArmTrap(ORDER_TYPE_BUY);
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
+         ChartRedraw();
         }
       else if(sparam == ObjBtnTrapSell)
         {
          ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
+         ChartRedraw(); // Force update
+         Sleep(100);    // 100ms delay
          PlaySound("tick.wav");
          ArmTrap(ORDER_TYPE_SELL);
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
+         ChartRedraw();
         }
       else if(sparam == ObjBtnCloseAll)
         {
+         ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
+         ChartRedraw(); // Force update
+         Sleep(100);    // 100ms delay
          g_trap_active = false; // Disarm
          g_current_phase = "IDLE";
          CloseAll();
          UpdateUI();
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
+         ChartRedraw();
         }
-      ChartRedraw();
      }
   }
 
