@@ -1,0 +1,37 @@
+Parsing: Mimic_Research_EURUSD_20260126_211435.csv
+Loaded 3315 ticks for EURUSD.
+
+==========================================
+DEEP ANALYSIS REPORT: EURUSD
+==========================================
+Total Traps Detected: 2
+Baseline Spread (Session Avg): 6.4 pts
+
+--- TRAP #1 (21:14:44) ---
+   Duration: 19.9s
+   Outcome:  0.00
+   Risk Profile (Pain Ratio: 999.00):
+     Max Drawdown: -1.34
+     Max Profit:   -0.69
+   Broker Behavior:
+     Spread: 6.4 (Diff: 0.0)
+     Velocity: 1.62800
+     DOM Imbalance: 0.40
+
+--- TRAP #2 (21:16:42) ---
+   Duration: 30.2s
+   Outcome:  0.00
+   Risk Profile (Pain Ratio: 999.00):
+     Max Drawdown: -3.22
+     Max Profit:   -3.03
+   Broker Behavior:
+     Spread: 6.5 (Diff: 0.1)
+     Velocity: 0.87002
+     DOM Imbalance: 0.40
+
+==========================================
+SESSION SUMMARY
+==========================================
+Total P/L: 0.00
+Win Rate:  0/2 (0.0%)
+Data Source: EURUSD
