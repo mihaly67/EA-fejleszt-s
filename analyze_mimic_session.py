@@ -4,214 +4,163 @@ import os
 import glob
 from datetime import datetime, timedelta
 
-# --- UNIFIED SCHEMA ---
-# 0:Time, 1:MS, 2:Action, 3:Ticket, 4:TradePrice, 5:TradeVol, 6:Profit, 7:Comment
-# 8:BestBid, 9:BestAsk, 10:Velocity, 11:Acceleration, 12:Spread
-# 13-17: BidV1-5, 18-22: AskV1-5
+# --- NEW SCHEMA (Research EA v2.07+) ---
+# Time, TickMS, Phase, Bid, Ask, Spread,
+# Velocity, Acceleration,
+# Mom_Hist, Mom_Macd, Mom_Sig,
+# Flow_MFI, Flow_DUp, Flow_DDown,
+# Ext_VA_Vel, Ext_VA_Acc,
+# Floating_PL, Realized_PL, Action,
+# BestBid, BestAsk, BidV1..5, AskV1..5
 
-def parse_row(row):
-    try:
-        data = {}
-        if len(row) < 23: return None
+class MimicSessionAnalyzer:
+    def __init__(self):
+        self.data = []
+        self.trap_events = []
 
-        # Basic Parsing
-        data['Time'] = row[0]
-        data['MS'] = int(row[1])
-        data['Action'] = row[2]
+    def parse_file(self, filepath):
+        print(f"Parsing: {filepath}")
+        self.data = []
+        with open(filepath, 'r') as f:
+            reader = csv.reader(f)
+            header = next(reader, None) # Skip Header
 
-        try: data['Ticket'] = int(row[3])
-        except: data['Ticket'] = 0
+            for row in reader:
+                if not row or len(row) < 19: continue
 
-        try: data['TradePrice'] = float(row[4])
-        except: data['TradePrice'] = 0.0
+                try:
+                    record = {}
+                    # 1. Time & Phase
+                    dt_str = row[0]
+                    ms = int(row[1])
+                    try:
+                        dt = datetime.strptime(dt_str, "%Y.%m.%d %H:%M:%S")
+                        record['Timestamp'] = dt + timedelta(milliseconds=ms)
+                    except:
+                        continue # Invalid time
 
-        try: data['TradeVol'] = float(row[5])
-        except: data['TradeVol'] = 0.0
+                    record['Phase'] = row[2]
 
-        try: data['Profit'] = float(row[6])
-        except: data['Profit'] = 0.0
+                    # 2. Market Data
+                    record['Bid'] = float(row[3])
+                    record['Ask'] = float(row[4])
+                    record['Spread'] = float(row[5])
 
-        try: data['BestBid'] = float(row[8])
-        except: data['BestBid'] = 0.0
+                    # 3. Physics
+                    record['Phy_Vel'] = float(row[6])
+                    record['Phy_Acc'] = float(row[7])
 
-        try: data['BestAsk'] = float(row[9])
-        except: data['BestAsk'] = 0.0
+                    # 4. Indicators
+                    record['Mom_Hist'] = float(row[8])
+                    record['Flow_MFI'] = float(row[11])
+                    record['VA_Vel'] = float(row[14])
 
-        try: data['Velocity'] = float(row[10])
-        except: data['Velocity'] = 0.0
+                    # 5. PL & Action
+                    record['Floating_PL'] = float(row[16])
+                    record['Realized_PL'] = float(row[17])
+                    record['Action'] = row[18] # Comment field
 
-        try: data['Acceleration'] = float(row[11])
-        except: data['Acceleration'] = 0.0
+                    # 6. DOM (If available - checks len)
+                    if len(row) >= 30:
+                        # BestBid(19), BestAsk(20), BidV1-5(21-25), AskV1-5(26-30)
+                        record['BidVol'] = sum([int(row[i]) for i in range(21, 26)])
+                        record['AskVol'] = sum([int(row[i]) for i in range(26, 31)])
+                        if record['AskVol'] > 0:
+                            record['Imbalance'] = record['BidVol'] / record['AskVol']
+                        else:
+                            record['Imbalance'] = 0
+                    else:
+                        record['BidVol'] = 0
+                        record['AskVol'] = 0
+                        record['Imbalance'] = 0
 
-        try: data['Spread'] = float(row[12])
-        except: data['Spread'] = 0.0
+                    self.data.append(record)
 
-        # DOM Depths
-        try:
-            data['BidDepth'] = sum([int(row[i]) for i in range(13, 18)])
-            data['AskDepth'] = sum([int(row[i]) for i in range(18, 23)])
-            data['BidL1'] = int(row[13])
-            data['AskL1'] = int(row[18])
-        except:
-            data['BidDepth'] = 0
-            data['AskDepth'] = 0
-            data['BidL1'] = 0
-            data['AskL1'] = 0
+                except Exception as e:
+                    # print(f"Row error: {e}")
+                    continue
 
-        # Timestamp Construction
-        dt_str = f"{data['Time']}"
-        dt = None
-        for fmt in ["%Y.%m.%d %H:%M:%S", "%Y-%m-%d %H:%M:%S"]:
-            try:
-                dt = datetime.strptime(dt_str, fmt)
-                break
-            except: pass
+        print(f"Loaded {len(self.data)} ticks.")
+        self.detect_traps()
 
-        if dt is None: return None
+    def detect_traps(self):
+        # Logic: Find transition from ARMED to TRAP_EXEC
+        self.trap_events = []
 
-        data['Timestamp'] = dt + timedelta(milliseconds=data['MS'])
-        return data
-    except Exception as e:
-        return None
+        # We look for the moment Phase becomes "TRAP_EXEC"
+        # Since we scan linearly, we can just look for the first occurrence in a sequence
 
-def analyze_mimic_session(mimic_file, dom_file):
-    print(f"\n==========================================")
-    print(f"ANALYZING SESSION: {os.path.basename(mimic_file)}")
-    print(f"==========================================")
+        in_trap = False
+        trap_start_idx = -1
 
-    # 1. Load Data
-    mimic_data = []
-    dom_data = []
+        for i, r in enumerate(self.data):
+            phase = r['Phase']
 
-    # Load Mimic (Trades)
-    with open(mimic_file, 'r') as f:
-        reader = csv.reader(f)
-        next(reader, None)
-        for row in reader:
-            if not row: continue
-            d = parse_row(row)
-            if d: mimic_data.append(d)
+            if phase == "TRAP_EXEC" and not in_trap:
+                in_trap = True
+                trap_start_idx = i
+            elif phase == "IDLE" and in_trap:
+                # Trap sequence ended
+                in_trap = False
+                trap_end_idx = i
+                self.trap_events.append((trap_start_idx, trap_end_idx))
 
-    # Load DOM (Background)
-    with open(dom_file, 'r') as f:
-        reader = csv.reader(f)
-        next(reader, None)
-        for row in reader:
-            if not row: continue
-            d = parse_row(row)
-            if d: dom_data.append(d)
+    def analyze(self):
+        print(f"\n--- ANALYSIS RESULT ({len(self.trap_events)} Traps) ---")
 
-    print(f"Loaded {len(mimic_data)} Mimic Events and {len(dom_data)} DOM snapshots.")
+        for i, (start_idx, end_idx) in enumerate(self.trap_events):
+            start_row = self.data[start_idx]
+            end_row = self.data[end_idx]
 
-    # 2. Identify Trap Sequences
-    # A Trap Sequence is defined by DECOY_OPEN events followed by a TROJAN_OPEN event.
-    # Group them by time proximity (e.g., within 1 second).
+            # Context (Data just before execution)
+            context_idx = max(0, start_idx - 1)
+            ctx = self.data[context_idx]
 
-    events = sorted(mimic_data, key=lambda x: x['Timestamp'])
+            # Outcome
+            # Calculate Realized PL gained during this window
+            pl_start = start_row['Realized_PL']
+            pl_end = end_row['Realized_PL']
+            pl_gain = pl_end - pl_start
 
-    sequences = []
-    current_seq = []
+            # Duration
+            duration = (end_row['Timestamp'] - start_row['Timestamp']).total_seconds()
 
-    for evt in events:
-        if "OPEN" in evt['Action']:
-            if not current_seq:
-                current_seq.append(evt)
-            else:
-                # Check time diff
-                dt = (evt['Timestamp'] - current_seq[-1]['Timestamp']).total_seconds()
-                if dt < 2.0: # 2 second window for a sequence
-                    current_seq.append(evt)
-                else:
-                    sequences.append(current_seq)
-                    current_seq = [evt]
-    if current_seq: sequences.append(current_seq)
+            print(f"\nTrap #{i+1} at {start_row['Timestamp'].strftime('%H:%M:%S')}")
+            print(f"  Duration: {duration:.1f}s")
+            print(f"  Context:")
+            print(f"    Spread: {ctx['Spread']:.1f}")
+            print(f"    Mom Hist: {ctx['Mom_Hist']:.2f}")
+            print(f"    MFI: {ctx['Flow_MFI']:.1f}")
+            print(f"    DOM Imbalance: {ctx['Imbalance']:.2f} (BidV:{ctx['BidVol']} / AskV:{ctx['AskVol']})")
+            print(f"  Outcome:")
+            print(f"    Realized P/L: {pl_gain:.2f}")
 
-    print(f"Identified {len(sequences)} Trap Execution Sequences.")
-
-    # 3. Analyze Each Sequence
-    for i, seq in enumerate(sequences):
-        start_time = seq[0]['Timestamp']
-        end_time = seq[-1]['Timestamp']
-
-        decoys = [s for s in seq if "DECOY" in s['Action']]
-        trojans = [s for s in seq if "TROJAN" in s['Action']]
-
-        if not trojans: continue # Skip partials
-
-        trojan = trojans[0]
-        direction = "BUY" if trojan['Action'] == "TROJAN_OPEN" and trojan['TradePrice'] > 0 else "SELL"
-        # Actually Action is just TROJAN_OPEN, need to infer direction from Price vs Bid/Ask or Decoy logic
-        # Decoys are opposite.
-
-        # Let's verify direction from comment or price match (heuristic)
-        # Better: Look at Decoys. If Decoy is BUY, Trojan is SELL.
-        trojan_dir = "UNKNOWN"
-        if decoys:
-             # Heuristic: Decoys are fake direction.
-             # But 'Action' is just DECOY_OPEN.
-             # We rely on price.
-             pass
-
-        print(f"\n--- Sequence #{i+1} ({start_time.strftime('%H:%M:%S')}) ---")
-        print(f"   Decoys: {len(decoys)} | Trojan Vol: {trojan['TradeVol']:.2f}")
-
-        # Find Context in DOM Data (closest to start_time)
-        # Naive search
-        context = None
-        min_dt = 999.0
-        for row in dom_data:
-            diff = abs((row['Timestamp'] - start_time).total_seconds())
-            if diff < min_dt:
-                min_dt = diff
-                context = row
-            if diff > 5.0 and row['Timestamp'] > start_time: break # Optimization
-
-        if context:
-            print(f"   Context (dt={min_dt:.3f}s):")
-            print(f"     Spread: {context['Spread']:.1f}")
-            print(f"     Velocity: {context['Velocity']:.5f}")
-            print(f"     Accel: {context['Acceleration']:.5f}")
-            print(f"     DOM Imbalance (Bid/Ask Depth): {context['BidDepth']} / {context['AskDepth']} (Ratio: {context['BidDepth']/(context['AskDepth']+1):.2f})")
-            print(f"     L1 Liquidity: {context['BidL1']} / {context['AskL1']}")
-        else:
-            print("   Context: No DOM data found near event.")
-
-        # Find Outcome (Close)
-        # Search for CLOSE_ALL events after this sequence
-        # This is tricky if multiple traps are active, but Mimic usually runs one at a time.
-        pass
+            # Check for drawdown during trap (Floating PL min)
+            min_float = 0.0
+            for k in range(start_idx, end_idx):
+                f = self.data[k]['Floating_PL']
+                if f < min_float: min_float = f
+            print(f"    Max Drawdown: {min_float:.2f}")
 
 def main():
-    input_dir = "analysis_input"
+    input_dir = "." # Current directory for testing or 'analysis_input'
+    # Look for Mimic_Research_*.csv
+    files = glob.glob("Mimic_Research_*.csv")
 
-    # Pair files
-    mimic_files = glob.glob(os.path.join(input_dir, "Mimic_*.csv"))
-    dom_files = glob.glob(os.path.join(input_dir, "Hybrid_DOM_*.csv"))
+    if not files:
+        # Fallback to analysis_input
+        files = glob.glob(os.path.join("analysis_input", "Mimic_Research_*.csv"))
 
-    if not mimic_files:
-        print("No Mimic logs found.")
+    if not files:
+        print("No Mimic Research logs found.")
         return
 
-    # Assume pairs by date (simplification for this specific task)
-    for m_file in mimic_files:
-        # Find matching DOM file (by date mostly)
-        # Filename format: Mimic_Trap_Log_GBPUSD_20260123_224130.csv
-        base = os.path.basename(m_file)
-        parts = base.split('_')
-        if len(parts) >= 6:
-            date_part = parts[4] # 20260123
+    # Process latest file
+    latest_file = max(files, key=os.path.getctime)
 
-            # Find dom file with same date
-            d_file = None
-            for d in dom_files:
-                if date_part in d:
-                    d_file = d
-                    break
-
-            if d_file:
-                analyze_mimic_session(m_file, d_file)
-            else:
-                print(f"Warning: No matching DOM log for {base}")
+    analyzer = MimicSessionAnalyzer()
+    analyzer.parse_file(latest_file)
+    analyzer.analyze()
 
 if __name__ == "__main__":
     main()
