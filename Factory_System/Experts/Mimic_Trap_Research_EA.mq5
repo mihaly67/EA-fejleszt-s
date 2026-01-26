@@ -256,7 +256,7 @@ int OnInit()
    if(g_log_handle != INVALID_HANDLE)
      {
       // Header
-      string header = "Time,TickMS,Phase,Bid,Ask,Spread,Velocity,Acceleration,Mom_Hist,Mom_Macd,Mom_Sig,Flow_MFI,Flow_DUp,Flow_DDown,Ext_VA_Vel,Ext_VA_Acc,Floating_PL,Realized_PL,Action,DOM_Snapshot\r\n";
+      string header = "Time,TickMS,Phase,Bid,Ask,Spread,Velocity,Acceleration,Mom_Hist,Mom_Macd,Mom_Sig,Flow_MFI,Flow_DUp,Flow_DDown,Ext_VA_Vel,Ext_VA_Acc,Floating_PL,Realized_PL,Action,PosCount,ActiveSL,ActiveTP,DOM_Snapshot\r\n";
       FileWriteString(g_log_handle, header);
       FileFlush(g_log_handle);
       Print("Mimic Research: Log file created: ", filename);
@@ -657,15 +657,31 @@ void WriteLog()
    // 2. Physics
    PhysicsState p = m_physics.GetState();
 
-   // 3. P/L
-   double float_pl = GetFloatingPL();
+   // 3. P/L & Positions
+   double float_pl = 0.0;
+   int pos_count = 0;
+   double active_sl = 0.0;
+   double active_tp = 0.0;
+
+   for(int i=PositionsTotal()-1; i>=0; i--) {
+       if(m_position.SelectByIndex(i) && m_position.Symbol()==_Symbol && m_position.Magic()==InpMagicNumber) {
+           float_pl += m_position.Profit() + m_position.Swap() + m_position.Commission();
+           pos_count++;
+           // Capture SL/TP of the first position (or Trojan if distinguishable)
+           // Logic: If SL is 0, keep looking? Or just take the last one?
+           // Taking the Max SL/TP might be safer if mixed? Or just the first found.
+           // Let's take the first non-zero found, or the last one.
+           if(m_position.StopLoss() > 0) active_sl = m_position.StopLoss();
+           if(m_position.TakeProfit() > 0) active_tp = m_position.TakeProfit();
+       }
+   }
 
    // 4. Time
    string t = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
    string ms = IntegerToString(GetTickCount()%1000);
 
-   // Header: ... Mom_Hist,Mom_Macd,Mom_Sig,Flow_MFI,Flow_DUp,Flow_DDown ...
-   string row = StringFormat("%s,%s,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s",
+   // Header: ... Mom_Hist,Mom_Macd,Mom_Sig,Flow_MFI,Flow_DUp,Flow_DDown, VA_Vel, VA_Acc, FPL, RPL, Action, Count, SL, TP
+   string row = StringFormat("%s,%s,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%d,%.5f,%.5f",
        t, ms, g_current_phase,
        m_symbol.Bid(), m_symbol.Ask(), p.spread_avg,
        p.velocity, p.acceleration,
@@ -673,7 +689,8 @@ void WriteLog()
        flow_mfi, flow_dup, flow_ddown,
        va_v, va_a,
        float_pl, g_last_realized_pl,
-       InpComment
+       InpComment,
+       pos_count, active_sl, active_tp
    );
 
    string dom_part = GetDOMSnapshot();

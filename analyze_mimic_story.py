@@ -5,7 +5,7 @@ import glob
 import statistics
 from datetime import datetime, timedelta
 
-# --- MIMIC STORYTELLER ANALYZER v2 (Colombo Edition) ---
+# --- MIMIC STORYTELLER ANALYZER v2.1 (SL/TP Aware) ---
 # Purpose: Accurate narrative reconstruction focusing on Price Action vs Velocity Context.
 
 class MimicStoryTeller:
@@ -21,10 +21,20 @@ class MimicStoryTeller:
             reader = csv.reader(f)
             header = next(reader, None)
 
+            # Detect Schema Version
+            # Old: ... Action(18), DOM(19)...
+            # New: ... Action(18), PosCount(19), SL(20), TP(21), DOM(22)...
+
+            # Check length of first data row
+            rows = list(reader)
+            if not rows: return
+
+            is_new_schema = (len(rows[0]) >= 25) # Just a safe check, New has ~33 cols
+
             vels = []
             spreads = []
 
-            for row in reader:
+            for row in rows:
                 if not row or len(row) < 19: continue
                 try:
                     dt_str = row[0]
@@ -37,6 +47,14 @@ class MimicStoryTeller:
                     float_pl = float(row[16])
                     realized_pl_tick = float(row[17])
 
+                    sl = 0.0
+                    tp = 0.0
+                    if is_new_schema:
+                        try:
+                            sl = float(row[20])
+                            tp = float(row[21])
+                        except: pass
+
                     r = {
                         'dt': dt,
                         'spread': spread,
@@ -46,7 +64,9 @@ class MimicStoryTeller:
                         'realized': realized_pl_tick,
                         'bid': float(row[3]),
                         'ask': float(row[4]),
-                        'mid': (float(row[3]) + float(row[4]))/2.0
+                        'mid': (float(row[3]) + float(row[4]))/2.0,
+                        'sl': sl,
+                        'tp': tp
                     }
                     self.data.append(r)
 
@@ -71,8 +91,9 @@ class MimicStoryTeller:
         trade_start_time = None
         max_drawdown = 0.0
 
-        # Debounce for reporting market states
         last_market_report_time = -999.0
+        last_sl = 0.0
+        last_tp = 0.0
 
         for i, r in enumerate(self.data):
             curr_time = (r['dt'] - start_time).total_seconds()
@@ -83,21 +104,30 @@ class MimicStoryTeller:
                 print(f"[{curr_time:.1f}s] ACTION: Profit Taking! Amount: {r['realized']:.2f}. Total Banked: {cumulative_profit:.2f}")
                 self.analyze_reaction(i, "Profit Take")
 
-            # 2. EVENT: MARKET STATE ANALYSIS (Every 10s or upon Spike)
+            # 2. EVENT: SL/TP CHANGE
+            if in_position:
+                if r['sl'] != last_sl and r['sl'] > 0:
+                     print(f"[{curr_time:.1f}s] ACTION: Stop Loss Modified to {r['sl']:.5f}")
+                if r['tp'] != last_tp and r['tp'] > 0:
+                     print(f"[{curr_time:.1f}s] ACTION: Take Profit Modified to {r['tp']:.5f}")
+                last_sl = r['sl']
+                last_tp = r['tp']
+
+            # 3. EVENT: MARKET STATE ANALYSIS
             is_spike = r['vel'] > (self.baseline_vel * 3.0)
             time_since_last = curr_time - last_market_report_time
 
-            if is_spike or (time_since_last > 30.0): # Report periodically or on spikes
+            if is_spike or (time_since_last > 30.0):
                 last_market_report_time = curr_time
                 self.analyze_market_context(i, curr_time, is_spike)
 
-            # 3. TRACKING: DRAWDOWN
+            # 4. TRACKING: DRAWDOWN
             if r['float_pl'] < max_drawdown:
                 max_drawdown = r['float_pl']
                 if max_drawdown < -1.0 and (int(max_drawdown*10) % 5 == 0):
                      print(f"[{curr_time:.1f}s] STATUS: New Depth Reached. Floating P/L: {r['float_pl']:.2f}")
 
-            # 4. STATE CHANGE: ENTER/EXIT
+            # 5. STATE CHANGE: ENTER/EXIT
             if not in_position and abs(r['float_pl']) > 0.01:
                 in_position = True
                 trade_start_time = curr_time
@@ -108,6 +138,8 @@ class MimicStoryTeller:
                 duration = curr_time - trade_start_time
                 print(f"[{curr_time:.1f}s] ACTION: All Positions Closed. Duration: {duration:.1f}s.")
                 max_drawdown = 0.0
+                last_sl = 0.0 # Reset tracking
+                last_tp = 0.0
 
             last_float = r['float_pl']
 
@@ -115,7 +147,6 @@ class MimicStoryTeller:
         print(f"Total Banked Profit: {cumulative_profit:.2f}")
 
     def analyze_market_context(self, index, time, is_spike):
-        # Look ahead 10-20 ticks for drift
         if index + 20 >= len(self.data): return
 
         future_data = self.data[index:index+20]
@@ -126,11 +157,9 @@ class MimicStoryTeller:
         drift = (end_price - start_price) * 100000
         abs_drift = abs(drift)
 
-        # Classification Logic
         state = "Normal"
 
         if avg_vel > self.baseline_vel * 2.5:
-            # High Velocity
             if abs_drift > 5.0:
                 state = "Aggressive Breakout / Move"
             else:
@@ -143,14 +172,12 @@ class MimicStoryTeller:
             else:
                 state = "Ranging / Vánszorgás"
 
-        # Only print if it's interesting or requested
         prefix = "MARKET"
         if is_spike: prefix = "SPIKE"
 
         print(f"[{time:.1f}s] {prefix}: {state}. (Vel: {avg_vel:.2f}, Drift: {drift:.1f} pts)")
 
     def analyze_reaction(self, index, event_type):
-        # Immediate reaction to user action
         if index + 10 >= len(self.data): return
         future = self.data[index:index+10]
         start_p = self.data[index]['mid']
