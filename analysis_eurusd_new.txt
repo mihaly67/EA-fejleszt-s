@@ -1,0 +1,14 @@
+Reading Log: Mimic_Research_EURUSD_Merged.csv
+Schema Detection: LastEvent field FOUND
+Loaded 7913 rows. Baseline Vel: 1.1928
+
+=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===
+Traceback (most recent call last):
+  File "/app/analyze_mimic_story_v4.py", line 293, in <module>
+    story.analyze_narrative()
+  File "/app/analyze_mimic_story_v4.py", line 241, in analyze_narrative
+    self.calculate_tick_zigzag(deviation_points=30)
+  File "/app/analyze_mimic_story_v4.py", line 133, in calculate_tick_zigzag
+    self.micro_swings.append({'type': 'HIGH', 'price': current_swing['high'], 'idx': current_swing['high_idx']})
+                                                                                     ~~~~~~~~~~~~~^^^^^^^^^^^^
+KeyError: 'high_idx'

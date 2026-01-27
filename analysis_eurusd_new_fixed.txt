@@ -1,0 +1,55 @@
+Reading Log: Mimic_Research_EURUSD_Merged.csv
+Schema Detection: LastEvent field FOUND
+Loaded 7913 rows. Baseline Vel: 1.1928
+
+=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===
+ZigZag Config: Price 0.50, Point 1e-05, Dev 0.00030000000000000003
+Generated 3 Micro-Pivot points.
+
+=== 🕵️ FORENSIC MODULE: DOM GHOST HUNT ===
+
+👻 Ghost Events Detected: 232
+[16.1s] 👻 GHOST ASK: 1500000 -> 250000 @ 1.19261 (Price: 0.50000)
+[28.7s] 👻 GHOST ASK: 1500000 -> 250000 @ 1.19261 (Price: 0.50000)
+[35.7s] 👻 GHOST ASK: 1500000 -> 250000 @ 1.19261 (Price: 0.50000)
+[113.9s] 👻 GHOST ASK: 1120000 -> 120000 @ 1.19308 (Price: 0.75000)
+[128.9s] 👻 GHOST ASK: 5250000 -> 250000 @ 1.19305 (Price: 0.75000)
+🛡️  Spoof Walls Detected: 2
+🔥 High Pressure Spoofs (>90): 0
+
+--- TRADE TIMELINE ---
+[50.8s] 💀 LOSS EXIT: -37.56 EUR
+       Context: 0.75000 inside [0.00000 - 0.75000]? NO
+       DOM: Bid 102250000 / Ask 22500000
+    🔎 VELOCITY: 1.1927 -> 1.1928 (Ratio: 1.00)
+[50.4s] 💀 LOSS EXIT: -36.47 EUR
+       Context: 0.75000 inside [0.00000 - 0.75000]? NO
+       DOM: Bid 22700000 / Ask 11250000
+    🔎 VELOCITY: 1.1927 -> 1.1928 (Ratio: 1.00)
+[50.9s] 💀 LOSS EXIT: -35.46 EUR
+       Context: 0.75000 inside [0.00000 - 0.75000]? NO
+       DOM: Bid 22500000 / Ask 31250000
+    🔎 VELOCITY: 1.1927 -> 1.1928 (Ratio: 1.00)
+[53.3s] 💀 LOSS EXIT: -23.72 EUR
+       Context: 0.75000 inside [0.00000 - 0.75000]? NO
+       DOM: Bid 117200000 / Ask 23500000
+    🔎 VELOCITY: 1.1928 -> 1.1928 (Ratio: 1.00)
+[213.2s] 💰 PROFIT EXIT: 2.26 EUR
+       Context: 0.25000 inside [0.00000 - 0.75000]? NO
+       DOM: Bid 20750000 / Ask 121950000
+    🔎 VELOCITY: 1.1934 -> 1.1934 (Ratio: 1.00)
+[3823.3s] 💰 PROFIT EXIT: 2.26 EUR
+       Context: 0.00000 inside [0.00000 - 0.75000]? NO
+       DOM: Bid 31250000 / Ask 112450000
+    🔎 VELOCITY: 1.1918 -> 1.1918 (Ratio: 1.00)
+[4457.3s] 💰 PROFIT EXIT: 147.13 EUR
+       Context: 0.00000 inside [0.00000 - 0.50000]? NO
+       DOM: Bid 112450000 / Ask 31250000
+    🔎 VELOCITY: 1.1922 -> 1.1923 (Ratio: 1.00)
+[4496.7s] 💰 PROFIT EXIT: 163.90 EUR
+       Context: 0.00000 inside [0.00000 - 0.50000]? NO
+       DOM: Bid 11250000 / Ask 22760000
+    🔎 VELOCITY: 1.1925 -> 1.1926 (Ratio: 1.00)
+
+--- SUMMARY ---
+Total Decoy Profit (Est): 4.52 EUR
