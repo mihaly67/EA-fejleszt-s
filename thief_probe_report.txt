@@ -1,0 +1,25 @@
+Reading: Mimic_Research_EURUSD_Merged.csv
+
+--- HUNTING FOR 'THIEF KEY' SIGNATURES (FOREX) ---
+[14:50:31] ⚡ SPIKE DETECTED: Vel 3.3 (3x Avg) | Pressure 100.1024 | 'Túlszúrás'
+[14:50:50] 🪤 BAIT DETECTED: Vel 2.0 | Disp 0.00000 | 'Nyüzsgés'
+[14:51:27] 🪤 BAIT DETECTED: Vel 2.3 | Disp 0.00001 | 'Nyüzsgés'
+[14:51:27] 🪤 BAIT DETECTED: Vel 2.2 | Disp 0.00001 | 'Nyüzsgés'
+[14:51:28] 🪤 BAIT DETECTED: Vel 2.1 | Disp 0.00002 | 'Nyüzsgés'
+[14:51:50] 🪤 BAIT DETECTED: Vel 2.3 | Disp 0.00005 | 'Nyüzsgés'
+[14:53:15] ⚡ SPIKE DETECTED: Vel 5.7 (3x Avg) | Pressure 100.15192 | 'Túlszúrás'
+[14:53:26] ⚡ SPIKE DETECTED: Vel 8.8 (3x Avg) | Pressure 100.14856 | 'Túlszúrás'
+[14:53:26] ⚡ SPIKE DETECTED: Vel 9.6 (3x Avg) | Pressure 100.15024 | 'Túlszúrás'
+[14:53:26] ⚡ SPIKE DETECTED: Vel 10.4 (3x Avg) | Pressure 100.15108 | 'Túlszúrás'
+[14:57:29] 🤏 PROBE DETECTED: 10th Crossing. Vel 1.69 | 'Letapogatás'
+[15:12:25] 🤏 PROBE DETECTED: 20th Crossing. Vel 1.51 | 'Letapogatás'
+[15:13:35] 🤏 PROBE DETECTED: 30th Crossing. Vel 1.57 | 'Letapogatás'
+[15:26:35] 🤏 PROBE DETECTED: 40th Crossing. Vel 2.86 | 'Letapogatás'
+[15:36:13] 🤏 PROBE DETECTED: 50th Crossing. Vel 1.97 | 'Letapogatás'
+[15:46:09] 🤏 PROBE DETECTED: 60th Crossing. Vel 1.09 | 'Letapogatás'
+[15:53:33] Trade Closed. Total Probes: 67
+[16:04:46] Trade Closed. Total Probes: 4
+
+SUMMARY:
+Bait Patterns: 644
+Spike Patterns: 87

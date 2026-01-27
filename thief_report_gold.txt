@@ -1,0 +1,35 @@
+Reading: Mimic_Research_GOLD_20260127_162146.csv
+
+--- HUNTING FOR 'THIEF KEY' SIGNATURES (GOLD) ---
+[16:22:48] 🪤 BAIT DETECTED: Vel 124329.8 | Disp 0.12000 | 'Nyüzsgés'
+[16:22:49] 🪤 BAIT DETECTED: Vel 99806.7 | Disp 0.08000 | 'Nyüzsgés'
+[16:22:49] 🪤 BAIT DETECTED: Vel 80102.5 | Disp 0.08000 | 'Nyüzsgés'
+[16:22:49] 🪤 BAIT DETECTED: Vel 64253.5 | Disp 0.12000 | 'Nyüzsgés'
+[16:22:49] 🪤 BAIT DETECTED: Vel 51489.2 | Disp 0.18500 | 'Nyüzsgés'
+[16:23:53] 🪤 BAIT DETECTED: Vel 22.0 | Disp 0.16000 | 'Nyüzsgés'
+[16:24:56] ⚡ SPIKE DETECTED: Vel 83.2 (3x Avg) | Pressure 99.76535 | 'Túlszúrás'
+[16:25:20] 🪤 BAIT DETECTED: Vel 20.7 | Disp 0.31000 | 'Nyüzsgés'
+[16:25:38] ⚡ SPIKE DETECTED: Vel 34.9 (3x Avg) | Pressure 100.0002 | 'Túlszúrás'
+[16:25:39] ⚡ SPIKE DETECTED: Vel 47.8 (3x Avg) | Pressure 100.00869 | 'Túlszúrás'
+[16:25:39] ⚡ SPIKE DETECTED: Vel 65.9 (3x Avg) | Pressure 100.01363 | 'Túlszúrás'
+[16:25:39] ⚡ SPIKE DETECTED: Vel 73.5 (3x Avg) | Pressure 100.01659 | 'Túlszúrás'
+[16:28:08] 🪤 BAIT DETECTED: Vel 42.7 | Disp 0.40000 | 'Nyüzsgés'
+[16:28:40] 🪤 BAIT DETECTED: Vel 35.3 | Disp 0.21000 | 'Nyüzsgés'
+[16:29:44] 🪤 BAIT DETECTED: Vel 26.0 | Disp 0.42000 | 'Nyüzsgés'
+[16:30:32] 🪤 BAIT DETECTED: Vel 28.7 | Disp 0.18000 | 'Nyüzsgés'
+[16:31:43] 🪤 BAIT DETECTED: Vel 26.5 | Disp 0.17000 | 'Nyüzsgés'
+[16:32:29] 🪤 BAIT DETECTED: Vel 72.3 | Disp 0.32000 | 'Nyüzsgés'
+[16:33:43] 🪤 BAIT DETECTED: Vel 36.1 | Disp 0.37000 | 'Nyüzsgés'
+[16:34:15] 🪤 BAIT DETECTED: Vel 24.9 | Disp 0.33500 | 'Nyüzsgés'
+[16:35:07] 🪤 BAIT DETECTED: Vel 46.8 | Disp 0.17000 | 'Nyüzsgés'
+[16:36:09] 🪤 BAIT DETECTED: Vel 24.6 | Disp 0.19000 | 'Nyüzsgés'
+[16:36:40] 🪤 BAIT DETECTED: Vel 25.0 | Disp 0.18000 | 'Nyüzsgés'
+[16:37:56] 🪤 BAIT DETECTED: Vel 32.4 | Disp 0.01000 | 'Nyüzsgés'
+[16:38:30] 🪤 BAIT DETECTED: Vel 20.1 | Disp 0.27000 | 'Nyüzsgés'
+[16:39:07] 🪤 BAIT DETECTED: Vel 24.9 | Disp 0.18000 | 'Nyüzsgés'
+[16:39:54] 🪤 BAIT DETECTED: Vel 26.2 | Disp 0.17000 | 'Nyüzsgés'
+[16:41:16] 🪤 BAIT DETECTED: Vel 31.8 | Disp 0.33000 | 'Nyüzsgés'
+
+SUMMARY:
+Bait Patterns (Churning): 931
+Spike Patterns (Over-reach): 54
