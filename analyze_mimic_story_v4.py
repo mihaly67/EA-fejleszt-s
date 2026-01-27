@@ -19,10 +19,22 @@ class MimicStoryTellerV4:
                 header = next(reader, None)
                 if not header: return
 
+                # Dynamic Column Mapping
+                try:
+                    idx_bid = header.index("Bid")
+                    idx_ask = header.index("Ask")
+                    idx_vel = header.index("Velocity")
+                except ValueError:
+                    # Fallback for Legacy if headers are missing or different
+                    idx_bid = 3
+                    idx_ask = 4
+                    idx_vel = 6
+
+                print(f"Column Mapping: Bid={idx_bid}, Ask={idx_ask}, Vel={idx_vel}")
+
                 vels = []
 
                 has_last_event = "LastEvent" in header
-                print(f"Schema Detection: LastEvent field {'FOUND' if has_last_event else 'MISSING (Legacy Mode)'}")
 
                 for row in reader:
                     if not row: continue
@@ -43,10 +55,10 @@ class MimicStoryTellerV4:
                         ms = int(float(ms_str)) if ms_str.replace('.','',1).isdigit() else 0
                         dt = datetime.strptime(dt_str, "%Y.%m.%d %H:%M:%S") + timedelta(milliseconds=ms)
 
-                        bid = float(row[3])
-                        ask = float(row[4])
+                        bid = float(row[idx_bid])
+                        ask = float(row[idx_ask])
                         mid = (bid + ask) / 2.0
-                        vel = abs(float(row[6]))
+                        vel = abs(float(row[idx_vel]))
 
                         realized_tick = float(row[action_idx-1])
                         float_pl = float(row[action_idx-2])
@@ -71,11 +83,21 @@ class MimicStoryTellerV4:
                              except ValueError: pass
 
                         # 4. Pressure Proxy (Ext_VA_Vel)
-                        # In the sample, index 14 is Ext_VA_Vel which seems to hold the 99.xx values
                         pressure = 0.0
-                        if len(row) > 14:
-                            try: pressure = float(row[14])
+                        # We need to find Ext_VA_Vel.
+                        # In v2.09 it might be around index 16?
+                        # Let's search header if possible
+                        idx_press = -1
+                        if "Ext_VA_Vel" in header: idx_press = header.index("Ext_VA_Vel")
+                        elif "Micro_Press" in header: idx_press = header.index("Micro_Press")
+
+                        if idx_press != -1 and idx_press < len(row):
+                            try: pressure = float(row[idx_press])
                             except: pass
+                        elif len(row) > 14: # Fallback
+                             # In Legacy, index 14 is Ext_VA_Vel
+                             try: pressure = float(row[14])
+                             except: pass
 
                         r = {
                             'dt': dt,
@@ -106,11 +128,17 @@ class MimicStoryTellerV4:
             print(f"File Error: {e}")
 
     def calculate_tick_zigzag(self, deviation_points=30):
-        point = 0.00001
-        dev = deviation_points * point
         if not self.data: return
         start_price = self.data[0]['mid']
-        current_swing = {'high': start_price, 'low': start_price, 'dir': 0, 'start_idx': 0}
+
+        # Auto-Scale Point Size
+        if start_price > 500: point = 0.01 # Gold / Indices
+        else: point = 0.00001 # Forex
+
+        dev = deviation_points * point
+        print(f"ZigZag Config: Price {start_price:.2f}, Point {point}, Dev {dev}")
+
+        current_swing = {'high': start_price, 'low': start_price, 'dir': 0, 'start_idx': 0, 'high_idx': 0, 'low_idx': 0}
 
         for i, r in enumerate(self.data):
             price = r['mid']
@@ -118,28 +146,35 @@ class MimicStoryTellerV4:
                 if price > start_price + dev:
                     current_swing['dir'] = 1
                     current_swing['high'] = price
+                    current_swing['high_idx'] = i
                     current_swing['low_idx'] = 0
                 elif price < start_price - dev:
                     current_swing['dir'] = -1
                     current_swing['low'] = price
+                    current_swing['low_idx'] = i
                     current_swing['high_idx'] = 0
                 continue
 
-            if current_swing['dir'] == 1:
+            if current_swing['dir'] == 1: # Up Swing
                 if price > current_swing['high']:
                     current_swing['high'] = price
                     current_swing['high_idx'] = i
                 elif price < current_swing['high'] - dev:
+                    # Confirmed High
                     self.micro_swings.append({'type': 'HIGH', 'price': current_swing['high'], 'idx': current_swing['high_idx']})
+                    # Start Down Swing
                     current_swing['dir'] = -1
                     current_swing['low'] = price
                     current_swing['low_idx'] = i
-            elif current_swing['dir'] == -1:
+
+            elif current_swing['dir'] == -1: # Down Swing
                 if price < current_swing['low']:
                     current_swing['low'] = price
                     current_swing['low_idx'] = i
                 elif price > current_swing['low'] + dev:
+                    # Confirmed Low
                     self.micro_swings.append({'type': 'LOW', 'price': current_swing['low'], 'idx': current_swing['low_idx']})
+                    # Start Up Swing
                     current_swing['dir'] = 1
                     current_swing['high'] = price
                     current_swing['high_idx'] = i
@@ -174,22 +209,18 @@ class MimicStoryTellerV4:
             if not curr['dom'] or not prev['dom']: continue
 
             # 1. GHOST WALL DETECTION (Disappearing Liquidity)
-            # Check BID side ghosting
             prev_bid_vol = prev['dom']['bid_vols'][0]
             curr_bid_vol = curr['dom']['bid_vols'][0]
 
             if prev_bid_vol > LARGE_VOL and curr_bid_vol < (prev_bid_vol * 0.2):
-                # Only if price did NOT crash down to consume it
                 if curr['mid'] >= prev['dom']['best_bid']:
                      msg = f"[{curr['time_sec']:.1f}s] 👻 GHOST BID: {prev_bid_vol} -> {curr_bid_vol} @ {prev['dom']['best_bid']:.5f} (Price: {curr['mid']:.5f})"
                      ghost_events.append(msg)
 
-            # Check ASK side ghosting
             prev_ask_vol = prev['dom']['ask_vols'][0]
             curr_ask_vol = curr['dom']['ask_vols'][0]
 
             if prev_ask_vol > LARGE_VOL and curr_ask_vol < (prev_ask_vol * 0.2):
-                # Only if price did NOT spike up to consume it
                 if curr['mid'] <= prev['dom']['best_ask']:
                      msg = f"[{curr['time_sec']:.1f}s] 👻 GHOST ASK: {prev_ask_vol} -> {curr_ask_vol} @ {prev['dom']['best_ask']:.5f} (Price: {curr['mid']:.5f})"
                      ghost_events.append(msg)
@@ -215,15 +246,13 @@ class MimicStoryTellerV4:
                     ratio = total_bid / total_ask
                     type_str = "Bullish Wall"
 
-            if ratio > 3.0: # Significant Imbalance
+            if ratio > 3.0:
                  spoof_ratios.append((curr['time_sec'], ratio, type_str, curr['pressure']))
 
         print(f"👻 Ghost Events Detected: {len(ghost_events)}")
-        # Print first 5 ghosts
         for g in ghost_events[:5]: print(g)
 
         print(f"🛡️  Spoof Walls Detected: {len(spoof_ratios)}")
-        # Filter high pressure spoofs
         high_pressure_spoofs = [x for x in spoof_ratios if x[3] > 90.0]
         print(f"🔥 High Pressure Spoofs (>90): {len(high_pressure_spoofs)}")
 
@@ -239,6 +268,8 @@ class MimicStoryTellerV4:
         if not self.data: return
 
         self.calculate_tick_zigzag(deviation_points=30)
+        print(f"Generated {len(self.micro_swings)} Micro-Pivot points.")
+
         self.check_dom_spoofing()
 
         last_pos_count = 0

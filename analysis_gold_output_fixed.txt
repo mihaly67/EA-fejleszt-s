@@ -1,0 +1,26 @@
+Reading Log: Mimic_Research_GOLD_20260127_162146.csv
+Schema Detection: LastEvent field FOUND
+Loaded 5322 rows. Baseline Vel: 5067.6791
+
+=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===
+ZigZag Config: Price 0.50, Point 1e-05, Dev 0.00030000000000000003
+Generated 0 Micro-Pivot points.
+
+=== 🕵️ FORENSIC MODULE: DOM GHOST HUNT ===
+
+👻 Ghost Events Detected: 0
+🛡️  Spoof Walls Detected: 0
+🔥 High Pressure Spoofs (>90): 0
+
+--- TRADE TIMELINE ---
+[122.4s] 💰 PROFIT EXIT: 92.20 EUR
+       Context: 0.00000 inside [0.00000 - 0.00000]? NO
+       DOM: Bid 10300 / Ask 10300
+    🔎 VELOCITY: 5058.6064 -> 5058.1315 (Ratio: 1.00)
+[136.3s] 💰 PROFIT EXIT: 147.51 EUR
+       Context: 0.00000 inside [0.00000 - 0.00000]? NO
+       DOM: Bid 10300 / Ask 10300
+    🔎 VELOCITY: 5060.8282 -> 5061.1725 (Ratio: 1.00)
+
+--- SUMMARY ---
+Total Decoy Profit (Est): 0.00 EUR
