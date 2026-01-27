@@ -1,0 +1,29 @@
+Reading: Mimic_Research_EURUSD_Merged.csv
+
+--- HUNTING FOR 'THIEF KEY' SIGNATURES (FOREX) ---
+[14:50:31] ⚡ SPIKE DETECTED: Vel 3.3 (3x Avg) | Pressure 100.1024 | 'Túlszúrás'
+[14:50:50] 🪤 BAIT DETECTED: Vel 2.0 | Disp 0.00000 | 'Nyüzsgés'
+[14:51:27] 🪤 BAIT DETECTED: Vel 2.3 | Disp 0.00001 | 'Nyüzsgés'
+[14:51:27] 🪤 BAIT DETECTED: Vel 2.2 | Disp 0.00001 | 'Nyüzsgés'
+[14:51:28] 🪤 BAIT DETECTED: Vel 2.1 | Disp 0.00002 | 'Nyüzsgés'
+[14:51:50] 🪤 BAIT DETECTED: Vel 2.3 | Disp 0.00005 | 'Nyüzsgés'
+[14:53:15] ⚡ SPIKE DETECTED: Vel 5.7 (3x Avg) | Pressure 100.15192 | 'Túlszúrás'
+[14:53:26] ⚡ SPIKE DETECTED: Vel 8.8 (3x Avg) | Pressure 100.14856 | 'Túlszúrás'
+[14:53:26] ⚡ SPIKE DETECTED: Vel 9.6 (3x Avg) | Pressure 100.15024 | 'Túlszúrás'
+[14:53:26] ⚡ SPIKE DETECTED: Vel 10.4 (3x Avg) | Pressure 100.15108 | 'Túlszúrás'
+[14:56:28] 🪤 BAIT DETECTED: Vel 2.2 | Disp 0.00003 | 'Nyüzsgés'
+[15:01:32] 🪤 BAIT DETECTED: Vel 6.3 | Disp 0.00001 | 'Nyüzsgés'
+[15:03:57] 🪤 BAIT DETECTED: Vel 4.5 | Disp 0.00003 | 'Nyüzsgés'
+[15:07:41] 🪤 BAIT DETECTED: Vel 2.2 | Disp 0.00001 | 'Nyüzsgés'
+[15:20:00] 🪤 BAIT DETECTED: Vel 2.5 | Disp 0.00000 | 'Nyüzsgés'
+[15:31:08] 🪤 BAIT DETECTED: Vel 3.1 | Disp 0.00002 | 'Nyüzsgés'
+[15:42:24] 🪤 BAIT DETECTED: Vel 3.0 | Disp 0.00003 | 'Nyüzsgés'
+[15:46:48] 🪤 BAIT DETECTED: Vel 6.5 | Disp 0.00004 | 'Nyüzsgés'
+[15:47:33] 🪤 BAIT DETECTED: Vel 2.5 | Disp 0.00001 | 'Nyüzsgés'
+[15:51:21] 🪤 BAIT DETECTED: Vel 2.6 | Disp 0.00002 | 'Nyüzsgés'
+[15:56:20] 🪤 BAIT DETECTED: Vel 3.0 | Disp 0.00002 | 'Nyüzsgés'
+[16:11:52] 🪤 BAIT DETECTED: Vel 2.2 | Disp 0.00001 | 'Nyüzsgés'
+
+SUMMARY:
+Bait Patterns (Churning): 644
+Spike Patterns (Over-reach): 87
