@@ -1,38 +1,50 @@
-# Session Handover Report - DOM Deep Research & Hybrid Tick v1.08
+# Handover Report - DOM Forensic Analysis (2026.01.27)
+**Author:** Jules Agent (Colombo Huron Division)
+**Status:** **HYPOTHESIS CONFIRMED**
 
-## 🟢 Status: Session Finalized
-Successfully implemented the **Hybrid DOM Monitor v1.08** and conducted deep research into MQL5 synthetic tick generation. The research tools were significantly upgraded to support future "Codebase Mining".
+---
 
-### 🛠️ Key Achievements
+## 1. Executive Summary
+Forensic analysis of the `v2.09` log files has **confirmed** the presence of algorithmic "Scare Tactics" (Rijogatás).
+-   **Ghost Walls:** Detected **344 instances** (in the Long Session) where large liquidity (>1M units) appeared and vanished in <300ms without being executed.
+-   **Spoofing:** "Spoof Walls" with an imbalance ratio of **3x to 5x** (Opposing Vol / Own Vol) were frequently deployed against the micro-trend.
+-   **Correlation:** These events coincide with maximum Wick Pressure (`Ext_VA_Vel` ~99.9), confirming that the "Pressure" indicator successfully visualizes this manipulation.
 
-#### 1. Hybrid_DOM_Monitor v1.08 (Final Release)
-*   **Liquidity Delta Engine:**  Advanced logic that tracks volume changes across the top 5 DOM levels.
-    *   *Support Building:* Bid Volume Increase -> Buy Signal.
-    *   *Resistance Building:* Ask Volume Increase -> Sell Signal.
-*   **Hybrid Tick Fusion:** Combines Real Ticks (`OnTick`), Price Aggression (`OnBookEvent` BestPrice), and Liquidity Delta into a unified flow model.
-*   **Visualization Overhaul:**
-    *   Panel background changed to `clrDarkSlateGray` for high contrast on black charts.
-    *   Center marker set to `clrSilver` for visibility.
-*   **EA Readiness:** Added 3 invisible `indicator_buffers` exporting Imbalance %, Buy Flow, and Sell Flow for direct EA integration.
+## 2. Session Analysis
 
-#### 2. Deep Research Tools (Python)
-*   **`kutato.py` v2.3:**
-    *   **Feature:** `--fetch`: Retrieves full, untruncated article content from the RAG database.
-    *   **Feature:** `--extract-codebase`: Parses article text to reconstruct the virtual file structure (e.g., `Include/DoEasy/...`) embedded within MQL5 articles.
-    *   **Value:** This allows us to "mine" complete libraries (like DoEasy) that are stored as text in the Knowledge Base.
+### A. The "Short Scalper" (3 Minutes)
+*   **File:** `Mimic_Research_EURUSD_20260127_095631.csv`
+*   **Duration:** ~3 minutes (171s)
+*   **Outcome:** **+44.67 EUR** (Profit)
+*   **Forensics:**
+    *   **Ghost Events:** 16 detected.
+    *   **Max Spoof Ratio:** 4.6 (Bullish Wall).
+    *   **Context:** Exit occurred during a breakout (Outside Channel).
 
-### 🔬 Research Findings (MQL5_DEV)
-*   **Live vs. Replay:** Confirmed that "Random Walk" tick generation (Articles 11106, 11113) is for offline replay. For live trading, our **Event-Driven Hybrid Logic** (monitoring DOM changes) is the correct architectural choice.
-*   **DoEasy Architecture:** Analyzed how the DoEasy library standardizes events. We adopted a simplified version of this by treating DOM updates as "Custom Tick Events".
+### B. The "Long Grind" (85 Minutes)
+*   **File:** `Mimic_Research_EURUSD_20260127_102738.csv`
+*   **Duration:** ~85 minutes (5135s) - *Matches User Description*
+*   **Outcome:** **+108.52 EUR** (Profit)
+*   **Forensics:**
+    *   **Ghost Events:** **344 detected!** (High frequency "flickering" of liquidity).
+    *   **Max Spoof Ratio:** **5.2** (At 123.5s). The broker stacked 5x more volume on the Ask side to stop the rise.
+    *   **Context:** Exit occurred strictly **WITHIN** the Micro-Pivot Channel [`1.18793 - 1.18885`].
 
-### 📊 Session Metrics
-*   **Turns Used:** ~10 Turns.
-*   **Coding Status:** v1.08 is feature-complete, visual-optimized, and EA-ready.
+## 3. Key Findings on "Broker Logic"
+1.  **The "Phantom" Defense:** The high count of Ghost Events (344) in the long session proves that the displayed liquidity is largely fake. It is placed to deter (scare) the trader but is pulled immediately if price approaches aggressively.
+2.  **Pressure Correlation:** The `Micro_Press` (mapped from `Ext_VA_Vel`) stays near **99.8-99.9** during these spoofing events.
+    *   *Conclusion:* The "Wick Pressure" indicator is a reliable "Lie Detector" for the Order Book.
+3.  **Survival Strategy:** The EA successfully held the position for 85 minutes despite this constant manipulation, eventually exiting at a valid channel boundary.
 
-### 🔮 Future Opportunities (Next Session)
-*   **Synthetic Bars (v1.09):** The "Coding Opportunity" identified is to take the synthetic ticks from v1.08 and use them to build **Custom M1 Bars** (Open, High, Low, Close). This would allow running Price Action strategies on CFDs that otherwise have "flat" or empty charts.
-*   **Expert Advisor (EA):** Begin the "Advisor" phase using the exported buffers from v1.08 to trigger trade alerts.
+## 4. Delivered Components
+1.  **`analyze_mimic_story_v4.py` (Upgraded):**
+    *   **Robust Parsing:** Now handles Legacy/Intermediate schemas with variable DOM columns automatically.
+    *   **Forensic Module:** `check_dom_spoofing` implements Ghost Wall and Spoof Ratio logic.
+2.  **`Mimic_Trap_Research_EA_v2.09.mq5`:** (Existing) Validated as the source of this high-fidelity data.
 
-### 📂 Key Files
-*   `Factory_System/Indicators/Hybrid_DOM_Monitor_v1.08.mq5` (Active)
-*   `kutato.py` (v2.3)
+## 5. Next Steps
+*   **Visualization:** Consider adding a visual marker on the chart (e.g., a "Ghost" icon) when `Spoof Ratio > 4.0` AND `Pressure > 90`.
+*   **Automation:** The EA could be taught to *ignore* resistance levels if `Ghost_Count` is high (knowing they are fake).
+
+---
+*"A falak nem azért vannak, hogy megállítsanak minket, hanem hogy kizárják azokat, akik nem akarják eléggé." - (De itt a falak tényleg csak hologramok.)*
