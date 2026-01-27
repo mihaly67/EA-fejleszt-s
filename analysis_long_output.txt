@@ -1,0 +1,31 @@
+Reading Log: Mimic_Research_EURUSD_20260127_095631.csv
+Schema Detection: LastEvent field MISSING (Legacy Mode)
+Loaded 466 rows. Baseline Vel: 1.9184
+
+=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===
+
+=== 🕵️ FORENSIC MODULE: DOM GHOST HUNT ===
+
+👻 Ghost Events Detected: 16
+[2.1s] 👻 GHOST ASK: 1500000 -> 250000 @ 1.18666 (Price: 1.18660)
+[9.0s] 👻 GHOST ASK: 1500000 -> 250000 @ 1.18661 (Price: 1.18656)
+[34.6s] 👻 GHOST BID: 5250000 -> 250000 @ 1.18636 (Price: 1.18638)
+[49.8s] 👻 GHOST ASK: 3510000 -> 250000 @ 1.18649 (Price: 1.18639)
+[60.0s] 👻 GHOST ASK: 2500000 -> 250000 @ 1.18638 (Price: 1.18633)
+🛡️  Spoof Walls Detected: 91
+🔥 High Pressure Spoofs (>90): 91
+   Sample High-Pressure Spoofs:
+   [4.5s] Ratio 4.6 (Bullish Wall) | Pressure: 99.9
+   [5.6s] Ratio 3.7 (Bearish Wall) | Pressure: 99.9
+   [9.7s] Ratio 4.6 (Bullish Wall) | Pressure: 99.9
+   [14.4s] Ratio 3.6 (Bullish Wall) | Pressure: 99.9
+   [16.4s] Ratio 4.6 (Bullish Wall) | Pressure: 99.9
+
+--- TRADE TIMELINE ---
+[171.7s] 💰 PROFIT EXIT: 44.67 EUR
+       Context: 1.18645 inside [0.00000 - 1.18612]? NO
+       DOM: Bid 21250000 / Ask 51500000
+    🔎 VELOCITY: 1.8456 -> 1.5479 (Ratio: 0.84)
+
+--- SUMMARY ---
+Total Decoy Profit (Est): 0.00 EUR
