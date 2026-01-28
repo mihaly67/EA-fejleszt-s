@@ -1,0 +1,46 @@
+Reading Log: merged_fixed.csv
+Version Detection: Legacy
+Loaded 6541 rows. Baseline Vel: 1.5818
+
+=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===
+
+
+--- 🕵️ COLOMBO'S TIMELINE ---
+[0.0s] 🚪 ENTRY DETECTED (Positions: 2)
+
+   🔬 MICROSCOPE: Deep Dive on Entry @ 1.18666
+       ⚡ THE CONTACT (0-5s):
+           Velocity: 0.95 -> Peak 3.40
+           Spread: 0.00006 -> Peak 0.00007
+       🧪 THE TEST (Zero Gravity):
+           Crossings of Entry Price: 40
+           First Crossing: +217.6s
+           Hover Time (within 10 pts): 579 ticks (10.1%)
+           ⚠️  VERDICT: 'WHIPSAW' (Rángatás) -> Algo is fighting for the level.
+[171.7s] 💰 PROFIT EXIT: 44.67 EUR (Tag: )
+
+   ☠️  MICROSCOPE: THE ENDGAME (5 Lot Check) @ 171.7s
+       ⏸️  THE PAUSE (Megtorpanás):
+           Detected at: 171.3s (T-0.4s before exit)
+           Velocity Drop: to 1.58 (Baseline 1.58)
+       📉 THE CRASH (Drawdown):
+           Price: 1.19 -> 1.19
+           Drop: 0.0 points in 0.4s
+           Crash Speed: 0.0 pts/sec
+           ⚠️  VERDICT: 'INSTANT KILL' -> Pause was a bait.
+       Context: Price 1.18645 | Pivot Range: [1.18612 - 0.00000]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 1.5497 -> 1.5221 (Ratio: 0.98)
+[7003.6s] 💰 PROFIT EXIT: 108.52 EUR (Tag: )
+
+   ☠️  MICROSCOPE: THE ENDGAME (5 Lot Check) @ 7003.6s
+       ⏸️  THE PAUSE (Megtorpanás):
+           Detected at: 6993.9s (T-9.6s before exit)
+           Velocity Drop: to 3.15 (Baseline 1.58)
+       📉 THE CRASH (Drawdown):
+           Price: 1.19 -> 1.19
+           Drop: -0.0 points in 9.6s
+           Crash Speed: 0.0 pts/sec
+       Context: Price 1.18869 | Pivot Range: [1.18793 - 1.18885]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 6.2909 -> 3.8733 (Ratio: 0.62)
