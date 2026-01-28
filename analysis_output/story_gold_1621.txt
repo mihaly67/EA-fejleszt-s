@@ -1,0 +1,27 @@
+Reading Log: Mimic_Research_GOLD_20260127_162146.csv
+Version Detection: v2.09 (Modern)
+Loaded 5322 rows. Baseline Vel: 505.8134
+
+=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===
+
+
+=== 🕵️ FORENSIC MODULE: DOM GHOST HUNT ===
+
+👻 Ghost Events Detected: 0
+🛡️  Spoof Walls Detected: 0
+💀 'The Scare' Events (Spoofing while we lose): 0
+
+--- 🕵️ COLOMBO'S TIMELINE ---
+[86.3s] 🚪 ENTRY DETECTED (Positions: 1)
+   🎣 THE BAIT ANALYSIS (Pre-Entry 60s):
+       Avg Velocity: 23.3130 (Baseline: 505.8134)
+       Displacement: 421.0 points
+       ℹ️  VERDICT: Normal Market Conditions
+[122.4s] 💰 PROFIT EXIT: 92.20 EUR (Tag: CLOSE_MANUAL_92.20;)
+       Context: Price 5058.47500 | Pivot Range: [5058.49500 - 5058.94500]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 31.0174 -> 29.9897 (Ratio: 0.97)
+[136.3s] 💰 PROFIT EXIT: 55.31 EUR (Tag: CLOSE_MANUAL_55.31;)
+       Context: Price 5060.93500 | Pivot Range: [5059.83500 - 5061.37500]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 29.9441 -> 29.2209 (Ratio: 0.98)

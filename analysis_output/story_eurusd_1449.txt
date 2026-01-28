@@ -1,0 +1,54 @@
+Reading Log: Mimic_Research_EURUSD_20260127_144944.csv
+Version Detection: v2.09 (Modern)
+Loaded 6537 rows. Baseline Vel: 2.0365
+
+=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===
+
+
+=== 🕵️ FORENSIC MODULE: DOM GHOST HUNT ===
+
+👻 Ghost Events Detected: 567
+[1.6s] 👻 GHOST BID: 1500000 -> 250000 @ 1.19247
+[16.1s] 👻 GHOST ASK: 1500000 -> 250000 @ 1.19261
+[28.7s] 👻 GHOST ASK: 1500000 -> 250000 @ 1.19261
+[35.7s] 👻 GHOST ASK: 1500000 -> 250000 @ 1.19261
+[59.5s] 👻 GHOST BID: 1500000 -> 250000 @ 1.19267
+🛡️  Spoof Walls Detected: 1056
+💀 'The Scare' Events (Spoofing while we lose): 785
+   Sample Scare Events:
+   [10.4s] Ratio 3.6 (Bearish Wall) | PL: -6.80
+   [10.4s] Ratio 3.6 (Bearish Wall) | PL: -6.80
+   [12.9s] Ratio 3.3 (Bearish Wall) | PL: -12.73
+   [16.2s] Ratio 3.6 (Bearish Wall) | PL: -12.76
+   [20.9s] Ratio 10.9 (Bearish Wall) | PL: -12.74
+
+--- 🕵️ COLOMBO'S TIMELINE ---
+[10.4s] 🚪 ENTRY DETECTED (Positions: 4)
+   🎣 THE BAIT ANALYSIS (Pre-Entry 60s):
+       Avg Velocity: 0.8069 (Baseline: 2.0365)
+       Displacement: 4.5 points
+       ℹ️  VERDICT: Normal Market Conditions
+[50.8s] 💰 PROFIT EXIT: 0.59 EUR (Tag: CLOSE_MANUAL_0.59;)
+       Context: Price 1.19271 | Pivot Range: [0.00000 - 0.00000]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 1.3450 -> 1.6729 (Ratio: 1.24)
+[50.4s] 💰 PROFIT EXIT: 1.09 EUR (Tag: CLOSE_MANUAL_1.09;)
+       Context: Price 1.19274 | Pivot Range: [0.00000 - 0.00000]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 1.3461 -> 1.6717 (Ratio: 1.24)
+[50.9s] 💰 PROFIT EXIT: 1.01 EUR (Tag: CLOSE_MANUAL_1.01;)
+       Context: Price 1.19276 | Pivot Range: [0.00000 - 0.00000]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 1.3392 -> 1.6760 (Ratio: 1.25)
+[53.3s] 💰 PROFIT EXIT: 11.74 EUR (Tag: CLOSE_MANUAL_11.74;)
+       Context: Price 1.19280 | Pivot Range: [0.00000 - 0.00000]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 1.3695 -> 1.8076 (Ratio: 1.32)
+[213.2s] 💰 PROFIT EXIT: 25.98 EUR (Tag: CLOSE_MANUAL_25.98;)
+       Context: Price 1.19336 | Pivot Range: [0.00000 - 0.00000]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 2.6476 -> 2.8521 (Ratio: 1.08)
+[3823.3s] 💀 LOSS EXIT: 0.00 EUR (Tag: CLOSE_ALL_TRIG;)
+       Context: Price 1.19182 | Pivot Range: [1.19143 - 1.19338]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 2.4695 -> 2.5874 (Ratio: 1.05)
