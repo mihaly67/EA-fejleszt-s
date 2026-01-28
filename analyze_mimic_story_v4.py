@@ -75,6 +75,7 @@ class MimicStoryTellerV4:
                         # 3. Extract P/L based on Version
                         float_pl = 0.0
                         realized_tick = 0.0
+                        session_pl = 0.0 # NEW
                         last_event = ""
 
                         if self.is_v209:
@@ -82,6 +83,7 @@ class MimicStoryTellerV4:
                                 try:
                                     float_pl = float(row[action_idx-3])
                                     realized_tick = float(row[action_idx-2])
+                                    session_pl = float(row[action_idx-1]) # Session PL
                                 except: pass
 
                             if action_idx + 4 < len(row):
@@ -133,6 +135,7 @@ class MimicStoryTellerV4:
                             'vel': vel,
                             'float_pl': float_pl,
                             'realized_tick': realized_tick,
+                            'session_pl': session_pl,
                             'pos_count': pos_count,
                             'dom': dom_data,
                             'pressure': pressure,
@@ -158,11 +161,8 @@ class MimicStoryTellerV4:
     def calculate_tick_zigzag(self, deviation_points=30):
         if not self.data: return
         start_price = self.data[0]['mid']
-
-        # Auto-Scale Point Size
-        if start_price > 500: point = 0.01 # Gold / Indices
-        else: point = 0.00001 # Forex
-
+        if start_price > 500: point = 0.01
+        else: point = 0.00001
         dev = deviation_points * point
         current_swing = {'high': start_price, 'low': start_price, 'dir': 0, 'start_idx': 0, 'high_idx': 0, 'low_idx': 0}
 
@@ -181,7 +181,7 @@ class MimicStoryTellerV4:
                     current_swing['high_idx'] = 0
                 continue
 
-            if current_swing['dir'] == 1: # Up Swing
+            if current_swing['dir'] == 1:
                 if price > current_swing['high']:
                     current_swing['high'] = price
                     current_swing['high_idx'] = i
@@ -191,7 +191,7 @@ class MimicStoryTellerV4:
                     current_swing['low'] = price
                     current_swing['low_idx'] = i
 
-            elif current_swing['dir'] == -1: # Down Swing
+            elif current_swing['dir'] == -1:
                 if price < current_swing['low']:
                     current_swing['low'] = price
                     current_swing['low_idx'] = i
@@ -218,35 +218,28 @@ class MimicStoryTellerV4:
 
     def microscope_endgame_analysis(self, exit_idx):
         print(f"\n   ☠️  MICROSCOPE: THE ENDGAME (5 Lot Check) @ {self.data[exit_idx]['time_sec']:.1f}s")
-
-        # Look back 30 seconds before exit
         end_time = self.data[exit_idx]['time_sec']
         pre_exit_data = [x for x in self.data if x['time_sec'] >= end_time - 30 and x['time_sec'] < end_time]
 
         if not pre_exit_data: return
 
-        # 1. THE PAUSE (Megtorpanás)
-        # Find the period with lowest velocity in the last 10 seconds
+        # 1. THE PAUSE
         last_10s = [x for x in pre_exit_data if x['time_sec'] >= end_time - 10]
         if last_10s:
             min_vel = min([x['vel'] for x in last_10s])
             min_vel_idx = next(i for i, x in enumerate(last_10s) if x['vel'] == min_vel)
             pause_time = last_10s[min_vel_idx]['time_sec']
-
-            # How long before exit?
             time_to_death = end_time - pause_time
 
             print(f"       ⏸️  THE PAUSE (Megtorpanás):")
-            print(f"           Detected at: {pause_time:.1f}s (T-{time_to_death:.1f}s before crash)")
+            print(f"           Detected at: {pause_time:.1f}s (T-{time_to_death:.1f}s before exit)")
             print(f"           Velocity Drop: to {min_vel:.2f} (Baseline {self.baseline_vel:.2f})")
 
-            # 2. THE CRASH (Drawdown Speed)
-            # Calculate price drop from Pause to Exit
+            # 2. THE CRASH
             price_at_pause = last_10s[min_vel_idx]['mid']
             price_at_exit = self.data[exit_idx]['mid']
             drop = price_at_exit - price_at_pause
 
-            # Gold Point = 0.01 (approx)
             drop_pts = drop / 0.01
             speed = drop_pts / max(0.01, time_to_death)
 
@@ -315,7 +308,6 @@ class MimicStoryTellerV4:
             print("           ℹ️  VERDICT: Clean Breakout/Breakdown.")
 
     def check_dom_spoofing(self):
-        # Existing spoofing logic...
         pass
 
     def analyze_narrative(self):
@@ -325,6 +317,7 @@ class MimicStoryTellerV4:
         self.calculate_tick_zigzag(deviation_points=30)
 
         last_pos_count = 0
+        trade_start_session_pl = 0.0
 
         print(f"\n--- 🕵️ COLOMBO'S TIMELINE ---")
 
@@ -333,12 +326,32 @@ class MimicStoryTellerV4:
             # ENTER TRADE
             if r['pos_count'] > last_pos_count and last_pos_count == 0:
                 print(f"[{r['time_sec']:.1f}s] 🚪 ENTRY DETECTED (Positions: {r['pos_count']})")
+                trade_start_session_pl = r['session_pl'] # Capture start PL
                 self.analyze_bait(i)
                 self.microscope_analysis(i, r['mid'])
 
             # EXIT TRADE
             if r['pos_count'] < last_pos_count:
-                pl = r['realized_tick']
+
+                # Check Profit using Lookahead for v2.09
+                if self.is_v209:
+                    # Look ahead up to 20 ticks to see if Session_PL jumps
+                    current_pl = r['session_pl']
+                    final_pl = current_pl
+
+                    for k in range(1, 21):
+                        if i + k < len(self.data):
+                            next_pl = self.data[i+k]['session_pl']
+                            if abs(next_pl - current_pl) > 0.01:
+                                final_pl = next_pl
+                                # If we found a jump, use it as the realized result
+                                break
+
+                    pl_delta = final_pl - trade_start_session_pl
+                    pl = pl_delta
+                else:
+                    pl = r['realized_tick']
+
                 event_tag = r.get('last_event', '')
 
                 type_label = "UNKNOWN"
@@ -349,9 +362,7 @@ class MimicStoryTellerV4:
 
                 print(f"[{r['time_sec']:.1f}s] {type_label} EXIT: {pl:.2f} EUR (Tag: {event_tag})")
 
-                # *** NEW ENDGAME CALL ***
-                if pl < 0 or "CLOSE_ALL" in event_tag: # Trigger on loss or forced close
-                     self.microscope_endgame_analysis(i)
+                self.microscope_endgame_analysis(i)
 
                 r1, s1 = self.get_context_levels(i)
                 print(f"       Context: Price {r['mid']:.5f} | Pivot Range: [{s1:.5f} - {r1:.5f}]")
