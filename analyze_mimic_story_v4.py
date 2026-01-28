@@ -10,14 +10,19 @@ class MimicStoryTellerV4:
         self.data = []
         self.baseline_vel = 0.0
         self.micro_swings = []
+        self.is_v209 = False
 
     def load_data(self, filepath):
         print(f"Reading Log: {os.path.basename(filepath)}")
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
                 reader = csv.reader(f)
                 header = next(reader, None)
                 if not header: return
+
+                # Detect Version
+                self.is_v209 = "Session_PL" in header
+                print(f"Version Detection: {'v2.09 (Modern)' if self.is_v209 else 'Legacy'}")
 
                 # Dynamic Column Mapping
                 try:
@@ -25,16 +30,16 @@ class MimicStoryTellerV4:
                     idx_ask = header.index("Ask")
                     idx_vel = header.index("Velocity")
                 except ValueError:
-                    # Fallback for Legacy if headers are missing or different
                     idx_bid = 3
                     idx_ask = 4
                     idx_vel = 6
 
-                print(f"Column Mapping: Bid={idx_bid}, Ask={idx_ask}, Vel={idx_vel}")
+                # Pressure Proxy
+                idx_press = -1
+                if "Ext_VA_Vel" in header: idx_press = header.index("Ext_VA_Vel")
+                elif "Micro_Press" in header: idx_press = header.index("Micro_Press")
 
                 vels = []
-
-                has_last_event = "LastEvent" in header
 
                 for row in reader:
                     if not row: continue
@@ -46,13 +51,21 @@ class MimicStoryTellerV4:
                             if "Mimic" in row[i]:
                                 action_idx = i
                                 break
-                        if action_idx == -1 and len(row) >= 19: action_idx = 18
+
+                        # Fallback for empty action cells but correct structure
+                        if action_idx == -1:
+                            if self.is_v209 and len(row) > 26: action_idx = 26
+                            elif not self.is_v209 and len(row) >= 19: action_idx = 18
+
                         if action_idx == -1: continue
 
                         # 2. Extract Standard Data
                         dt_str = row[0].strip()
                         ms_str = row[1].strip()
-                        ms = int(float(ms_str)) if ms_str.replace('.','',1).isdigit() else 0
+                        # Handle potential bad formatting
+                        if not ms_str: ms = 0
+                        else: ms = int(float(ms_str)) if ms_str.replace('.','',1).isdigit() else 0
+
                         dt = datetime.strptime(dt_str, "%Y.%m.%d %H:%M:%S") + timedelta(milliseconds=ms)
 
                         bid = float(row[idx_bid])
@@ -60,8 +73,32 @@ class MimicStoryTellerV4:
                         mid = (bid + ask) / 2.0
                         vel = abs(float(row[idx_vel]))
 
-                        realized_tick = float(row[action_idx-1])
-                        float_pl = float(row[action_idx-2])
+                        # 3. Extract P/L based on Version
+                        float_pl = 0.0
+                        realized_tick = 0.0
+                        last_event = ""
+
+                        if self.is_v209:
+                            # Action is at 26
+                            # 23: Float, 24: Real, 25: Session
+                            if action_idx >= 3:
+                                try:
+                                    float_pl = float(row[action_idx-3])
+                                    realized_tick = float(row[action_idx-2])
+                                except: pass
+
+                            # LastEvent is Action + 4 (idx 30)
+                            if action_idx + 4 < len(row):
+                                last_event = row[action_idx+4]
+
+                        else:
+                            # Legacy
+                            # Action-2: Float, Action-1: Realized
+                            if action_idx >= 2:
+                                try:
+                                    float_pl = float(row[action_idx-2])
+                                    realized_tick = float(row[action_idx-1])
+                                except: pass
 
                         pos_count = 0
                         if action_idx + 1 < len(row):
@@ -69,35 +106,41 @@ class MimicStoryTellerV4:
                                 pos_count = int(float(row[action_idx+1]))
                             except: pass
 
-                        # 3. Extract DOM Snapshot
+                        # 4. Extract DOM Snapshot
                         dom_data = None
-                        if len(row) >= 34:
-                             dom_slice = row[-12:]
-                             try:
-                                 dom_data = {
-                                     'best_bid': float(dom_slice[0]),
-                                     'best_ask': float(dom_slice[1]),
-                                     'bid_vols': [int(float(x)) for x in dom_slice[2:7]],
-                                     'ask_vols': [int(float(x)) for x in dom_slice[7:12]]
-                                 }
-                             except ValueError: pass
+                        # DOM is usually at the end. v2.09 has 31 columns minimum + variable DOM
+                        # Let's assume DOM starts after LastEvent or at fixed position?
+                        # In v2.09, DOM_Snapshot is col 31 (0-indexed).
+                        # But CSV reader might split the comma-separated DOM string into multiple fields.
 
-                        # 4. Pressure Proxy (Ext_VA_Vel)
+                        # Find where DOM starts.
+                        # If v2.09, header "DOM_Snapshot" is last.
+                        # So everything from there on is DOM.
+                        dom_start_idx = -1
+                        if self.is_v209:
+                            dom_start_idx = 31 # Fixed for v2.09
+                        else:
+                            # Legacy logic
+                             dom_start_idx = len(row) - 12
+
+                        if dom_start_idx > 0 and dom_start_idx < len(row):
+                             dom_slice = row[dom_start_idx:]
+                             # We expect at least 12 values (Bid, Ask, 5xB, 5xA)
+                             if len(dom_slice) >= 12:
+                                 try:
+                                     dom_data = {
+                                         'best_bid': float(dom_slice[0]),
+                                         'best_ask': float(dom_slice[1]),
+                                         'bid_vols': [int(float(x)) for x in dom_slice[2:7]],
+                                         'ask_vols': [int(float(x)) for x in dom_slice[7:12]]
+                                     }
+                                 except ValueError: pass
+
+                        # 5. Pressure Proxy
                         pressure = 0.0
-                        # We need to find Ext_VA_Vel.
-                        # In v2.09 it might be around index 16?
-                        # Let's search header if possible
-                        idx_press = -1
-                        if "Ext_VA_Vel" in header: idx_press = header.index("Ext_VA_Vel")
-                        elif "Micro_Press" in header: idx_press = header.index("Micro_Press")
-
                         if idx_press != -1 and idx_press < len(row):
                             try: pressure = float(row[idx_press])
                             except: pass
-                        elif len(row) > 14: # Fallback
-                             # In Legacy, index 14 is Ext_VA_Vel
-                             try: pressure = float(row[14])
-                             except: pass
 
                         r = {
                             'dt': dt,
@@ -108,12 +151,14 @@ class MimicStoryTellerV4:
                             'realized_tick': realized_tick,
                             'pos_count': pos_count,
                             'dom': dom_data,
-                            'pressure': pressure
+                            'pressure': pressure,
+                            'last_event': last_event
                         }
                         self.data.append(r)
                         vels.append(vel)
 
                     except Exception as e:
+                        # print(f"Row Error: {e}")
                         continue
 
                 if self.data:
@@ -136,7 +181,7 @@ class MimicStoryTellerV4:
         else: point = 0.00001 # Forex
 
         dev = deviation_points * point
-        print(f"ZigZag Config: Price {start_price:.2f}, Point {point}, Dev {dev}")
+        # print(f"ZigZag Config: Price {start_price:.2f}, Point {point}, Dev {dev}")
 
         current_swing = {'high': start_price, 'low': start_price, 'dir': 0, 'start_idx': 0, 'high_idx': 0, 'low_idx': 0}
 
@@ -209,23 +254,26 @@ class MimicStoryTellerV4:
             if not curr['dom'] or not prev['dom']: continue
 
             # 1. GHOST WALL DETECTION (Disappearing Liquidity)
+            # Bid Wall Disappears
             prev_bid_vol = prev['dom']['bid_vols'][0]
             curr_bid_vol = curr['dom']['bid_vols'][0]
 
             if prev_bid_vol > LARGE_VOL and curr_bid_vol < (prev_bid_vol * 0.2):
+                # Only if price did NOT move through it (No execution)
                 if curr['mid'] >= prev['dom']['best_bid']:
-                     msg = f"[{curr['time_sec']:.1f}s] 👻 GHOST BID: {prev_bid_vol} -> {curr_bid_vol} @ {prev['dom']['best_bid']:.5f} (Price: {curr['mid']:.5f})"
+                     msg = f"[{curr['time_sec']:.1f}s] 👻 GHOST BID: {prev_bid_vol} -> {curr_bid_vol} @ {prev['dom']['best_bid']:.5f}"
                      ghost_events.append(msg)
 
+            # Ask Wall Disappears
             prev_ask_vol = prev['dom']['ask_vols'][0]
             curr_ask_vol = curr['dom']['ask_vols'][0]
 
             if prev_ask_vol > LARGE_VOL and curr_ask_vol < (prev_ask_vol * 0.2):
                 if curr['mid'] <= prev['dom']['best_ask']:
-                     msg = f"[{curr['time_sec']:.1f}s] 👻 GHOST ASK: {prev_ask_vol} -> {curr_ask_vol} @ {prev['dom']['best_ask']:.5f} (Price: {curr['mid']:.5f})"
+                     msg = f"[{curr['time_sec']:.1f}s] 👻 GHOST ASK: {prev_ask_vol} -> {curr_ask_vol} @ {prev['dom']['best_ask']:.5f}"
                      ghost_events.append(msg)
 
-            # 2. SPOOF RATIO
+            # 2. SPOOF RATIO (Imbalance against trend)
             trend = 0
             lookback = max(0, i-5)
             if curr['mid'] > self.data[lookback]['mid']: trend = 1
@@ -237,84 +285,140 @@ class MimicStoryTellerV4:
             ratio = 0.0
             type_str = ""
 
-            if trend == 1: # UpTrend -> Check Ask Resistance
+            # If Uptrend, huge Ask volume is Resistance (Spoof?)
+            if trend == 1:
                 if total_bid > 0:
                     ratio = total_ask / total_bid
                     type_str = "Bearish Wall"
-            elif trend == -1: # DownTrend -> Check Bid Support
+            # If Downtrend, huge Bid volume is Support (Spoof?)
+            elif trend == -1:
                 if total_ask > 0:
                     ratio = total_bid / total_ask
                     type_str = "Bullish Wall"
 
             if ratio > 3.0:
-                 spoof_ratios.append((curr['time_sec'], ratio, type_str, curr['pressure']))
+                 spoof_ratios.append((curr['time_sec'], ratio, type_str, curr['pressure'], curr['float_pl']))
 
+        # Report
         print(f"👻 Ghost Events Detected: {len(ghost_events)}")
         for g in ghost_events[:5]: print(g)
 
         print(f"🛡️  Spoof Walls Detected: {len(spoof_ratios)}")
-        high_pressure_spoofs = [x for x in spoof_ratios if x[3] > 90.0]
-        print(f"🔥 High Pressure Spoofs (>90): {len(high_pressure_spoofs)}")
+        # Highlight Spoofs during Drawdown (The Scare)
+        scare_tactics = [x for x in spoof_ratios if x[4] < 0]
+        print(f"💀 'The Scare' Events (Spoofing while we lose): {len(scare_tactics)}")
 
-        if high_pressure_spoofs:
-             print("   Sample High-Pressure Spoofs:")
-             for s in high_pressure_spoofs[:5]:
-                 print(f"   [{s[0]:.1f}s] Ratio {s[1]:.1f} ({s[2]}) | Pressure: {s[3]:.1f}")
+        if scare_tactics:
+             print("   Sample Scare Events:")
+             for s in scare_tactics[:5]:
+                 print(f"   [{s[0]:.1f}s] Ratio {s[1]:.1f} ({s[2]}) | PL: {s[4]:.2f}")
 
         return len(ghost_events)
 
     def analyze_narrative(self):
-        print("\n=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===")
+        print("\n=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===\n")
         if not self.data: return
 
         self.calculate_tick_zigzag(deviation_points=30)
-        print(f"Generated {len(self.micro_swings)} Micro-Pivot points.")
 
         self.check_dom_spoofing()
 
         last_pos_count = 0
         decoy_profit_sum = 0.0
 
-        print(f"\n--- TRADE TIMELINE ---")
+        print(f"\n--- 🕵️ COLOMBO'S TIMELINE ---")
+
+        # Track Phase
+        trade_start_idx = -1
+
         for i, r in enumerate(self.data):
+
+            # ENTER TRADE DETECTION
+            if r['pos_count'] > last_pos_count and last_pos_count == 0:
+                print(f"[{r['time_sec']:.1f}s] 🚪 ENTRY DETECTED (Positions: {r['pos_count']})")
+                trade_start_idx = i
+                self.analyze_bait(i)
+
+            # EXIT TRADE DETECTION
             if r['pos_count'] < last_pos_count:
                 diff = last_pos_count - r['pos_count']
                 pl = r['realized_tick']
-                if pl != 0.0:
-                    tag = "💰 PROFIT" if pl > 0 else "💀 LOSS"
-                    print(f"[{r['time_sec']:.1f}s] {tag} EXIT: {pl:.2f} EUR")
+                event_tag = r.get('last_event', '')
 
-                    r1, s1 = self.get_context_levels(i)
-                    upper = max(r1, s1)
-                    lower = min(r1, s1)
-                    in_channel = (r['mid'] <= upper and r['mid'] >= lower) if (upper>0 and lower>0) else False
+                # Determine type
+                type_label = "UNKNOWN"
+                if "DECOY" in event_tag: type_label = "🦆 DECOY"
+                elif "TROJAN" in event_tag: type_label = "🐴 TROJAN"
+                elif pl > 0: type_label = "💰 PROFIT"
+                else: type_label = "💀 LOSS"
 
-                    print(f"       Context: {r['mid']:.5f} inside [{lower:.5f} - {upper:.5f}]? {'YES' if in_channel else 'NO'}")
-                    if r['dom']:
-                         b = sum(r['dom']['bid_vols'])
-                         a = sum(r['dom']['ask_vols'])
-                         print(f"       DOM: Bid {b} / Ask {a}")
+                print(f"[{r['time_sec']:.1f}s] {type_label} EXIT: {pl:.2f} EUR (Tag: {event_tag})")
 
-                    self.check_momentum_stall(i)
+                # Context Check
+                r1, s1 = self.get_context_levels(i)
+                print(f"       Context: Price {r['mid']:.5f} | Pivot Range: [{s1:.5f} - {r1:.5f}]")
 
-                    if pl > 0 and pl < 30: decoy_profit_sum += pl
+                # Silence Check
+                self.check_silence(i)
 
+            # Update State
             last_pos_count = r['pos_count']
 
-        print(f"\n--- SUMMARY ---")
-        print(f"Total Decoy Profit (Est): {decoy_profit_sum:.2f} EUR")
+    def analyze_bait(self, entry_idx):
+        # Look 60s back
+        start_idx = max(0, entry_idx - 600) # approx 600 ticks? No, use time.
 
-    def check_momentum_stall(self, index):
-        if index + 20 >= len(self.data): return
-        start = max(0, index-10)
-        vel_before = statistics.mean([x['vel'] for x in self.data[start:index+1]])
-        vel_after = statistics.mean([x['vel'] for x in self.data[index:index+20]])
+        # Filter data points in last 60 sec
+        entry_time = self.data[entry_idx]['time_sec']
+        pre_data = [x for x in self.data if x['time_sec'] >= entry_time - 60 and x['time_sec'] < entry_time]
 
-        ratio = vel_after / max(0.0001, vel_before)
-        print(f"    🔎 VELOCITY: {vel_before:.4f} -> {vel_after:.4f} (Ratio: {ratio:.2f})")
+        if not pre_data: return
 
-        if ratio < 0.6: print("    🛑 STALL CONFIRMED (Broker lost interest)")
-        elif ratio > 1.5: print("    🚀 ACCELERATION DETECTED")
+        avg_vel = statistics.mean([x['vel'] for x in pre_data])
+
+        # Calculate displacement (Max High - Min Low)
+        highs = [x['mid'] for x in pre_data]
+        displacement = max(highs) - min(highs)
+
+        # Point scale
+        pt = 0.00001 if pre_data[0]['mid'] < 500 else 0.01
+        disp_pts = displacement / pt
+
+        print(f"   🎣 THE BAIT ANALYSIS (Pre-Entry 60s):")
+        print(f"       Avg Velocity: {avg_vel:.4f} (Baseline: {self.baseline_vel:.4f})")
+        print(f"       Displacement: {disp_pts:.1f} points")
+
+        if avg_vel > self.baseline_vel * 1.5 and disp_pts < 100:
+            print("       ⚠️  VERDICT: 'CHURNING' (High Noise, Low Move) -> The Trap is Set!")
+        elif avg_vel > self.baseline_vel * 2.0:
+            print("       ⚠️  VERDICT: 'HYPER-ACTIVITY' -> Aggressive Luring")
+        else:
+            print("       ℹ️  VERDICT: Normal Market Conditions")
+
+    def check_silence(self, exit_idx):
+        # Look 30s forward
+        exit_time = self.data[exit_idx]['time_sec']
+        post_data = [x for x in self.data if x['time_sec'] > exit_time and x['time_sec'] <= exit_time + 30]
+
+        if not post_data: return
+
+        avg_vel = statistics.mean([x['vel'] for x in post_data])
+
+        # Look 30s before (during trade)
+        during_data = [x for x in self.data if x['time_sec'] >= exit_time - 30 and x['time_sec'] < exit_time]
+        if not during_data: return
+
+        prev_vel = statistics.mean([x['vel'] for x in during_data])
+
+        ratio = avg_vel / max(0.0001, prev_vel)
+
+        print(f"   🤫 THE SILENCE CHECK (Post-Exit 30s):")
+        print(f"       Velocity Drop: {prev_vel:.4f} -> {avg_vel:.4f} (Ratio: {ratio:.2f})")
+
+        if ratio < 0.5:
+             print("       🛑 VERDICT: 'DEAD SILENCE' -> Broker Algo turned off.")
+        elif ratio > 1.5:
+             print("       🚀 VERDICT: 'REVENGE' -> Volatility spiked after we left.")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

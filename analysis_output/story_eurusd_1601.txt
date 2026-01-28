@@ -1,0 +1,40 @@
+Reading Log: Mimic_Research_EURUSD_20260127_160131.csv
+Version Detection: v2.09 (Modern)
+Loaded 1376 rows. Baseline Vel: 2.0614
+
+=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===
+
+
+=== 🕵️ FORENSIC MODULE: DOM GHOST HUNT ===
+
+👻 Ghost Events Detected: 121
+[22.8s] 👻 GHOST BID: 2250000 -> 250000 @ 1.19229
+[49.4s] 👻 GHOST ASK: 1500000 -> 250000 @ 1.19201
+[53.4s] 👻 GHOST BID: 1500000 -> 250000 @ 1.19185
+[73.5s] 👻 GHOST BID: 1500000 -> 250000 @ 1.19201
+[79.0s] 👻 GHOST BID: 1500000 -> 250000 @ 1.19200
+🛡️  Spoof Walls Detected: 220
+💀 'The Scare' Events (Spoofing while we lose): 37
+   Sample Scare Events:
+   [11.2s] Ratio 3.6 (Bearish Wall) | PL: -37.74
+   [16.2s] Ratio 3.0 (Bullish Wall) | PL: -37.75
+   [32.6s] Ratio 3.6 (Bullish Wall) | PL: -33.55
+   [40.1s] Ratio 5.0 (Bearish Wall) | PL: -37.75
+   [42.5s] Ratio 7.2 (Bullish Wall) | PL: -37.76
+
+--- 🕵️ COLOMBO'S TIMELINE ---
+[5.2s] 🚪 ENTRY DETECTED (Positions: 1)
+   🎣 THE BAIT ANALYSIS (Pre-Entry 60s):
+       Avg Velocity: 1.1478 (Baseline: 2.0614)
+       Displacement: 4.0 points
+       ℹ️  VERDICT: Normal Market Conditions
+[154.5s] 💰 PROFIT EXIT: 71.29 EUR (Tag: CLOSE_MANUAL_71.29;)
+       Context: Price 1.19222 | Pivot Range: [1.19185 - 0.00000]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 2.4011 -> 4.2410 (Ratio: 1.77)
+       🚀 VERDICT: 'REVENGE' -> Volatility spiked after we left.
+[193.9s] 💰 PROFIT EXIT: 16.77 EUR (Tag: CLOSE_ALL_TRIG;CLOSE_MANUAL_16.77;)
+       Context: Price 1.19250 | Pivot Range: [1.19204 - 1.19235]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 4.2169 -> 1.3722 (Ratio: 0.33)
+       🛑 VERDICT: 'DEAD SILENCE' -> Broker Algo turned off.
