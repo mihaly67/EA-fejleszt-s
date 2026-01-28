@@ -3,40 +3,40 @@
 //|                                              Copyright 2016, Tor |
 //|                                             http://einvestor.ru/ |
 //+------------------------------------------------------------------+
-//---- авторство индикатора
+//---- author of the indicator
 #property copyright "Copyright 2016, Tor"
-//---- ссылка на сайт автора
+//---- link to the author's site
 #property link      "http://einvestor.ru/"
-//---- номер версии индикатора
+//---- indicator version number
 #property version   "1.00"
-//---- отрисовка индикатора в отдельном окне
+//---- drawing the indicator in a separate window
 #property indicator_separate_window
-//---- для расчёта и отрисовки индикатора использовано пять буферов
+//---- five buffers used for calculation and drawing of the indicator
 #property indicator_buffers 5
-//---- использовано одно графическое построение
+//---- one graphic plot used
 #property indicator_plots   1
 //+----------------------------------------------+
-//|  объявление констант                         |
+//|  constant declaration                        |
 //+----------------------------------------------+
-#define RESET 0               // Константа для возврата терминалу команды на пересчет индикатора
-#define Up 0                  // Константа для растущего тренда
-#define Pass 1                // Константа для флета
-#define Down 2                // Константа для падающего тренда
+#define RESET 0               // Constant for returning the recalculation command to the terminal
+#define Up 0                  // Constant for growing trend
+#define Pass 1                // Constant for flat
+#define Down 2                // Constant for falling trend
 //+----------------------------------------------+
-//|  Параметры отрисовки индикатора              |
+//|  Indicator drawing parameters                |
 //+----------------------------------------------+
-//---- отрисовка индикатора в виде цветной гистограммы
+//---- drawing the indicator as a colored histogram
 #property indicator_type1 DRAW_COLOR_HISTOGRAM
-//---- в качестве цветов гистограммы использованы
+//---- colors used for the histogram
 #property indicator_color1 clrDodgerBlue,clrSlateGray,clrDeepPink
-//---- линия индикатора - сплошная
+//---- indicator line - solid
 #property indicator_style1 STYLE_SOLID
-//---- толщина линии индикатора равна 4
+//---- indicator line width is 4
 #property indicator_width1 4
-//---- отображение метки линии индикатора
+//---- display of the indicator line label
 #property indicator_label1  "Delta_MFI"
 //+----------------------------------------------+
-//|  объявление перечислений                     |
+//|  enumeration declaration                     |
 //+----------------------------------------------+
 enum TypeGraph
   {
@@ -44,10 +44,10 @@ enum TypeGraph
    Cute=1,     // Cute Histogram
   };
 //+----------------------------------------------+
-//| Входные параметры индикатора                 |
+//| Indicator Input Parameters                   |
 //+----------------------------------------------+
 input TypeGraph            TypeGr=Histogram;       // Type graph
-input ENUM_APPLIED_VOLUME VolumeType=VOLUME_TICK;  // объём
+input ENUM_APPLIED_VOLUME VolumeType=VOLUME_TICK;  // Volume
 //---
 input uint                 MFIPeriod1=14;          // Fast MFI Period
 //---
@@ -55,111 +55,111 @@ input uint                 MFIPeriod2=50;          // Slow MFI Period
 //---
 input uint                 Level=50;               // Signal Level
 //---
-input int                  Shift=0;                // Сдвиг индикатора по горизонтали в барах
+input int                  Shift=0;                // Horizontal indicator shift in bars
 //+----------------------------------------------+
-//---- объявление динамических массивов, которые будут в дальнейшем использованы в качестве индикаторных буферов
+//---- declaration of dynamic arrays to be used as indicator buffers
 double mfi1[],mfi2[],delta[],IndBuffer[],ColorIndBuffer[];
-//--- объявление целочисленных переменных для хендлов индикаторов
+//--- declaration of integer variables for indicator handles
 int Ind1_Handle,Ind2_Handle;
-//---- Объявление целых переменных начала отсчёта данных
+//---- Declaration of integer variables for data start calculation
 int min_rates_total,maxLevel,minLevel;
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
 //+------------------------------------------------------------------+
 int OnInit()
   {
-//--- получение хендла индикатора MFI 1
+//--- getting handle for MFI 1 indicator
    Ind1_Handle=iMFI(Symbol(),PERIOD_CURRENT,MFIPeriod1,VolumeType);
    if(Ind1_Handle==INVALID_HANDLE)
      {
-      Print(" Не удалось получить хендл индикатора MFI 1");
+      Print(" Failed to get handle for MFI 1 indicator");
       return(INIT_FAILED);
      }
-//--- получение хендла индикатора MFI 2
+//--- getting handle for MFI 2 indicator
    Ind2_Handle=iMFI(Symbol(),PERIOD_CURRENT,MFIPeriod2,VolumeType);
    if(Ind2_Handle==INVALID_HANDLE)
      {
-      Print(" Не удалось получить хендл индикатора MFI 2");
+      Print(" Failed to get handle for MFI 2 indicator");
       return(INIT_FAILED);
      }
 
-//---- Инициализация переменных начала отсчёта данных
+//---- Initialization of variables for data start calculation
    min_rates_total=int(MathMax(MFIPeriod1,MFIPeriod2));
    maxLevel=int(100-(100-Level));
    minLevel=int(100-Level);
 
-//---- превращение динамического массива в индикаторный буфер
+//---- converting dynamic array into indicator buffer
    SetIndexBuffer(0,IndBuffer,INDICATOR_DATA);
-//---- превращение динамического массива в цветовой, индексный буфер
+//---- converting dynamic array into color index buffer
    SetIndexBuffer(1,ColorIndBuffer,INDICATOR_COLOR_INDEX);
-//---- осуществление сдвига индикатора 1 по горизонтали на Shift
+//---- setting horizontal shift for indicator 1
    PlotIndexSetInteger(0,PLOT_SHIFT,Shift);
-//---- осуществление сдвига начала отсчёта отрисовки индикатора
+//---- setting start of drawing for the indicator
    PlotIndexSetInteger(0,PLOT_DRAW_BEGIN,min_rates_total);
-//---- установка значений индикатора, которые не будут видимы на графике
+//---- setting indicator values that will not be visible on the chart
    PlotIndexSetDouble(0,PLOT_EMPTY_VALUE,EMPTY_VALUE);
-//---- превращение динамического массива в буфер для хранения данных
+//---- converting dynamic array into buffer for data storage
    SetIndexBuffer(2,mfi1,INDICATOR_CALCULATIONS);
-//---- превращение динамического массива в буфер для хранения данных
+//---- converting dynamic array into buffer for data storage
    SetIndexBuffer(3,mfi2,INDICATOR_CALCULATIONS);
-//---- превращение динамического массива в буфер для хранения данных
+//---- converting dynamic array into buffer for data storage
    SetIndexBuffer(4,delta,INDICATOR_CALCULATIONS);
 
-//--- индексация элементов в буфере как в таймсерии
+//--- indexing elements in buffer as timeseries
    ArraySetAsSeries(IndBuffer,true);
    ArraySetAsSeries(ColorIndBuffer,true);
    ArraySetAsSeries(mfi1,true);
    ArraySetAsSeries(mfi2,true);
    ArraySetAsSeries(delta,true);
 
-//---- инициализации переменной для короткого имени индикатора
+//---- initialization of variable for short indicator name
    string shortname;
    StringConcatenate(shortname,"Delta_MFI(",MFIPeriod1,",",MFIPeriod2,")");
-//--- создание имени для отображения в отдельном подокне и во всплывающей подсказке
+//--- creating name for display in separate subwindow and tooltip
    IndicatorSetString(INDICATOR_SHORTNAME,shortname);
-//--- определение точности отображения значений индикатора
+//--- defining precision of indicator values display
    IndicatorSetInteger(INDICATOR_DIGITS,0);
-//--- завершение инициализации
+//--- completion of initialization
    return(INIT_SUCCEEDED);
   }
 //+------------------------------------------------------------------+
 //| Custom indicator iteration function                              |
 //+------------------------------------------------------------------+
 int OnCalculate(
-                const int rates_total,    // количество истории в барах на текущем тике
-                const int prev_calculated,// количество истории в барах на предыдущем тике
+                const int rates_total,    // amount of history in bars at current tick
+                const int prev_calculated,// amount of history in bars at previous tick
                 const datetime &time[],
                 const double &open[],
-                const double& high[],     // ценовой массив максимумов цены для расчёта индикатора
-                const double& low[],      // ценовой массив минимумов цены  для расчёта индикатора
+                const double& high[],     // price array of high prices for indicator calculation
+                const double& low[],      // price array of low prices for indicator calculation
                 const double &close[],
                 const long &tick_volume[],
                 const long &volume[],
                 const int &spread[]
                 )
   {
-//---- проверка количества баров на достаточность для расчёта
+//---- checking amount of bars for sufficiency for calculation
    if(BarsCalculated(Ind1_Handle)<rates_total
        || BarsCalculated(Ind2_Handle)<rates_total
        || rates_total<min_rates_total) return(RESET);
 
-//---- объявления локальных переменных
+//---- declaration of local variables
    int limit,to_copy,bar,clr;
 
-//---- расчёт стартового номера first для цикла пересчёта баров
-   if(prev_calculated>rates_total || prev_calculated<=0) // проверка на первый старт расчёта индикатора
+//---- calculating start number first for bar recalculation loop
+   if(prev_calculated>rates_total || prev_calculated<=0) // check for first start of indicator calculation
      {
-      limit=rates_total-min_rates_total-1; // стартовый номер для расчёта всех баров
+      limit=rates_total-min_rates_total-1; // start number for calculation of all bars
      }
-   else limit=rates_total-prev_calculated; // стартовый номер для расчёта новых баров
+   else limit=rates_total-prev_calculated; // start number for calculation of new bars
 
    to_copy=limit+1;
 
-//---- копируем вновь появившиеся данные в массивы
+//---- copying newly appeared data into arrays
    if(CopyBuffer(Ind1_Handle,0,0,to_copy,mfi1)<=0) return(RESET);
    if(CopyBuffer(Ind2_Handle,0,0,to_copy,mfi2)<=0) return(RESET);
 
-//---- основной цикл расчёта индикатора
+//---- main indicator calculation loop
    for(bar=limit; bar>=0 && !IsStopped(); bar--)
      {
       delta[bar] = mfi1[bar]-mfi2[bar];

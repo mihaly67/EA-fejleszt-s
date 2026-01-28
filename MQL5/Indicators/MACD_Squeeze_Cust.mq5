@@ -162,9 +162,9 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
   {
-//--- Проверка и расчёт количества просчитываемых баров
+//--- Checking and calculating the number of calculated bars
    if(rates_total<4) return 0;
-//--- Проверка и расчёт количества просчитываемых баров
+//--- Checking and calculating the number of calculated bars
    int limit=rates_total-prev_calculated;
    if(limit>1)
      {
@@ -179,7 +179,7 @@ int OnCalculate(const int rates_total,
       ArrayInitialize(BufferKMA,0);
       ArrayInitialize(BufferKATR,0);
      }
-//--- Подготовка данных
+//--- Preparing data
    int count=(limit>1 ? rates_total : 1),copied=0;
    copied=CopyBuffer(handle_fma,0,0,count,BufferFMA);
    if(copied!=count) return 0;
@@ -194,7 +194,7 @@ int OnCalculate(const int rates_total,
    copied=CopyBuffer(handle_katr,0,0,count,BufferKATR);
    if(copied!=count) return 0;
 
-//--- Расчёт индикатора
+//--- Calculation of the indicator
    for(int i=limit; i>=0 && !IsStopped(); i--)
      {
       BufferMACD[i]=BufferFMA[i]-BufferSMA[i];
