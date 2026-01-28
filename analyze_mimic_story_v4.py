@@ -268,7 +268,14 @@ class MimicStoryTellerV4:
 
             print(f"       ⚡ THE CONTACT (0-5s):")
             print(f"           Velocity: {v_start:.2f} -> Peak {v_peak:.2f}")
-            print(f"           Spread: {spread_start:.5f} -> Peak {spread_peak:.5f}")
+
+            # Check for valid DOM data
+            valid_doms = [x for x in post_data if x['dom']]
+            if valid_doms:
+                spread_peak = max([(x['dom']['best_ask'] - x['dom']['best_bid']) for x in valid_doms])
+                print(f"           Spread: {spread_start:.5f} -> Peak {spread_peak:.5f}")
+            else:
+                print(f"           Spread: N/A (No DOM Data)")
 
             if len(post_data) < 5:
                 print("           ⚠️  DATA GAP: Log stopped? (Freeze detected)")

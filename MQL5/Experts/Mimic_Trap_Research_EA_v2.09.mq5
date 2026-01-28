@@ -134,6 +134,7 @@ string ObjBG = Prefix + "BG";
 string ObjStat = Prefix + "Status";
 string ObjBtnTrapBuy = Prefix + "BtnTrapBuy";
 string ObjBtnTrapSell = Prefix + "BtnTrapSell";
+string ObjBtnTrapDual = Prefix + "BtnTrapDual";
 string ObjBtnCloseAll = Prefix + "BtnClose";
 string ObjBtnMimicToggle = Prefix + "BtnMimic";
 string ObjEditTP = Prefix + "EditTP";
@@ -149,6 +150,7 @@ void RemoveIndicators();
 void DrawDealVisuals(ulong deal_ticket);
 void ArmTrap(ENUM_ORDER_TYPE dir);
 void ExecuteTrap();
+void ExecuteDualTrap();
 void CloseAll();
 double NormalizeLot(double lot);
 void WriteLog();
@@ -366,6 +368,17 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
         }
+      // --- TRAP DUAL ---
+      else if(sparam == ObjBtnTrapDual)
+        {
+         ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
+         ChartRedraw();
+         Sleep(100);
+         PlaySound("tick.wav");
+         ExecuteDualTrap();
+         ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
+         ChartRedraw();
+        }
       // --- CLOSE ALL ---
       else if(sparam == ObjBtnCloseAll)
         {
@@ -573,6 +586,35 @@ void ExecuteTrap()
    UpdateUI();
   }
 
+void ExecuteDualTrap()
+{
+   g_trap_active = false; // Ensure no pending traps
+   g_current_phase = "DUAL_EXEC";
+   g_tick_event_buffer += "DUAL_FIRED;";
+
+   Print("Mimic: EXECUTING DUAL TRAP (Immediate Hedge)");
+
+   double t_lot = NormalizeLot(InpTrojanLot);
+
+   // Open BUY
+   if(m_trade.PositionOpen(_Symbol, ORDER_TYPE_BUY, t_lot, m_symbol.Ask(), 0, 0, InpComment+"_Trojan")) {
+       Sleep(20);
+   }
+
+   // Open SELL
+   if(m_trade.PositionOpen(_Symbol, ORDER_TYPE_SELL, t_lot, m_symbol.Bid(), 0, 0, InpComment+"_Trojan")) {
+       // Done
+   }
+
+   PlaySound("ok.wav");
+
+   // Set Post-Event Phase
+   g_current_phase = "POST_ANALYSIS";
+   g_post_event_counter = InpPostEventTicks;
+
+   UpdateUI();
+}
+
 void CloseAll()
   {
    g_tick_event_buffer += "CLOSE_ALL_TRIG;";
@@ -592,7 +634,7 @@ void CreatePanel()
    int x = InpX;
    int y = InpY;
    int w = 160;
-   int h = 190; // Taller for extra controls
+   int h = 230; // Increased height for new button
 
    // Background
    ObjectCreate(0, ObjBG, OBJ_RECTANGLE_LABEL, 0, 0, 0);
@@ -643,32 +685,42 @@ void CreatePanel()
    ObjectSetInteger(0, ObjLabelPL, OBJPROP_COLOR, clrYellow);
    ObjectSetString(0, ObjLabelPL, OBJPROP_TEXT, "FL: 0.0 | BK: 0.0");
 
-   // Row 4: TRAP BUY (Green)
+   // Row 4: TRAP BUY (Green) - Reduced Size
    ObjectCreate(0, ObjBtnTrapBuy, OBJ_BUTTON, 0, 0, 0);
    ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_XDISTANCE, x+10);
    ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_YDISTANCE, y+100);
    ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_XSIZE, 140);
-   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_YSIZE, 30);
+   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_YSIZE, 25);
    ObjectSetString(0, ObjBtnTrapBuy, OBJPROP_TEXT, "TRAP BUY");
    ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_BGCOLOR, clrForestGreen);
    ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_COLOR, clrWhite);
 
-   // Row 5: TRAP SELL (Red)
+   // Row 5: TRAP SELL (Red) - Reduced Size
    ObjectCreate(0, ObjBtnTrapSell, OBJ_BUTTON, 0, 0, 0);
    ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_YDISTANCE, y+135);
+   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_YDISTANCE, y+130);
    ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_XSIZE, 140);
-   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_YSIZE, 30);
+   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_YSIZE, 25);
    ObjectSetString(0, ObjBtnTrapSell, OBJPROP_TEXT, "TRAP SELL");
    ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_BGCOLOR, clrFireBrick);
    ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_COLOR, clrWhite);
 
-   // Row 6: CLOSE ALL
+   // Row 6: TRAP DUAL (Blue) - New
+   ObjectCreate(0, ObjBtnTrapDual, OBJ_BUTTON, 0, 0, 0);
+   ObjectSetInteger(0, ObjBtnTrapDual, OBJPROP_XDISTANCE, x+10);
+   ObjectSetInteger(0, ObjBtnTrapDual, OBJPROP_YDISTANCE, y+160);
+   ObjectSetInteger(0, ObjBtnTrapDual, OBJPROP_XSIZE, 140);
+   ObjectSetInteger(0, ObjBtnTrapDual, OBJPROP_YSIZE, 25);
+   ObjectSetString(0, ObjBtnTrapDual, OBJPROP_TEXT, "TRAP DUAL (HEDGE)");
+   ObjectSetInteger(0, ObjBtnTrapDual, OBJPROP_BGCOLOR, clrRoyalBlue);
+   ObjectSetInteger(0, ObjBtnTrapDual, OBJPROP_COLOR, clrWhite);
+
+   // Row 7: CLOSE ALL
    ObjectCreate(0, ObjBtnCloseAll, OBJ_BUTTON, 0, 0, 0);
    ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_YDISTANCE, y+168);
+   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_YDISTANCE, y+195);
    ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_XSIZE, 140);
-   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_YSIZE, 18);
+   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_YSIZE, 25);
    ObjectSetString(0, ObjBtnCloseAll, OBJPROP_TEXT, "CLOSE ALL");
    ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_BGCOLOR, clrDimGray);
    ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_COLOR, clrWhite);
@@ -855,6 +907,7 @@ void DestroyPanel()
    ObjectDelete(0, ObjStat);
    ObjectDelete(0, ObjBtnTrapBuy);
    ObjectDelete(0, ObjBtnTrapSell);
+   ObjectDelete(0, ObjBtnTrapDual);
    ObjectDelete(0, ObjBtnCloseAll);
    ObjectDelete(0, ObjBtnMimicToggle);
    ObjectDelete(0, ObjEditTP);

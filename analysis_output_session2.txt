@@ -1,0 +1,19 @@
+Reading Log: Mimic_Research_EURUSD_20260126_211435.csv
+Version Detection: Legacy
+Loaded 3315 rows. Baseline Vel: 1.0266
+
+=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===
+
+
+--- 🕵️ COLOMBO'S TIMELINE ---
+[0.0s] 🚪 ENTRY DETECTED (Positions: 1)
+
+   🔬 MICROSCOPE: Deep Dive on Entry @ 1.18749
+       ⚡ THE CONTACT (0-5s):
+           Velocity: 0.00 -> Peak 0.16
+           Spread: 0.00006 -> Peak 0.00007
+       🧪 THE TEST (Zero Gravity):
+           Crossings of Entry Price: 29
+           First Crossing: +2.1s
+           Hover Time (within 10 pts): 652 ticks (19.7%)
+           ⚠️  VERDICT: 'WHIPSAW' (Rángatás) -> Algo is fighting for the level.
