@@ -34,6 +34,20 @@ A kérésére elvégeztem a mélységi vizsgálatot a `2026.01.28 03:50`-es Aran
 
 ---
 
+## ☠️ IV. A Végjáték: Az 5 Lotos Csapda ("The Endgame")
+A Long pozíció végén (3769.1s) a Mikroszkóp egy klasszikus csapdát (Bull Trap) azonosított.
+
+### 1. A Megtorpanás ("The Pause")
+*   **Esemény:** A zuhanás előtt **3.2 másodperccel** (3766.0s-nál) a Sebesség drasztikusan leesett **5.35-re** (az átlagos 24.35-ről).
+*   **Jelentés:** Ez volt az a pillanat, amit "megállásnak" éreztél. Az algoritmus visszahúzta a likviditást (Order Pull), hogy előkészítse a terepet a szakadáshoz. "A vihar előtti csend."
+
+### 2. A Szőnyeg Kihúzása ("The Rug Pull")
+*   **Esemény:** A szünet után azonnal az ár **46 pontot zuhant** mindössze **3.2 másodperc** alatt.
+*   **Sebesség:** Ez **14.5 pont/másodperc** esési sebesség ("Crash Speed"), ami a normál mozgás többszöröse.
+*   **Verdikt:** 'FLASH CRASH'. Az algoritmus érzékelte az 5 lotos kitettséget, "kifárasztott" a csenddel, majd a likviditás-vákuumban (amit a csenddel hozott létre) lerántotta az árat.
+
+---
+
 ## 🧠 Stratégiai Konklúzió
 
 1.  **A "Toporgás" (Churning) Mítosza:**
@@ -45,8 +59,8 @@ A kérésére elvégeztem a mélységi vizsgálatot a `2026.01.28 03:50`-es Aran
     *   Ha a Spread stabil marad (mint itt), de a Sebesség nő -> **Harcra felkészülni**.
     *   Ha a Spread tágul -> **Menekülni** (Likviditási hiány).
 
-3.  **Javaslat a Jövőre:**
-    *   A "Mikroszkóp" modult beépítem az EA-ba.
-    *   Ha az első 5 másodpercben `Velocity Spike` van, de `Spread Stable` -> Az EA automatikusan tudja, hogy "Whipsaw" (Rángatás) jön, és **tágabb dinamikus stopot** alkalmazzon, nehogy kiverje a zaj.
+3.  **Endgame Védelem:**
+    *   Ha nagy pozícióban vagyunk (5+ lot), és a Sebesség hirtelen leesik (a példában 24-ről 5-re), **AZONNAL ZÁRNI KELL**.
+    *   Ez a "Megtorpanás" (Pause) a legbiztosabb jele annak, hogy a bróker "tölti a fegyvert" (likviditás elvonás) a rántás előtt. Van rá kb. **3 másodpercünk** reagálni.
 
 *"A számok nem hazudnak, uram. Csak néha túl gyorsan beszélnek."*
