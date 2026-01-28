@@ -104,8 +104,6 @@ int OnCalculate(const int rates_total,    // amount of history in bars at curren
 //---- checking amount of bars for sufficiency for calculation
    if(rates_total<min_rates_total) return(0);
 
-//---- Declaration of floating point variables
-   double dummy; // Renamed to dummy from empty double;
 //---- Declaration of integer variables and getting already calculated bars
    int first,bar;
    int diff,deltah,deltal,resh,resl;
