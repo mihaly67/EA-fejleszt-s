@@ -1,0 +1,41 @@
+Reading Log: Mimic_Research_GOLD_20260128_035057.csv
+Version Detection: v2.09 (Modern)
+Loaded 13782 rows. Baseline Vel: 24.3474
+
+=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===
+
+
+--- 🕵️ COLOMBO'S TIMELINE ---
+[0.2s] 🚪 ENTRY DETECTED (Positions: 1)
+   🎣 THE BAIT ANALYSIS (Pre-Entry 60s):
+       Avg Velocity: 9.6697 (Baseline: 24.3474)
+       Displacement: 0.0 points
+       ℹ️  VERDICT: Normal Market Conditions
+
+   🔬 MICROSCOPE: Deep Dive on Entry @ 5219.60500
+       ⚡ THE CONTACT (0-5s):
+           Velocity: 10.48 -> Peak 15.09
+           Spread: 0.39000 -> Peak 0.39000
+       🧪 THE TEST (Zero Gravity):
+           Crossings of Entry Price: 69
+           First Crossing: +0.4s
+           Hover Time (within 10 pts): 135 ticks (1.0%)
+           ⚠️  VERDICT: 'WHIPSAW' (Rángatás) -> Algo is fighting for the level.
+[255.3s] 💰 PROFIT EXIT: 920.97 EUR (Tag: CLOSE_MANUAL_920.97;)
+       Context: Price 5216.98500 | Pivot Range: [5216.65500 - 5217.68500]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 24.1858 -> 26.6737 (Ratio: 1.10)
+[3769.1s] 💀 LOSS EXIT: 0.00 EUR (Tag: CLOSE_ALL_TRIG;)
+
+   ☠️  MICROSCOPE: THE ENDGAME (5 Lot Check) @ 3769.1s
+       ⏸️  THE PAUSE (Megtorpanás):
+           Detected at: 3766.0s (T-3.2s before crash)
+           Velocity Drop: to 5.35 (Baseline 24.35)
+       📉 THE CRASH (Drawdown):
+           Price: 5230.22 -> 5229.76
+           Drop: -46.0 points in 3.2s
+           Crash Speed: 14.5 pts/sec
+           ⚠️  VERDICT: 'FLASH CRASH' -> Algo pulled the rug immediately.
+       Context: Price 5229.75500 | Pivot Range: [5229.59500 - 5231.23500]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 16.7788 -> 20.2157 (Ratio: 1.20)
