@@ -1,12 +1,12 @@
 //+------------------------------------------------------------------+
-//|                                   Mimic_Trap_Research_EA_v2.09.mq5|
+//|                                   Mimic_Trap_Research_EA_v2.10.mq5|
 //|                                                      Jules Agent |
 //|                       Focused Strategy: Liquidity Mimicry Trap   |
-//|                       Mode: RESEARCH & DATA MINING (v2.09)       |
+//|                       Mode: RESEARCH & DATA MINING (v2.10)       |
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent & User"
 #property link      "https://www.mql5.com"
-#property version   "2.09"
+#property version   "2.10"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -43,12 +43,14 @@ input string        InpIndPath           = "Jules\\"; // [Strategy] Indicator Pa
 
 // [Position Size]
 input double        InpDecoyLot          = 0.01;   // [Position] Decoy Lot (Fake Direction)
-input double        InpTrojanLot         = 0.1;    // [Position] Trojan Lot (Real Direction)
+input double        InpTrojanLot         = 0.1;    // [Position] Trojan Lot (Real Direction - Default)
 
 // [Risk Management]
 input int           InpSlippage          = 10;     // [Risk] Slippage
 input ulong         InpMagicNumber       = 999002; // [Risk] Magic Number
 input string        InpComment           = "MimicResearch"; // [Risk] Comment
+input double        InpSLPercent         = 5.0;    // [Risk] Stop Loss % (Default 5%)
+input double        InpTPPercent         = 5.0;    // [Risk] Take Profit % (Default 5%)
 
 // [Momentum Settings]
 input ENUM_COLOR_LOGIC   Mom_InpColorLogic     = COLOR_SLOPE; // [Momentum] Color Logic Mode
@@ -94,7 +96,7 @@ input double             Mic_InpHighVolThreshold = 1.5;     // [Micro] High Vol 
 
 // [Panel UI]
 input int           InpX                 = 10;               // [UI] X Coordinate
-input int           InpY                 = 40;               // [UI] Y Coordinate (Moved Up)
+input int           InpY                 = 20;               // [UI] Y Coordinate (Moved Up for compactness)
 input color         InpBgColor           = clrDarkSlateGray; // [UI] BG Color
 input color         InpTxtColor          = clrWhite;         // [UI] Text Color
 
@@ -121,6 +123,9 @@ string            g_tick_event_buffer = ""; // Stores events for the current tic
 // Strategy Control Globals
 bool              g_mimic_mode = true; // Default ON
 double            g_target_profit_eur = 0.0; // 0 = Disabled
+double            g_user_lot_size = InpTrojanLot; // Editable via Panel
+int               g_user_burst_count = 5;         // Editable via Panel
+int               g_user_burst_delay = 50;        // Editable via Panel
 
 //--- Struct to hold simplified level data
 struct LevelData {
@@ -134,11 +139,23 @@ string ObjBG = Prefix + "BG";
 string ObjStat = Prefix + "Status";
 string ObjBtnTrapBuy = Prefix + "BtnTrapBuy";
 string ObjBtnTrapSell = Prefix + "BtnTrapSell";
-string ObjBtnTrapDual = Prefix + "BtnTrapDual";
+string ObjBtnTrapBurst = Prefix + "BtnTrapBurst";
 string ObjBtnCloseAll = Prefix + "BtnClose";
 string ObjBtnMimicToggle = Prefix + "BtnMimic";
+
+// Editable Fields
 string ObjEditTP = Prefix + "EditTP";
 string ObjLabelTP = Prefix + "LabelTP";
+
+string ObjEditLot = Prefix + "EditLot";
+string ObjLabelLot = Prefix + "LabelLot";
+
+string ObjEditBCount = Prefix + "EditBCount";
+string ObjLabelBCount = Prefix + "LabelBCount";
+
+string ObjEditBDelay = Prefix + "EditBDelay";
+string ObjLabelBDelay = Prefix + "LabelBDelay";
+
 string ObjLabelPL = Prefix + "LabelPL";
 
 //--- Forward Declarations
@@ -150,7 +167,7 @@ void RemoveIndicators();
 void DrawDealVisuals(ulong deal_ticket);
 void ArmTrap(ENUM_ORDER_TYPE dir);
 void ExecuteTrap();
-void ExecuteDualTrap();
+void ExecuteBurstTrap();
 void CloseAll();
 double NormalizeLot(double lot);
 void WriteLog();
@@ -159,6 +176,7 @@ void SortBids(LevelData &arr[], int count);
 void SortAsks(LevelData &arr[], int count);
 double GetFloatingPL();
 void CalcDailyPivots(double &pp, double &r1, double &s1);
+void CalculateSLTP(ENUM_ORDER_TYPE type, double price, double &sl, double &tp);
 
 //+------------------------------------------------------------------+
 //| Initialization                                                   |
@@ -179,6 +197,9 @@ int OnInit()
 
    if(MarketBookAdd(_Symbol)) g_book_subscribed = true;
    else Print("Mimic: Failed to subscribe to MarketBook!");
+
+   // Initialize User Globals from Inputs
+   g_user_lot_size = InpTrojanLot;
 
    // --- INDICATOR HANDLES ---
    string path_mom = InpIndPath + "HybridMomentumIndicator_v2.82";
@@ -267,7 +288,7 @@ int OnInit()
    CreatePanel();
    UpdateUI();
 
-   Print("Mimic Trap Research EA v2.09 (Pivots+Events) Initialized.");
+   Print("Mimic Trap Research EA v2.10 (Burst+PanelInputs) Initialized.");
    return(INIT_SUCCEEDED);
   }
 
@@ -368,14 +389,14 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
         }
-      // --- TRAP DUAL ---
-      else if(sparam == ObjBtnTrapDual)
+      // --- TRAP BURST ---
+      else if(sparam == ObjBtnTrapBurst)
         {
          ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
          ChartRedraw();
          Sleep(100);
          PlaySound("tick.wav");
-         ExecuteDualTrap();
+         ExecuteBurstTrap();
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
         }
@@ -400,6 +421,24 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
            string text = ObjectGetString(0, ObjEditTP, OBJPROP_TEXT);
            g_target_profit_eur = StringToDouble(text);
            Print("Mimic: Target Profit Updated to: ", g_target_profit_eur);
+       }
+       else if(sparam == ObjEditLot) {
+           string text = ObjectGetString(0, ObjEditLot, OBJPROP_TEXT);
+           double val = StringToDouble(text);
+           if(val > 0) g_user_lot_size = val;
+           Print("Mimic: Lot Size Updated to: ", g_user_lot_size);
+       }
+       else if(sparam == ObjEditBCount) {
+           string text = ObjectGetString(0, ObjEditBCount, OBJPROP_TEXT);
+           long val = StringToInteger(text);
+           if(val > 0) g_user_burst_count = (int)val;
+           Print("Mimic: Burst Count Updated to: ", g_user_burst_count);
+       }
+       else if(sparam == ObjEditBDelay) {
+           string text = ObjectGetString(0, ObjEditBDelay, OBJPROP_TEXT);
+           long val = StringToInteger(text);
+           if(val >= 0) g_user_burst_delay = (int)val;
+           Print("Mimic: Burst Delay Updated to: ", g_user_burst_delay);
        }
    }
   }
@@ -553,6 +592,9 @@ void ExecuteTrap()
    g_current_phase = "TRAP_EXEC";
    g_tick_event_buffer += "TRAP_FIRED;";
 
+   // Calculate SL/TP based on 5% rule
+   double sl=0, tp=0;
+
    if (g_mimic_mode)
    {
        // 1. DECOY PHASE (Opposite Direction) - ONLY IN MIMIC MODE
@@ -560,7 +602,8 @@ void ExecuteTrap()
        double d_lot = NormalizeLot(InpDecoyLot);
 
        for(int i=0; i<InpDecoyCount; i++) {
-          if(m_trade.PositionOpen(_Symbol, decoy_dir, d_lot, (decoy_dir==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), 0, 0, InpComment+"_Decoy")) {
+          CalculateSLTP(decoy_dir, (decoy_dir==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), sl, tp);
+          if(m_trade.PositionOpen(_Symbol, decoy_dir, d_lot, (decoy_dir==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), sl, tp, InpComment+"_Decoy")) {
              Sleep(20); // Minimal spacing
           }
        }
@@ -571,8 +614,10 @@ void ExecuteTrap()
    }
 
    // 2. TROJAN PHASE (Real Direction)
-   double t_lot = NormalizeLot(InpTrojanLot);
-   if(m_trade.PositionOpen(_Symbol, g_trap_direction, t_lot, (g_trap_direction==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), 0, 0, InpComment+"_Trojan")) {
+   double t_lot = NormalizeLot(g_user_lot_size);
+   CalculateSLTP(g_trap_direction, (g_trap_direction==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), sl, tp);
+
+   if(m_trade.PositionOpen(_Symbol, g_trap_direction, t_lot, (g_trap_direction==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), sl, tp, InpComment+"_Trojan")) {
        // Done
    }
 
@@ -586,24 +631,36 @@ void ExecuteTrap()
    UpdateUI();
   }
 
-void ExecuteDualTrap()
+void ExecuteBurstTrap()
 {
    g_trap_active = false; // Ensure no pending traps
-   g_current_phase = "DUAL_EXEC";
-   g_tick_event_buffer += "DUAL_FIRED;";
+   g_current_phase = "BURST_EXEC";
+   g_tick_event_buffer += "BURST_FIRED;";
 
-   Print("Mimic: EXECUTING DUAL TRAP (Immediate Hedge)");
+   Print("Mimic: EXECUTING BURST TRAP (Count: ", g_user_burst_count, ", Delay: ", g_user_burst_delay, ")");
 
-   double t_lot = NormalizeLot(InpTrojanLot);
+   double t_lot = NormalizeLot(g_user_lot_size);
+   double sl=0, tp=0;
 
-   // Open BUY
-   if(m_trade.PositionOpen(_Symbol, ORDER_TYPE_BUY, t_lot, m_symbol.Ask(), 0, 0, InpComment+"_Trojan")) {
-       Sleep(20);
-   }
+   for (int i = 0; i < g_user_burst_count; i++)
+   {
+       m_symbol.RefreshRates();
 
-   // Open SELL
-   if(m_trade.PositionOpen(_Symbol, ORDER_TYPE_SELL, t_lot, m_symbol.Bid(), 0, 0, InpComment+"_Trojan")) {
-       // Done
+       // Open BUY
+       CalculateSLTP(ORDER_TYPE_BUY, m_symbol.Ask(), sl, tp);
+       if(m_trade.PositionOpen(_Symbol, ORDER_TYPE_BUY, t_lot, m_symbol.Ask(), sl, tp, InpComment+"_Burst")) {
+           // OK
+       }
+
+       // Open SELL
+       CalculateSLTP(ORDER_TYPE_SELL, m_symbol.Bid(), sl, tp);
+       if(m_trade.PositionOpen(_Symbol, ORDER_TYPE_SELL, t_lot, m_symbol.Bid(), sl, tp, InpComment+"_Burst")) {
+           // OK
+       }
+
+       // Delay between waves
+       if (i < g_user_burst_count - 1 && g_user_burst_delay > 0)
+           Sleep(g_user_burst_delay);
    }
 
    PlaySound("ok.wav");
@@ -626,6 +683,29 @@ void CloseAll()
    Print("Mimic: All positions closed.");
   }
 
+void CalculateSLTP(ENUM_ORDER_TYPE type, double price, double &sl, double &tp)
+{
+    if (InpSLPercent <= 0 && InpTPPercent <= 0) {
+        sl = 0; tp = 0; return;
+    }
+
+    double delta_sl = price * (InpSLPercent / 100.0);
+    double delta_tp = price * (InpTPPercent / 100.0);
+
+    if (type == ORDER_TYPE_BUY) {
+        sl = (InpSLPercent > 0) ? price - delta_sl : 0;
+        tp = (InpTPPercent > 0) ? price + delta_tp : 0;
+    } else {
+        sl = (InpSLPercent > 0) ? price + delta_sl : 0;
+        tp = (InpTPPercent > 0) ? price - delta_tp : 0;
+    }
+
+    // Normalize
+    double tick_size = m_symbol.TickSize();
+    if(sl>0) sl = MathRound(sl/tick_size)*tick_size;
+    if(tp>0) tp = MathRound(tp/tick_size)*tick_size;
+}
+
 //+------------------------------------------------------------------+
 //| GUI                                                              |
 //+------------------------------------------------------------------+
@@ -633,8 +713,12 @@ void CreatePanel()
   {
    int x = InpX;
    int y = InpY;
-   int w = 160;
-   int h = 230; // Increased height for new button
+   int w = 150; // Slightly narrower (was 160)
+   int h = 280; // Taller for inputs
+
+   int btn_w = 130; // Button Width
+   int btn_h = 24;  // Button Height (Reduced from 30/25)
+   int gap_y = 26;  // Vertical Gap
 
    // Background
    ObjectCreate(0, ObjBG, OBJ_RECTANGLE_LABEL, 0, 0, 0);
@@ -645,82 +729,134 @@ void CreatePanel()
    ObjectSetInteger(0, ObjBG, OBJPROP_BGCOLOR, InpBgColor);
    ObjectSetInteger(0, ObjBG, OBJPROP_BORDER_TYPE, BORDER_FLAT);
 
+   int curr_y = y + 5;
+
    // Status Label
    ObjectCreate(0, ObjStat, OBJ_LABEL, 0, 0, 0);
    ObjectSetInteger(0, ObjStat, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjStat, OBJPROP_YDISTANCE, y+5);
+   ObjectSetInteger(0, ObjStat, OBJPROP_YDISTANCE, curr_y);
    ObjectSetInteger(0, ObjStat, OBJPROP_COLOR, InpTxtColor);
-   ObjectSetString(0, ObjStat, OBJPROP_TEXT, "READY");
+   ObjectSetString(0, ObjStat, OBJPROP_TEXT, "READY v2.10");
+   curr_y += 20;
 
-   // Row 1: Mimic Toggle
+   // Row: Mimic Toggle
    ObjectCreate(0, ObjBtnMimicToggle, OBJ_BUTTON, 0, 0, 0);
    ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_YDISTANCE, y+25);
-   ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_XSIZE, 140);
+   ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_XSIZE, btn_w);
    ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_YSIZE, 20);
    ObjectSetString(0, ObjBtnMimicToggle, OBJPROP_TEXT, "MIMIC MODE: ON");
    ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_BGCOLOR, clrForestGreen);
    ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_COLOR, clrWhite);
+   curr_y += 25;
 
-   // Row 2: Target Profit (Label + Edit)
+   // Input: Lot Size
+   ObjectCreate(0, ObjLabelLot, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, ObjLabelLot, OBJPROP_XDISTANCE, x+10);
+   ObjectSetInteger(0, ObjLabelLot, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjLabelLot, OBJPROP_COLOR, InpTxtColor);
+   ObjectSetString(0, ObjLabelLot, OBJPROP_TEXT, "Lot:");
+
+   ObjectCreate(0, ObjEditLot, OBJ_EDIT, 0, 0, 0);
+   ObjectSetInteger(0, ObjEditLot, OBJPROP_XDISTANCE, x+40);
+   ObjectSetInteger(0, ObjEditLot, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjEditLot, OBJPROP_XSIZE, 50);
+   ObjectSetInteger(0, ObjEditLot, OBJPROP_YSIZE, 18);
+   ObjectSetString(0, ObjEditLot, OBJPROP_TEXT, DoubleToString(g_user_lot_size, 2));
+   ObjectSetInteger(0, ObjEditLot, OBJPROP_BGCOLOR, clrWhite);
+   ObjectSetInteger(0, ObjEditLot, OBJPROP_COLOR, clrBlack);
+   curr_y += 20;
+
+   // Input: Burst Count & Delay
+   ObjectCreate(0, ObjLabelBCount, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, ObjLabelBCount, OBJPROP_XDISTANCE, x+10);
+   ObjectSetInteger(0, ObjLabelBCount, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjLabelBCount, OBJPROP_COLOR, InpTxtColor);
+   ObjectSetString(0, ObjLabelBCount, OBJPROP_TEXT, "Cnt/Ms:");
+
+   ObjectCreate(0, ObjEditBCount, OBJ_EDIT, 0, 0, 0);
+   ObjectSetInteger(0, ObjEditBCount, OBJPROP_XDISTANCE, x+60);
+   ObjectSetInteger(0, ObjEditBCount, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjEditBCount, OBJPROP_XSIZE, 30);
+   ObjectSetInteger(0, ObjEditBCount, OBJPROP_YSIZE, 18);
+   ObjectSetString(0, ObjEditBCount, OBJPROP_TEXT, IntegerToString(g_user_burst_count));
+   ObjectSetInteger(0, ObjEditBCount, OBJPROP_BGCOLOR, clrWhite);
+   ObjectSetInteger(0, ObjEditBCount, OBJPROP_COLOR, clrBlack);
+
+   ObjectCreate(0, ObjEditBDelay, OBJ_EDIT, 0, 0, 0);
+   ObjectSetInteger(0, ObjEditBDelay, OBJPROP_XDISTANCE, x+95);
+   ObjectSetInteger(0, ObjEditBDelay, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjEditBDelay, OBJPROP_XSIZE, 40);
+   ObjectSetInteger(0, ObjEditBDelay, OBJPROP_YSIZE, 18);
+   ObjectSetString(0, ObjEditBDelay, OBJPROP_TEXT, IntegerToString(g_user_burst_delay));
+   ObjectSetInteger(0, ObjEditBDelay, OBJPROP_BGCOLOR, clrWhite);
+   ObjectSetInteger(0, ObjEditBDelay, OBJPROP_COLOR, clrBlack);
+   curr_y += 20;
+
+   // Input: Target Profit
    ObjectCreate(0, ObjLabelTP, OBJ_LABEL, 0, 0, 0);
    ObjectSetInteger(0, ObjLabelTP, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjLabelTP, OBJPROP_YDISTANCE, y+50);
+   ObjectSetInteger(0, ObjLabelTP, OBJPROP_YDISTANCE, curr_y);
    ObjectSetInteger(0, ObjLabelTP, OBJPROP_COLOR, InpTxtColor);
-   ObjectSetString(0, ObjLabelTP, OBJPROP_TEXT, "Target EUR:");
+   ObjectSetString(0, ObjLabelTP, OBJPROP_TEXT, "TP EUR:");
 
    ObjectCreate(0, ObjEditTP, OBJ_EDIT, 0, 0, 0);
-   ObjectSetInteger(0, ObjEditTP, OBJPROP_XDISTANCE, x+80);
-   ObjectSetInteger(0, ObjEditTP, OBJPROP_YDISTANCE, y+50);
+   ObjectSetInteger(0, ObjEditTP, OBJPROP_XDISTANCE, x+70);
+   ObjectSetInteger(0, ObjEditTP, OBJPROP_YDISTANCE, curr_y);
    ObjectSetInteger(0, ObjEditTP, OBJPROP_XSIZE, 65);
-   ObjectSetInteger(0, ObjEditTP, OBJPROP_YSIZE, 20);
+   ObjectSetInteger(0, ObjEditTP, OBJPROP_YSIZE, 18);
    ObjectSetString(0, ObjEditTP, OBJPROP_TEXT, "0.0");
    ObjectSetInteger(0, ObjEditTP, OBJPROP_BGCOLOR, clrWhite);
    ObjectSetInteger(0, ObjEditTP, OBJPROP_COLOR, clrBlack);
+   curr_y += 25;
 
-   // Row 3: P/L Display
+   // P/L Display
    ObjectCreate(0, ObjLabelPL, OBJ_LABEL, 0, 0, 0);
    ObjectSetInteger(0, ObjLabelPL, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjLabelPL, OBJPROP_YDISTANCE, y+75);
+   ObjectSetInteger(0, ObjLabelPL, OBJPROP_YDISTANCE, curr_y);
    ObjectSetInteger(0, ObjLabelPL, OBJPROP_COLOR, clrYellow);
    ObjectSetString(0, ObjLabelPL, OBJPROP_TEXT, "FL: 0.0 | BK: 0.0");
+   curr_y += 20;
 
-   // Row 4: TRAP BUY (Green) - Reduced Size
+   // TRAP BUY
    ObjectCreate(0, ObjBtnTrapBuy, OBJ_BUTTON, 0, 0, 0);
    ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_YDISTANCE, y+100);
-   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_XSIZE, 140);
-   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_YSIZE, 25);
+   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_XSIZE, btn_w);
+   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_YSIZE, btn_h);
    ObjectSetString(0, ObjBtnTrapBuy, OBJPROP_TEXT, "TRAP BUY");
    ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_BGCOLOR, clrForestGreen);
    ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_COLOR, clrWhite);
+   curr_y += gap_y;
 
-   // Row 5: TRAP SELL (Red) - Reduced Size
+   // TRAP SELL
    ObjectCreate(0, ObjBtnTrapSell, OBJ_BUTTON, 0, 0, 0);
    ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_YDISTANCE, y+130);
-   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_XSIZE, 140);
-   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_YSIZE, 25);
+   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_XSIZE, btn_w);
+   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_YSIZE, btn_h);
    ObjectSetString(0, ObjBtnTrapSell, OBJPROP_TEXT, "TRAP SELL");
    ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_BGCOLOR, clrFireBrick);
    ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_COLOR, clrWhite);
+   curr_y += gap_y;
 
-   // Row 6: TRAP DUAL (Blue) - New
-   ObjectCreate(0, ObjBtnTrapDual, OBJ_BUTTON, 0, 0, 0);
-   ObjectSetInteger(0, ObjBtnTrapDual, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjBtnTrapDual, OBJPROP_YDISTANCE, y+160);
-   ObjectSetInteger(0, ObjBtnTrapDual, OBJPROP_XSIZE, 140);
-   ObjectSetInteger(0, ObjBtnTrapDual, OBJPROP_YSIZE, 25);
-   ObjectSetString(0, ObjBtnTrapDual, OBJPROP_TEXT, "TRAP DUAL (HEDGE)");
-   ObjectSetInteger(0, ObjBtnTrapDual, OBJPROP_BGCOLOR, clrRoyalBlue);
-   ObjectSetInteger(0, ObjBtnTrapDual, OBJPROP_COLOR, clrWhite);
+   // TRAP BURST
+   ObjectCreate(0, ObjBtnTrapBurst, OBJ_BUTTON, 0, 0, 0);
+   ObjectSetInteger(0, ObjBtnTrapBurst, OBJPROP_XDISTANCE, x+10);
+   ObjectSetInteger(0, ObjBtnTrapBurst, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjBtnTrapBurst, OBJPROP_XSIZE, btn_w);
+   ObjectSetInteger(0, ObjBtnTrapBurst, OBJPROP_YSIZE, btn_h);
+   ObjectSetString(0, ObjBtnTrapBurst, OBJPROP_TEXT, "BURST (DUAL)");
+   ObjectSetInteger(0, ObjBtnTrapBurst, OBJPROP_BGCOLOR, clrRoyalBlue);
+   ObjectSetInteger(0, ObjBtnTrapBurst, OBJPROP_COLOR, clrWhite);
+   curr_y += gap_y;
 
-   // Row 7: CLOSE ALL
+   // CLOSE ALL
    ObjectCreate(0, ObjBtnCloseAll, OBJ_BUTTON, 0, 0, 0);
    ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_YDISTANCE, y+195);
-   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_XSIZE, 140);
-   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_YSIZE, 25);
+   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_YDISTANCE, curr_y + 5);
+   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_XSIZE, btn_w);
+   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_YSIZE, 18);
    ObjectSetString(0, ObjBtnCloseAll, OBJPROP_TEXT, "CLOSE ALL");
    ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_BGCOLOR, clrDimGray);
    ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_COLOR, clrWhite);
@@ -907,11 +1043,17 @@ void DestroyPanel()
    ObjectDelete(0, ObjStat);
    ObjectDelete(0, ObjBtnTrapBuy);
    ObjectDelete(0, ObjBtnTrapSell);
-   ObjectDelete(0, ObjBtnTrapDual);
+   ObjectDelete(0, ObjBtnTrapBurst);
    ObjectDelete(0, ObjBtnCloseAll);
    ObjectDelete(0, ObjBtnMimicToggle);
    ObjectDelete(0, ObjEditTP);
    ObjectDelete(0, ObjLabelTP);
+   ObjectDelete(0, ObjEditLot);
+   ObjectDelete(0, ObjLabelLot);
+   ObjectDelete(0, ObjEditBCount);
+   ObjectDelete(0, ObjLabelBCount);
+   ObjectDelete(0, ObjEditBDelay);
+   ObjectDelete(0, ObjLabelBDelay);
    ObjectDelete(0, ObjLabelPL);
   }
 
