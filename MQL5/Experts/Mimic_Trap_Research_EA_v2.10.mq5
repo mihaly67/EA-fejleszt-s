@@ -43,7 +43,7 @@ input string        InpIndPath           = "Jules\\"; // [Strategy] Indicator Pa
 
 // [Position Size]
 input double        InpDecoyLot          = 0.01;   // [Position] Decoy Lot (Fake Direction)
-input double        InpTrojanLot         = 0.1;    // [Position] Trojan Lot (Real Direction - Default)
+input double        InpTrojanLot         = 0.1;    // [Position] Trojan Lot (Real Direction)
 
 // [Risk Management]
 input int           InpSlippage          = 10;     // [Risk] Slippage
