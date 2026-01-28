@@ -239,6 +239,73 @@ class MimicStoryTellerV4:
                 break
         return last_high, last_low
 
+    def microscope_analysis(self, entry_idx, entry_price):
+        print(f"\n   🔬 MICROSCOPE: Deep Dive on Entry @ {entry_price:.5f}")
+
+        # 1. IMMEDIATE REACTION (The Contact - First 5s)
+        entry_time = self.data[entry_idx]['time_sec']
+        post_data = [x for x in self.data if x['time_sec'] >= entry_time and x['time_sec'] <= entry_time + 5]
+
+        if not post_data:
+            print("       (No data for immediate reaction)")
+        else:
+            v_start = post_data[0]['vel']
+            v_peak = max([x['vel'] for x in post_data])
+            spread_start = (post_data[0]['dom']['best_ask'] - post_data[0]['dom']['best_bid']) if post_data[0]['dom'] else 0
+            spread_peak = max([(x['dom']['best_ask'] - x['dom']['best_bid']) for x in post_data if x['dom']])
+
+            print(f"       ⚡ THE CONTACT (0-5s):")
+            print(f"           Velocity: {v_start:.2f} -> Peak {v_peak:.2f}")
+            print(f"           Spread: {spread_start:.5f} -> Peak {spread_peak:.5f}")
+
+            # Did it freeze?
+            if len(post_data) < 5:
+                print("           ⚠️  DATA GAP: Log stopped? (Freeze detected)")
+
+        # 2. THE TEST (Zero Crossings)
+        # Scan forward until exit
+        crossings = []
+        hover_ticks = 0
+        total_ticks = 0
+
+        # Assume scale
+        point = 0.01 if entry_price > 500 else 0.00001
+        zone = 10 * point # 10 points danger zone
+
+        for i in range(entry_idx, len(self.data)):
+            r = self.data[i]
+            # If position count drops to 0, trade ended
+            if r['pos_count'] == 0: break
+
+            total_ticks += 1
+            dist = abs(r['mid'] - entry_price)
+
+            if dist <= zone:
+                hover_ticks += 1
+
+            # Crossing Detection (Sign flip of drift)
+            # Drift = Mid - Entry
+            drift = r['mid'] - entry_price
+            prev_drift = self.data[i-1]['mid'] - entry_price if i > 0 else drift
+
+            if (drift > 0 and prev_drift < 0) or (drift < 0 and prev_drift > 0):
+                crossings.append((r['time_sec'], r['vel']))
+
+        print(f"       🧪 THE TEST (Zero Gravity):")
+        print(f"           Crossings of Entry Price: {len(crossings)}")
+        if crossings:
+             print(f"           First Crossing: +{crossings[0][0]-entry_time:.1f}s")
+
+        hover_pct = (hover_ticks / max(1, total_ticks)) * 100
+        print(f"           Hover Time (within 10 pts): {hover_ticks} ticks ({hover_pct:.1f}%)")
+
+        if hover_pct > 60:
+            print("           ⚠️  VERDICT: 'TOPORGÁS' (Shuffling) -> Algo is confused/calculating.")
+        elif len(crossings) > 3:
+            print("           ⚠️  VERDICT: 'WHIPSAW' (Rángatás) -> Algo is fighting for the level.")
+        else:
+            print("           ℹ️  VERDICT: Clean Breakout/Breakdown.")
+
     def check_dom_spoofing(self):
         print("\n=== 🕵️ FORENSIC MODULE: DOM GHOST HUNT ===\n")
         if not self.data: return
@@ -254,17 +321,14 @@ class MimicStoryTellerV4:
             if not curr['dom'] or not prev['dom']: continue
 
             # 1. GHOST WALL DETECTION (Disappearing Liquidity)
-            # Bid Wall Disappears
             prev_bid_vol = prev['dom']['bid_vols'][0]
             curr_bid_vol = curr['dom']['bid_vols'][0]
 
             if prev_bid_vol > LARGE_VOL and curr_bid_vol < (prev_bid_vol * 0.2):
-                # Only if price did NOT move through it (No execution)
                 if curr['mid'] >= prev['dom']['best_bid']:
                      msg = f"[{curr['time_sec']:.1f}s] 👻 GHOST BID: {prev_bid_vol} -> {curr_bid_vol} @ {prev['dom']['best_bid']:.5f}"
                      ghost_events.append(msg)
 
-            # Ask Wall Disappears
             prev_ask_vol = prev['dom']['ask_vols'][0]
             curr_ask_vol = curr['dom']['ask_vols'][0]
 
@@ -273,7 +337,7 @@ class MimicStoryTellerV4:
                      msg = f"[{curr['time_sec']:.1f}s] 👻 GHOST ASK: {prev_ask_vol} -> {curr_ask_vol} @ {prev['dom']['best_ask']:.5f}"
                      ghost_events.append(msg)
 
-            # 2. SPOOF RATIO (Imbalance against trend)
+            # 2. SPOOF RATIO
             trend = 0
             lookback = max(0, i-5)
             if curr['mid'] > self.data[lookback]['mid']: trend = 1
@@ -285,12 +349,10 @@ class MimicStoryTellerV4:
             ratio = 0.0
             type_str = ""
 
-            # If Uptrend, huge Ask volume is Resistance (Spoof?)
             if trend == 1:
                 if total_bid > 0:
                     ratio = total_ask / total_bid
                     type_str = "Bearish Wall"
-            # If Downtrend, huge Bid volume is Support (Spoof?)
             elif trend == -1:
                 if total_ask > 0:
                     ratio = total_bid / total_ask
@@ -299,12 +361,10 @@ class MimicStoryTellerV4:
             if ratio > 3.0:
                  spoof_ratios.append((curr['time_sec'], ratio, type_str, curr['pressure'], curr['float_pl']))
 
-        # Report
         print(f"👻 Ghost Events Detected: {len(ghost_events)}")
         for g in ghost_events[:5]: print(g)
 
         print(f"🛡️  Spoof Walls Detected: {len(spoof_ratios)}")
-        # Highlight Spoofs during Drawdown (The Scare)
         scare_tactics = [x for x in spoof_ratios if x[4] < 0]
         print(f"💀 'The Scare' Events (Spoofing while we lose): {len(scare_tactics)}")
 
@@ -328,16 +388,13 @@ class MimicStoryTellerV4:
 
         print(f"\n--- 🕵️ COLOMBO'S TIMELINE ---")
 
-        # Track Phase
-        trade_start_idx = -1
-
         for i, r in enumerate(self.data):
 
             # ENTER TRADE DETECTION
             if r['pos_count'] > last_pos_count and last_pos_count == 0:
                 print(f"[{r['time_sec']:.1f}s] 🚪 ENTRY DETECTED (Positions: {r['pos_count']})")
-                trade_start_idx = i
                 self.analyze_bait(i)
+                self.microscope_analysis(i, r['mid']) # <--- NEW MICROSCOPE CALL
 
             # EXIT TRADE DETECTION
             if r['pos_count'] < last_pos_count:
@@ -345,7 +402,6 @@ class MimicStoryTellerV4:
                 pl = r['realized_tick']
                 event_tag = r.get('last_event', '')
 
-                # Determine type
                 type_label = "UNKNOWN"
                 if "DECOY" in event_tag: type_label = "🦆 DECOY"
                 elif "TROJAN" in event_tag: type_label = "🐴 TROJAN"
@@ -354,33 +410,23 @@ class MimicStoryTellerV4:
 
                 print(f"[{r['time_sec']:.1f}s] {type_label} EXIT: {pl:.2f} EUR (Tag: {event_tag})")
 
-                # Context Check
                 r1, s1 = self.get_context_levels(i)
                 print(f"       Context: Price {r['mid']:.5f} | Pivot Range: [{s1:.5f} - {r1:.5f}]")
 
-                # Silence Check
                 self.check_silence(i)
 
-            # Update State
             last_pos_count = r['pos_count']
 
     def analyze_bait(self, entry_idx):
-        # Look 60s back
-        start_idx = max(0, entry_idx - 600) # approx 600 ticks? No, use time.
-
-        # Filter data points in last 60 sec
         entry_time = self.data[entry_idx]['time_sec']
         pre_data = [x for x in self.data if x['time_sec'] >= entry_time - 60 and x['time_sec'] < entry_time]
 
         if not pre_data: return
 
         avg_vel = statistics.mean([x['vel'] for x in pre_data])
-
-        # Calculate displacement (Max High - Min Low)
         highs = [x['mid'] for x in pre_data]
         displacement = max(highs) - min(highs)
 
-        # Point scale
         pt = 0.00001 if pre_data[0]['mid'] < 500 else 0.01
         disp_pts = displacement / pt
 
@@ -389,14 +435,13 @@ class MimicStoryTellerV4:
         print(f"       Displacement: {disp_pts:.1f} points")
 
         if avg_vel > self.baseline_vel * 1.5 and disp_pts < 100:
-            print("       ⚠️  VERDICT: 'CHURNING' (High Noise, Low Move) -> The Trap is Set!")
+            print("       ⚠️  VERDICT: 'CHURNING' (Toporgás) -> The Trap is Set!")
         elif avg_vel > self.baseline_vel * 2.0:
             print("       ⚠️  VERDICT: 'HYPER-ACTIVITY' -> Aggressive Luring")
         else:
             print("       ℹ️  VERDICT: Normal Market Conditions")
 
     def check_silence(self, exit_idx):
-        # Look 30s forward
         exit_time = self.data[exit_idx]['time_sec']
         post_data = [x for x in self.data if x['time_sec'] > exit_time and x['time_sec'] <= exit_time + 30]
 
@@ -404,7 +449,6 @@ class MimicStoryTellerV4:
 
         avg_vel = statistics.mean([x['vel'] for x in post_data])
 
-        # Look 30s before (during trade)
         during_data = [x for x in self.data if x['time_sec'] >= exit_time - 30 and x['time_sec'] < exit_time]
         if not during_data: return
 
