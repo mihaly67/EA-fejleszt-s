@@ -117,7 +117,7 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
   {
-   if(rates_total < InpPeriodSlowEMA) return 0;
+   if(rates_total < (int)InpPeriodSlowEMA) return 0;
 
    // Loop Limits
    int limit = rates_total - prev_calculated;
