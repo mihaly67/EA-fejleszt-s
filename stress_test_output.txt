@@ -1,0 +1,20 @@
+Reading Log: Trojan_Horse_Log_[SP500]_20260128_225718.csv
+Version Detection: Legacy
+Loaded 1490 rows. Baseline Vel: 0.0000
+
+=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===
+
+
+--- 🕵️ COLOMBO'S TIMELINE ---
+[0.0s] 🚪 ENTRY DETECTED (Positions: 150)
+
+   🔬 MICROSCOPE: Deep Dive on Entry @ 3492.16000
+       ⚡ THE CONTACT (0-5s):
+           Velocity: 0.00 -> Peak 0.00
+           Spread: 58.94716 -> Peak 59.22187
+           ⚠️  DATA GAP: Log stopped? (Freeze detected)
+       🧪 THE TEST (Zero Gravity):
+           Crossings of Entry Price: 15
+           First Crossing: +66.2s
+           Hover Time (within 10 pts): 35 ticks (2.3%)
+           ⚠️  VERDICT: 'WHIPSAW' (Rángatás) -> Algo is fighting for the level.
