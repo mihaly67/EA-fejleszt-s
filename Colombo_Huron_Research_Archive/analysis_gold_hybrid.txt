@@ -1,0 +1,22 @@
+Analyzing Hybrid Indicator in: Colombo_Huron_Research_Archive/Mimic_Research_GOLD_20260129_145051.csv
+
+--- ⚡ FLASH CRASH ANALYSIS ---
+Biggest Drop Found: -4.13 pts at 2026.01.29 14:55:01
+Momentum during pre-crash window: -72.4004
+Momentum Trace (Last 10 ticks before crash):
+   T: 2026.01.29 14:54:59 | Price: 5536.86 | Mom: -60.4271
+   T: 2026.01.29 14:54:59 | Price: 5536.78 | Mom: -61.5842
+   T: 2026.01.29 14:54:59 | Price: 5536.86 | Mom: -60.4271
+   T: 2026.01.29 14:54:59 | Price: 5536.98 | Mom: -58.6579
+   T: 2026.01.29 14:54:59 | Price: 5537.12 | Mom: -56.5446
+   T: 2026.01.29 14:55:00 | Price: 5533.96 | Mom: -83.7844
+   T: 2026.01.29 14:55:00 | Price: 5533.52 | Mom: -85.3460
+   T: 2026.01.29 14:55:00 | Price: 5533.79 | Mom: -84.3234
+   T: 2026.01.29 14:55:00 | Price: 5533.29 | Mom: -85.9881
+   T: 2026.01.29 14:55:01 | Price: 5532.89 | Mom: -86.9209
+✅ VERDICT: Hybrid Momentum CORRECTLY predicted/confirmed the drop (Negative Value).
+
+--- 📊 STATISTICAL CORRELATION ---
+Directional Accuracy: 50.3%
+Total Significant Moves: 3599
+❌ Grade: F (Random/Lagging)

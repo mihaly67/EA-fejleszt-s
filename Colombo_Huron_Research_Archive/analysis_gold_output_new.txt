@@ -1,0 +1,120 @@
+Reading Log: Mimic_Research_GOLD_20260129_145051.csv
+Version Detection: v2.09 (Modern)
+Loaded 3716 rows. Baseline Vel: 30.9656
+
+=== COLOMBO V4: DYNAMIC CONTEXT REPORT ===
+
+
+--- 🕵️ COLOMBO'S TIMELINE ---
+[0.0s] 🚪 ENTRY DETECTED (Positions: 4)
+   🎣 THE BAIT ANALYSIS (Pre-Entry 60s):
+       Avg Velocity: 0.0000 (Baseline: 30.9656)
+       Displacement: 0.0 points
+       ℹ️  VERDICT: Normal Market Conditions
+
+   🔬 MICROSCOPE: Deep Dive on Entry @ 5536.26500
+       ⚡ THE CONTACT (0-5s):
+           Velocity: 0.00 -> Peak 22.76
+           Spread: 0.39000 -> Peak 0.39000
+       🧪 THE TEST (Zero Gravity):
+           Crossings of Entry Price: 1
+           First Crossing: +210.5s
+           Hover Time (within 10 pts): 4 ticks (0.5%)
+           ℹ️  VERDICT: Clean Breakout/Breakdown.
+[35.2s] 💰 PROFIT EXIT: 9878.93 EUR (Tag: CLOSE_MANUAL_5130.57;)
+
+   ☠️  MICROSCOPE: THE ENDGAME (5 Lot Check) @ 35.2s
+       ⏸️  THE PAUSE (Megtorpanás):
+           Detected at: 26.3s (T-8.9s before exit)
+           Velocity Drop: to 2.30 (Baseline 30.97)
+       📉 THE CRASH (Drawdown):
+           Price: 5537.16 -> 5537.92
+           Drop: 77.0 points in 8.9s
+           Crash Speed: 8.7 pts/sec
+       Context: Price 5537.92500 | Pivot Range: [5537.89500 - 5538.58500]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 13.9211 -> 14.1750 (Ratio: 1.02)
+[36.9s] 💰 PROFIT EXIT: 9878.93 EUR (Tag: CLOSE_MANUAL_4748.36;)
+
+   ☠️  MICROSCOPE: THE ENDGAME (5 Lot Check) @ 36.9s
+       ⏸️  THE PAUSE (Megtorpanás):
+           Detected at: 27.5s (T-9.4s before exit)
+           Velocity Drop: to 2.60 (Baseline 30.97)
+       📉 THE CRASH (Drawdown):
+           Price: 5537.09 -> 5538.01
+           Drop: 92.0 points in 9.4s
+           Crash Speed: 9.8 pts/sec
+       Context: Price 5538.01500 | Pivot Range: [5537.89500 - 5538.58500]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 13.6509 -> 14.1012 (Ratio: 1.03)
+[231.3s] 💰 PROFIT EXIT: 39095.73 EUR (Tag: CLOSE_MANUAL_14177.79;)
+
+   ☠️  MICROSCOPE: THE ENDGAME (5 Lot Check) @ 231.3s
+       ⏸️  THE PAUSE (Megtorpanás):
+           Detected at: 229.5s (T-1.8s before exit)
+           Velocity Drop: to 7.30 (Baseline 30.97)
+       📉 THE CRASH (Drawdown):
+           Price: 5530.88 -> 5530.90
+           Drop: 2.0 points in 1.8s
+           Crash Speed: 1.1 pts/sec
+           ⚠️  VERDICT: 'INSTANT KILL' -> Pause was a bait.
+       Context: Price 5530.89500 | Pivot Range: [5530.58500 - 5531.09500]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 49.7500 -> 28.1484 (Ratio: 0.57)
+[233.4s] 💰 PROFIT EXIT: 39095.73 EUR (Tag: CLOSE_MANUAL_15039.01;)
+
+   ☠️  MICROSCOPE: THE ENDGAME (5 Lot Check) @ 233.4s
+       ⏸️  THE PAUSE (Megtorpanás):
+           Detected at: 231.5s (T-1.9s before exit)
+           Velocity Drop: to 6.75 (Baseline 30.97)
+       📉 THE CRASH (Drawdown):
+           Price: 5530.99 -> 5531.10
+           Drop: 12.0 points in 1.9s
+           Crash Speed: 6.3 pts/sec
+           ⚠️  VERDICT: 'INSTANT KILL' -> Pause was a bait.
+       Context: Price 5531.10500 | Pivot Range: [5530.77500 - 5531.09500]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 49.1226 -> 29.9339 (Ratio: 0.61)
+[235.8s] 🚪 ENTRY DETECTED (Positions: 3)
+   🎣 THE BAIT ANALYSIS (Pre-Entry 60s):
+       Avg Velocity: 43.4638 (Baseline: 30.9656)
+       Displacement: 1180.0 points
+       ℹ️  VERDICT: Normal Market Conditions
+
+   🔬 MICROSCOPE: Deep Dive on Entry @ 5530.85500
+       ⚡ THE CONTACT (0-5s):
+           Velocity: 30.62 -> Peak 33.93
+           Spread: 0.35000 -> Peak 0.39000
+       🧪 THE TEST (Zero Gravity):
+           Crossings of Entry Price: 20
+           First Crossing: +0.5s
+           Hover Time (within 10 pts): 31 ticks (1.5%)
+           ⚠️  VERDICT: 'WHIPSAW' (Rángatás) -> Algo is fighting for the level.
+[674.0s] 💰 PROFIT EXIT: 29594.25 EUR (Tag: CLOSE_MANUAL_27141.31;)
+
+   ☠️  MICROSCOPE: THE ENDGAME (5 Lot Check) @ 674.0s
+       ⏸️  THE PAUSE (Megtorpanás):
+           Detected at: 669.2s (T-4.8s before exit)
+           Velocity Drop: to 8.28 (Baseline 30.97)
+       📉 THE CRASH (Drawdown):
+           Price: 5540.16 -> 5539.93
+           Drop: -23.0 points in 4.8s
+           Crash Speed: 4.8 pts/sec
+       Context: Price 5539.93500 | Pivot Range: [5539.80500 - 5540.18500]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 25.2595 -> 38.4194 (Ratio: 1.52)
+       🚀 VERDICT: 'REVENGE' -> Volatility spiked after we left.
+[758.2s] 💰 PROFIT EXIT: 39785.13 EUR (Tag: CLOSE_ALL_TRIG;)
+
+   ☠️  MICROSCOPE: THE ENDGAME (5 Lot Check) @ 758.2s
+       ⏸️  THE PAUSE (Megtorpanás):
+           Detected at: 750.5s (T-7.7s before exit)
+           Velocity Drop: to 13.08 (Baseline 30.97)
+       📉 THE CRASH (Drawdown):
+           Price: 5532.49 -> 5529.10
+           Drop: -339.0 points in 7.7s
+           Crash Speed: 44.1 pts/sec
+           ⚠️  VERDICT: 'FLASH CRASH' -> Algo pulled the rug immediately.
+       Context: Price 5529.10500 | Pivot Range: [5528.95000 - 5530.56500]
+   🤫 THE SILENCE CHECK (Post-Exit 30s):
+       Velocity Drop: 46.7681 -> 41.9881 (Ratio: 0.90)
