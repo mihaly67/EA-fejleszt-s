@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
-//|                         Jules_Hybrid_Momentum_Pulse_v1.00.mq5    |
+//|                         Jules_Hybrid_Momentum_Pulse_v1.01.mq5    |
 //|                                     Jules Agent & User           |
 //|                       Hybrid Momentum Pulse (MACD Curve + DF)    |
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent (Hybrid)"
 #property link      "https://mql5.com"
-#property version   "1.00"
+#property version   "1.01"
 #property description "Hybrid Momentum Pulse: Flip-MACD Curve + DeltaForce Histogram"
 #property indicator_separate_window
 #property indicator_buffers 8
@@ -21,9 +21,9 @@
 // --- PLOT 2: DeltaForce Histogram ---
 #property indicator_label2  "DeltaForce_H"
 #property indicator_type2   DRAW_COLOR_HISTOGRAM
-#property indicator_color2  clrForestGreen,clrGreen,clrFireBrick,clrRed,clrGray // 0=StrongL, 1=WeakL, 2=StrongS, 3=WeakS
+#property indicator_color2  clrForestGreen,clrLime,clrFireBrick,clrOrangeRed,clrGray // 0=StrongL, 1=WeakL, 2=StrongS, 3=WeakS
 #property indicator_style2  STYLE_SOLID
-#property indicator_width2  2
+#property indicator_width2  4
 
 // --- PLOT 3: Zero Line ---
 #property indicator_label3  "ZeroLine"
@@ -37,6 +37,7 @@ input group "MACD Pulse Settings"
 input uint           InpPeriodFastEMA     =  8;          // [MACD] Fast EMA
 input uint           InpPeriodSlowEMA     =  21;         // [MACD] Slow EMA
 input ENUM_APPLIED_PRICE InpAppliedPrice  = PRICE_CLOSE; // [MACD] Price
+input double         InpMACDScale         =  5.0;        // [MACD] Amplitude Scale
 
 // --- INPUTS: Delta Force ---
 input group "Delta Force Settings"
@@ -121,7 +122,11 @@ int OnCalculate(const int rates_total,
 
    // Loop Limits
    int limit = rates_total - prev_calculated;
-   if (prev_calculated == 0) limit = rates_total - 1;
+   if (prev_calculated == 0)
+   {
+      limit = rates_total - 1;
+      ArrayInitialize(BufferZero, 0.0); // Ensure full history is zeroed
+   }
 
    // --- 1. PREPARE MACD DATA ---
    int count = (limit > 0) ? limit + 1 : 1;
@@ -181,11 +186,15 @@ int OnCalculate(const int rates_total,
        // User: "amikor felül átvált pirosba a görbét átkell vinni negativ irányba"
        // "Igen zajos lesz mert akár pozitiv vagy negativ oldalon lehetnek piros... ellentétes oldalra csap át"
 
+       double final_val = 0;
        if (is_rising) {
-           BufferMACDPulse[i] = macd_val;
+           final_val = macd_val;
        } else {
-           BufferMACDPulse[i] = -1.0 * macd_val;
+           final_val = -1.0 * macd_val;
        }
+
+       // Apply Scaling
+       BufferMACDPulse[i] = final_val * InpMACDScale;
 
        // Track Max MACD for scaling
        if (MathAbs(BufferMACDPulse[i]) > max_macd) max_macd = MathAbs(BufferMACDPulse[i]);
@@ -264,7 +273,7 @@ int OnCalculate(const int rates_total,
        BufferDFHist[i] = df_final * scale;
 
        // --- D. COLORING ---
-       // 0=StrongL (ForestGreen), 1=WeakL (Green), 2=StrongS (FireBrick), 3=WeakS (Red)
+       // 0=StrongL (ForestGreen), 1=WeakL (Lime), 2=StrongS (FireBrick), 3=WeakS (OrangeRed)
        // Strong if |Value| > |PrevValue| (Momentum increasing)
        // Weak if |Value| < |PrevValue|
 
