@@ -55,6 +55,9 @@ METATRADER_JSONL_OUT = os.path.join("Knowledge_Base", "knowledge_base_mt_libs.js
 # Directories to ignore in Git
 GIT_IGNORE_DIRS = list(DATABASES.keys()) + ["github_codebase", "downloaded_content"]
 
+# Test Script ID for Fallback
+RAG_TEST_SCRIPT_ID = "1_EXAMPLE_ID_IF_AVAILABLE" # Placeholder, update if user provides link
+
 def setup_logger():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -294,10 +297,33 @@ def restore_github_codebase():
     # Always try to generate/check the JSONL
     process_github_codebase()
 
+def sync_git_repo():
+    """Forces a hard reset and sync with the remote repository."""
+    print("\n🔄 === GIT SYNCHRONIZATION (Hard Reset) ===")
+    try:
+        # 1. Fetch all
+        print(">> git fetch --all")
+        subprocess.check_call(["git", "fetch", "--all"])
+
+        # 2. Reset hard
+        print(">> git reset --hard origin/main")
+        subprocess.check_call(["git", "reset", "--hard", "origin/main"])
+
+        # 3. Clean untracked files (optional but good for 'clean start')
+        # print(">> git clean -fd")
+        # subprocess.check_call(["git", "clean", "-fd"])
+
+        print("✅ Git sync successful. Local branch is exactly at origin/main.")
+    except Exception as e:
+        print(f"❌ Git sync failed: {e}")
+        print("⚠️ Continuing with restore process (local files may be out of sync).")
 
 def restore_environment():
     setup_logger()
     print("=== ENVIRONMENT RESTORE & VERIFICATION ===")
+
+    # 0. Sync Git (Priority 1 to prevent snapshot drift)
+    sync_git_repo()
 
     # 1. Clean
     clean_old_scripts()
@@ -378,12 +404,24 @@ def restore_environment():
     # 6. Hardware & Tests
     report_hardware_status()
 
-    # 7. Verification
-    if os.path.exists("rag_jsonl_test.py"):
-        print("\n🧪 Running full system test suite (rag_jsonl_test.py)...")
-        subprocess.call([sys.executable, "rag_jsonl_test.py"])
+    # 7. Verification & RAG Test
+    print("\n🧪 === RUNNING SYSTEM TESTS ===")
+    test_script = "rag_jsonl_test.py"
+
+    if os.path.exists(test_script):
+        print(f"▶️ Running {test_script}...")
+        exit_code = subprocess.call([sys.executable, test_script])
+
+        if exit_code != 0:
+            print(f"❌ RAG Test failed (Exit Code: {exit_code}).")
+            print("❗ ACTION REQUIRED: Please manually download the test script from Drive if it's corrupt.")
+            # Note: Cannot auto-download RAG test script without ID, assume user manually provides or it's in repo
     else:
-        print("⚠️ rag_jsonl_test.py not found. Skipping verification.")
+        print(f"⚠️ {test_script} not found!")
+        print("❗ This script should be in the repository root.")
+        print("❗ If missing, please restore it from the main branch or download it.")
+        # Optional: Attempt to fetch from origin again if missing
+        # subprocess.call(["git", "checkout", "origin/main", "--", test_script])
 
     print("\n🚀 Environment Restore Complete. Ready for work.")
 
