@@ -14,9 +14,11 @@
     *   `Balance`, `Margin`, `MarginPercent`: Account health metrics.
     *   `Currency`: Account currency (e.g., EUR, HUF).
     *   `LotDir`: Net position direction (`BUY`, `SELL`, `NEUTRAL_HEDGE`).
+    *   `TotalLots`: Aggregate open volume.
     *   `SLTP_Levels`: Snapshot of active StopLoss/TakeProfit levels (e.g., `B:1.0520/1.0600|...`).
     *   `Verdict`: Real-time state tag (`WINNING`, `UNDER_PRESSURE`, `CRASH_RISK`) derived from PL and Velocity.
-*   **Removed:** Micropivot logic (N-bar high/low) is **delegated to Python analysis** to keep the EA lightweight.
+*   **Removed Columns:** `TargetTP`, `DOM_Snapshot`, `Pivot` (MQL5-calculated), `Hybrid_Color` (Redundant).
+*   **Removed Logic:** Micropivot logic is delegated to Python.
 
 ### 2. File Cleanup
 *   Deleted: `Mimic_Trap_Research_EA_v2.09.mq5` (Obsolete)
@@ -28,7 +30,7 @@
 ### 1. Deployment
 1.  **Compile:** Compile `MQL5/Experts/Mimic_Trap_Research_EA_v2.14.mq5`.
 2.  **Run:** Attach to a chart (EURUSD or XAUUSD).
-3.  **Verify Log:** Check the generated CSV file. It should now have 36 columns, ending with `Verdict`, `LastEvent`, and `DOM_Snapshot`.
+3.  **Verify Log:** Check the generated CSV file. It should now have cleaner columns ending with `Verdict`, `LastEvent`.
 
 ### 2. Analysis
 *   Run the Python analysis scripts on the new logs. The new columns allow for:

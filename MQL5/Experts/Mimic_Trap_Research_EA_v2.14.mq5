@@ -2,7 +2,7 @@
 //|                                   Mimic_Trap_Research_EA_v2.14.mq5|
 //|                                                      Jules Agent |
 //|                       Focused Strategy: Liquidity Mimicry Trap   |
-//|                       Mode: RESEARCH & DATA MINING (v2.14)       |
+//|                       Mode: RESEARCH & DATA MINING (v2.14 FINAL) |
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent & User"
 #property link      "https://www.mql5.com"
@@ -178,13 +178,11 @@ void ExecuteBurstTrap();
 void CloseAll();
 double NormalizeLot(double lot);
 void WriteLog();
-string GetDOMSnapshot();
 void SortBids(LevelData &arr[], int count);
 void SortAsks(LevelData &arr[], int count);
 double GetFloatingPL();
-void CalcDailyPivots(double &pp, double &r1, double &s1);
 void CalculateSLTP(ENUM_ORDER_TYPE type, double price, double &sl, double &tp);
-string GetNetLotDirection();
+string GetNetLotDirection(double &total_lots); // Updated to return lots
 string GetSLTPSnapshot();
 string DetermineVerdict(double velocity, double pl);
 
@@ -290,8 +288,8 @@ int OnInit()
 
    if(g_log_handle != INVALID_HANDLE)
      {
-      // Updated Header for v2.14: Added Account Info, LotDir, Currency, SLTP, Verdict
-      string header = "Time,TickMS,Phase,MimicMode,TargetTP,Bid,Ask,Spread,Velocity,Acceleration,Hybrid_MACD,Hybrid_Color,Hybrid_DFCurve,Flow_MFI,Flow_DUp,Flow_DDown,Mom_Hist,Pivot_PP,Pivot_R1,Pivot_S1,Floating_PL,Realized_PL,Session_PL,Balance,Margin,MarginPercent,Currency,LotDir,Action,PosCount,ActiveSL,ActiveTP,SLTP_Levels,Verdict,LastEvent,DOM_Snapshot\r\n";
+      // Updated Header for v2.14 FINAL: Removed Redundant Cols, Added TotalLots
+      string header = "Time,TickMS,Phase,MimicMode,Bid,Ask,Spread,Velocity,Acceleration,Hybrid_MACD,Hybrid_DFCurve,Flow_MFI,Flow_DUp,Flow_DDown,Mom_Hist,Floating_PL,Realized_PL,Session_PL,Balance,Margin,MarginPercent,Currency,LotDir,TotalLots,Action,PosCount,ActiveSL,ActiveTP,SLTP_Levels,Verdict,LastEvent\r\n";
       FileWriteString(g_log_handle, header);
       FileFlush(g_log_handle);
       Print("Mimic Research v2.14: Log file created: ", filename);
@@ -300,7 +298,7 @@ int OnInit()
    CreatePanel();
    UpdateUI();
 
-   Print("Mimic Trap Research EA v2.14 (v2.11 Base + Enhanced Forensic CSV) Initialized.");
+   Print("Mimic Trap Research EA v2.14 (FINAL Forensic Edition) Initialized.");
    return(INIT_SUCCEEDED);
   }
 
@@ -334,7 +332,6 @@ void RemoveIndicators()
             string name_lower = name;
             StringToLower(name_lower);
 
-            // Clean up old and new names
             if (StringFind(name_lower, "hybrid momentum") >= 0 ||
                 StringFind(name_lower, "hybrid flow") >= 0 ||
                 StringFind(name_lower, "jules_hybrid") >= 0 ||
@@ -917,13 +914,12 @@ void WriteLog()
    // 1. Get Indicator Values
    double mom_hist = 0;
    double flow_mfi = 0, flow_dup = 0, flow_ddown = 0;
-   double hybrid_macd = 0, hybrid_color = 0, hybrid_curve = 0;
+   double hybrid_macd = 0, hybrid_curve = 0;
 
    double buf[1];
 
-   // A. Jules Hybrid v1.04
+   // A. Jules Hybrid v1.04 (Removed Hybrid_Color as redundant)
    if(CopyBuffer(h_hybrid, 0, 0, 1, buf)>0) hybrid_macd = buf[0];
-   if(CopyBuffer(h_hybrid, 1, 0, 1, buf)>0) hybrid_color = buf[0];
    if(CopyBuffer(h_hybrid, 2, 0, 1, buf)>0) hybrid_curve = buf[0];
 
    // B. Flow
@@ -940,10 +936,6 @@ void WriteLog()
    // 2. Physics
    PhysicsState p = m_physics.GetState();
 
-   // 3. Pivots
-   double pp=0, r1=0, s1=0;
-   CalcDailyPivots(pp, r1, s1);
-
    // 4. P/L & Positions
    double float_pl = 0.0;
    int pos_count = 0;
@@ -959,12 +951,13 @@ void WriteLog()
        }
    }
 
-   // 5. Account Info (NEW)
+   // 5. Account Info (Cleaned)
    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
    double margin = AccountInfoDouble(ACCOUNT_MARGIN);
    double margin_level = AccountInfoDouble(ACCOUNT_MARGIN_LEVEL);
    string currency = AccountInfoString(ACCOUNT_CURRENCY);
-   string lot_dir = GetNetLotDirection();
+   double total_lots = 0.0;
+   string lot_dir = GetNetLotDirection(total_lots); // Passes total_lots ref
    string sltp_levels = GetSLTPSnapshot();
    string verdict = DetermineVerdict(p.velocity, float_pl);
 
@@ -974,40 +967,31 @@ void WriteLog()
    string ms = IntegerToString(GetTickCount()%1000);
 
    // CSV Row
-   // Header: Time,TickMS,Phase,MimicMode,TargetTP,Bid,Ask,Spread,Velocity,Acceleration,Hybrid_MACD,Hybrid_Color,Hybrid_DFCurve,Flow_MFI,Flow_DUp,Flow_DDown,Mom_Hist,Pivot_PP,Pivot_R1,Pivot_S1,Floating_PL,Realized_PL,Session_PL,Balance,Margin,MarginPercent,Currency,LotDir,Action,PosCount,ActiveSL,ActiveTP,SLTP_Levels,Verdict,LastEvent,DOM_Snapshot
-   string row = StringFormat("%s,%s,%s,%d,%.2f,%.5f,%.5f,%.1f,%.5f,%.5f,%.5f,%.0f,%.5f,%.2f,%.2f,%.2f,%.5f,%.5f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%s,%s,%d,%.5f,%.5f,%s,%s,%s",
+   // Header: Time,TickMS,Phase,MimicMode,Bid,Ask,Spread,Velocity,Acceleration,Hybrid_MACD,Hybrid_DFCurve,Flow_MFI,Flow_DUp,Flow_DDown,Mom_Hist,Floating_PL,Realized_PL,Session_PL,Balance,Margin,MarginPercent,Currency,LotDir,TotalLots,Action,PosCount,ActiveSL,ActiveTP,SLTP_Levels,Verdict,LastEvent
+   string row = StringFormat("%s,%s,%s,%d,%.5f,%.5f,%.1f,%.5f,%.5f,%.5f,%.5f,%.2f,%.2f,%.2f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%s,%.2f,%s,%d,%.5f,%.5f,%s,%s,%s",
        t, ms, g_current_phase,
-       g_mimic_mode, g_target_profit_eur,
+       g_mimic_mode,
        m_symbol.Bid(), m_symbol.Ask(), p.spread_avg,
        p.velocity, p.acceleration,
-       hybrid_macd, hybrid_color, hybrid_curve,
+       hybrid_macd, hybrid_curve,
        flow_mfi, flow_dup, flow_ddown,
        mom_hist,
-       pp, r1, s1,
        float_pl, g_last_realized_pl, g_session_realized_pl,
-       balance, margin, margin_level, currency, lot_dir,
+       balance, margin, margin_level, currency, lot_dir, total_lots,
        InpComment,
        pos_count, active_sl, active_tp, sltp_levels, verdict,
        g_tick_event_buffer
    );
 
-   string dom_part = GetDOMSnapshot();
-   FileWriteString(g_log_handle, row + "," + dom_part + "\r\n");
+   FileWriteString(g_log_handle, row + "\r\n");
    FileFlush(g_log_handle);
   }
 
-void CalcDailyPivots(double &pp, double &r1, double &s1)
-{
-    // Use Daily (PERIOD_D1) data from previous bar (index 1)
-    double high = iHigh(_Symbol, PERIOD_D1, 1);
-    double low  = iLow(_Symbol, PERIOD_D1, 1);
-    double close= iClose(_Symbol, PERIOD_D1, 1);
-
-    if(high == 0 || low == 0 || close == 0) return;
-
-    pp = (high + low + close) / 3.0;
-    r1 = (2.0 * pp) - low;
-    s1 = (2.0 * pp) - high;
+void SortBids(LevelData &arr[], int count) {
+   for(int i=0; i<count-1; i++) for(int j=0; j<count-i-1; j++) if(arr[j].price < arr[j+1].price) { LevelData t=arr[j]; arr[j]=arr[j+1]; arr[j+1]=t; }
+}
+void SortAsks(LevelData &arr[], int count) {
+   for(int i=0; i<count-1; i++) for(int j=0; j<count-i-1; j++) if(arr[j].price > arr[j+1].price) { LevelData t=arr[j]; arr[j]=arr[j+1]; arr[j+1]=t; }
 }
 
 double GetFloatingPL()
@@ -1019,44 +1003,6 @@ double GetFloatingPL()
        }
     }
     return pl;
-}
-
-string GetDOMSnapshot()
-  {
-   MqlBookInfo book[];
-   LevelData bids[]; LevelData asks[];
-   double best_bid=0, best_ask=0;
-   long bid_v[5]={0}, ask_v[5]={0};
-
-   if(g_book_subscribed && MarketBookGet(_Symbol, book))
-     {
-      int size = ArraySize(book);
-      ArrayResize(bids, size); ArrayResize(asks, size);
-      int b=0, a=0;
-      for(int i=0; i<size; i++) {
-         if(book[i].type == BOOK_TYPE_BUY || book[i].type == BOOK_TYPE_BUY_MARKET) { bids[b].price=book[i].price; bids[b].volume=book[i].volume; b++; }
-         else if(book[i].type == BOOK_TYPE_SELL || book[i].type == BOOK_TYPE_SELL_MARKET) { asks[a].price=book[i].price; asks[a].volume=book[i].volume; a++; }
-      }
-      SortBids(bids, b); SortAsks(asks, a);
-      if(b>0) best_bid=bids[0].price;
-      if(a>0) best_ask=asks[0].price;
-      for(int i=0; i<5; i++) {
-         if(i<b) bid_v[i]=bids[i].volume;
-         if(i<a) ask_v[i]=asks[i].volume;
-      }
-     }
-
-   string s = DoubleToString(best_bid,_Digits)+","+DoubleToString(best_ask,_Digits)+",";
-   for(int i=0;i<5;i++) s+=IntegerToString(bid_v[i])+",";
-   for(int i=0;i<5;i++) { s+=IntegerToString(ask_v[i]); if(i<4) s+=","; }
-   return s;
-  }
-
-void SortBids(LevelData &arr[], int count) {
-   for(int i=0; i<count-1; i++) for(int j=0; j<count-i-1; j++) if(arr[j].price < arr[j+1].price) { LevelData t=arr[j]; arr[j]=arr[j+1]; arr[j+1]=t; }
-}
-void SortAsks(LevelData &arr[], int count) {
-   for(int i=0; i<count-1; i++) for(int j=0; j<count-i-1; j++) if(arr[j].price > arr[j+1].price) { LevelData t=arr[j]; arr[j]=arr[j+1]; arr[j+1]=t; }
 }
 
 void DestroyPanel()
@@ -1111,11 +1057,13 @@ void DrawDealVisuals(ulong deal_ticket)
   }
 
 // --- v2.14 Forensic Helpers ---
-string GetNetLotDirection()
+string GetNetLotDirection(double &total_lots)
 {
     double net_lots = 0.0;
+    total_lots = 0.0;
     for(int i=PositionsTotal()-1; i>=0; i--) {
        if(m_position.SelectByIndex(i) && m_position.Symbol()==_Symbol && m_position.Magic()==InpMagicNumber) {
+           total_lots += m_position.Volume();
            if(m_position.PositionType() == POSITION_TYPE_BUY) net_lots += m_position.Volume();
            else net_lots -= m_position.Volume();
        }
