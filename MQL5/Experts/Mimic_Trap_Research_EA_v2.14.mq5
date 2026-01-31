@@ -1,23 +1,25 @@
 //+------------------------------------------------------------------+
-//|                                   Mimic_Trap_Research_EA_v2.09.mq5|
+//|                                   Mimic_Trap_Research_EA_v2.14.mq5|
 //|                                                      Jules Agent |
 //|                       Focused Strategy: Liquidity Mimicry Trap   |
-//|                       Mode: RESEARCH & DATA MINING (v2.09)       |
+//|                       Mode: RESEARCH & DATA MINING (v2.14)       |
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent & User"
 #property link      "https://www.mql5.com"
-#property version   "2.09"
+#property version   "2.14"
 #property strict
 
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
 #include <Trade\PositionInfo.mqh>
 #include "../Indicators/PhysicsEngine.mqh"
+#include <AccountInfo.mqh>
 
 //--- Objects
 CTrade        m_trade;
 CSymbolInfo   m_symbol;
 CPositionInfo m_position;
+CAccountInfo  m_account;
 PhysicsEngine m_physics(50);
 
 //--- Enums
@@ -49,8 +51,27 @@ input double        InpTrojanLot         = 0.1;    // [Position] Trojan Lot (Rea
 input int           InpSlippage          = 10;     // [Risk] Slippage
 input ulong         InpMagicNumber       = 999002; // [Risk] Magic Number
 input string        InpComment           = "MimicResearch"; // [Risk] Comment
+input double        InpSLPercent         = 5.0;    // [Risk] Stop Loss % (Default 5%)
+input double        InpTPPercent         = 5.0;    // [Risk] Take Profit % (Default 5%)
 
-// [Momentum Settings]
+// [Jules Hybrid Momentum Pulse v1.04 Settings] - FLATTENED
+input uint           Hybrid_InpPeriodFastEMA     =  3;          // [Hybrid] MACD Fast EMA period
+input uint           Hybrid_InpPeriodSlowEMA     =  6;          // [Hybrid] MACD Slow EMA period
+input uint           Hybrid_InpPeriodBB          =  20;         // [Hybrid] Bollinger Bands period
+input double         Hybrid_InpDeviationBB       =  2.0;        // [Hybrid] Bollinger Bands deviation
+input ENUM_MA_METHOD Hybrid_InpMethodBB          =  MODE_EMA;   // [Hybrid] Bollinger Bands MA method
+input uint           Hybrid_InpPeriodKeltner     =  20;         // [Hybrid] Keltner period
+input double         Hybrid_InpDeviationKeltner  =  1.5;        // [Hybrid] Keltner deviation
+input uint           Hybrid_InpPeriodATRKeltner  =  10;         // [Hybrid] Keltner ATR period
+input ENUM_MA_METHOD Hybrid_InpMethodKeltner     =  MODE_EMA;   // [Hybrid] Keltner MA method
+input double         Hybrid_InpMACDScale         =  4.0;        // [Hybrid] MACD Scale
+input int            Hybrid_InpDFShift           = 0;           // [Hybrid] DF Shift
+input double         Hybrid_InpDFScale           = 1.0;         // [Hybrid] DF Manual Scale
+input bool           Hybrid_InpUseAutoScaling    = true;        // [Hybrid] DF Auto-Scale
+input int            Hybrid_InpAutoScaleLookback = 100;         // [Hybrid] DF Lookback
+
+
+// [Momentum Settings (Legacy)]
 input ENUM_COLOR_LOGIC   Mom_InpColorLogic     = COLOR_SLOPE; // [Momentum] Color Logic Mode
 input int                Mom_InpFastPeriod     = 3;           // [Momentum] Fast Period
 input int                Mom_InpSlowPeriod     = 6;           // [Momentum] Slow Period
@@ -80,21 +101,9 @@ input int                Flow_InpNormalizationLen    = 100;     // [Flow] Delta 
 input double             Flow_InpDeltaScaleFactor    = 50.0;    // [Flow] Delta Curve Factor
 input double             Flow_InpHistogramVisualGain = 3.0;     // [Flow] Hist Visual Gain
 
-// [VA Settings]
-input uint               VA_InpPeriodV         = 14;          // [VA] Velocity period
-input uint               VA_InpPeriodA         = 10;          // [VA] Acceleration period
-input ENUM_APPLIED_PRICE VA_InpAppliedPrice    = PRICE_CLOSE; // [VA] Applied price
-
-// [Microstructure Settings]
-input int                Mic_InpLookbackVol      = 10;      // [Micro] Lookback Vol
-input double             Mic_InpPressureGain     = 100.0;   // [Micro] Pressure Gain
-input bool               Mic_InpUseTickAnalysis  = true;    // [Micro] Use Tick Analysis
-input double             Mic_InpTickHistoryDays  = 1.0;     // [Micro] History Days
-input double             Mic_InpHighVolThreshold = 1.5;     // [Micro] High Vol Thresh
-
 // [Panel UI]
 input int           InpX                 = 10;               // [UI] X Coordinate
-input int           InpY                 = 40;               // [UI] Y Coordinate (Moved Up)
+input int           InpY                 = 20;               // [UI] Y Coordinate (Moved Up for compactness)
 input color         InpBgColor           = clrDarkSlateGray; // [UI] BG Color
 input color         InpTxtColor          = clrWhite;         // [UI] Text Color
 
@@ -108,10 +117,10 @@ int               g_log_handle = INVALID_HANDLE;
 bool              g_book_subscribed = false;
 
 // Research Globals
-int               h_momentum = INVALID_HANDLE;
-int               h_flow = INVALID_HANDLE;
-int               h_va = INVALID_HANDLE;
-int               h_micro = INVALID_HANDLE;
+int               h_hybrid = INVALID_HANDLE; // NEW: Jules Hybrid Pulse
+int               h_momentum = INVALID_HANDLE; // Legacy Momentum
+int               h_flow = INVALID_HANDLE; // Filter Flow
+
 string            g_current_phase = "IDLE";
 int               g_post_event_counter = 0;
 double            g_last_realized_pl = 0.0; // P/L from closed deals this tick
@@ -121,6 +130,9 @@ string            g_tick_event_buffer = ""; // Stores events for the current tic
 // Strategy Control Globals
 bool              g_mimic_mode = true; // Default ON
 double            g_target_profit_eur = 0.0; // 0 = Disabled
+double            g_user_lot_size = InpTrojanLot; // Editable via Panel
+int               g_user_burst_count = 5;         // Editable via Panel
+int               g_user_burst_delay = 50;        // Editable via Panel
 
 //--- Struct to hold simplified level data
 struct LevelData {
@@ -134,10 +146,23 @@ string ObjBG = Prefix + "BG";
 string ObjStat = Prefix + "Status";
 string ObjBtnTrapBuy = Prefix + "BtnTrapBuy";
 string ObjBtnTrapSell = Prefix + "BtnTrapSell";
+string ObjBtnTrapBurst = Prefix + "BtnTrapBurst";
 string ObjBtnCloseAll = Prefix + "BtnClose";
 string ObjBtnMimicToggle = Prefix + "BtnMimic";
+
+// Editable Fields
 string ObjEditTP = Prefix + "EditTP";
 string ObjLabelTP = Prefix + "LabelTP";
+
+string ObjEditLot = Prefix + "EditLot";
+string ObjLabelLot = Prefix + "LabelLot";
+
+string ObjEditBCount = Prefix + "EditBCount";
+string ObjLabelBCount = Prefix + "LabelBCount";
+
+string ObjEditBDelay = Prefix + "EditBDelay";
+string ObjLabelBDelay = Prefix + "LabelBDelay";
+
 string ObjLabelPL = Prefix + "LabelPL";
 
 //--- Forward Declarations
@@ -149,6 +174,7 @@ void RemoveIndicators();
 void DrawDealVisuals(ulong deal_ticket);
 void ArmTrap(ENUM_ORDER_TYPE dir);
 void ExecuteTrap();
+void ExecuteBurstTrap();
 void CloseAll();
 double NormalizeLot(double lot);
 void WriteLog();
@@ -157,6 +183,10 @@ void SortBids(LevelData &arr[], int count);
 void SortAsks(LevelData &arr[], int count);
 double GetFloatingPL();
 void CalcDailyPivots(double &pp, double &r1, double &s1);
+void CalculateSLTP(ENUM_ORDER_TYPE type, double price, double &sl, double &tp);
+string GetNetLotDirection();
+string GetSLTPSnapshot();
+string DetermineVerdict(double velocity, double pl);
 
 //+------------------------------------------------------------------+
 //| Initialization                                                   |
@@ -178,34 +208,36 @@ int OnInit()
    if(MarketBookAdd(_Symbol)) g_book_subscribed = true;
    else Print("Mimic: Failed to subscribe to MarketBook!");
 
+   // Initialize User Globals from Inputs
+   g_user_lot_size = InpTrojanLot;
+
    // --- INDICATOR HANDLES ---
+   string path_hybrid = InpIndPath + "Jules_Hybrid_Momentum_Pulse_v1.04";
    string path_mom = InpIndPath + "HybridMomentumIndicator_v2.82";
    string path_flow = InpIndPath + "HybridFlowIndicator_v1.125";
-   string path_va = InpIndPath + "Hybrid_Velocity_Acceleration_VA";
-   string path_mic = InpIndPath + "Hybrid_Microstructure_Monitor_v1.7";
 
-   // 1. Momentum
-   MqlParam mom_params[15];
-   mom_params[0].type = TYPE_STRING; mom_params[0].string_value = path_mom;
-   mom_params[1].type = TYPE_INT;    mom_params[1].integer_value = Mom_InpColorLogic;
-   mom_params[2].type = TYPE_INT;    mom_params[2].integer_value = Mom_InpFastPeriod;
-   mom_params[3].type = TYPE_INT;    mom_params[3].integer_value = Mom_InpSlowPeriod;
-   mom_params[4].type = TYPE_INT;    mom_params[4].integer_value = Mom_InpSignalPeriod;
-   mom_params[5].type = TYPE_INT;    mom_params[5].integer_value = Mom_InpAppliedPrice;
-   mom_params[6].type = TYPE_DOUBLE; mom_params[6].double_value = Mom_InpKalmanGain;
-   mom_params[7].type = TYPE_DOUBLE; mom_params[7].double_value = Mom_InpPhaseAdvance;
-   mom_params[8].type = TYPE_BOOL;   mom_params[8].integer_value = Mom_InpEnableBoost;
-   mom_params[9].type = TYPE_DOUBLE; mom_params[9].double_value = Mom_InpStochMixWeight;
-   mom_params[10].type = TYPE_INT;   mom_params[10].integer_value = Mom_InpStochK;
-   mom_params[11].type = TYPE_INT;   mom_params[11].integer_value = Mom_InpStochD;
-   mom_params[12].type = TYPE_INT;   mom_params[12].integer_value = Mom_InpStochSlowing;
-   mom_params[13].type = TYPE_INT;   mom_params[13].integer_value = Mom_InpNormPeriod;
-   mom_params[14].type = TYPE_DOUBLE;mom_params[14].double_value = Mom_InpNormSensitivity;
+   // 1. Jules Hybrid Momentum Pulse v1.04 (Subwindow 1)
+   h_hybrid = iCustom(_Symbol, _Period, path_hybrid,
+                      Hybrid_InpPeriodFastEMA,
+                      Hybrid_InpPeriodSlowEMA,
+                      Hybrid_InpPeriodBB,
+                      Hybrid_InpDeviationBB,
+                      Hybrid_InpMethodBB,
+                      Hybrid_InpPeriodKeltner,
+                      Hybrid_InpDeviationKeltner,
+                      Hybrid_InpPeriodATRKeltner,
+                      Hybrid_InpMethodKeltner,
+                      Hybrid_InpMACDScale,
+                      Hybrid_InpDFShift,
+                      Hybrid_InpDFScale,
+                      Hybrid_InpUseAutoScaling,
+                      Hybrid_InpAutoScaleLookback
+                      );
+   if(h_hybrid != INVALID_HANDLE) ChartIndicatorAdd(0, 1, h_hybrid);
+   else Print("Failed to load Hybrid Momentum Pulse v1.04! Path: ", path_hybrid, " Error: ", GetLastError());
 
-   h_momentum = IndicatorCreate(_Symbol, _Period, IND_CUSTOM, 15, mom_params);
-   if(h_momentum != INVALID_HANDLE) ChartIndicatorAdd(0, 1, h_momentum);
 
-   // 2. Flow
+   // 2. Filter Flow (Subwindow 2)
    MqlParam flow_params[13];
    flow_params[0].type = TYPE_STRING; flow_params[0].string_value = path_flow;
    flow_params[1].type = TYPE_BOOL;   flow_params[1].integer_value = Flow_InpUseFixedScale;
@@ -224,23 +256,26 @@ int OnInit()
    h_flow = IndicatorCreate(_Symbol, _Period, IND_CUSTOM, 13, flow_params);
    if(h_flow != INVALID_HANDLE) ChartIndicatorAdd(0, 2, h_flow);
 
-   // 3. VA
-   h_va = iCustom(_Symbol, _Period, path_va, VA_InpPeriodV, VA_InpPeriodA, VA_InpAppliedPrice);
-   if(h_va != INVALID_HANDLE) ChartIndicatorAdd(0, 3, h_va);
+   // 3. Momentum (Subwindow 3)
+   MqlParam mom_params[15];
+   mom_params[0].type = TYPE_STRING; mom_params[0].string_value = path_mom;
+   mom_params[1].type = TYPE_INT;    mom_params[1].integer_value = Mom_InpColorLogic;
+   mom_params[2].type = TYPE_INT;    mom_params[2].integer_value = Mom_InpFastPeriod;
+   mom_params[3].type = TYPE_INT;    mom_params[3].integer_value = Mom_InpSlowPeriod;
+   mom_params[4].type = TYPE_INT;    mom_params[4].integer_value = Mom_InpSignalPeriod;
+   mom_params[5].type = TYPE_INT;    mom_params[5].integer_value = Mom_InpAppliedPrice;
+   mom_params[6].type = TYPE_DOUBLE; mom_params[6].double_value = Mom_InpKalmanGain;
+   mom_params[7].type = TYPE_DOUBLE; mom_params[7].double_value = Mom_InpPhaseAdvance;
+   mom_params[8].type = TYPE_BOOL;   mom_params[8].integer_value = Mom_InpEnableBoost;
+   mom_params[9].type = TYPE_DOUBLE; mom_params[9].double_value = Mom_InpStochMixWeight;
+   mom_params[10].type = TYPE_INT;   mom_params[10].integer_value = Mom_InpStochK;
+   mom_params[11].type = TYPE_INT;   mom_params[11].integer_value = Mom_InpStochD;
+   mom_params[12].type = TYPE_INT;   mom_params[12].integer_value = Mom_InpStochSlowing;
+   mom_params[13].type = TYPE_INT;   mom_params[13].integer_value = Mom_InpNormPeriod;
+   mom_params[14].type = TYPE_DOUBLE;mom_params[14].double_value = Mom_InpNormSensitivity;
 
-   // 4. Microstructure (v1.7) - Flattened
-   h_micro = iCustom(_Symbol, _Period, path_mic,
-                     Mic_InpLookbackVol,
-                     Mic_InpPressureGain,
-                     Mic_InpUseTickAnalysis,
-                     Mic_InpTickHistoryDays,
-                     Mic_InpHighVolThreshold
-                     );
-   if(h_micro == INVALID_HANDLE) {
-       Print("Failed to load Microstructure v1.7! Path: ", path_mic, " Err: ", GetLastError());
-   } else {
-       if(!ChartIndicatorAdd(0, 4, h_micro)) Print("Failed to add Microstructure to chart!");
-   }
+   h_momentum = IndicatorCreate(_Symbol, _Period, IND_CUSTOM, 15, mom_params);
+   if(h_momentum != INVALID_HANDLE) ChartIndicatorAdd(0, 3, h_momentum);
 
 
    // Init Log
@@ -255,17 +290,17 @@ int OnInit()
 
    if(g_log_handle != INVALID_HANDLE)
      {
-      // Updated Header with Pivot and LastEvent
-      string header = "Time,TickMS,Phase,MimicMode,TargetTP,Bid,Ask,Spread,Velocity,Acceleration,Mom_Hist,Mom_Macd,Mom_Sig,Flow_MFI,Flow_DUp,Flow_DDown,Ext_VA_Vel,Ext_VA_Acc,Micro_Press,Micro_Color,Pivot_PP,Pivot_R1,Pivot_S1,Floating_PL,Realized_PL,Session_PL,Action,PosCount,ActiveSL,ActiveTP,LastEvent,DOM_Snapshot\r\n";
+      // Updated Header for v2.14: Added Account Info, LotDir, Currency, SLTP, Verdict
+      string header = "Time,TickMS,Phase,MimicMode,TargetTP,Bid,Ask,Spread,Velocity,Acceleration,Hybrid_MACD,Hybrid_Color,Hybrid_DFCurve,Flow_MFI,Flow_DUp,Flow_DDown,Mom_Hist,Pivot_PP,Pivot_R1,Pivot_S1,Floating_PL,Realized_PL,Session_PL,Balance,Margin,MarginPercent,Currency,LotDir,Action,PosCount,ActiveSL,ActiveTP,SLTP_Levels,Verdict,LastEvent,DOM_Snapshot\r\n";
       FileWriteString(g_log_handle, header);
       FileFlush(g_log_handle);
-      Print("Mimic Research: Log file created: ", filename);
+      Print("Mimic Research v2.14: Log file created: ", filename);
      }
 
    CreatePanel();
    UpdateUI();
 
-   Print("Mimic Trap Research EA v2.09 (Pivots+Events) Initialized.");
+   Print("Mimic Trap Research EA v2.14 (v2.11 Base + Enhanced Forensic CSV) Initialized.");
    return(INIT_SUCCEEDED);
   }
 
@@ -280,10 +315,9 @@ void OnDeinit(const int reason)
 
    if(g_book_subscribed) MarketBookRelease(_Symbol);
 
+   if(h_hybrid != INVALID_HANDLE) IndicatorRelease(h_hybrid);
    if(h_momentum != INVALID_HANDLE) IndicatorRelease(h_momentum);
    if(h_flow != INVALID_HANDLE) IndicatorRelease(h_flow);
-   if(h_va != INVALID_HANDLE) IndicatorRelease(h_va);
-   if(h_micro != INVALID_HANDLE) IndicatorRelease(h_micro);
 
    if(g_log_handle != INVALID_HANDLE) FileClose(g_log_handle);
   }
@@ -300,8 +334,10 @@ void RemoveIndicators()
             string name_lower = name;
             StringToLower(name_lower);
 
+            // Clean up old and new names
             if (StringFind(name_lower, "hybrid momentum") >= 0 ||
                 StringFind(name_lower, "hybrid flow") >= 0 ||
+                StringFind(name_lower, "jules_hybrid") >= 0 ||
                 StringFind(name_lower, "va(") >= 0 ||
                 StringFind(name_lower, "microstructure") >= 0 ||
                 StringFind(name_lower, "wvf") >= 0 ||
@@ -366,6 +402,17 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
          ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
          ChartRedraw();
         }
+      // --- TRAP BURST ---
+      else if(sparam == ObjBtnTrapBurst)
+        {
+         ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
+         ChartRedraw();
+         Sleep(100);
+         PlaySound("tick.wav");
+         ExecuteBurstTrap();
+         ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
+         ChartRedraw();
+        }
       // --- CLOSE ALL ---
       else if(sparam == ObjBtnCloseAll)
         {
@@ -387,6 +434,24 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
            string text = ObjectGetString(0, ObjEditTP, OBJPROP_TEXT);
            g_target_profit_eur = StringToDouble(text);
            Print("Mimic: Target Profit Updated to: ", g_target_profit_eur);
+       }
+       else if(sparam == ObjEditLot) {
+           string text = ObjectGetString(0, ObjEditLot, OBJPROP_TEXT);
+           double val = StringToDouble(text);
+           if(val > 0) g_user_lot_size = val;
+           Print("Mimic: Lot Size Updated to: ", g_user_lot_size);
+       }
+       else if(sparam == ObjEditBCount) {
+           string text = ObjectGetString(0, ObjEditBCount, OBJPROP_TEXT);
+           long val = StringToInteger(text);
+           if(val > 0) g_user_burst_count = (int)val;
+           Print("Mimic: Burst Count Updated to: ", g_user_burst_count);
+       }
+       else if(sparam == ObjEditBDelay) {
+           string text = ObjectGetString(0, ObjEditBDelay, OBJPROP_TEXT);
+           long val = StringToInteger(text);
+           if(val >= 0) g_user_burst_delay = (int)val;
+           Print("Mimic: Burst Delay Updated to: ", g_user_burst_delay);
        }
    }
   }
@@ -540,6 +605,9 @@ void ExecuteTrap()
    g_current_phase = "TRAP_EXEC";
    g_tick_event_buffer += "TRAP_FIRED;";
 
+   // Calculate SL/TP based on 5% rule
+   double sl=0, tp=0;
+
    if (g_mimic_mode)
    {
        // 1. DECOY PHASE (Opposite Direction) - ONLY IN MIMIC MODE
@@ -547,7 +615,8 @@ void ExecuteTrap()
        double d_lot = NormalizeLot(InpDecoyLot);
 
        for(int i=0; i<InpDecoyCount; i++) {
-          if(m_trade.PositionOpen(_Symbol, decoy_dir, d_lot, (decoy_dir==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), 0, 0, InpComment+"_Decoy")) {
+          CalculateSLTP(decoy_dir, (decoy_dir==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), sl, tp);
+          if(m_trade.PositionOpen(_Symbol, decoy_dir, d_lot, (decoy_dir==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), sl, tp, InpComment+"_Decoy")) {
              Sleep(20); // Minimal spacing
           }
        }
@@ -558,8 +627,10 @@ void ExecuteTrap()
    }
 
    // 2. TROJAN PHASE (Real Direction)
-   double t_lot = NormalizeLot(InpTrojanLot);
-   if(m_trade.PositionOpen(_Symbol, g_trap_direction, t_lot, (g_trap_direction==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), 0, 0, InpComment+"_Trojan")) {
+   double t_lot = NormalizeLot(g_user_lot_size);
+   CalculateSLTP(g_trap_direction, (g_trap_direction==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), sl, tp);
+
+   if(m_trade.PositionOpen(_Symbol, g_trap_direction, t_lot, (g_trap_direction==ORDER_TYPE_BUY)?m_symbol.Ask():m_symbol.Bid(), sl, tp, InpComment+"_Trojan")) {
        // Done
    }
 
@@ -573,6 +644,47 @@ void ExecuteTrap()
    UpdateUI();
   }
 
+void ExecuteBurstTrap()
+{
+   g_trap_active = false; // Ensure no pending traps
+   g_current_phase = "BURST_EXEC";
+   g_tick_event_buffer += "BURST_FIRED;";
+
+   Print("Mimic: EXECUTING BURST TRAP (Count: ", g_user_burst_count, ", Delay: ", g_user_burst_delay, ")");
+
+   double t_lot = NormalizeLot(g_user_lot_size);
+   double sl=0, tp=0;
+
+   for (int i = 0; i < g_user_burst_count; i++)
+   {
+       m_symbol.RefreshRates();
+
+       // Open BUY
+       CalculateSLTP(ORDER_TYPE_BUY, m_symbol.Ask(), sl, tp);
+       if(m_trade.PositionOpen(_Symbol, ORDER_TYPE_BUY, t_lot, m_symbol.Ask(), sl, tp, InpComment+"_Burst")) {
+           // OK
+       }
+
+       // Open SELL
+       CalculateSLTP(ORDER_TYPE_SELL, m_symbol.Bid(), sl, tp);
+       if(m_trade.PositionOpen(_Symbol, ORDER_TYPE_SELL, t_lot, m_symbol.Bid(), sl, tp, InpComment+"_Burst")) {
+           // OK
+       }
+
+       // Delay between waves
+       if (i < g_user_burst_count - 1 && g_user_burst_delay > 0)
+           Sleep(g_user_burst_delay);
+   }
+
+   PlaySound("ok.wav");
+
+   // Set Post-Event Phase
+   g_current_phase = "POST_ANALYSIS";
+   g_post_event_counter = InpPostEventTicks;
+
+   UpdateUI();
+}
+
 void CloseAll()
   {
    g_tick_event_buffer += "CLOSE_ALL_TRIG;";
@@ -584,6 +696,29 @@ void CloseAll()
    Print("Mimic: All positions closed.");
   }
 
+void CalculateSLTP(ENUM_ORDER_TYPE type, double price, double &sl, double &tp)
+{
+    if (InpSLPercent <= 0 && InpTPPercent <= 0) {
+        sl = 0; tp = 0; return;
+    }
+
+    double delta_sl = price * (InpSLPercent / 100.0);
+    double delta_tp = price * (InpTPPercent / 100.0);
+
+    if (type == ORDER_TYPE_BUY) {
+        sl = (InpSLPercent > 0) ? price - delta_sl : 0;
+        tp = (InpTPPercent > 0) ? price + delta_tp : 0;
+    } else {
+        sl = (InpSLPercent > 0) ? price + delta_sl : 0;
+        tp = (InpTPPercent > 0) ? price - delta_tp : 0;
+    }
+
+    // Normalize
+    double tick_size = m_symbol.TickSize();
+    if(sl>0) sl = MathRound(sl/tick_size)*tick_size;
+    if(tp>0) tp = MathRound(tp/tick_size)*tick_size;
+}
+
 //+------------------------------------------------------------------+
 //| GUI                                                              |
 //+------------------------------------------------------------------+
@@ -591,8 +726,12 @@ void CreatePanel()
   {
    int x = InpX;
    int y = InpY;
-   int w = 160;
-   int h = 190; // Taller for extra controls
+   int w = 150; 
+   int h = 280;
+
+   int btn_w = 130; 
+   int btn_h = 24;  
+   int gap_y = 26;  
 
    // Background
    ObjectCreate(0, ObjBG, OBJ_RECTANGLE_LABEL, 0, 0, 0);
@@ -603,71 +742,133 @@ void CreatePanel()
    ObjectSetInteger(0, ObjBG, OBJPROP_BGCOLOR, InpBgColor);
    ObjectSetInteger(0, ObjBG, OBJPROP_BORDER_TYPE, BORDER_FLAT);
 
+   int curr_y = y + 5;
+
    // Status Label
    ObjectCreate(0, ObjStat, OBJ_LABEL, 0, 0, 0);
    ObjectSetInteger(0, ObjStat, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjStat, OBJPROP_YDISTANCE, y+5);
+   ObjectSetInteger(0, ObjStat, OBJPROP_YDISTANCE, curr_y);
    ObjectSetInteger(0, ObjStat, OBJPROP_COLOR, InpTxtColor);
-   ObjectSetString(0, ObjStat, OBJPROP_TEXT, "READY");
+   ObjectSetString(0, ObjStat, OBJPROP_TEXT, "READY v2.14");
+   curr_y += 20;
 
-   // Row 1: Mimic Toggle
+   // Row: Mimic Toggle
    ObjectCreate(0, ObjBtnMimicToggle, OBJ_BUTTON, 0, 0, 0);
    ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_YDISTANCE, y+25);
-   ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_XSIZE, 140);
+   ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_XSIZE, btn_w);
    ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_YSIZE, 20);
    ObjectSetString(0, ObjBtnMimicToggle, OBJPROP_TEXT, "MIMIC MODE: ON");
    ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_BGCOLOR, clrForestGreen);
    ObjectSetInteger(0, ObjBtnMimicToggle, OBJPROP_COLOR, clrWhite);
+   curr_y += 25;
 
-   // Row 2: Target Profit (Label + Edit)
+   // Input: Lot Size
+   ObjectCreate(0, ObjLabelLot, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, ObjLabelLot, OBJPROP_XDISTANCE, x+10);
+   ObjectSetInteger(0, ObjLabelLot, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjLabelLot, OBJPROP_COLOR, InpTxtColor);
+   ObjectSetString(0, ObjLabelLot, OBJPROP_TEXT, "Lot:");
+
+   ObjectCreate(0, ObjEditLot, OBJ_EDIT, 0, 0, 0);
+   ObjectSetInteger(0, ObjEditLot, OBJPROP_XDISTANCE, x+40);
+   ObjectSetInteger(0, ObjEditLot, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjEditLot, OBJPROP_XSIZE, 50);
+   ObjectSetInteger(0, ObjEditLot, OBJPROP_YSIZE, 18);
+   ObjectSetString(0, ObjEditLot, OBJPROP_TEXT, DoubleToString(g_user_lot_size, 2));
+   ObjectSetInteger(0, ObjEditLot, OBJPROP_BGCOLOR, clrWhite);
+   ObjectSetInteger(0, ObjEditLot, OBJPROP_COLOR, clrBlack);
+   curr_y += 20;
+
+   // Input: Burst Count & Delay
+   ObjectCreate(0, ObjLabelBCount, OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, ObjLabelBCount, OBJPROP_XDISTANCE, x+10);
+   ObjectSetInteger(0, ObjLabelBCount, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjLabelBCount, OBJPROP_COLOR, InpTxtColor);
+   ObjectSetString(0, ObjLabelBCount, OBJPROP_TEXT, "Cnt/Ms:");
+
+   ObjectCreate(0, ObjEditBCount, OBJ_EDIT, 0, 0, 0);
+   ObjectSetInteger(0, ObjEditBCount, OBJPROP_XDISTANCE, x+60);
+   ObjectSetInteger(0, ObjEditBCount, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjEditBCount, OBJPROP_XSIZE, 30);
+   ObjectSetInteger(0, ObjEditBCount, OBJPROP_YSIZE, 18);
+   ObjectSetString(0, ObjEditBCount, OBJPROP_TEXT, IntegerToString(g_user_burst_count));
+   ObjectSetInteger(0, ObjEditBCount, OBJPROP_BGCOLOR, clrWhite);
+   ObjectSetInteger(0, ObjEditBCount, OBJPROP_COLOR, clrBlack);
+
+   ObjectCreate(0, ObjEditBDelay, OBJ_EDIT, 0, 0, 0);
+   ObjectSetInteger(0, ObjEditBDelay, OBJPROP_XDISTANCE, x+95);
+   ObjectSetInteger(0, ObjEditBDelay, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjEditBDelay, OBJPROP_XSIZE, 40);
+   ObjectSetInteger(0, ObjEditBDelay, OBJPROP_YSIZE, 18);
+   ObjectSetString(0, ObjEditBDelay, OBJPROP_TEXT, IntegerToString(g_user_burst_delay));
+   ObjectSetInteger(0, ObjEditBDelay, OBJPROP_BGCOLOR, clrWhite);
+   ObjectSetInteger(0, ObjEditBDelay, OBJPROP_COLOR, clrBlack);
+   curr_y += 20;
+
+   // Input: Target Profit
    ObjectCreate(0, ObjLabelTP, OBJ_LABEL, 0, 0, 0);
    ObjectSetInteger(0, ObjLabelTP, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjLabelTP, OBJPROP_YDISTANCE, y+50);
+   ObjectSetInteger(0, ObjLabelTP, OBJPROP_YDISTANCE, curr_y);
    ObjectSetInteger(0, ObjLabelTP, OBJPROP_COLOR, InpTxtColor);
-   ObjectSetString(0, ObjLabelTP, OBJPROP_TEXT, "Target EUR:");
+   ObjectSetString(0, ObjLabelTP, OBJPROP_TEXT, "TP EUR:");
 
    ObjectCreate(0, ObjEditTP, OBJ_EDIT, 0, 0, 0);
-   ObjectSetInteger(0, ObjEditTP, OBJPROP_XDISTANCE, x+80);
-   ObjectSetInteger(0, ObjEditTP, OBJPROP_YDISTANCE, y+50);
+   ObjectSetInteger(0, ObjEditTP, OBJPROP_XDISTANCE, x+70);
+   ObjectSetInteger(0, ObjEditTP, OBJPROP_YDISTANCE, curr_y);
    ObjectSetInteger(0, ObjEditTP, OBJPROP_XSIZE, 65);
-   ObjectSetInteger(0, ObjEditTP, OBJPROP_YSIZE, 20);
+   ObjectSetInteger(0, ObjEditTP, OBJPROP_YSIZE, 18);
    ObjectSetString(0, ObjEditTP, OBJPROP_TEXT, "0.0");
    ObjectSetInteger(0, ObjEditTP, OBJPROP_BGCOLOR, clrWhite);
    ObjectSetInteger(0, ObjEditTP, OBJPROP_COLOR, clrBlack);
+   curr_y += 25;
 
-   // Row 3: P/L Display
+   // P/L Display
    ObjectCreate(0, ObjLabelPL, OBJ_LABEL, 0, 0, 0);
    ObjectSetInteger(0, ObjLabelPL, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjLabelPL, OBJPROP_YDISTANCE, y+75);
+   ObjectSetInteger(0, ObjLabelPL, OBJPROP_YDISTANCE, curr_y);
    ObjectSetInteger(0, ObjLabelPL, OBJPROP_COLOR, clrYellow);
    ObjectSetString(0, ObjLabelPL, OBJPROP_TEXT, "FL: 0.0 | BK: 0.0");
+   curr_y += 20;
 
-   // Row 4: TRAP BUY (Green)
+   // TRAP BUY
    ObjectCreate(0, ObjBtnTrapBuy, OBJ_BUTTON, 0, 0, 0);
    ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_YDISTANCE, y+100);
-   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_XSIZE, 140);
-   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_YSIZE, 30);
+   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_XSIZE, btn_w);
+   ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_YSIZE, btn_h);
    ObjectSetString(0, ObjBtnTrapBuy, OBJPROP_TEXT, "TRAP BUY");
    ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_BGCOLOR, clrForestGreen);
    ObjectSetInteger(0, ObjBtnTrapBuy, OBJPROP_COLOR, clrWhite);
+   curr_y += gap_y;
 
-   // Row 5: TRAP SELL (Red)
+   // TRAP SELL
    ObjectCreate(0, ObjBtnTrapSell, OBJ_BUTTON, 0, 0, 0);
    ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_YDISTANCE, y+135);
-   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_XSIZE, 140);
-   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_YSIZE, 30);
+   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_XSIZE, btn_w);
+   ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_YSIZE, btn_h);
    ObjectSetString(0, ObjBtnTrapSell, OBJPROP_TEXT, "TRAP SELL");
    ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_BGCOLOR, clrFireBrick);
    ObjectSetInteger(0, ObjBtnTrapSell, OBJPROP_COLOR, clrWhite);
+   curr_y += gap_y;
 
-   // Row 6: CLOSE ALL
+   // TRAP BURST
+   ObjectCreate(0, ObjBtnTrapBurst, OBJ_BUTTON, 0, 0, 0);
+   ObjectSetInteger(0, ObjBtnTrapBurst, OBJPROP_XDISTANCE, x+10);
+   ObjectSetInteger(0, ObjBtnTrapBurst, OBJPROP_YDISTANCE, curr_y);
+   ObjectSetInteger(0, ObjBtnTrapBurst, OBJPROP_XSIZE, btn_w);
+   ObjectSetInteger(0, ObjBtnTrapBurst, OBJPROP_YSIZE, btn_h);
+   ObjectSetString(0, ObjBtnTrapBurst, OBJPROP_TEXT, "BURST (DUAL)");
+   ObjectSetInteger(0, ObjBtnTrapBurst, OBJPROP_BGCOLOR, clrRoyalBlue);
+   ObjectSetInteger(0, ObjBtnTrapBurst, OBJPROP_COLOR, clrWhite);
+   curr_y += gap_y;
+
+   // CLOSE ALL
    ObjectCreate(0, ObjBtnCloseAll, OBJ_BUTTON, 0, 0, 0);
    ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_XDISTANCE, x+10);
-   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_YDISTANCE, y+168);
-   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_XSIZE, 140);
+   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_YDISTANCE, curr_y + 5);
+   ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_XSIZE, btn_w);
    ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_YSIZE, 18);
    ObjectSetString(0, ObjBtnCloseAll, OBJPROP_TEXT, "CLOSE ALL");
    ObjectSetInteger(0, ObjBtnCloseAll, OBJPROP_BGCOLOR, clrDimGray);
@@ -714,16 +915,18 @@ void WriteLog()
    if(g_log_handle == INVALID_HANDLE) return;
 
    // 1. Get Indicator Values
-   double mom_hist = 0, mom_macd = 0, mom_sig = 0;
+   double mom_hist = 0;
    double flow_mfi = 0, flow_dup = 0, flow_ddown = 0;
-   double va_v=0, va_a=0;
-   double mic_press=0, mic_col=0;
+   double hybrid_macd = 0, hybrid_color = 0, hybrid_curve = 0;
 
    double buf[1];
-   if(CopyBuffer(h_momentum, 0, 0, 1, buf)>0) mom_hist = buf[0];
-   if(CopyBuffer(h_momentum, 2, 0, 1, buf)>0) mom_macd = buf[0];
-   if(CopyBuffer(h_momentum, 3, 0, 1, buf)>0) mom_sig = buf[0];
 
+   // A. Jules Hybrid v1.04
+   if(CopyBuffer(h_hybrid, 0, 0, 1, buf)>0) hybrid_macd = buf[0];
+   if(CopyBuffer(h_hybrid, 1, 0, 1, buf)>0) hybrid_color = buf[0];
+   if(CopyBuffer(h_hybrid, 2, 0, 1, buf)>0) hybrid_curve = buf[0];
+
+   // B. Flow
    if(CopyBuffer(h_flow, 0, 0, 1, buf)>0) flow_mfi = buf[0];
    double up_end=50, down_end=50;
    if(CopyBuffer(h_flow, 3, 0, 1, buf)>0) up_end = buf[0];
@@ -731,11 +934,8 @@ void WriteLog()
    flow_dup = up_end - 50.0;
    flow_ddown = down_end - 50.0;
 
-   if(CopyBuffer(h_va, 0, 0, 1, buf)>0) va_v = buf[0];
-   if(CopyBuffer(h_va, 1, 0, 1, buf)>0) va_a = buf[0];
-
-   if(CopyBuffer(h_micro, 0, 0, 1, buf)>0) mic_press = buf[0];
-   if(CopyBuffer(h_micro, 1, 0, 1, buf)>0) mic_col = buf[0];
+   // C. Momentum (Legacy)
+   if(CopyBuffer(h_momentum, 0, 0, 1, buf)>0) mom_hist = buf[0];
 
    // 2. Physics
    PhysicsState p = m_physics.GetState();
@@ -759,25 +959,35 @@ void WriteLog()
        }
    }
 
-   // 5. Time
+   // 5. Account Info (NEW)
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+   double margin = AccountInfoDouble(ACCOUNT_MARGIN);
+   double margin_level = AccountInfoDouble(ACCOUNT_MARGIN_LEVEL);
+   string currency = AccountInfoString(ACCOUNT_CURRENCY);
+   string lot_dir = GetNetLotDirection();
+   string sltp_levels = GetSLTPSnapshot();
+   string verdict = DetermineVerdict(p.velocity, float_pl);
+
+
+   // 6. Time
    string t = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
    string ms = IntegerToString(GetTickCount()%1000);
 
    // CSV Row
-   // Header: Time,TickMS,Phase,MimicMode,TargetTP,Bid,Ask,Spread,Velocity,Acceleration,Mom_Hist,Mom_Macd,Mom_Sig,Flow_MFI,Flow_DUp,Flow_DDown,Ext_VA_Vel,Ext_VA_Acc,Micro_Press,Micro_Color,Pivot_PP,Pivot_R1,Pivot_S1,Floating_PL,Realized_PL,Session_PL,Action,PosCount,ActiveSL,ActiveTP,LastEvent,DOM_Snapshot
-   string row = StringFormat("%s,%s,%s,%d,%.2f,%.5f,%.5f,%.1f,%.5f,%.5f,%.5f,%.5f,%.5f,%.2f,%.2f,%.2f,%.5f,%.5f,%.2f,%.1f,%.5f,%.5f,%.5f,%.2f,%.2f,%.2f,%s,%d,%.5f,%.5f,%s",
+   // Header: Time,TickMS,Phase,MimicMode,TargetTP,Bid,Ask,Spread,Velocity,Acceleration,Hybrid_MACD,Hybrid_Color,Hybrid_DFCurve,Flow_MFI,Flow_DUp,Flow_DDown,Mom_Hist,Pivot_PP,Pivot_R1,Pivot_S1,Floating_PL,Realized_PL,Session_PL,Balance,Margin,MarginPercent,Currency,LotDir,Action,PosCount,ActiveSL,ActiveTP,SLTP_Levels,Verdict,LastEvent,DOM_Snapshot
+   string row = StringFormat("%s,%s,%s,%d,%.2f,%.5f,%.5f,%.1f,%.5f,%.5f,%.5f,%.0f,%.5f,%.2f,%.2f,%.2f,%.5f,%.5f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%s,%s,%d,%.5f,%.5f,%s,%s,%s",
        t, ms, g_current_phase,
        g_mimic_mode, g_target_profit_eur,
        m_symbol.Bid(), m_symbol.Ask(), p.spread_avg,
        p.velocity, p.acceleration,
-       mom_hist, mom_macd, mom_sig,
+       hybrid_macd, hybrid_color, hybrid_curve,
        flow_mfi, flow_dup, flow_ddown,
-       va_v, va_a,
-       mic_press, mic_col,
+       mom_hist,
        pp, r1, s1,
        float_pl, g_last_realized_pl, g_session_realized_pl,
+       balance, margin, margin_level, currency, lot_dir,
        InpComment,
-       pos_count, active_sl, active_tp,
+       pos_count, active_sl, active_tp, sltp_levels, verdict,
        g_tick_event_buffer
    );
 
@@ -855,10 +1065,17 @@ void DestroyPanel()
    ObjectDelete(0, ObjStat);
    ObjectDelete(0, ObjBtnTrapBuy);
    ObjectDelete(0, ObjBtnTrapSell);
+   ObjectDelete(0, ObjBtnTrapBurst);
    ObjectDelete(0, ObjBtnCloseAll);
    ObjectDelete(0, ObjBtnMimicToggle);
    ObjectDelete(0, ObjEditTP);
    ObjectDelete(0, ObjLabelTP);
+   ObjectDelete(0, ObjEditLot);
+   ObjectDelete(0, ObjLabelLot);
+   ObjectDelete(0, ObjEditBCount);
+   ObjectDelete(0, ObjLabelBCount);
+   ObjectDelete(0, ObjEditBDelay);
+   ObjectDelete(0, ObjLabelBDelay);
    ObjectDelete(0, ObjLabelPL);
   }
 
@@ -892,3 +1109,44 @@ void DrawDealVisuals(ulong deal_ticket)
    }
    ChartRedraw();
   }
+
+// --- v2.14 Forensic Helpers ---
+string GetNetLotDirection()
+{
+    double net_lots = 0.0;
+    for(int i=PositionsTotal()-1; i>=0; i--) {
+       if(m_position.SelectByIndex(i) && m_position.Symbol()==_Symbol && m_position.Magic()==InpMagicNumber) {
+           if(m_position.PositionType() == POSITION_TYPE_BUY) net_lots += m_position.Volume();
+           else net_lots -= m_position.Volume();
+       }
+    }
+    if(net_lots > 0.001) return "BUY";
+    if(net_lots < -0.001) return "SELL";
+    if(PositionsTotal() > 0) return "NEUTRAL_HEDGE";
+    return "NONE";
+}
+
+string GetSLTPSnapshot()
+{
+    string s = "";
+    int count = 0;
+    for(int i=PositionsTotal()-1; i>=0; i--) {
+       if(m_position.SelectByIndex(i) && m_position.Symbol()==_Symbol && m_position.Magic()==InpMagicNumber) {
+           if(count > 0) s += "|";
+           string type = (m_position.PositionType() == POSITION_TYPE_BUY) ? "B" : "S";
+           s += type + ":" + DoubleToString(m_position.StopLoss(), _Digits) + "/" + DoubleToString(m_position.TakeProfit(), _Digits);
+           count++;
+           if(count >= 3) { s += "|..."; break; } // Limit length
+       }
+    }
+    if(s == "") return "NONE";
+    return s;
+}
+
+string DetermineVerdict(double velocity, double pl)
+{
+    if(pl < -50.0 && velocity > 20.0) return "CRASH_RISK";
+    if(pl > 10.0) return "WINNING";
+    if(pl < -10.0) return "UNDER_PRESSURE";
+    return "STABLE";
+}
