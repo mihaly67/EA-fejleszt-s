@@ -4,10 +4,9 @@ import sys
 import os
 
 # --- CONFIGURATION ---
-SPREAD_POINTS = 66.0
+SPREAD_POINTS_RAW = 66.0
+SPREAD_PRICE_VALUE = 0.66 # SP500 2-digit: 66 points = 0.66 price change
 POINT_VALUE_HUF = 73900.0 # Approx 1 Lot SP500 value in HUF (User provided)
-# Note: SP500 Point Value usually $50 or $5, but User explicitly linked it to HUF exposure.
-# We will use raw Points for technical analysis and standard EUR for PL.
 
 def analyze_chess_match(file_path):
     print(f"🕵️‍♂️ --- COLOMBO CHESS MATCH FORENSIC ANALYSIS ---")
@@ -54,12 +53,14 @@ def analyze_chess_match(file_path):
                  price_diff = abs(curr_price - prev_row['Bid'])
 
             # Distance in "Spreads"
-            dist_in_spreads = price_diff / SPREAD_POINTS
+            # Bugfix: Use Price Value of Spread (0.66) not Raw Points (66.0)
+            dist_in_spreads = price_diff / SPREAD_PRICE_VALUE
 
             # Verdict
             verdict = "OK"
             if time_diff < 0.1 and idx > entries.index[0]: verdict = "MACHINE_GUN (Instant)"
             elif dist_in_spreads < 0.8 and idx > entries.index[0]: verdict = "PREMATURE (Too Close)"
+            elif dist_in_spreads > 1.2 and idx > entries.index[0]: verdict = "GAP (Skipped Level)"
 
             entry_report.append({
                 "Time": row['Time'],
