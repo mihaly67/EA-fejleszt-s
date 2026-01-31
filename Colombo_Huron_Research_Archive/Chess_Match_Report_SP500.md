@@ -1,0 +1,73 @@
+# Colombo Jelentés: A Sakkjátszma (SP500 Forensic)
+**Dátum:** 2026-01-30
+**Eszköz:** SP500 (V1.00 Elemzés)
+
+## 1. A Belépések Ritmusának Elemzése
+A vizsgálat célja annak eldöntése volt, hogy a rendszer tartotta-e a lépcsőzetes (Spread-alapú) belépést, vagy a bróker 'szétlőtte' a pozíciókat.
+
+|    | Time                |   Price |   Diff_Spread |   Time_Gap | Verdict               |
+|---:|:--------------------|--------:|--------------:|-----------:|:----------------------|
+|  0 | 2026-01-30 05:29:52 | 6937.57 |    0          |          0 | OK                    |
+|  1 | 2026-01-30 05:30:41 | 6938.82 |    0.0189394  |         49 | PREMATURE (Too Close) |
+|  2 | 2026-01-30 05:30:42 | 6939.07 |    0.00378788 |          1 | PREMATURE (Too Close) |
+|  3 | 2026-01-30 05:30:44 | 6939.44 |    0.00560606 |          2 | PREMATURE (Too Close) |
+|  4 | 2026-01-30 05:30:48 | 6940.19 |    0.0113636  |          4 | PREMATURE (Too Close) |
+|  5 | 2026-01-30 05:30:50 | 6940.88 |    0.0104545  |          2 | PREMATURE (Too Close) |
+|  6 | 2026-01-30 05:31:29 | 6941.44 |    0.00848485 |         39 | PREMATURE (Too Close) |
+|  7 | 2026-01-30 05:32:01 | 6942.07 |    0.00954545 |         32 | PREMATURE (Too Close) |
+|  8 | 2026-01-30 05:32:32 | 6942.57 |    0.00757576 |         31 | PREMATURE (Too Close) |
+|  9 | 2026-01-30 05:40:01 | 6940.82 |    0.0265152  |        449 | PREMATURE (Too Close) |
+| 10 | 2026-01-30 05:40:03 | 6940.32 |    0.00757576 |          2 | PREMATURE (Too Close) |
+| 11 | 2026-01-30 05:40:28 | 6939.19 |    0.0171212  |         25 | PREMATURE (Too Close) |
+| 12 | 2026-01-30 05:40:30 | 6938.57 |    0.00939394 |          2 | PREMATURE (Too Close) |
+| 13 | 2026-01-30 05:40:31 | 6938.19 |    0.00575758 |          1 | PREMATURE (Too Close) |
+| 14 | 2026-01-30 05:40:32 | 6938.32 |    0.0019697  |          1 | PREMATURE (Too Close) |
+| 15 | 2026-01-30 05:43:44 | 6940.69 |    0.0359091  |        192 | PREMATURE (Too Close) |
+| 16 | 2026-01-30 05:43:52 | 6940.19 |    0.00757576 |          8 | PREMATURE (Too Close) |
+| 17 | 2026-01-30 05:44:55 | 6939.57 |    0.00939394 |         63 | PREMATURE (Too Close) |
+| 18 | 2026-01-30 05:45:39 | 6940.44 |    0.0131818  |         44 | PREMATURE (Too Close) |
+| 19 | 2026-01-30 05:46:06 | 6941.19 |    0.0113636  |         27 | PREMATURE (Too Close) |
+| 20 | 2026-01-30 05:46:10 | 6941.07 |    0.00181818 |          4 | PREMATURE (Too Close) |
+| 21 | 2026-01-30 05:46:28 | 6941.44 |    0.00560606 |         18 | PREMATURE (Too Close) |
+| 22 | 2026-01-30 05:46:51 | 6942.07 |    0.00954545 |         23 | PREMATURE (Too Close) |
+| 23 | 2026-01-30 05:50:49 | 6941.38 |    0.0104545  |        238 | PREMATURE (Too Close) |
+| 24 | 2026-01-30 05:51:08 | 6942.07 |    0.0104545  |         19 | PREMATURE (Too Close) |
+| 25 | 2026-01-30 05:51:15 | 6943.01 |    0.0142424  |          7 | PREMATURE (Too Close) |
+| 26 | 2026-01-30 05:52:39 | 6940.38 |    0.0398485  |         84 | PREMATURE (Too Close) |
+| 27 | 2026-01-30 05:53:30 | 6940.94 |    0.00848485 |         51 | PREMATURE (Too Close) |
+| 28 | 2026-01-30 05:54:16 | 6940.07 |    0.0131818  |         46 | PREMATURE (Too Close) |
+| 29 | 2026-01-30 05:54:22 | 6939.44 |    0.00954545 |          6 | PREMATURE (Too Close) |
+| 30 | 2026-01-30 05:54:27 | 6938.82 |    0.00939394 |          5 | PREMATURE (Too Close) |
+| 31 | 2026-01-30 05:55:35 | 6941.32 |    0.0378788  |         68 | PREMATURE (Too Close) |
+| 32 | 2026-01-30 05:55:48 | 6940.19 |    0.0171212  |         13 | PREMATURE (Too Close) |
+| 33 | 2026-01-30 05:55:49 | 6940.19 |    0          |          1 | PREMATURE (Too Close) |
+| 34 | 2026-01-30 05:55:51 | 6939.69 |    0.00757576 |          2 | PREMATURE (Too Close) |
+| 35 | 2026-01-30 05:57:19 | 6940.07 |    0.00575758 |         88 | PREMATURE (Too Close) |
+| 36 | 2026-01-30 05:57:31 | 6941.32 |    0.0189394  |         12 | PREMATURE (Too Close) |
+| 37 | 2026-01-30 05:58:17 | 6940.26 |    0.0160606  |         46 | PREMATURE (Too Close) |
+| 38 | 2026-01-30 05:58:27 | 6939.69 |    0.00863636 |         10 | PREMATURE (Too Close) |
+| 39 | 2026-01-30 05:58:43 | 6940.57 |    0.0133333  |         16 | PREMATURE (Too Close) |
+| 40 | 2026-01-30 05:58:44 | 6940.32 |    0.00378788 |          1 | PREMATURE (Too Close) |
+| 41 | 2026-01-30 05:59:08 | 6939.57 |    0.0113636  |         24 | PREMATURE (Too Close) |
+| 42 | 2026-01-30 05:59:22 | 6939.44 |    0.0019697  |         14 | PREMATURE (Too Close) |
+| 43 | 2026-01-30 05:59:28 | 6939.01 |    0.00651515 |          6 | PREMATURE (Too Close) |
+| 44 | 2026-01-30 05:59:55 | 6938.88 |    0.0019697  |         27 | PREMATURE (Too Close) |
+| 45 | 2026-01-30 06:00:00 | 6938.57 |    0.00469697 |          5 | PREMATURE (Too Close) |
+| 46 | 2026-01-30 06:00:01 | 6938.44 |    0.0019697  |          1 | PREMATURE (Too Close) |
+| 47 | 2026-01-30 06:00:04 | 6938.07 |    0.00560606 |          3 | PREMATURE (Too Close) |
+| 48 | 2026-01-30 06:01:21 | 6941.07 |    0.0454545  |         77 | PREMATURE (Too Close) |
+| 49 | 2026-01-30 06:01:21 | 6941.07 |    0          |          0 | MACHINE_GUN (Instant) |
+| 50 | 2026-01-30 06:02:56 | 6939.32 |    0.0265152  |         95 | PREMATURE (Too Close) |
+| 51 | 2026-01-30 06:03:03 | 6939.94 |    0.00939394 |          7 | PREMATURE (Too Close) |
+| 52 | 2026-01-30 06:03:05 | 6940.32 |    0.00575758 |          2 | PREMATURE (Too Close) |
+| 53 | 2026-01-30 06:03:37 | 6940.32 |    0          |         32 | PREMATURE (Too Close) |
+| 54 | 2026-01-30 06:05:20 | 6938.57 |    0.0265152  |        103 | PREMATURE (Too Close) |
+
+## 2. A Bróker Reakciója
+*   **Átlagos Sebesség (Belépéskor):** 15.2653
+*   **Átlagos Sebesség (Nyugalom):** 11.2629
+**Konklúzió:** A bróker passzív volt, a piac egyszerűen 'átcsorgott' a szinteken.
+
+## 3. Pénzügyi Rekonstrukció (Python Engine Számára)
+*   **Max Open Positions:** 47
+*   **Max Drawdown:** -5574.94 EUR
