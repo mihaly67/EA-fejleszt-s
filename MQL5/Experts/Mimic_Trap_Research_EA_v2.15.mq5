@@ -51,8 +51,8 @@ input double        InpTrojanLot         = 0.1;    // [Position] Trojan Lot (Rea
 input int           InpSlippage          = 10;     // [Risk] Slippage
 input ulong         InpMagicNumber       = 999002; // [Risk] Magic Number
 input string        InpComment           = "MimicResearch"; // [Risk] Comment
-input double        InpSLPercent         = 5.0;    // [Risk] Stop Loss % (Default 5%)
-input double        InpTPPercent         = 5.0;    // [Risk] Take Profit % (Default 5%)
+input double        InpSLPercent         = 1.0;    // [Risk] Stop Loss % (Default 1%)
+input double        InpTPPercent         = 1.0;    // [Risk] Take Profit % (Default 1%)
 
 // [Jules Hybrid Momentum Pulse v1.04 Settings] - FLATTENED
 input uint           Hybrid_InpPeriodFastEMA     =  3;          // [Hybrid] MACD Fast EMA period
@@ -97,7 +97,7 @@ input int                Flow_InpVROCPeriod          = 5;      // [Flow] VROC Pe
 input double             Flow_InpVROCThreshold       = 20.0;    // [Flow] VROC Alert Threshold %
 input bool               Flow_InpUseApproxDelta      = true;    // [Flow] Use Approx Delta
 input int                Flow_InpDeltaSmooth         = 3;       // [Flow] Delta Smoothing
-input int                Flow_InpNormalizationLen    = 100;     // [Flow] Delta Norm Length
+input int                Flow_InpNormalizationLen    = 50;     // [Flow] Delta Norm Length
 input double             Flow_InpDeltaScaleFactor    = 50.0;    // [Flow] Delta Curve Factor
 input double             Flow_InpHistogramVisualGain = 3.0;     // [Flow] Hist Visual Gain
 
