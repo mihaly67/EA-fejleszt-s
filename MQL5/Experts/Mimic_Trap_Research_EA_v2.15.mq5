@@ -611,12 +611,13 @@ void CheckForNewDeals()
 
             string action_str = "";
             string type_str = (type == DEAL_TYPE_BUY) ? "BUY" : "SELL";
+            string ticket_info = "T#" + IntegerToString(ticket) + "@" + IntegerToString(deal_time);
 
             if (entry == DEAL_ENTRY_IN) {
-                action_str = "OPEN:" + type_str + ":" + DoubleToString(vol, 2) + "@" + DoubleToString(price, _Digits);
+                action_str = ticket_info + ":OPEN:" + type_str + ":" + DoubleToString(vol, 2) + "@" + DoubleToString(price, _Digits);
             }
             else if (entry == DEAL_ENTRY_OUT || entry == DEAL_ENTRY_OUT_BY) {
-                action_str = "CLOSE:" + type_str + ":" + DoubleToString(vol, 2) + "@" + DoubleToString(price, _Digits) + ":PL=" + DoubleToString(profit, 2);
+                action_str = ticket_info + ":CLOSE:" + type_str + ":" + DoubleToString(vol, 2) + "@" + DoubleToString(price, _Digits) + ":PL=" + DoubleToString(profit, 2);
 
                 // Aggregate PL
                 g_last_realized_pl += (profit + swap + comm);
