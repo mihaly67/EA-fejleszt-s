@@ -128,6 +128,10 @@ double            g_session_realized_pl = 0.0; // Total Session P/L
 string            g_tick_event_buffer = ""; // Stores events for the current tick
 string            g_transaction_buffer = ""; // NEW: Stores trade details between ticks
 
+// Forensic Globals (Polling)
+ulong             g_last_deal_ticket = 0;
+long              g_last_deal_time_msc = 0;
+
 // Strategy Control Globals
 bool              g_mimic_mode = true; // Default ON
 double            g_target_profit_eur = 0.0; // 0 = Disabled
@@ -173,6 +177,7 @@ void DestroyPanel();
 void CleanupChart();
 void RemoveIndicators();
 void DrawDealVisuals(ulong deal_ticket);
+void CheckForNewDeals(); // NEW
 void ArmTrap(ENUM_ORDER_TYPE dir);
 void ExecuteTrap();
 void ExecuteBurstTrap();
@@ -298,6 +303,17 @@ int OnInit()
 
    CreatePanel();
    UpdateUI();
+
+   // Init Forensic History Pointer
+   if (HistorySelect(0, TimeCurrent())) {
+       int total = HistoryDealsTotal();
+       if (total > 0) {
+           ulong ticket = HistoryDealGetTicket(total - 1);
+           g_last_deal_ticket = ticket;
+           g_last_deal_time_msc = HistoryDealGetInteger(ticket, DEAL_TIME_MSC);
+           Print("Mimic: Forensic Log Initialized. Last Deal Ticket: ", ticket, " Time: ", g_last_deal_time_msc);
+       }
+   }
 
    Print("Mimic Trap Research EA v2.15 (Transaction Details) Initialized.");
    return(INIT_SUCCEEDED);
@@ -542,6 +558,7 @@ void OnTick()
    }
 
    // --- LOGGING ---
+   CheckForNewDeals(); // Polling
    WriteLog();
 
    // Reset "One-Shot" variables
@@ -555,41 +572,65 @@ void OnTradeTransaction(const MqlTradeTransaction& trans,
                         const MqlTradeRequest& request,
                         const MqlTradeResult& result)
   {
-   // NEW: Transaction Logging Buffer
+   // Purely Visuals now - Logging moved to CheckForNewDeals (Polling)
    if (trans.type == TRADE_TRANSACTION_DEAL_ADD)
    {
-       long entry = HistoryDealGetInteger(trans.deal, DEAL_ENTRY);
-       long type = HistoryDealGetInteger(trans.deal, DEAL_TYPE);
-       double vol = HistoryDealGetDouble(trans.deal, DEAL_VOLUME);
-       double price = HistoryDealGetDouble(trans.deal, DEAL_PRICE);
-       string comment = HistoryDealGetString(trans.deal, DEAL_COMMENT);
-       double profit = HistoryDealGetDouble(trans.deal, DEAL_PROFIT);
-
-       string action_str = "";
-       string type_str = (type == DEAL_TYPE_BUY) ? "BUY" : "SELL";
-
-       if (entry == DEAL_ENTRY_IN) {
-           action_str = "OPEN:" + type_str + ":" + DoubleToString(vol, 2) + "@" + DoubleToString(price, _Digits);
-           DrawDealVisuals(trans.deal);
-       }
-       else if (entry == DEAL_ENTRY_OUT || entry == DEAL_ENTRY_OUT_BY) {
-           action_str = "CLOSE:" + type_str + ":" + DoubleToString(vol, 2) + "@" + DoubleToString(price, _Digits) + ":PL=" + DoubleToString(profit, 2);
-           DrawDealVisuals(trans.deal);
-
-           // Aggregate PL
-           double swap = HistoryDealGetDouble(trans.deal, DEAL_SWAP);
-           double comm = HistoryDealGetDouble(trans.deal, DEAL_COMMISSION);
-           g_last_realized_pl += (profit + swap + comm);
-           g_session_realized_pl += (profit + swap + comm);
-       }
-
-       // Append to buffer
-       if (action_str != "") {
-           if (g_transaction_buffer != "") g_transaction_buffer += "|";
-           g_transaction_buffer += action_str;
-       }
+       DrawDealVisuals(trans.deal);
    }
   }
+
+void CheckForNewDeals()
+{
+    // Look back 10 minutes to be safe (TimeCurrent is in seconds)
+    datetime start = TimeCurrent() - 600;
+    datetime end = TimeCurrent() + 10; // Future buffer
+
+    if(!HistorySelect(start, end)) return;
+
+    int total = HistoryDealsTotal();
+    for(int i=0; i<total; i++)
+    {
+        ulong ticket = HistoryDealGetTicket(i); // Automatically Selects the deal
+        long deal_time = HistoryDealGetInteger(ticket, DEAL_TIME_MSC);
+
+        // Filter: New deals only
+        if (deal_time > g_last_deal_time_msc || (deal_time == g_last_deal_time_msc && ticket > g_last_deal_ticket))
+        {
+            // Update pointers
+            g_last_deal_time_msc = deal_time;
+            g_last_deal_ticket = ticket;
+
+            // Extract Data
+            long entry = HistoryDealGetInteger(ticket, DEAL_ENTRY);
+            long type = HistoryDealGetInteger(ticket, DEAL_TYPE);
+            double vol = HistoryDealGetDouble(ticket, DEAL_VOLUME);
+            double price = HistoryDealGetDouble(ticket, DEAL_PRICE);
+            double profit = HistoryDealGetDouble(ticket, DEAL_PROFIT);
+            double swap = HistoryDealGetDouble(ticket, DEAL_SWAP);
+            double comm = HistoryDealGetDouble(ticket, DEAL_COMMISSION);
+
+            string action_str = "";
+            string type_str = (type == DEAL_TYPE_BUY) ? "BUY" : "SELL";
+
+            if (entry == DEAL_ENTRY_IN) {
+                action_str = "OPEN:" + type_str + ":" + DoubleToString(vol, 2) + "@" + DoubleToString(price, _Digits);
+            }
+            else if (entry == DEAL_ENTRY_OUT || entry == DEAL_ENTRY_OUT_BY) {
+                action_str = "CLOSE:" + type_str + ":" + DoubleToString(vol, 2) + "@" + DoubleToString(price, _Digits) + ":PL=" + DoubleToString(profit, 2);
+
+                // Aggregate PL
+                g_last_realized_pl += (profit + swap + comm);
+                g_session_realized_pl += (profit + swap + comm);
+            }
+
+            // Append to buffer
+            if (action_str != "") {
+                if (g_transaction_buffer != "") g_transaction_buffer += "|";
+                g_transaction_buffer += action_str;
+            }
+        }
+    }
+}
 
 void ArmTrap(ENUM_ORDER_TYPE dir)
   {
