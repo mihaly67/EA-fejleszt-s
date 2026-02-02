@@ -1014,8 +1014,8 @@ void WriteLog()
            // We just want ANY volume at best bid/ask.
            // Optimization: Just loop quickly.
            for(int i=0; i<size; i++) {
-               if((book[i].type == BOOK_TYPE_SELL) && (book[i].price == m_symbol.Ask())) ask_vol += book[i].volume;
-               if((book[i].type == BOOK_TYPE_BUY) && (book[i].price == m_symbol.Bid())) bid_vol += book[i].volume;
+               if((book[i].type == BOOK_TYPE_SELL) && (book[i].price == m_symbol.Ask())) ask_vol += (double)book[i].volume;
+               if((book[i].type == BOOK_TYPE_BUY) && (book[i].price == m_symbol.Bid())) bid_vol += (double)book[i].volume;
            }
        }
    }
