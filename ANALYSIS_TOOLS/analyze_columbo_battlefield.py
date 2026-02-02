@@ -40,42 +40,20 @@ class ColomboForensicEngine:
     def parse_sltp_levels_v3(self, levels_str, current_price):
         """
         Parses active format: "B:SL/TP|S:SL/TP|..."
-        Example: "B:4712.92/4808.14|S:4807.74/4712.54"
-        Logic:
-           - Split by '|'
-           - Identify Type (B/S)
-           - Split by ':' then '/'
-           - SL is first number for Buy? Or format is Price/SL/TP?
-           - From log: "B:4712.92/4808.14" -> likely SL / TP (standard MT5 ordering usually SL then TP or vice versa, but values suggest SL < Price < TP for Buy)
-
-        Let's assume "SL/TP" based on the values.
-        Price ~ 4750.
-        B: 4712 (Lower) / 4808 (Higher). -> SL / TP. Correct.
-        S: 4807 (Higher) / 4712 (Lower). -> SL / TP. Correct.
-
-        So format is "Type:SL/TP".
         """
         if pd.isna(levels_str) or levels_str == "NONE":
             return None
 
         distances = []
-
-        # Split by pipe
         parts = str(levels_str).split('|')
         for part in parts:
             if ':' not in part or '/' not in part: continue
 
-            type_char = part.split(':')[0] # B or S
             values = part.split(':')[1]
-
             try:
                 sl_str, tp_str = values.split('/')
                 sl = float(sl_str)
-                # tp = float(tp_str) # Not needed for distance
-
-                # Check for "0.0" which means no SL
                 if sl < 0.1: continue
-
                 dist = abs(current_price - sl)
                 distances.append(dist)
             except:
@@ -89,7 +67,7 @@ class ColomboForensicEngine:
     def analyze_distance_sensitivity(self):
         """
         Analyzes "Reaction vs Distance".
-        Hypothesis: There is a 'Safe Distance' where the broker doesn't care.
+        Drill down into 100+ and 500+ ranges.
         """
         logger.info("\n📏 STARTING SENSITIVITY ANALYSIS: Distance vs Reaction")
 
@@ -103,21 +81,18 @@ class ColomboForensicEngine:
             current_price = self.df.loc[idx, 'Bar_Close']
             levels_str = self.df.loc[idx, 'SLTP_Levels']
 
-            # Calculate Distance
             distance = self.parse_sltp_levels_v3(levels_str, current_price)
             if distance is None: continue
 
-            # Check Reaction (Stall? Hunt?)
+            # Check Reaction (Stall)
             immediate_slice = self.df.iloc[idx:min(idx+10, len(self.df))]
             avg_vel_immediate = immediate_slice['Velocity'].mean()
             avg_vel_global = self.df['Velocity'].mean()
-
             reaction_ratio = avg_vel_immediate / avg_vel_global if avg_vel_global > 0 else 1.0
 
-            # Check Outcome (Was it killed shortly?)
+            # Check Outcome (Kill)
             lookahead_window = 120
-            end_idx = min(idx + lookahead_window, len(self.df) - 1)
-            future_slice = self.df.iloc[idx:end_idx]
+            future_slice = self.df.iloc[idx:min(idx+lookahead_window, len(self.df))]
             pos_drop = (future_slice['PosCount'] < future_slice['PosCount'].shift(1)).any()
 
             data_points.append({
@@ -127,15 +102,14 @@ class ColomboForensicEngine:
             })
 
         if not data_points:
-            logger.warning("   ⚠️ No valid distance data points found (Parser V3 failed?).")
+            logger.warning("   ⚠️ No valid distance data points found.")
             return
 
-        # --- Aggregation & Heatmap ---
         res_df = pd.DataFrame(data_points)
 
-        # Binning Distances
-        bins = [0, 40, 50, 60, 100, 500] # Adjusted based on Gold price ~4750. 50pts is approx 1%.
-        labels = ['0-40', '40-50', '50-60', '60-100', '100+']
+        # Extended Bins for Deep Analysis
+        bins = [0, 40, 50, 60, 100, 200, 500, 2000]
+        labels = ['0-40', '40-50', '50-60', '60-100', '100-200', '200-500', '500+']
         res_df['Dist_Bin'] = pd.cut(res_df['Distance'], bins=bins, labels=labels)
 
         logger.info(f"   📊 Analysis of {len(res_df)} Manual Adjustments:")
@@ -146,28 +120,67 @@ class ColomboForensicEngine:
             Kill_Rate=('Is_Killed', 'mean')
         )
 
-        print("\n   --- SENSITIVITY TABLE (Distance in Points) ---")
+        print("\n   --- SENSITIVITY TABLE (Extended) ---")
         print(summary.to_string())
-        print("   ----------------------------------------------")
+        print("   ------------------------------------")
 
-        # Interpretation
-        logger.info("\n   🧠 INTERPRETATION:")
-        for bin_label in labels:
-            if bin_label not in summary.index: continue
-            row = summary.loc[bin_label]
-            if row['Count'] < 2: continue
+        # Calculate Average User Placement
+        avg_placement = res_df['Distance'].mean()
+        logger.info(f"   📍 Your Average Placement Distance: {avg_placement:.2f} points")
 
-            if row['Kill_Rate'] > 0.4:
-                logger.info(f"      🔴 DANGER ZONE ({bin_label} pts): Kill Rate {row['Kill_Rate']*100:.1f}%.")
-            elif row['Kill_Rate'] < 0.2:
-                logger.info(f"      🟢 SAFE ZONE ({bin_label} pts): Kill Rate {row['Kill_Rate']*100:.1f}%.")
-            else:
-                 logger.info(f"      🟡 CONTESTED ZONE ({bin_label} pts): Kill Rate {row['Kill_Rate']*100:.1f}%.")
+    def analyze_spread_zone(self):
+        """
+        Investigate the '50' zone relative to actual spread.
+        """
+        logger.info("\n🌊 ANALYZING THE SPREAD ZONE (50 pts)")
+
+        # Calculate Average Spread
+        avg_spread = self.df['Spread'].mean()
+        logger.info(f"   ℹ️ Average Market Spread: {avg_spread:.2f} points")
+
+        # Hypothesis: Safety depends on Dist > Spread * Multiplier
+        # Filter for interventions around 40-60
+        # Check specific interventions where Distance < Spread vs Distance > Spread
+
+        self.df['SLTP_Changed'] = self.df['SLTP_Levels'] != self.df['SLTP_Levels'].shift(1)
+        intervention_indices = self.df[self.df['SLTP_Changed'] & (self.df['PosCount'] > 0)].index
+
+        inside_spread = []
+        outside_spread = []
+
+        for idx in intervention_indices:
+            current_price = self.df.loc[idx, 'Bar_Close']
+            levels_str = self.df.loc[idx, 'SLTP_Levels']
+            current_spread = self.df.loc[idx, 'Spread']
+
+            dist = self.parse_sltp_levels_v3(levels_str, current_price)
+            if dist is None: continue
+
+            is_killed = False # Need to recalc or carry over. Simple check:
+            future_slice = self.df.iloc[idx:min(idx+120, len(self.df))]
+            if (future_slice['PosCount'] < future_slice['PosCount'].shift(1)).any():
+                is_killed = True
+
+            if dist < current_spread:
+                inside_spread.append(is_killed)
+            elif dist < current_spread * 1.5: # The "Zone"
+                outside_spread.append(is_killed)
+
+        if inside_spread:
+            kill_rate_in = sum(inside_spread) / len(inside_spread)
+            logger.info(f"   💀 Inside Spread (< {avg_spread:.1f}): Kill Rate {kill_rate_in*100:.1f}% ({len(inside_spread)} events)")
+        else:
+            logger.info("   ℹ️ No placements inside spread found (Good!).")
+
+        if outside_spread:
+            kill_rate_out = sum(outside_spread) / len(outside_spread)
+            logger.info(f"   🛡️ Just Outside Spread (1.0x - 1.5x): Kill Rate {kill_rate_out*100:.1f}% ({len(outside_spread)} events)")
+
 
     def run(self):
         self.load_evidence()
-        # self.analyze_micro_structure_hunt()
         self.analyze_distance_sensitivity()
+        self.analyze_spread_zone()
         logger.info("\n🏁 Analysis Complete. The case is closed.")
 
 if __name__ == "__main__":
