@@ -15,11 +15,11 @@ except ImportError:
 # --- CONFIGURATION ---
 # The script will look for these folders in the SAME directory where the script is running.
 TARGET_REPOS = [
-    "hummingbot",
-    "FinRL",
-    "vectorbt",
-    "nautilus_trader",
-    "context7"
+    "hummingbot-master",
+    "FinRL-master",
+    "vectorbt-master",
+    "nautilus_trader-develop",
+    "context7-master"
 ]
 
 OUTPUT_FILE = "knowledge_base_thiefs_library.jsonl"
