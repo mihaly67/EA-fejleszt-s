@@ -217,6 +217,44 @@ def analyze_tactical():
             if time_diff < 60:
                 print("   ⚠️ WARNING: Crash occurred shortly after User Intervention.")
 
+        # --- 5. Hypothesis Check: Long Squeeze / Stop Hunt ---
+        print("   🐺 Testing Hypothesis: 'Long Squeeze' (Stop Hunt)...")
+        # Theory: Market heavy on Longs (Retail). Broker drops price to trigger Sell Stops.
+        # Evidence needed:
+        # 1. Price Drop (Check)
+        # 2. V-Shape Recovery? (Did it bounce back?)
+        # 3. Financial Result: Did we survive?
+
+        # Check Recovery (Price 5 mins after crash vs Crash Price)
+        t_crash = crash_row['Time']
+        t_post = t_crash + timedelta(minutes=5)
+        post_crash_data = df[df['Time'] > t_post]
+
+        recovery_msg = "UNKNOWN (End of Data)"
+        if not post_crash_data.empty:
+            price_post = post_crash_data.iloc[0]['Bid']
+            price_crash = crash_row['Bid']
+            price_pre = df[(df['Time'] < t_crash) & (df['Time'] > t_crash - timedelta(minutes=5))].iloc[0]['Bid']
+
+            drop_size = price_pre - price_crash
+            bounce_size = price_post - price_crash
+
+            if bounce_size > drop_size * 0.5:
+                recovery_msg = f"V-SHAPE CONFIRMED (Bounced {bounce_size:.2f} pts). Classic Stop Hunt signature."
+            else:
+                recovery_msg = "NO RECOVERY. Price stayed low. Trend change or Liquidation."
+
+        # Check Financials
+        final_row = df.iloc[-1]
+        session_pl = final_row['Session_PL']
+        balance_start = df.iloc[0]['Balance']
+        balance_end = final_row['Balance']
+        total_profit = balance_end - balance_start
+
+        print(f"   - Final Session PL Logged: {session_pl}")
+        print(f"   - Calculated Balance Change: {total_profit:.2f}")
+        print(f"   - Recovery Pattern: {recovery_msg}")
+
         # --- Generate Report ---
         with open(OUTPUT_REPORT, 'w', encoding='utf-8') as f:
             f.write("COLOMBO TACTICAL REPORT: THE BATTLEFIELD\n")
@@ -230,10 +268,19 @@ def analyze_tactical():
             f.write(f"   - Max Drawdown: {crash_row['Floating_PL']:.2f}\n")
             f.write(f"   - Spread at Crash: {crash_row['Spread']}\n")
             f.write(f"   - Liquidity Status: BidVol={crash_row['BidVol']}, AskVol={crash_row['AskVol']}\n")
+            f.write(f"   - Recovery Pattern: {recovery_msg}\n")
             if last_move:
                  f.write(f"   - Context: User executed {last_move['Type']} {time_diff:.1f}s before the drop.\n")
 
-            f.write("\n3. INDICATOR CHECK (RSI 5 vs 14)\n")
+            f.write("\n3. FINANCIAL VERDICT\n")
+            f.write(f"   - Final Session PL: {session_pl:.2f} EUR\n")
+            f.write(f"   - Total Balance Change: {total_profit:.2f} EUR\n")
+            if total_profit > 0:
+                f.write("   - RESULT: SURVIVED & PROFITABLE (The Train Missed You).\n")
+            else:
+                f.write("   - RESULT: CASUALTY (Hit by the Train).\n")
+
+            f.write("\n4. INDICATOR CHECK (RSI 5 vs 14)\n")
             # Compare Avg RSI in file vs Calc RSI 5
             # Approximation
             if 'RSI_5' in df_bars.columns:
