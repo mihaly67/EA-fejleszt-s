@@ -84,9 +84,16 @@ def process_resource(key, config):
 
     # check if already installed
     if target_dir and os.path.exists(target_dir):
-        if check_file and os.path.exists(os.path.join(target_dir, check_file)):
-            print(f"   ✅ {key} is ready.")
-            return
+        check_path = os.path.join(target_dir, check_file) if check_file else None
+
+        if check_path and os.path.exists(check_path):
+            # Integrity Check: Is size > 1KB?
+            if os.path.getsize(check_path) > 1024:
+                print(f"   ✅ {key} is ready (Verified).")
+                return
+            else:
+                print(f"   ⚠️ {key} seems corrupted (too small). Reinstalling...")
+                shutil.rmtree(target_dir)
 
     # Download
     if not os.path.exists(zip_name):
