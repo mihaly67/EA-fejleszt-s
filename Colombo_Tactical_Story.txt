@@ -1,0 +1,38 @@
+# Colombo Jelentés: A Csatamező (Battlefield) Akták
+**Dátum:** 2026.02.03
+**Helyszín:** GOLD Piac
+**Gyanúsított:** Broker Algoritmus ("A Csendes Gyilkos")
+
+Szép napot, uram! Csak még egy kérdés... látom itt ezt a rengeteg papírt a `Battlefield` ügyről. Érdekes olvasmány.
+
+Végignéztem a felvételeket a laborban (Tactical Analyzer). Tudja, a kollégák azt mondták, ez egy "Bonyolult Ügy". Rengeteg pozíció, kézi rángatások... igazi háborús övezet. De én szeretem az egyszerű dolgokat. És a számok... nos, a számok nem hazudnak.
+
+### 1. A Mézesmadzag (A Csalogatás)
+Ön azt mondta, úgy érezte, a "taktikai mozgatással" (SL/TP tologatás) fel tudta pörgetni, majd meg tudta nyugtatni az algoritmust.
+Nos, uram, igaza volt.
+A labor **48 kézi beavatkozást** talált. És tudja mit? Amikor ön "hátrált" (távolította az SL-t), az esetek **58%-ában** (14 a 24-ből) a piac "sebessége" (Velocity) mérhetően csökkent.
+Ez olyan, mint amikor hátrálunk a kutyától, és az abbahagyja a morgást. "Megnyugodott". Működött a csali.
+
+### 2. A Nagy Csend (Az Állóháború)
+De itt van valami furcsa. A végjáték előtt... közel **20 percig** (1178 másodperc) nem történt semmi érdemleges beavatkozás. Ön tartotta a frontot, a bróker tartotta a frontot.
+Ez volt az "Állóháború". A pozíciók gyűltek, a feszültség nőtt, de senki nem lőtt.
+
+### 3. A Meglepetés (A Végjáték)
+És akkor... BUMM. A számla beszakadt (-159,000 EUR).
+Mindenki azt gyanította, hogy a Bróker megint "kihúzta a szőnyeget", mint a múltkor (Liquidity Crunch). Vagy hogy "Stop Hunting"-ot csinált óriási spreaddel.
+
+De nézze meg ezt:
+*   **Likviditás:** 100 / 100. (A könyvek tele voltak!)
+*   **Spread:** 44.5. (Ez teljesen átlagos a Goldnál).
+
+Uram, ez a bróker most **NEM csalt**.
+Nem vette el a likviditást, nem tágította ki a spreadet extrém módon.
+Egyszerűen csak... hagyta, hogy a piac rázuhanjon a pozícióira. Ez nem "orgyilkosság" volt, hanem "nyílt sisakos küzdelem", ahol a túlerő (a piaci elmozdulás) győzött a rengeteg nyitott lot felett.
+
+### Konklúzió
+A "Csalogatás" működik. Tényleg képes manipulálni az algo figyelmét.
+DE... a "Surprise Ending" tanulsága: Ha túl sokáig állunk a síneken (Hatalmas Exposure) és "hipnotizáljuk a vonatot" (Algo), attól a vonat még elüthet, ha elindul. A brókernek nem kellett trükköznie, elég volt várnia.
+
+Tisztelettel,
+*Colombo hadnagy*
+Forensic Division
