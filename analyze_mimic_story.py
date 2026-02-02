@@ -1,196 +1,95 @@
-import csv
-import sys
-import os
-import glob
-import statistics
-from datetime import datetime, timedelta
+import pandas as pd
+import numpy as np
 
-# --- MIMIC STORYTELLER ANALYZER v2.1 (SL/TP Aware) ---
-# Purpose: Accurate narrative reconstruction focusing on Price Action vs Velocity Context.
+CSV_FILE = "Mimic_Research_GOLD_20260202_054225.csv"
 
-class MimicStoryTeller:
-    def __init__(self):
-        self.data = []
-        self.events = []
-        self.baseline_vel = 0.0
-        self.baseline_spread = 0.0
+def analyze_mimic_story():
+    print(f"🕵️‍♂️ Starting Colombo Story Engine on {CSV_FILE}...")
 
-    def load_data(self, filepath):
-        print(f"Reading Log: {os.path.basename(filepath)}")
-        with open(filepath, 'r') as f:
-            reader = csv.reader(f)
-            header = next(reader, None)
+    try:
+        df = pd.read_csv(CSV_FILE)
+        df['Time'] = pd.to_datetime(df['Time'])
 
-            # Detect Schema Version
-            # Old: ... Action(18), DOM(19)...
-            # New: ... Action(18), PosCount(19), SL(20), TP(21), DOM(22)...
+        # --- 1. Event Stream Construction ---
+        events = []
 
-            # Check length of first data row
-            rows = list(reader)
-            if not rows: return
+        # A. Trade Events (ActionDetails)
+        # Parse: "T#...:OPEN:..."
+        trade_rows = df[df['ActionDetails'].str.contains(':', na=False)]
+        for idx, row in trade_rows.iterrows():
+            actions = row['ActionDetails'].split('|')
+            for action in actions:
+                if 'OPEN' in action:
+                    events.append({
+                        'Time': row['Time'],
+                        'Actor': 'Jules',
+                        'Type': 'ATTACK',
+                        'Description': f"Opened Fire (Trade). Velocity: {row['Velocity']:.1f}",
+                        'Data': action
+                    })
+                elif 'CLOSE' in action:
+                    pl = action.split('PL=')[1] if 'PL=' in action else '0'
+                    events.append({
+                        'Time': row['Time'],
+                        'Actor': 'Jules',
+                        'Type': 'RETREAT' if float(pl) < 0 else 'BANK',
+                        'Description': f"Closed Position. Profit: {pl} EUR",
+                        'Data': action
+                    })
 
-            is_new_schema = (len(rows[0]) >= 25) # Just a safe check, New has ~33 cols
+        # B. Broker Defense Events (Spread/Volume)
+        # We need to detect "Spikes"
+        # Rolling average for baseline
+        df['Spread_MA'] = df['Spread'].rolling(window=50).mean()
+        df['Spread_Spike'] = df['Spread'] > (df['Spread_MA'] * 1.2) # 20% spike
 
-            vels = []
-            spreads = []
+        # Find start of spikes
+        spike_starts = df[df['Spread_Spike'] & ~df['Spread_Spike'].shift(1).fillna(False)]
+        for idx, row in spike_starts.iterrows():
+            events.append({
+                'Time': row['Time'],
+                'Actor': 'Broker',
+                'Type': 'SHIELD',
+                'Description': f"Raised Shields! Spread widened to {row['Spread']:.1f} (Avg: {row['Spread_MA']:.1f})",
+                'Data': f"Spread {row['Spread']}"
+            })
 
-            for row in rows:
-                if not row or len(row) < 19: continue
-                try:
-                    dt_str = row[0]
-                    ms = int(row[1])
-                    dt = datetime.strptime(dt_str, "%Y.%m.%d %H:%M:%S") + timedelta(milliseconds=ms)
+        # C. Market Context (Phase Shifts)
+        # Velocity shifts
+        df['Vel_Abs'] = df['Velocity'].abs()
+        df['Vel_MA'] = df['Vel_Abs'].rolling(window=50).mean()
+        high_volatility = df[df['Vel_Abs'] > 60]
+        # Just grab a few key volatility moments to avoid spam
+        # Simplified: Every 5 minutes, report status
 
-                    spread = float(row[5])
-                    vel = abs(float(row[6]))
-                    acc = float(row[7])
-                    float_pl = float(row[16])
-                    realized_pl_tick = float(row[17])
+        # --- 2. Sort & Narrate ---
+        events_df = pd.DataFrame(events)
+        if not events_df.empty:
+            events_df = events_df.sort_values(by='Time')
 
-                    sl = 0.0
-                    tp = 0.0
-                    if is_new_schema:
-                        try:
-                            sl = float(row[20])
-                            tp = float(row[21])
-                        except: pass
+        print("\n📜 === THE COLOMBO CHRONICLES ===")
+        print(f"DATE: {df['Time'].iloc[0].date()}")
+        print("--------------------------------------------------")
 
-                    r = {
-                        'dt': dt,
-                        'spread': spread,
-                        'vel': vel,
-                        'acc': acc,
-                        'float_pl': float_pl,
-                        'realized': realized_pl_tick,
-                        'bid': float(row[3]),
-                        'ask': float(row[4]),
-                        'mid': (float(row[3]) + float(row[4]))/2.0,
-                        'sl': sl,
-                        'tp': tp
-                    }
-                    self.data.append(r)
+        current_balance = df['Balance'].iloc[0]
 
-                    vels.append(vel)
-                    spreads.append(spread)
+        for idx, event in events_df.iterrows():
+            time_str = event['Time'].strftime("%H:%M:%S")
+            actor = event['Actor']
+            desc = event['Description']
 
-                except: continue
+            icon = "👤" if actor == "Jules" else "🏦"
+            if event['Type'] == 'ATTACK': icon = "🔫"
+            if event['Type'] == 'BANK': icon = "💰"
+            if event['Type'] == 'SHIELD': icon = "🛡️"
 
-            if vels:
-                self.baseline_vel = statistics.mean(vels)
-                self.baseline_spread = statistics.mean(spreads)
-                print(f"Baselines -> Velocity: {self.baseline_vel:.4f}, Spread: {self.baseline_spread:.2f}")
+            print(f"[{time_str}] {icon} {actor}: {desc}")
 
-    def analyze_narrative(self):
-        print("\n=== THE TRADING SESSION NARRATIVE ===\n")
+        print("--------------------------------------------------")
+        print(f"FINAL RESULT: {df['Session_PL'].iloc[-1]:.2f} EUR")
 
-        cumulative_profit = 0.0
-        in_position = False
-        last_float = 0.0
-        start_time = self.data[0]['dt']
-
-        trade_start_time = None
-        max_drawdown = 0.0
-
-        last_market_report_time = -999.0
-        last_sl = 0.0
-        last_tp = 0.0
-
-        for i, r in enumerate(self.data):
-            curr_time = (r['dt'] - start_time).total_seconds()
-
-            # 1. EVENT: REALIZED PROFIT
-            if r['realized'] != 0:
-                cumulative_profit += r['realized']
-                print(f"[{curr_time:.1f}s] ACTION: Profit Taking! Amount: {r['realized']:.2f}. Total Banked: {cumulative_profit:.2f}")
-                self.analyze_reaction(i, "Profit Take")
-
-            # 2. EVENT: SL/TP CHANGE
-            if in_position:
-                if r['sl'] != last_sl and r['sl'] > 0:
-                     print(f"[{curr_time:.1f}s] ACTION: Stop Loss Modified to {r['sl']:.5f}")
-                if r['tp'] != last_tp and r['tp'] > 0:
-                     print(f"[{curr_time:.1f}s] ACTION: Take Profit Modified to {r['tp']:.5f}")
-                last_sl = r['sl']
-                last_tp = r['tp']
-
-            # 3. EVENT: MARKET STATE ANALYSIS
-            is_spike = r['vel'] > (self.baseline_vel * 3.0)
-            time_since_last = curr_time - last_market_report_time
-
-            if is_spike or (time_since_last > 30.0):
-                last_market_report_time = curr_time
-                self.analyze_market_context(i, curr_time, is_spike)
-
-            # 4. TRACKING: DRAWDOWN
-            if r['float_pl'] < max_drawdown:
-                max_drawdown = r['float_pl']
-                if max_drawdown < -1.0 and (int(max_drawdown*10) % 5 == 0):
-                     print(f"[{curr_time:.1f}s] STATUS: New Depth Reached. Floating P/L: {r['float_pl']:.2f}")
-
-            # 5. STATE CHANGE: ENTER/EXIT
-            if not in_position and abs(r['float_pl']) > 0.01:
-                in_position = True
-                trade_start_time = curr_time
-                print(f"[{curr_time:.1f}s] ACTION: Positions Opened (Entry). Initial Float: {r['float_pl']:.2f}")
-
-            elif in_position and r['float_pl'] == 0.0 and abs(last_float) > 0.01:
-                in_position = False
-                duration = curr_time - trade_start_time
-                print(f"[{curr_time:.1f}s] ACTION: All Positions Closed. Duration: {duration:.1f}s.")
-                max_drawdown = 0.0
-                last_sl = 0.0 # Reset tracking
-                last_tp = 0.0
-
-            last_float = r['float_pl']
-
-        print(f"\n=== FINAL RESULT ===")
-        print(f"Total Banked Profit: {cumulative_profit:.2f}")
-
-    def analyze_market_context(self, index, time, is_spike):
-        if index + 20 >= len(self.data): return
-
-        future_data = self.data[index:index+20]
-        avg_vel = statistics.mean([x['vel'] for x in future_data])
-
-        start_price = self.data[index]['mid']
-        end_price = future_data[-1]['mid']
-        drift = (end_price - start_price) * 100000
-        abs_drift = abs(drift)
-
-        state = "Normal"
-
-        if avg_vel > self.baseline_vel * 2.5:
-            if abs_drift > 5.0:
-                state = "Aggressive Breakout / Move"
-            else:
-                state = "Market Stalled / Churning (High Noise, No Move)"
-        elif avg_vel < self.baseline_vel * 0.5:
-            state = "Calm / Inactive"
-        else:
-            if abs_drift > 5.0:
-                state = "Steady Trend (Low Vol, High Move)"
-            else:
-                state = "Ranging / Vánszorgás"
-
-        prefix = "MARKET"
-        if is_spike: prefix = "SPIKE"
-
-        print(f"[{time:.1f}s] {prefix}: {state}. (Vel: {avg_vel:.2f}, Drift: {drift:.1f} pts)")
-
-    def analyze_reaction(self, index, event_type):
-        if index + 10 >= len(self.data): return
-        future = self.data[index:index+10]
-        start_p = self.data[index]['mid']
-        end_p = future[-1]['mid']
-        drift = (end_p - start_p) * 100000
-
-        print(f"    -> Immediate Market Response (Next ~2s): Drift {drift:.1f} pts")
+    except Exception as e:
+        print(f"❌ Story Engine Failed: {e}")
 
 if __name__ == "__main__":
-    files = glob.glob("analysis_input/new_session/Mimic_Research_*.csv")
-    if files:
-        story = MimicStoryTeller()
-        story.load_data(files[0])
-        story.analyze_narrative()
-    else:
-        print("No log files found.")
+    analyze_mimic_story()
