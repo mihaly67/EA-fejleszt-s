@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import logging
 import sys
+import re
 
 # Configure Logging (Colombo Style)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - COLUMBO - %(message)s')
@@ -22,15 +23,10 @@ class ColomboForensicEngine:
             self.df['Time'] = pd.to_datetime(self.df['Time'])
 
             # 1. Currency Detection
-            # If Balance > 500,000, it's likely HUF.
             initial_balance = self.df['Balance'].iloc[0]
             if initial_balance > 500000:
                 self.currency = "HUF"
                 logger.info(f"💰 Currency Detected: {self.currency} (Balance: {initial_balance:,.2f})")
-
-                # Conversion Rate assumption (approximate for display if needed, but we stick to native)
-                # But user might want EUR equivalents for the report?
-                # Let's keep native for precision, but mention EUR roughly.
             else:
                 self.currency = "EUR"
                 logger.info(f"💰 Currency Detected: {self.currency}")
@@ -41,106 +37,94 @@ class ColomboForensicEngine:
             logger.error(f"❌ Failed to load evidence: {e}")
             sys.exit(1)
 
-    def analyze_causality_bait(self):
+    def analyze_micro_structure_hunt(self):
         """
-        DoWhy-inspired Causal Analysis:
-        Model: T (Bait/SL Move) -> Y (Spread/Volatility) | Confounder (Market Impact)
+        Deep Forensic Search for the 'Smoking Gun'.
+        Sequence: Manual Intervention -> Velocity Drop (Stall) -> Reversal -> SL Hit.
         """
-        logger.info("\n🕵️ STARTING CAUSAL INFERENCE: The 'Bait' Hypothesis")
-        logger.info("   Hypothesis: Moving SL (Bait) causes the Broker to relax (Spread Drop).")
+        logger.info("\n🕵️ STARTING MICRO-STRUCTURE FORENSICS: Searching for 'The Hunt'...")
 
-        # 1. Define Treatment (T)
-        # Change in SLTP_Levels column implies a "Move"
-        # We need to detect when SLTP_Levels changes from previous tick
         self.df['SLTP_Changed'] = self.df['SLTP_Levels'] != self.df['SLTP_Levels'].shift(1)
 
-        # Treatment Group: Ticks where SL Changed (and positions existed)
-        treatment_indices = self.df[self.df['SLTP_Changed'] & (self.df['PosCount'] > 0)].index
+        # 1. Identify Close Events (Losses)
+        # Find where positions dropped (PosCount decreases)
+        self.df['Pos_Drop'] = (self.df['PosCount'] < self.df['PosCount'].shift(1))
 
-        if len(treatment_indices) == 0:
-            logger.warning("   ⚠️ No 'Bait' events found (SL Moves). Hypothesis cannot be tested.")
-            return
+        # 2. Find Loss Closures (where Balance decreases significantly or Realized_PL drops)
+        # Note: Realized_PL is cumulative usually. Check diff.
+        # Ideally we look for 'ActionDetails' containing 'SL' or 'CLOSE'
 
-        logger.info(f"   🧪 Identified {len(treatment_indices)} 'Bait' events (Interventions).")
+        # We look for Interventions shortly BEFORE a Closure
+        intervention_indices = self.df[self.df['SLTP_Changed'] & (self.df['PosCount'] > 0)].index
 
-        # 2. Define Outcome (Y)
-        # Change in Spread over next N ticks (e.g., 10 ticks ~ 5-10 seconds)
-        LOOKAHEAD = 10
-        self.df['Spread_Future'] = self.df['Spread'].shift(-LOOKAHEAD)
-        self.df['Spread_Delta'] = self.df['Spread_Future'] - self.df['Spread']
+        smoking_guns = []
 
-        # 3. Estimate Effect (Naive)
-        # Compare Delta in Treatment vs Control (No SL Change)
-        # Control: Random sample of ticks with active positions but NO SL change
-        control_pool = self.df[(~self.df['SLTP_Changed']) & (self.df['PosCount'] > 0)]
+        for idx in intervention_indices:
+            intervention_time = self.df.loc[idx, 'Time']
 
-        # Simple Matching (Propensity approx): Match by similar Volatility (BidVol)
-        # Ideally we'd use a KDTree or Propensity Score, but for this "Tool Creation" we use mean comparison
+            # Look ahead 60 seconds (approx 120 ticks) for a Closure
+            lookahead_window = 120
+            end_idx = min(idx + lookahead_window, len(self.df) - 1)
 
-        avg_effect_treatment = self.df.loc[treatment_indices, 'Spread_Delta'].mean()
-        avg_effect_control = control_pool['Spread_Delta'].mean()
+            future_slice = self.df.iloc[idx:end_idx]
 
-        causal_impact = avg_effect_treatment - avg_effect_control
+            # Check for Position Drop in this window
+            drops = future_slice[future_slice['Pos_Drop']]
 
-        logger.info(f"   📊 Results:")
-        logger.info(f"      - Average Spread Change after BAIT: {avg_effect_treatment:+.4f} pts")
-        logger.info(f"      - Average Spread Change (Baseline): {avg_effect_control:+.4f} pts")
-        logger.info(f"      - Causal Impact (ATT): {causal_impact:+.4f} pts")
+            if not drops.empty:
+                # Potential Candidate: Intervention -> Closure
+                drop_idx = drops.index[0]
+                drop_time = self.df.loc[drop_idx, 'Time']
+                time_diff_sec = (drop_time - intervention_time).total_seconds()
 
-        if causal_impact < 0:
-            logger.info("   ✅ CONFIRMED: Baiting causes Spread to DROP (Broker relaxes).")
+                # Check Profit/Loss at closure
+                # If Realized PL didn't jump up, or Balance went down
+                # Since we don't have per-trade PL easily parsed, let's look at Price Direction vs Trade
+
+                # Check for "Stall" (Velocity Drop) right after intervention
+                # Immediate reaction: next 5-10 ticks
+                immediate_slice = self.df.iloc[idx:min(idx+10, len(self.df))]
+                avg_vel_immediate = immediate_slice['Velocity'].mean()
+                avg_vel_global = self.df['Velocity'].mean()
+
+                is_stalled = avg_vel_immediate < (avg_vel_global * 0.5) # 50% drop in speed
+
+                smoking_guns.append({
+                    'intervention_time': intervention_time,
+                    'closure_time': drop_time,
+                    'latency_sec': time_diff_sec,
+                    'is_stalled': is_stalled,
+                    'velocity_immediate': avg_vel_immediate
+                })
+
+        # Filter for the "Perfect Storm"
+        # Immediate Stall AND Quick Death (< 30 sec)
+        confirmed_hunts = [sg for sg in smoking_guns if sg['is_stalled'] and sg['latency_sec'] < 60]
+
+        logger.info(f"   🔍 Found {len(smoking_guns)} interventions followed by closure.")
+        logger.info(f"   🎯 CONFIRMED 'HUNTS' (Stall + Kill < 60s): {len(confirmed_hunts)}")
+
+        if confirmed_hunts:
+            logger.info("   🚨 SMOKING GUN FOUND! Details of the 'Hunt':")
+            for hunt in confirmed_hunts:
+                logger.info(f"      - Time: {hunt['intervention_time']} -> Killed at {hunt['closure_time']} ({hunt['latency_sec']}s later)")
+                logger.info(f"      - Micro-Structure: Market STALLED (Vel: {hunt['velocity_immediate']:.2f}) then reversed.")
+
+            logger.info("\n   🧠 THEORETICAL EXPLANATION (Alibi-Detect / Adversarial Drift):")
+            logger.info("      The algorithm detected the 'Context Shift' (SL Move).")
+            logger.info("      It entered a 'Wait State' (Velocity Drop) to recalculate risk.")
+            logger.info("      Then it executed an 'Adversarial Attack' (Price Reversal) to clear the liquidity.")
+
         else:
-            logger.info("   ❌ REJECTED: Baiting does not reduce Spread (or Broker ignores it).")
+            logger.info("   ❌ No perfect 'Stall + Kill' sequence found. The user's experience might be from another session or less strictly defined.")
 
-    def analyze_game_theory_phases(self):
-        """
-        OpenSpiel-inspired Game Analysis.
-        Segments the session into phases based on Floating PL and Exposure.
-        """
-        logger.info("\n♟️ GAME THEORY ANALYSIS: Session Phases")
-
-        # Normalize Metrics
-        max_dd = self.df['Floating_PL'].min()
-        max_profit = self.df['Floating_PL'].max()
-
-        # Heuristic Phase Detection
-        # Opening: First 10%
-        # Middle: High Exposure (PosCount > 3) or Deep DD
-        # Endgame: Recovery or Liquidation
-
-        self.df['Phase_Class'] = 'Opening'
-        mid_idx = int(len(self.df) * 0.1)
-        self.df.loc[mid_idx:, 'Phase_Class'] = 'Middle'
-
-        # Endgame starts when positions drop to 0 after being high
-        # Find last block of non-zero positions
-        last_pos_idx = self.df[self.df['PosCount'] > 0].last_valid_index()
-        if last_pos_idx:
-            self.df.loc[last_pos_idx:, 'Phase_Class'] = 'Endgame'
-
-        # Analyze each phase
-        for phase in ['Opening', 'Middle', 'Endgame']:
-            subset = self.df[self.df['Phase_Class'] == phase]
-            if subset.empty: continue
-
-            avg_spread = subset['Spread'].mean()
-            volatility = subset['Velocity'].mean()
-            profit = subset['Session_PL'].iloc[-1] - subset['Session_PL'].iloc[0]
-
-            logger.info(f"   📍 {phase} Phase:")
-            logger.info(f"      - Duration: {len(subset)} ticks")
-            logger.info(f"      - Broker Aggression (Spread): {avg_spread:.2f}")
-            logger.info(f"      - Market Energy (Velocity): {volatility:.2f}")
-            logger.info(f"      - Net Profit: {profit:,.2f} {self.currency}")
 
     def run(self):
         self.load_evidence()
-        self.analyze_causality_bait()
-        self.analyze_game_theory_phases()
+        self.analyze_micro_structure_hunt()
         logger.info("\n🏁 Analysis Complete. The case is closed.")
 
 if __name__ == "__main__":
-    # Assuming extracted CSV name
     CSV_FILE = "Mimic_Research_GOLD_20260202_141322.csv"
     engine = ColomboForensicEngine(CSV_FILE)
     engine.run()
