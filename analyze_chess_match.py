@@ -1,132 +1,88 @@
 import pandas as pd
 import numpy as np
-import sys
-import os
 
-# --- CONFIGURATION ---
-SPREAD_POINTS_RAW = 66.0
-SPREAD_PRICE_VALUE = 0.66 # SP500 2-digit: 66 points = 0.66 price change
-POINT_VALUE_HUF = 73900.0 # Approx 1 Lot SP500 value in HUF (User provided)
+CSV_FILE = "Mimic_Research_GOLD_20260202_054225.csv"
 
-def analyze_chess_match(file_path):
-    print(f"🕵️‍♂️ --- COLOMBO CHESS MATCH FORENSIC ANALYSIS ---")
-    print(f"File: {file_path}")
+def analyze_chess_match():
+    print(f"♟️ Starting Chess Engine Analysis on {CSV_FILE}...")
 
     try:
-        # Load Data
-        df = pd.read_csv(file_path)
+        df = pd.read_csv(CSV_FILE)
 
-        # Clean timestamps
+        # --- 1. Preprocessing (The Board) ---
+        # Convert Time
         df['Time'] = pd.to_datetime(df['Time'])
 
-        # Calculate Delta Time in Seconds
-        df['DeltaTime'] = df['Time'].diff().dt.total_seconds().fillna(0)
+        # Calculate Returns (for Sharpe/Sortino)
+        # We use Floating_PL delta as a proxy for "Equity Curve" changes per tick
+        df['Equity'] = df['Balance'] + df['Session_PL'] # realized so far
+        # But wait, Floating PL is the unrealized.
+        # Total Equity = Balance + Floating_PL (if we want to see the ride)
+        # Actually, let's look at "Realized PL" curve for closed trades.
+
+        # Parsing Trades (The Moves)
+        closes = df[df['ActionDetails'].str.contains(':CLOSE:', na=False)].copy()
+
+        # Extract Trade PL
+        # Format: "...:PL=12.50"
+        closes['Trade_PL'] = closes['ActionDetails'].str.extract(r'PL=([-+]?\d*\.\d+|\d+)').astype(float)
+
+        # --- 2. Blunder Detection (Our Mistakes) ---
+        # A blunder is a big loss or a missed win.
+        # Since we have 95% WR, blunders are rare. Let's look at the Losers.
+        blunders = closes[closes['Trade_PL'] <= 0]
+
+        # --- 3. Opponent Analysis (Broker Defense) ---
+        # Did the spread widen during our trades?
+        # Filter rows where we had open positions
+        active_rows = df[df['PosCount'] > 0]
+        avg_spread_active = active_rows['Spread'].mean()
+        avg_spread_idle = df[df['PosCount'] == 0]['Spread'].mean()
+
+        defense_ratio = avg_spread_active / avg_spread_idle if avg_spread_idle > 0 else 0
+
+        # --- 4. Game Score (Metrics) ---
+        total_profit = closes['Trade_PL'].sum()
+        win_rate = len(closes[closes['Trade_PL'] > 0]) / len(closes) * 100 if len(closes) > 0 else 0
+
+        # Sharpe (Approximate based on trade returns)
+        # mean_return / std_dev
+        returns = closes['Trade_PL']
+        sharpe = (returns.mean() / returns.std()) if len(returns) > 1 and returns.std() > 0 else 0
+
+        # Sortino (Downside risk only)
+        downside = returns[returns < 0]
+        sortino = (returns.mean() / downside.std()) if len(downside) > 0 and downside.std() > 0 else 0
+        if len(downside) == 0: sortino = 999.0 # Infinite/Perfect
+
+        # --- 5. Generate Report ---
+        print("\n🏆 === CHESS MATCH REPORT: JULES vs BROKER ===")
+        print(f"📈 Total Score (Profit): {total_profit:.2f} EUR")
+        print(f"🎯 Accuracy (Win Rate): {win_rate:.1f}%")
+
+        print(f"\n🧠 Tactical Analysis (Metrics):")
+        print(f"   - Sharpe Ratio: {sharpe:.2f} (Consistency)")
+        print(f"   - Sortino Ratio: {sortino:.2f} (Downside Safety)")
+        print(f"   - Blunders (Losses): {len(blunders)}")
+
+        print(f"\n🛡️ Opponent Defense (Broker):")
+        print(f"   - Spread (Idle): {avg_spread_idle:.2f} pts")
+        print(f"   - Spread (Active): {avg_spread_active:.2f} pts")
+        if defense_ratio > 1.1:
+            print(f"   ⚠️ DEFENSE DETECTED: Broker widened spread by {(defense_ratio-1)*100:.1f}% during active trades!")
+        else:
+            print(f"   ✅ PASSIVE: Broker did not react significantly (Ratio: {defense_ratio:.2f})")
+
+        print("\n🔮 Conclusion:")
+        if win_rate > 90 and defense_ratio < 1.1:
+            print("   The opponent was asleep. We checkmated them in the opening.")
+        elif win_rate > 50:
+            print("   A hard-fought game. We won on material.")
+        else:
+            print("   The opponent anticipated our moves.")
 
     except Exception as e:
-        print(f"❌ CRITICAL ERROR: Could not read CSV. {e}")
-        return
-
-    # --- 1. ENTRY LOGIC VERIFICATION (The "Machine Gun" Check) ---
-    print("\n🔍 1. VIZSGÁLAT: BELÉPÉSI LOGIKA (Géppuska vs Lépcső)")
-
-    # Filter rows where Position Count changed (Entry/Exit)
-    # Since PosCount is reliable in v1.00
-    df['PosChange'] = df['PosCount'].diff()
-    entries = df[df['PosChange'] > 0].copy()
-
-    entry_report = []
-
-    print(f"Összes észlelt belépés: {len(entries)}")
-
-    if len(entries) > 0:
-        prev_entry_price = entries.iloc[0]['Bid'] # Approximate
-
-        for idx, row in entries.iterrows():
-            curr_price = row['Bid']
-            time_diff = 0
-            price_diff = 0
-
-            if idx > entries.index[0]:
-                 # Find previous entry in the filtered list
-                 prev_row = entries.loc[:idx-1].iloc[-1]
-                 time_diff = (row['Time'] - prev_row['Time']).total_seconds()
-                 price_diff = abs(curr_price - prev_row['Bid'])
-
-            # Distance in "Spreads"
-            # Bugfix: Use Price Value of Spread (0.66) not Raw Points (66.0)
-            dist_in_spreads = price_diff / SPREAD_PRICE_VALUE
-
-            # Verdict
-            verdict = "OK"
-            if time_diff < 0.1 and idx > entries.index[0]: verdict = "MACHINE_GUN (Instant)"
-            elif dist_in_spreads < 0.8 and idx > entries.index[0]: verdict = "PREMATURE (Too Close)"
-            elif dist_in_spreads > 1.2 and idx > entries.index[0]: verdict = "GAP (Skipped Level)"
-
-            entry_report.append({
-                "Time": row['Time'],
-                "Price": curr_price,
-                "Diff_Pts": price_diff,
-                "Diff_Spread": dist_in_spreads,
-                "Time_Gap": time_diff,
-                "Verdict": verdict,
-                "Action": row['LastEvent'] if pd.notna(row['LastEvent']) else "TickEntry"
-            })
-
-    entry_df = pd.DataFrame(entry_report)
-    print(entry_df[['Time', 'Diff_Spread', 'Time_Gap', 'Verdict']].to_string())
-
-    # --- 2. BROKER BEHAVIOR (The "Steamroll" Check) ---
-    print("\n🔍 2. VIZSGÁLAT: BRÓKER VISELKEDÉS (Gőzhenger)")
-
-    # Check Velocity during entries
-    avg_entry_vel = entries['Velocity'].abs().mean()
-    avg_session_vel = df['Velocity'].abs().mean()
-
-    print(f"Átlagos Sebesség Belépéskor: {avg_entry_vel:.4f}")
-    print(f"Átlagos Sebesség Szekcióban: {avg_session_vel:.4f}")
-
-    if avg_entry_vel > avg_session_vel * 1.5:
-        print("⚠️  DIAGNÓZIS: MOMENTUM ENTRY. A bróker belehúzza az árat a megbízásokba.")
-    else:
-         print("ℹ️  DIAGNÓZIS: PASSZÍV FOLYAM. A megbízások 'sima' piaci mozgásban teljesültek.")
-
-    # --- 3. MARGIN & RISK RECONSTRUCTION ---
-    print("\n🔍 3. VIZSGÁLAT: TŐKE MENEDZSMENT (Rekonstrukció)")
-
-    max_pos = df['PosCount'].max()
-    max_dd_eur = df['Floating_PL'].min()
-
-    # Estimate Margin Load (Hypothetical)
-    # Assuming standard SP500 contract specs if not provided, but we assume 1 Lot = User Value
-    # This is a rough heuristic for the Python module
-
-    print(f"Max Pozíció Szám: {max_pos}")
-    print(f"Max Lebegő Veszteség: {max_dd_eur:.2f} EUR")
-
-    # --- OUTPUT REPORT ---
-    report_file = "Colombo_Huron_Research_Archive/Chess_Match_Report_SP500.md"
-    with open(report_file, "w", encoding="utf-8") as f:
-        f.write(f"# Colombo Jelentés: A Sakkjátszma (SP500 Forensic)\n")
-        f.write(f"**Dátum:** {df['Time'].iloc[0].strftime('%Y-%m-%d')}\n")
-        f.write(f"**Eszköz:** SP500 (V1.00 Elemzés)\n\n")
-
-        f.write(f"## 1. A Belépések Ritmusának Elemzése\n")
-        f.write(f"A vizsgálat célja annak eldöntése volt, hogy a rendszer tartotta-e a lépcsőzetes (Spread-alapú) belépést, vagy a bróker 'szétlőtte' a pozíciókat.\n\n")
-        f.write(entry_df[['Time', 'Price', 'Diff_Spread', 'Time_Gap', 'Verdict']].to_markdown())
-
-        f.write(f"\n\n## 2. A Bróker Reakciója\n")
-        f.write(f"*   **Átlagos Sebesség (Belépéskor):** {avg_entry_vel:.4f}\n")
-        f.write(f"*   **Átlagos Sebesség (Nyugalom):** {avg_session_vel:.4f}\n")
-        if avg_entry_vel > avg_session_vel * 1.5:
-             f.write(f"**Konklúzió:** A bróker agresszíven, lendületből (Momentum) ütötte ki a szinteket. Nem volt 'megtorpanás'.\n")
-        else:
-             f.write(f"**Konklúzió:** A bróker passzív volt, a piac egyszerűen 'átcsorgott' a szinteken.\n")
-
-        f.write(f"\n## 3. Pénzügyi Rekonstrukció (Python Engine Számára)\n")
-        f.write(f"*   **Max Open Positions:** {max_pos}\n")
-        f.write(f"*   **Max Drawdown:** {max_dd_eur:.2f} EUR\n")
-
-    print(f"\n✅ Jelentés generálva: {report_file}")
+        print(f"❌ Analysis Failed: {e}")
 
 if __name__ == "__main__":
-    analyze_chess_match("Colombo_Huron_Research_Archive/Mimic_Probe_WIRE_SP500_CLEANED.csv")
+    analyze_chess_match()
