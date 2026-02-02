@@ -120,6 +120,8 @@ bool              g_book_subscribed = false;
 int               h_hybrid = INVALID_HANDLE; // NEW: Jules Hybrid Pulse
 int               h_momentum = INVALID_HANDLE; // Legacy Momentum
 int               h_flow = INVALID_HANDLE; // Filter Flow
+int               h_rsi = INVALID_HANDLE; // Standard ML Baseline
+int               h_cci = INVALID_HANDLE; // Standard ML Baseline
 
 string            g_current_phase = "IDLE";
 int               g_post_event_counter = 0;
@@ -281,6 +283,10 @@ int OnInit()
    h_momentum = IndicatorCreate(_Symbol, _Period, IND_CUSTOM, 15, mom_params);
    if(h_momentum != INVALID_HANDLE) ChartIndicatorAdd(0, 3, h_momentum);
 
+   // 4. Standard ML Baselines (Hidden)
+   h_rsi = iRSI(_Symbol, _Period, 14, PRICE_CLOSE);
+   h_cci = iCCI(_Symbol, _Period, 14, PRICE_CLOSE);
+
 
    // Init Log
    string time_str = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
@@ -294,8 +300,8 @@ int OnInit()
 
    if(g_log_handle != INVALID_HANDLE)
      {
-      // Updated Header for v2.15: Reordered + ActionDetails
-      string header = "Time,TickMS,Phase,MimicMode,Verdict,Bid,Ask,Spread,Velocity,Acceleration,Hybrid_MACD,Hybrid_DFCurve,Flow_MFI,Flow_DUp,Flow_DDown,Mom_Hist,Balance,Margin,MarginPercent,Floating_PL,Realized_PL,Session_PL,PosCount,LotDir,TotalLots,SLTP_Levels,ActionDetails,LastEvent\r\n";
+      // Updated Header for v2.15: Reordered + ActionDetails + ML Optimized Columns
+      string header = "Time,TickMS,Phase,MimicMode,Verdict,Bid,Ask,Spread,BidVol,AskVol,Bar_Open,Bar_High,Bar_Low,Bar_Close,RSI,CCI,Velocity,Acceleration,Hybrid_MACD,Hybrid_DFCurve,Flow_MFI,Flow_DUp,Flow_DDown,Mom_Hist,Balance,Margin,MarginPercent,Floating_PL,Realized_PL,Session_PL,PosCount,LotDir,TotalLots,SLTP_Levels,ActionDetails,LastEvent\r\n";
       FileWriteString(g_log_handle, header);
       FileFlush(g_log_handle);
       Print("Mimic Research v2.15: Log file created: ", filename);
@@ -333,6 +339,8 @@ void OnDeinit(const int reason)
    if(h_hybrid != INVALID_HANDLE) IndicatorRelease(h_hybrid);
    if(h_momentum != INVALID_HANDLE) IndicatorRelease(h_momentum);
    if(h_flow != INVALID_HANDLE) IndicatorRelease(h_flow);
+   if(h_rsi != INVALID_HANDLE) IndicatorRelease(h_rsi);
+   if(h_cci != INVALID_HANDLE) IndicatorRelease(h_cci);
 
    if(g_log_handle != INVALID_HANDLE) FileClose(g_log_handle);
   }
@@ -965,10 +973,11 @@ void WriteLog()
    double mom_hist = 0;
    double flow_mfi = 0, flow_dup = 0, flow_ddown = 0;
    double hybrid_macd = 0, hybrid_curve = 0;
+   double rsi_val = 0, cci_val = 0;
 
    double buf[1];
 
-   // A. Jules Hybrid v1.04 (Removed Hybrid_Color as redundant)
+   // A. Jules Hybrid v1.04
    if(CopyBuffer(h_hybrid, 0, 0, 1, buf)>0) hybrid_macd = buf[0];
    if(CopyBuffer(h_hybrid, 2, 0, 1, buf)>0) hybrid_curve = buf[0];
 
@@ -983,8 +992,44 @@ void WriteLog()
    // C. Momentum (Legacy)
    if(CopyBuffer(h_momentum, 0, 0, 1, buf)>0) mom_hist = buf[0];
 
-   // 2. Physics
+   // D. ML Baselines
+   if(CopyBuffer(h_rsi, 0, 0, 1, buf)>0) rsi_val = buf[0];
+   if(CopyBuffer(h_cci, 0, 0, 1, buf)>0) cci_val = buf[0];
+
+   // 2. Physics & Market Data
    PhysicsState p = m_physics.GetState();
+
+   // 3. Advanced Market Context (DOM L1 & Bar)
+   MqlBookInfo book[];
+   double bid_vol = 0;
+   double ask_vol = 0;
+   if (g_book_subscribed) {
+       if (MarketBookGet(_Symbol, book)) {
+           int size = ArraySize(book);
+           // Simple L1 extraction: Best Bid is last index usually? No, MQL5 book is array.
+           // Usually sorted by price. Sell (Ask) is highest prices, Buy (Bid) is lowest?
+           // Actually MQL5 MarketBook:
+           // Index 0: Highest Sell Price (Top Ask) -> Wait, no.
+           // Standard: Bids are type BOOK_TYPE_BUY, Asks are BOOK_TYPE_SELL.
+           // We just want ANY volume at best bid/ask.
+           // Optimization: Just loop quickly.
+           for(int i=0; i<size; i++) {
+               if((book[i].type == BOOK_TYPE_SELL) && (book[i].price == m_symbol.Ask())) ask_vol += book[i].volume;
+               if((book[i].type == BOOK_TYPE_BUY) && (book[i].price == m_symbol.Bid())) bid_vol += book[i].volume;
+           }
+       }
+   }
+
+   // Bar Data (M1 Context)
+   double bar_o=0, bar_h=0, bar_l=0, bar_c=0;
+   MqlRates rates[];
+   if(CopyRates(_Symbol, PERIOD_M1, 0, 1, rates) > 0) {
+       bar_o = rates[0].open;
+       bar_h = rates[0].high;
+       bar_l = rates[0].low;
+       bar_c = rates[0].close;
+   }
+
 
    // 4. P/L & Positions
    double float_pl = 0.0;
@@ -1020,11 +1065,14 @@ void WriteLog()
    string ms = IntegerToString(GetTickCount()%1000);
 
    // CSV Row
-   // Header: Time,TickMS,Phase,MimicMode,Verdict,Bid,Ask,Spread,Velocity,Acceleration,Hybrid_MACD,Hybrid_DFCurve,Flow_MFI,Flow_DUp,Flow_DDown,Mom_Hist,Balance,Margin,MarginPercent,Floating_PL,Realized_PL,Session_PL,PosCount,LotDir,TotalLots,SLTP_Levels,ActionDetails,LastEvent
-   string row = StringFormat("%s,%s,%s,%d,%s,%.5f,%.5f,%.1f,%.5f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%s,%.2f,%s,%s,%s",
+   // Header: Time,TickMS,Phase,MimicMode,Verdict,Bid,Ask,Spread,BidVol,AskVol,Bar_Open,Bar_High,Bar_Low,Bar_Close,RSI,CCI,Velocity,Acceleration,Hybrid_MACD,Hybrid_DFCurve,Flow_MFI,Flow_DUp,Flow_DDown,Mom_Hist,Balance,Margin,MarginPercent,Floating_PL,Realized_PL,Session_PL,PosCount,LotDir,TotalLots,SLTP_Levels,ActionDetails,LastEvent
+   string row = StringFormat("%s,%s,%s,%d,%s,%.5f,%.5f,%.1f,%.2f,%.2f,%.5f,%.5f,%.5f,%.5f,%.2f,%.2f,%.5f,%.5f,%.5f,%.2f,%.2f,%.2f,%.2f,%.5f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%s,%.2f,%s,%s,%s",
        t, ms, g_current_phase,
        g_mimic_mode, verdict,
        m_symbol.Bid(), m_symbol.Ask(), p.spread_avg,
+       bid_vol, ask_vol,
+       bar_o, bar_h, bar_l, bar_c,
+       rsi_val, cci_val,
        p.velocity, p.acceleration,
        hybrid_macd, hybrid_curve,
        flow_mfi, flow_dup, flow_ddown,
