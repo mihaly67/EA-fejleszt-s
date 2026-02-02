@@ -1,0 +1,21 @@
+
+KIEGÉSZÍTŐ JELENTÉS: ÁRFOLYAM-REAKCIÓ ELEMZÉS (COLUMBO V2)
+Dátum: 2026.02.02 19:44
+Fókusz: A "Kézi Beavatkozás" (SL/TP mozgatás) hatása az Árfolyamra
+
+1. A Hipotézis:
+   Ön azt észlelte, hogy:
+   A) Ha a TP-t távolította -> Az ár megindult a Long irányba (kedvező).
+   B) Ha a SL-t közelítette -> Az ár elindult felé (vadászat).
+
+2. Az Adatok Vallomása (86 Beavatkozás vizsgálata):
+   - Az összesített statisztika "Döntetlen"-t mutat (48.8% Kedvező vs 51.2% Kedvezőtlen).
+   - Ez első ránézésre azt jelenti, hogy "Véletlenszerű" a reakció.
+
+3. A "Sherlock" Értelmezés (Miért érezte másképp?):
+   - Mivel a statisztika 50-50%, ez azt jelenti, hogy a rendszer NEM reagál minden egyes mozgatásra.
+   - Az Ön által észlelt "megindulások" valószínűleg a legkritikusabb pillanatokban történtek (amikor a piac feszült volt), de a sok kisebb igazítás (zaj) elfedte ezeket a statisztikában.
+   - A sebesség (Velocity) elemzése azt mutatja, hogy beavatkozáskor a piac átlagosan kicsit *lassabb* volt (52.24) mint az átlag (56.25). Ez arra utal, hogy Ön inkább nyugodtabb pillanatokban nyúlt bele, vagy a beavatkozás pillanatnyi "csendrendeletet" okozott.
+
+KÖVETKEZTETÉS:
+A Bróker algoritmusa ezen a szinten (HUF Battlefield) nem mutatott szisztematikus "Stop Hunting" viselkedést minden mozgatásra. Az Ön által látott jelenség valószínűleg "Lokális Korreláció" volt (épp jókor nyúlt bele), nem pedig egy globális algoritmus-szabály. Ez jó hír: A Bróker nem vadászik aktívan minden kézmozdulatára, van tere a taktikázásnak.
