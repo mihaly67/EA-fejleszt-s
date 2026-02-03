@@ -12,8 +12,8 @@
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
 #include <Trade\PositionInfo.mqh>
-#include "../Include/Mimic/FireControl.mqh"
-// ALIGNMENT: Matching Mimic_Trap_Research_EA_v2.15 include path
+// ALIGNMENT: Matching User's "Physics-Next-To-FireControl" structure
+#include "../Indicators/FireControl.mqh"
 #include "../Indicators/PhysicsEngine.mqh"
 
 //--- Objects
