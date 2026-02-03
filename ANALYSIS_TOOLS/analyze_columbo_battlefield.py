@@ -23,13 +23,17 @@ class ColomboForensicEngine:
             self.df['Time'] = pd.to_datetime(self.df['Time'])
 
             # 1. Currency Detection
-            initial_balance = self.df['Balance'].iloc[0]
-            if initial_balance > 500000:
-                self.currency = "HUF"
-                logger.info(f"💰 Currency Detected: {self.currency} (Balance: {initial_balance:,.2f})")
+            # Handle duplicates or missing Balance
+            if 'Balance' in self.df.columns and not self.df['Balance'].dropna().empty:
+                 initial_balance = self.df['Balance'].iloc[0]
+                 if initial_balance > 500000:
+                    self.currency = "HUF"
+                    logger.info(f"💰 Currency Detected: {self.currency} (Balance: {initial_balance:,.2f})")
+                 else:
+                    self.currency = "EUR"
+                    logger.info(f"💰 Currency Detected: {self.currency}")
             else:
-                self.currency = "EUR"
-                logger.info(f"💰 Currency Detected: {self.currency}")
+                 logger.warning("⚠️ Balance column missing or empty.")
 
             logger.info(f"📄 Evidence Size: {len(self.df)} ticks")
 
@@ -67,9 +71,12 @@ class ColomboForensicEngine:
     def analyze_distance_sensitivity(self):
         """
         Analyzes "Reaction vs Distance".
-        Drill down into 100+ and 500+ ranges.
         """
         logger.info("\n📏 STARTING SENSITIVITY ANALYSIS: Distance vs Reaction")
+
+        if 'SLTP_Levels' not in self.df.columns:
+             logger.error("❌ 'SLTP_Levels' column missing.")
+             return
 
         self.df['SLTP_Changed'] = self.df['SLTP_Levels'] != self.df['SLTP_Levels'].shift(1)
 
@@ -102,7 +109,7 @@ class ColomboForensicEngine:
             })
 
         if not data_points:
-            logger.warning("   ⚠️ No valid distance data points found.")
+            logger.warning("   ⚠️ No valid distance data points found (No manual SL moves while in position).")
             return
 
         res_df = pd.DataFrame(data_points)
@@ -132,58 +139,24 @@ class ColomboForensicEngine:
         """
         Investigate the '50' zone relative to actual spread.
         """
-        logger.info("\n🌊 ANALYZING THE SPREAD ZONE (50 pts)")
+        logger.info("\n🌊 ANALYZING THE SPREAD ZONE")
 
         # Calculate Average Spread
         avg_spread = self.df['Spread'].mean()
         logger.info(f"   ℹ️ Average Market Spread: {avg_spread:.2f} points")
-
-        # Hypothesis: Safety depends on Dist > Spread * Multiplier
-        # Filter for interventions around 40-60
-        # Check specific interventions where Distance < Spread vs Distance > Spread
-
-        self.df['SLTP_Changed'] = self.df['SLTP_Levels'] != self.df['SLTP_Levels'].shift(1)
-        intervention_indices = self.df[self.df['SLTP_Changed'] & (self.df['PosCount'] > 0)].index
-
-        inside_spread = []
-        outside_spread = []
-
-        for idx in intervention_indices:
-            current_price = self.df.loc[idx, 'Bar_Close']
-            levels_str = self.df.loc[idx, 'SLTP_Levels']
-            current_spread = self.df.loc[idx, 'Spread']
-
-            dist = self.parse_sltp_levels_v3(levels_str, current_price)
-            if dist is None: continue
-
-            is_killed = False # Need to recalc or carry over. Simple check:
-            future_slice = self.df.iloc[idx:min(idx+120, len(self.df))]
-            if (future_slice['PosCount'] < future_slice['PosCount'].shift(1)).any():
-                is_killed = True
-
-            if dist < current_spread:
-                inside_spread.append(is_killed)
-            elif dist < current_spread * 1.5: # The "Zone"
-                outside_spread.append(is_killed)
-
-        if inside_spread:
-            kill_rate_in = sum(inside_spread) / len(inside_spread)
-            logger.info(f"   💀 Inside Spread (< {avg_spread:.1f}): Kill Rate {kill_rate_in*100:.1f}% ({len(inside_spread)} events)")
-        else:
-            logger.info("   ℹ️ No placements inside spread found (Good!).")
-
-        if outside_spread:
-            kill_rate_out = sum(outside_spread) / len(outside_spread)
-            logger.info(f"   🛡️ Just Outside Spread (1.0x - 1.5x): Kill Rate {kill_rate_out*100:.1f}% ({len(outside_spread)} events)")
 
 
     def run(self):
         self.load_evidence()
         self.analyze_distance_sensitivity()
         self.analyze_spread_zone()
-        logger.info("\n🏁 Analysis Complete. The case is closed.")
+        logger.info("\n🏁 Analysis Complete.")
 
 if __name__ == "__main__":
-    CSV_FILE = "Mimic_Research_GOLD_20260202_141322.csv"
-    engine = ColomboForensicEngine(CSV_FILE)
-    engine.run()
+    import sys
+    if len(sys.argv) < 2:
+        print("Usage: python3 analyze_columbo_battlefield.py <csv_file>")
+    else:
+        CSV_FILE = sys.argv[1]
+        engine = ColomboForensicEngine(CSV_FILE)
+        engine.run()
