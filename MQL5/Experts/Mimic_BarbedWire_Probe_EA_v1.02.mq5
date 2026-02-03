@@ -13,6 +13,7 @@
 #include <Trade\SymbolInfo.mqh>
 #include <Trade\PositionInfo.mqh>
 #include "../Include/Mimic/FireControl.mqh"
+// ALIGNMENT: Matching Mimic_Trap_Research_EA_v2.15 include path
 #include "../Indicators/PhysicsEngine.mqh"
 
 //--- Objects
@@ -78,6 +79,7 @@ input double             Flow_InpHistogramVisualGain = 3.0;
 // [Panel UI]
 input int           InpX                 = 10;               // [UI] X Coordinate
 input int           InpY                 = 20;               // [UI] Y Coordinate
+// ALIGNMENT: Matching Mimic_Trap_Research_EA_v2.15 background color
 input color         InpBgColor           = clrDarkSlateGray; // [UI] BG Color
 input color         InpTxtColor          = clrWhite;         // [UI] Text Color
 
