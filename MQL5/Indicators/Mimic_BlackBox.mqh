@@ -92,7 +92,7 @@ public:
       if(!m_is_active || m_file_handle == INVALID_HANDLE) return;
 
       string time_str = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
-      int tick_ms = GetTickCount() % 1000;
+      int tick_ms = (int)(GetTickCount() % 1000);
 
       string row = StringFormat(
          "%s,%d,%s,%d,%s,%.5f,%.5f,%.1f,%d,%d," +
