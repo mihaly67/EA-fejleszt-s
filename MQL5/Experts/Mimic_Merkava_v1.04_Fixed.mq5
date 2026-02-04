@@ -9,9 +9,9 @@
 #property strict
 
 // --- Modular Includes (Flat Structure in Indicators) ---
-#include "../Indicators/Mimic_Camouflage.mqh"
-#include "../Indicators/Mimic_BlackBox.mqh"
-#include "../Indicators/Mimic_NavSystem.mqh"
+#include "../Indicators/Camouflage.mqh"
+#include "../Indicators/BlackBox.mqh"
+#include "../Indicators/NavSystem.mqh"
 #include "../Indicators/PhysicsEngine.mqh"
 #include "../Indicators/FireControl.mqh"
 
@@ -24,7 +24,7 @@ input double   Inp_LotSize       = 0.01;                  // Base Lot Size
 CMimicCamouflage  *Camouflage;
 CMimicBlackBox    *BlackBox;
 CMimicNavSystem   *NavSystem;
-CPhysicsEngine    *Physics;
+PhysicsEngine     *Physics;  // CORRECTED CLASS NAME
 CFireControl      *FireControl;
 
 long     current_magic;
@@ -39,7 +39,7 @@ int OnInit()
    Camouflage  = new CMimicCamouflage();
    BlackBox    = new CMimicBlackBox();
    NavSystem   = new CMimicNavSystem();
-   Physics     = new CPhysicsEngine();
+   Physics     = new PhysicsEngine(50); // CORRECTED CONSTRUCTOR
    FireControl = new CFireControl();
 
    // 2. Setup Stealth
@@ -50,7 +50,7 @@ int OnInit()
    if(!NavSystem.Initialize(_Symbol, _Period)) return INIT_FAILED;
    if(!BlackBox.Initialize(_Symbol, "v1.04_FIXED")) return INIT_FAILED;
 
-   Physics.Init(_Symbol);
+   // Physics.Init(_Symbol); // REMOVED: Method does not exist
 
    last_tick_price = 0.0;
 
@@ -77,12 +77,17 @@ void OnDeinit(const int reason)
 void OnTick()
 {
    // 1. Data Refresh
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double spread = (ask - bid) * MathPow(10, _Digits);
-   long bid_vol = SymbolInfoInteger(_Symbol, SYMBOL_VOLUME); // Tick vol
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol, tick)) return; // Safety check
 
-   Physics.Update(bid, GetTickCount());
+   double bid = tick.bid;
+   double ask = tick.ask;
+   double spread = (ask - bid) * MathPow(10, _Digits);
+   long bid_vol = tick.volume; // Standard tick volume
+
+   Physics.Update(tick); // CORRECTED SIGNATURE
+   PhysicsState p_state = Physics.GetState(); // Get state for logging
+
    NavSystem.Refresh(_Symbol);
 
    // 2. Flow Physics Update (Fix for Blindness)
@@ -102,7 +107,7 @@ void OnTick()
       "ACTIVE", 1, "MONITOR",
       bid, ask, spread, bid_vol, 0,
       iOpen(_Symbol, _Period, 0), iHigh(_Symbol, _Period, 0), iLow(_Symbol, _Period, 0), iClose(_Symbol, _Period, 0),
-      NavSystem.GetRSI(), NavSystem.GetCCI(), Physics.GetVelocity(), Physics.GetAcceleration(),
+      NavSystem.GetRSI(), NavSystem.GetCCI(), p_state.velocity, p_state.acceleration, // CORRECTED ACCESS
       0.0, NavSystem.GetPulse(), // Hybrid MACD/Pulse
       NavSystem.GetFlowMFI(), NavSystem.GetFlowROC(), NavSystem.GetFlowDelta(), // FIXED FLOW
       AccountInfoDouble(ACCOUNT_BALANCE), AccountInfoDouble(ACCOUNT_MARGIN), AccountInfoDouble(ACCOUNT_MARGIN_LEVEL),
