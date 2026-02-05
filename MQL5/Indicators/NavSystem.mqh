@@ -287,22 +287,29 @@ private:
        double current_tp = (m_rates[total-1].high + m_rates[total-1].low + m_rates[total-1].close) / 3.0;
        double sma = 0.0;
 
+       // Calculate SMA of Typical Price
        for(int i=0; i<period; i++) {
            int idx = total - 1 - i;
+           // Safety check
+           if(idx < 0) break;
            double tp = (m_rates[idx].high + m_rates[idx].low + m_rates[idx].close) / 3.0;
            sma += tp;
        }
-       sma /= period;
+       sma /= (double)period;
 
+       // Calculate Mean Deviation
        double mean_dev = 0.0;
        for(int i=0; i<period; i++) {
            int idx = total - 1 - i;
+           if(idx < 0) break;
            double tp = (m_rates[idx].high + m_rates[idx].low + m_rates[idx].close) / 3.0;
            mean_dev += MathAbs(tp - sma);
        }
-       mean_dev /= period;
+       mean_dev /= (double)period;
 
-       if(mean_dev == 0) return 0.0;
+       // Prevent division by zero
+       if(mean_dev == 0.0) return 0.0;
+
        return (current_tp - sma) / (0.015 * mean_dev);
    }
 

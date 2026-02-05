@@ -315,9 +315,10 @@ void OnTick()
    if (g_decision_log != "") g_transaction_buffer += "|" + g_decision_log;
 
    // -- LOG --
+   // Use 'tick' directly for Bid/Ask to avoid any SymbolInfo cache lag
    BlackBox.RecordTick(
       g_last_action, 0, verdict,
-      SymbolInfo.Bid(), SymbolInfo.Ask(), p.spread_avg,
+      tick.bid, tick.ask, p.spread_avg,
       bid_vol, ask_vol,
       iOpen(_Symbol, _Period, 0), iHigh(_Symbol, _Period, 0), iLow(_Symbol, _Period, 0), iClose(_Symbol, _Period, 0),
       rsi, cci, p.velocity, p.acceleration,
