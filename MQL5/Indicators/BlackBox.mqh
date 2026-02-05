@@ -29,7 +29,7 @@ public:
       m_file_handle = INVALID_HANDLE;
       m_is_active = false;
       m_headers = "Time,TickMS,Phase,MimicMode,Verdict,Bid,Ask,Spread,BidVol,AskVol," +
-                  "Bar_Open,Bar_High,Bar_Low,Bar_Close,RSI,CCI,Velocity,Acceleration," +
+                  "Bar_Open,Bar_High,Bar_Low,Bar_Close,RSI,Velocity,Acceleration," +
                   "Hybrid_MACD,Hybrid_DFCurve,Flow_MFI,Flow_ROC,Flow_Delta," + // UPDATED HEADERS
                   "Balance,Margin,MarginPercent,Floating_PL,Realized_PL,Session_PL," +
                   "PosCount,LotDir,TotalLots,SLTP_Levels,ActionDetails,LastEvent";
@@ -81,7 +81,7 @@ public:
       double bid, double ask, double spread,
       long bid_vol, long ask_vol,
       double b_open, double b_high, double b_low, double b_close,
-      double rsi, double cci, double velocity, double accel,
+      double rsi, double velocity, double accel,
       double h_macd, double h_dfcurve, double f_mfi, double f_roc, double f_delta, // Indicators
       double balance, double margin, double margin_pct,
       double floating_pl, double realized_pl, double session_pl, // Financials
@@ -97,13 +97,13 @@ public:
 
       string row = StringFormat(
          "%s,%d,%s,%d,%s,%.5f,%.5f,%.1f,%d,%d," +
-         "%.5f,%.5f,%.5f,%.5f,%.2f,%.2f,%.5f,%.5f," +
+         "%.5f,%.5f,%.5f,%.5f,%.2f,%.5f,%.5f," +
          "%.5f,%.2f,%.2f,%.2f,%.2f," + // Hybrids
          "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f," + // Financials
          "%d,%s,%.2f,%s,%s,%s",
 
          time_str, tick_ms, phase, mimic_mode, verdict, bid, ask, spread, bid_vol, ask_vol,
-         b_open, b_high, b_low, b_close, rsi, cci, velocity, accel,
+         b_open, b_high, b_low, b_close, rsi, velocity, accel,
          h_macd, h_dfcurve, f_mfi, f_roc, f_delta,
          balance, margin, margin_pct, floating_pl, realized_pl, session_pl,
          pos_count, lot_dir, total_lots, sltp_levels, action_details, last_event
