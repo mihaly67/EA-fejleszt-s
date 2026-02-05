@@ -283,7 +283,7 @@ void OnTick()
    double flow_roc = NavSystem.GetFlowROC();
 
    double rsi = NavSystem.GetRSI();
-   double cci = NavSystem.GetCCI();
+   // CCI removed as per user request
    double hybrid_macd = NavSystem.GetHybridMACD();
    double hybrid_dfcurve = NavSystem.GetPulse();
 
@@ -321,7 +321,7 @@ void OnTick()
       tick.bid, tick.ask, p.spread_avg,
       bid_vol, ask_vol,
       iOpen(_Symbol, _Period, 0), iHigh(_Symbol, _Period, 0), iLow(_Symbol, _Period, 0), iClose(_Symbol, _Period, 0),
-      rsi, cci, p.velocity, p.acceleration,
+      rsi, 0.0, p.velocity, p.acceleration, // CCI passed as 0.0
       hybrid_macd, hybrid_dfcurve,
       mfi, flow_roc, net_delta, // Fixed Mapping: MFI, ROC, NetDelta
       AccountInfoDouble(ACCOUNT_BALANCE), AccountInfoDouble(ACCOUNT_MARGIN), AccountInfoDouble(ACCOUNT_MARGIN_LEVEL),
