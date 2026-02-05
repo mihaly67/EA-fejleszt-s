@@ -15,7 +15,7 @@ class CMimicNavSystem
 private:
    // -- Handles for Visual Attachment Only --
    int      m_handle_rsi;  // Visual only (if needed) - actually usually not attached
-   int      m_handle_cci;  // Visual only
+   // CCI removed as per user request
    int      m_handle_hybrid_macd; // Visual (Pulse)
    int      m_handle_flow; // Visual (Flow)
 
@@ -25,7 +25,7 @@ private:
 
    // -- Calculated Values (The "Truth") --
    double   m_val_rsi;
-   double   m_val_cci;
+   // CCI value removed
 
    // Pulse
    double   m_val_macd;
@@ -60,7 +60,6 @@ public:
    CMimicNavSystem()
    {
       m_handle_rsi = INVALID_HANDLE;
-      m_handle_cci = INVALID_HANDLE;
       m_handle_hybrid_macd = INVALID_HANDLE;
       m_handle_flow = INVALID_HANDLE;
 
@@ -68,7 +67,6 @@ public:
       ArrayResize(m_rates, m_lookback);
 
       m_val_rsi = 50.0;
-      m_val_cci = 0.0;
       m_val_macd = 0.0;
       m_val_dfcurve = 0.0;
       m_val_flow_mfi = 50.0;
@@ -81,7 +79,6 @@ public:
    ~CMimicNavSystem()
    {
       IndicatorRelease(m_handle_rsi);
-      IndicatorRelease(m_handle_cci);
       IndicatorRelease(m_handle_hybrid_macd);
       IndicatorRelease(m_handle_flow);
    }
@@ -128,7 +125,7 @@ public:
 
        // RSI/CCI Visuals (Standard 5)
        m_handle_rsi = iRSI(symbol, period, 5, PRICE_CLOSE);
-       m_handle_cci = iCCI(symbol, period, 5, PRICE_CLOSE); // Using Close for consistency with code 5-period request
+       // CCI removed
 
        // Hybrid Pulse Visual
        m_handle_hybrid_macd = iCustom(symbol, period, path_hybrid,
@@ -183,14 +180,21 @@ public:
       if(SymbolInfoTick(symbol, tick)) {
           // Update index [copied-1] (the latest bar)
           m_rates[copied-1].close = tick.bid; // Using Bid for Close
-          if(tick.last > m_rates[copied-1].high) m_rates[copied-1].high = tick.last;
-          if(tick.last < m_rates[copied-1].low) m_rates[copied-1].low = tick.last;
-          // Volume is tricky, CopyRates volume is usually reliable for the count.
+
+          // Use Last price only if available (non-Forex usually), otherwise Bid
+          double current_price = (tick.last > 0) ? tick.last : tick.bid;
+
+          if(current_price > m_rates[copied-1].high) m_rates[copied-1].high = current_price;
+          // Guard against 0.0 Low updates
+          if(current_price > 0 && current_price < m_rates[copied-1].low) m_rates[copied-1].low = current_price;
+
+          // Update Volume if greater (accumulate)
+          if((long)tick.volume > m_rates[copied-1].tick_volume) m_rates[copied-1].tick_volume = (long)tick.volume;
       }
 
       // 2. Calculate Indicators
       m_val_rsi = CalcRSI(copied, 5);
-      m_val_cci = CalcCCI(copied, 5);
+      // CCI Calculation removed
 
       CalcHybridPulse(copied);
       CalcHybridFlow(copied);
@@ -198,7 +202,6 @@ public:
 
    //-- Getters
    double GetRSI() { return m_val_rsi; }
-   double GetCCI() { return m_val_cci; }
    double GetPulse() { return m_val_dfcurve; }
    double GetHybridMACD() { return m_val_macd; }
 
@@ -273,44 +276,6 @@ private:
        if(avg_loss == 0) return 100.0;
        double rs = avg_gain / avg_loss;
        return 100.0 - (100.0 / (1.0 + rs));
-   }
-
-   // CCI Calculation
-   double CalcCCI(int total, int period)
-   {
-       if(total <= period) return 0.0;
-
-       // Target: Last bar (total-1)
-       // TP = (H+L+C)/3
-       // SMA of TP over period
-
-       double current_tp = (m_rates[total-1].high + m_rates[total-1].low + m_rates[total-1].close) / 3.0;
-       double sma = 0.0;
-
-       // Calculate SMA of Typical Price
-       for(int i=0; i<period; i++) {
-           int idx = total - 1 - i;
-           // Safety check
-           if(idx < 0) break;
-           double tp = (m_rates[idx].high + m_rates[idx].low + m_rates[idx].close) / 3.0;
-           sma += tp;
-       }
-       sma /= (double)period;
-
-       // Calculate Mean Deviation
-       double mean_dev = 0.0;
-       for(int i=0; i<period; i++) {
-           int idx = total - 1 - i;
-           if(idx < 0) break;
-           double tp = (m_rates[idx].high + m_rates[idx].low + m_rates[idx].close) / 3.0;
-           mean_dev += MathAbs(tp - sma);
-       }
-       mean_dev /= (double)period;
-
-       // Prevent division by zero
-       if(mean_dev == 0.0) return 0.0;
-
-       return (current_tp - sma) / (0.015 * mean_dev);
    }
 
    // Hybrid Pulse Calculation (MACD + DeltaForce)
