@@ -68,11 +68,11 @@ input double             InpScaleMin           = -100.0;         // [SCALE] Fixe
 input double             InpScaleMax           = 200.0;          // [SCALE] Fixed Max
 
 // MFI Settings
-input int                InpMFIPeriod          = 14;             // [MFI] Period
+input int                InpMFIPeriod          = 5;              // [MFI] Period
 
 // VROC Settings
 input bool               InpShowVROC           = true;           // [VROC] Show VROC?
-input int                InpVROCPeriod         = 10;             // [VROC] Period
+input int                InpVROCPeriod         = 5;              // [VROC] Period
 input double             InpVROCThreshold      = 20.0;           // [VROC] Alert Threshold %
 
 // Delta Settings

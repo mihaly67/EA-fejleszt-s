@@ -193,7 +193,9 @@ int OnInit()
 void OnDeinit(const int reason)
 {
    DestroyPanel();
-   CleanupChart();
+   // User Request: "teljesen tiszta csartot kérek" (Clean chart completely)
+   CleanupChart(); // This now does ObjectsDeleteAll(0, -1, -1) and removes indicators
+
    if(g_book_subscribed) MarketBookRelease(_Symbol);
 
    if(BlackBox) delete BlackBox;
@@ -284,19 +286,19 @@ void OnTick()
    double float_pl = GetFloatingPL();
 
    // Advanced Market Data (Book)
-   double bid_vol = 0;
-   double ask_vol = 0;
+   long bid_vol = 0;
+   long ask_vol = 0;
    if (g_book_subscribed) {
        MqlBookInfo book[];
        if (MarketBookGet(_Symbol, book)) {
            int size = ArraySize(book);
            for(int i=0; i<size; i++) {
-               if((book[i].type == BOOK_TYPE_SELL) && (book[i].price == SymbolInfo.Ask())) ask_vol += (double)book[i].volume;
-               if((book[i].type == BOOK_TYPE_BUY) && (book[i].price == SymbolInfo.Bid())) bid_vol += (double)book[i].volume;
+               if((book[i].type == BOOK_TYPE_SELL) && (book[i].price == SymbolInfo.Ask())) ask_vol += book[i].volume;
+               if((book[i].type == BOOK_TYPE_BUY) && (book[i].price == SymbolInfo.Bid())) bid_vol += book[i].volume;
            }
        }
    } else {
-       bid_vol = tick.volume; // Fallback
+       bid_vol = (long)tick.volume; // Fallback
    }
 
    string verdict = DetermineVerdict(p.velocity, float_pl);
@@ -312,7 +314,7 @@ void OnTick()
    BlackBox.RecordTick(
       g_last_action, 0, verdict,
       SymbolInfo.Bid(), SymbolInfo.Ask(), p.spread_avg,
-      (long)bid_vol, (long)ask_vol,
+      bid_vol, ask_vol,
       iOpen(_Symbol, _Period, 0), iHigh(_Symbol, _Period, 0), iLow(_Symbol, _Period, 0), iClose(_Symbol, _Period, 0),
       rsi, cci, p.velocity, p.acceleration,
       hybrid_macd, hybrid_dfcurve,
@@ -393,7 +395,7 @@ double GetFloatingPL() {
        if(PositionSelectByTicket(PositionGetTicket(i)))
        {
            if(PositionGetInteger(POSITION_MAGIC)==InpMagicNumber)
-               pl += PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP) + PositionGetDouble(POSITION_COMMISSION);
+               pl += PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP); // Commission removed (deprecated)
        }
     }
     return pl;
@@ -448,12 +450,23 @@ string DetermineVerdict(double velocity, double pl)
 
 void CleanupChart()
   {
-   ObjectsDeleteAll(0, Prefix);
-   int total = ObjectsTotal(0, -1, -1);
-   for(int i = total - 1; i >= 0; i--) {
-      string name = ObjectName(0, i);
-      if(StringFind(name, Prefix) == 0) // Only delete own objects
-         ObjectDelete(0, name);
+   // Aggressive cleanup as requested
+   ObjectsDeleteAll(0, -1, -1); // Delete ALL objects
+
+   // Remove Indicators aggressively to avoid stacking
+   int windows = (int)ChartGetInteger(0, CHART_WINDOWS_TOTAL);
+   for (int w = windows - 1; w >= 0; w--) {
+       int total = ChartIndicatorsTotal(0, w);
+       for (int i = total - 1; i >= 0; i--) {
+           string name = ChartIndicatorName(0, w, i);
+           // Delete if it looks like our indicators (Jules, Hybrid, Flow)
+           // Or just delete everything if it's a subwindow > 0?
+           // User said "ahányszor állitok annyi görbe van egymáson" -> Delete duplicates.
+           // Ideally, we delete *specific* indicators we added.
+           string nlow = name; StringToLower(nlow);
+           if (StringFind(nlow, "hybrid") >= 0 || StringFind(nlow, "pulse") >= 0 || StringFind(nlow, "flow") >= 0)
+               ChartIndicatorDelete(0, w, name);
+       }
    }
    ChartRedraw();
   }
