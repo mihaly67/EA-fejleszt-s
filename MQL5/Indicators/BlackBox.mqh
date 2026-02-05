@@ -109,6 +109,7 @@ public:
       );
 
       FileWrite(m_file_handle, row);
+      FileFlush(m_file_handle);
    }
 
    //-- Helpers for PL Calculation (To be called by Main EA)
