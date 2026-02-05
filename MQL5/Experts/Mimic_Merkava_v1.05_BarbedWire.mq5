@@ -167,7 +167,7 @@ int OnInit()
    NavSystem.AttachIndicatorsToChart(0, 1, 2);
 
    // 6. Initialize BlackBox
-   if(!BlackBox.Initialize(_Symbol, "v1.05_BarbedWire")) return INIT_FAILED;
+   if(!BlackBox.Initialize(_Symbol, "v1.05_BW_DirectCalc")) return INIT_FAILED;
 
    // 7. Initialize Forensic Polling
    if (HistorySelect(0, TimeCurrent())) {
@@ -278,6 +278,10 @@ void OnTick()
    double mfi, dup, ddown;
    NavSystem.GetBarbedWireFlow(mfi, dup, ddown);
 
+   // Reconstruct Net Delta from Split Logic (Center 50)
+   double net_delta = dup + ddown - 50.0;
+   double flow_roc = NavSystem.GetFlowROC();
+
    double rsi = NavSystem.GetRSI();
    double cci = NavSystem.GetCCI();
    double hybrid_macd = NavSystem.GetHybridMACD();
@@ -318,7 +322,7 @@ void OnTick()
       iOpen(_Symbol, _Period, 0), iHigh(_Symbol, _Period, 0), iLow(_Symbol, _Period, 0), iClose(_Symbol, _Period, 0),
       rsi, cci, p.velocity, p.acceleration,
       hybrid_macd, hybrid_dfcurve,
-      mfi, dup, ddown, // Mapping Barbed Wire Flow (DUp -> ROC slot, DDown -> Delta slot)
+      mfi, flow_roc, net_delta, // Fixed Mapping: MFI, ROC, NetDelta
       AccountInfoDouble(ACCOUNT_BALANCE), AccountInfoDouble(ACCOUNT_MARGIN), AccountInfoDouble(ACCOUNT_MARGIN_LEVEL),
       float_pl, g_last_realized_pl, g_session_realized_pl,
       PositionsTotal(), lot_dir, total_lots,
