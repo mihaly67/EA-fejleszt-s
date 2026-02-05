@@ -102,8 +102,8 @@ public:
        double h_macd_scale, int h_shift, double h_scale, bool h_auto, int h_lookback,
        // Flow Params
        string path_flow,
-       bool f_fixed, double f_min, double f_max, int f_mfi, bool f_vroc, int f_vroc_p,
-       double f_thresh, bool f_approx, int f_smooth, int f_norm, double f_scale_f, double f_vis
+       bool _f_fixed, double _f_min, double _f_max, int _f_mfi, bool _f_vroc, int _f_vroc_p,
+       double _f_thresh, bool _f_approx, int _f_smooth, int _f_norm, double _f_scale_f, double _f_vis
    )
    {
        m_use_real_indicators = true;
@@ -115,13 +115,13 @@ public:
        p_df_scale = h_scale;
        p_df_auto = h_auto; // Note: Auto-scaling in EA logic might be tricky without history. We might assume fixed or point-based.
 
-       f_mfi_period = f_mfi;
-       f_vroc_period = f_vroc_p; // Store VROC period
-       this->f_smooth = f_smooth; // Fix shadowing
-       f_norm_len = f_norm;
-       f_scale = f_scale_f;
-       f_vis_gain = f_vis;
-       this->f_approx = f_approx; // Fix shadowing
+       f_mfi_period = _f_mfi;
+       f_vroc_period = _f_vroc_p; // Store VROC period
+       f_smooth = _f_smooth;
+       f_norm_len = _f_norm;
+       f_scale = _f_scale_f;
+       f_vis_gain = _f_vis;
+       f_approx = _f_approx;
 
        // 2. Create Handles for VISUALIZATION ONLY
        // We do NOT use these handles for Getters anymore.
@@ -140,18 +140,18 @@ public:
        // Hybrid Flow Visual
        MqlParam params[13];
        params[0].type = TYPE_STRING; params[0].string_value = path_flow;
-       params[1].type = TYPE_BOOL;   params[1].integer_value = f_fixed;
-       params[2].type = TYPE_DOUBLE; params[2].double_value = f_min;
-       params[3].type = TYPE_DOUBLE; params[3].double_value = f_max;
-       params[4].type = TYPE_INT;    params[4].integer_value = f_mfi;
-       params[5].type = TYPE_BOOL;   params[5].integer_value = f_vroc;
-       params[6].type = TYPE_INT;    params[6].integer_value = f_vroc_p;
-       params[7].type = TYPE_DOUBLE; params[7].double_value = f_thresh;
-       params[8].type = TYPE_BOOL;   params[8].integer_value = f_approx;
-       params[9].type = TYPE_INT;    params[9].integer_value = f_smooth;
-       params[10].type = TYPE_INT;   params[10].integer_value = f_norm;
-       params[11].type = TYPE_DOUBLE; params[11].double_value = f_scale_f;
-       params[12].type = TYPE_DOUBLE; params[12].double_value = f_vis;
+       params[1].type = TYPE_BOOL;   params[1].integer_value = _f_fixed;
+       params[2].type = TYPE_DOUBLE; params[2].double_value = _f_min;
+       params[3].type = TYPE_DOUBLE; params[3].double_value = _f_max;
+       params[4].type = TYPE_INT;    params[4].integer_value = _f_mfi;
+       params[5].type = TYPE_BOOL;   params[5].integer_value = _f_vroc;
+       params[6].type = TYPE_INT;    params[6].integer_value = _f_vroc_p;
+       params[7].type = TYPE_DOUBLE; params[7].double_value = _f_thresh;
+       params[8].type = TYPE_BOOL;   params[8].integer_value = _f_approx;
+       params[9].type = TYPE_INT;    params[9].integer_value = _f_smooth;
+       params[10].type = TYPE_INT;   params[10].integer_value = _f_norm;
+       params[11].type = TYPE_DOUBLE; params[11].double_value = _f_scale_f;
+       params[12].type = TYPE_DOUBLE; params[12].double_value = _f_vis;
 
        m_handle_flow = IndicatorCreate(symbol, period, IND_CUSTOM, 13, params);
 
