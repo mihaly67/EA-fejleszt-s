@@ -321,7 +321,7 @@ void OnTick()
       tick.bid, tick.ask, p.spread_avg,
       bid_vol, ask_vol,
       iOpen(_Symbol, _Period, 0), iHigh(_Symbol, _Period, 0), iLow(_Symbol, _Period, 0), iClose(_Symbol, _Period, 0),
-      rsi, 0.0, p.velocity, p.acceleration, // CCI passed as 0.0
+      rsi, p.velocity, p.acceleration,
       hybrid_macd, hybrid_dfcurve,
       mfi, flow_roc, net_delta, // Fixed Mapping: MFI, ROC, NetDelta
       AccountInfoDouble(ACCOUNT_BALANCE), AccountInfoDouble(ACCOUNT_MARGIN), AccountInfoDouble(ACCOUNT_MARGIN_LEVEL),
