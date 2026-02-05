@@ -150,19 +150,18 @@ public:
    //-- Update Sensor Readings
    void Refresh(string symbol)
    {
-      // Ensure fresh data by clearing or checking result
-      if(CopyBuffer(m_handle_rsi, 0, 0, 3, m_rsi_buffer) < 3) Print("NavSystem: RSI Copy Failed");
-      if(CopyBuffer(m_handle_cci, 0, 0, 3, m_cci_buffer) < 3) Print("NavSystem: CCI Copy Failed");
+      CopyBuffer(m_handle_rsi, 0, 0, 3, m_rsi_buffer);
+      CopyBuffer(m_handle_cci, 0, 0, 3, m_cci_buffer);
 
       if(m_use_real_indicators) {
           // Barbed Wire Mode
-          if(CopyBuffer(m_handle_hybrid_macd, 0, 0, 3, m_hybrid_macd_buffer) < 3) Print("NavSystem: Hybrid MACD Copy Failed");
-          if(CopyBuffer(m_handle_hybrid_macd, 2, 0, 3, m_hybrid_dfcurve_buffer) < 3) Print("NavSystem: Hybrid DF Copy Failed");
+          CopyBuffer(m_handle_hybrid_macd, 0, 0, 3, m_hybrid_macd_buffer); // MACD
+          CopyBuffer(m_handle_hybrid_macd, 2, 0, 3, m_hybrid_dfcurve_buffer); // DFCurve (Buffer 2)
 
           // v1.125 Indices: 4 (MFI), 1 (DUp End), 3 (DDown End)
-          if(CopyBuffer(m_handle_flow, 4, 0, 3, m_flow_mfi_buffer) < 3) Print("NavSystem: Flow MFI Copy Failed");
-          if(CopyBuffer(m_handle_flow, 1, 0, 3, m_flow_dup_buffer) < 3) Print("NavSystem: Flow DUp Copy Failed");
-          if(CopyBuffer(m_handle_flow, 3, 0, 3, m_flow_ddown_buffer) < 3) Print("NavSystem: Flow DDown Copy Failed");
+          CopyBuffer(m_handle_flow, 4, 0, 3, m_flow_mfi_buffer); // MFI
+          CopyBuffer(m_handle_flow, 1, 0, 3, m_flow_dup_buffer); // Delta Up
+          CopyBuffer(m_handle_flow, 3, 0, 3, m_flow_ddown_buffer); // Delta Down
       } else {
           // Standard v1.04 Mode
           CopyBuffer(m_handle_hybrid_macd, 0, 0, 3, m_hybrid_macd_buffer);

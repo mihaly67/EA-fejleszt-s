@@ -152,6 +152,10 @@ int OnCalculate(const int rates_total,
 
    // Loop Limits
    int limit = rates_total - prev_calculated;
+
+   // Force update of current bar (Tick-by-Tick fix for EA/CSV)
+   if (prev_calculated > 0 && limit == 0) limit = 1;
+
    if (prev_calculated == 0)
    {
       limit = rates_total - 1;

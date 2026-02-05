@@ -202,6 +202,9 @@ int OnCalculate(const int rates_total,
 
    int start = (prev_calculated > 0) ? prev_calculated - 1 : 0;
 
+   // Force update of current bar (Tick-by-Tick fix for EA/CSV)
+   if (prev_calculated == rates_total && start < rates_total - 1) start = rates_total - 1;
+
    for(int i = start; i < rates_total; i++)
    {
        // 1. Calculate Raw Delta
