@@ -29,4 +29,4 @@ A következő session feladata a **közvetlen számítási logika** implementál
 *   `MQL5/Experts/Mimic_Merkava_v1.05_BarbedWire.mq5` (Tesztelés).
 
 **Cél:**
-A CSV minden sora egyedi, valós idejű számított értéket tartalmazzon a Hybrid indikátorokról is, szinkronban a tick ármozgással.
+A CSV minden sora egyedi, valós idejű számított értéket tartalmazzon a Hybrid indikátorokról is, szinkronban a tick ármozgással. Közben: user megfigyelése , 60 másodpercig ugyanaz az érték még CCI, RSI esetén is. Valószinú az 1 perces záró vagy nyitó értéke az. A Flow indikátornál 6 db számjegy csportot figyelt meg, gyanitása szerint 1 db ROC , a többi 4 az MFI és Delta. Ez utóbbi kettő olyan felbontásban hogy kölön van az 50 alatti és feletti érték mindkettő esetén. Ez lehet megváltoztatja részben a kutatás irányát. Flownál feleslegesnek tartja a 4 értéket Flow és delta mérésére. Tickenkénti értékirás kell nem nyitási vagy zárási érték másolásra , még iRSI és iCCI esetén is.
