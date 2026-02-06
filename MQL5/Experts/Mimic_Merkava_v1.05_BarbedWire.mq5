@@ -41,6 +41,8 @@ input double        InpChaosLevel        = 1.0;    // [Stealth] Jitter Intensity
 input int           InpLatencyMin        = 50;     // [Stealth] Latency Min (ms)
 input int           InpLatencyMax        = 300;    // [Stealth] Latency Max (ms)
 input int           InpMagicVariance     = 500;    // [Stealth] Magic Number Rotation Range
+input bool          InpActiveMorph       = true;   // [Stealth] Active Camouflage (Grid Drift)
+input double        InpMorphRange        = 10.0;   // [Stealth] Morph Range (Points)
 
 // [Jules Hybrid Momentum Pulse v1.04 Settings]
 input uint           Hybrid_InpPeriodFastEMA     =  3;
@@ -317,6 +319,24 @@ void OnTick()
    // Reconstruct Net Delta from Split Logic (Center 50)
    double net_delta = dup + ddown - 50.0;
    double flow_roc = NavSystem->GetFlowROC();
+
+   // --- Active Camouflage (Grid Morphing) ---
+   // Probabilistic Trigger (e.g. 5% chance per tick if Stealth is active)
+   if (InpUseStealth && InpActiveMorph)
+   {
+       if (MathRand() % 100 < 5) // 5% chance per tick
+       {
+           // Determine Asymmetry randomly
+           bool morph_buy = (MathRand() % 2 == 0);
+           bool morph_sell = (MathRand() % 2 == 0);
+
+           if(morph_buy || morph_sell) {
+               // Trigger Morph
+               FireControl->MorphGrid((tick.bid + tick.ask)/2.0, InpMorphRange, morph_buy, morph_sell);
+           }
+       }
+   }
+   // -----------------------------------------
 
    double rsi = NavSystem->GetRSI();
    // CCI removed as per user request
