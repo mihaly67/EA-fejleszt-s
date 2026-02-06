@@ -21,6 +21,9 @@ class StealthEngine
 {
 private:
    bool   m_initialized;
+   double m_chaos_level;
+   int    m_lat_min;
+   int    m_lat_max;
 
    // Box-Muller Transform for Gaussian Noise
    // Returns a standard normal deviate (mean=0, std=1)
@@ -43,10 +46,17 @@ public:
    StealthEngine()
    {
       m_initialized = false;
+      m_chaos_level = 1.0;
+      m_lat_min = 50;
+      m_lat_max = 200;
    }
 
-   void Initialize()
+   void Initialize(double chaos_level, int lat_min, int lat_max)
    {
+      m_chaos_level = chaos_level;
+      m_lat_min = lat_min;
+      m_lat_max = lat_max;
+
       // Seeding global generator
       MathSrand(GetTickCount());
       m_initialized = true;
@@ -72,7 +82,11 @@ public:
    // Inject a thread sleep (Use carefully in main loop!)
    void ApplyLatency(int min_ms, int max_ms)
    {
-      int delay = GetExecutionDelay(min_ms, max_ms);
+      // Use class members as primary configuration
+      int lower = (m_lat_min > 0) ? m_lat_min : min_ms;
+      int upper = (m_lat_max > 0) ? m_lat_max : max_ms;
+
+      int delay = GetExecutionDelay(lower, upper);
       if(delay > 0) Sleep(delay);
    }
 
@@ -96,6 +110,7 @@ public:
    // intensity: Deviation factor (e.g. 0.1 for 10% deviation)
    double GetJitterSpread(double base_spread, double intensity=0.15)
    {
+      intensity *= m_chaos_level; // Scale by User Config
       double noise = MathRandGaussian() * (base_spread * intensity);
       double res = base_spread + noise;
       if(res < 0) res = base_spread; // Safety
@@ -106,6 +121,7 @@ public:
    // Ensures that grid lines are not perfectly spaced
    double GetJitterStep(double base_step, double intensity=0.1)
    {
+      intensity *= m_chaos_level; // Scale by User Config
       double noise = MathRandGaussian() * (base_step * intensity);
       double res = base_step + noise;
       if(res < base_step * 0.5) res = base_step * 0.5; // Don't collapse too much
