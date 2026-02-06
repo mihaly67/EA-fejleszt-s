@@ -156,4 +156,48 @@ public:
    {
       return StringFormat("%I64u-%d", GetTickCount(), MathRand() % 1000);
    }
+
+   //------------------------------------------------------------------
+   // FINGERPRINT CHAOS (Metadata & Behavioral)
+   //------------------------------------------------------------------
+
+   // Decide whether to use Atomic (Immediate) SL/TP or Human (Delayed) mode
+   // Returns: 0 = Atomic, 1 = Human (Split)
+   int GetOrderMode()
+   {
+      // 30% chance of "Human" split execution to mix patterns
+      if ((MathRand() % 100) < 30) return 1;
+      return 0;
+   }
+
+   // Generate a disguised comment
+   string GetHumanizedComment(string prefix)
+   {
+      string comments[] = {"", " ", "mobile", "ios", "android", "web", "sl", "tp", "target"};
+      int r = MathRand() % 15; // Range larger than array to allow 'default'
+
+      if(r < ArraySize(comments)) return comments[r];
+
+      // Otherwise, use prefix + random hash
+      return prefix + "_" + IntegerToString(MathRand()%100);
+   }
+
+   // Randomize Order Expiration (Day vs Specified vs GTC)
+   // In MT5, GTC is default. We can mix it up.
+   void GetRandomExpiration(ENUM_ORDER_TYPE_TIME &out_type, datetime &out_time)
+   {
+      int r = MathRand() % 100;
+
+      if(r < 80) {
+         out_type = ORDER_TIME_GTC;
+         out_time = 0;
+      } else if (r < 95) {
+         out_type = ORDER_TIME_DAY;
+         out_time = 0;
+      } else {
+         out_type = ORDER_TIME_SPECIFIED;
+         // Expire in 24-48 hours randomly
+         out_time = TimeCurrent() + 86400 + (MathRand() % 86400);
+      }
+   }
 };
