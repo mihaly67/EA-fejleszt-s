@@ -34,6 +34,14 @@ input int           InpSlippage          = 10;     // [Risk] Slippage
 input ulong         InpMagicNumber       = 999004; // [Risk] Magic Number
 input string        InpComment           = "MerkavaWire"; // [Risk] Comment
 
+// [Stealth Systems (Advanced Chaos)]
+input group         "Stealth Systems";
+input bool          InpUseStealth        = true;   // [Stealth] Enable Chaos Engine
+input double        InpChaosLevel        = 1.0;    // [Stealth] Jitter Intensity (0.1 - 2.0)
+input int           InpLatencyMin        = 50;     // [Stealth] Latency Min (ms)
+input int           InpLatencyMax        = 300;    // [Stealth] Latency Max (ms)
+input int           InpMagicVariance     = 500;    // [Stealth] Magic Number Rotation Range
+
 // [Jules Hybrid Momentum Pulse v1.04 Settings]
 input uint           Hybrid_InpPeriodFastEMA     =  3;
 input uint           Hybrid_InpPeriodSlowEMA     =  6;
@@ -140,17 +148,25 @@ int OnInit()
    Trade       = new CTrade();
 
    // 2.1 Stealth Init (Identity Obfuscation)
-   Stealth->Initialize();
+   if(InpUseStealth)
+   {
+       Stealth->Initialize(InpChaosLevel, InpLatencyMin, InpLatencyMax);
 
-   // Check Global Variable for existing identity
-   string gvar_name = "Merkava_Identity_" + _Symbol;
-   if(GlobalVariableCheck(gvar_name)) {
-       g_actual_magic = (ulong)GlobalVariableGet(gvar_name);
-       PrintFormat("🕵️ STEALTH ENGINE: Resuming Identity. Magic %I64d", g_actual_magic);
-   } else {
-       g_actual_magic = Stealth->GetRotatedMagic(InpMagicNumber);
-       GlobalVariableSet(gvar_name, (double)g_actual_magic);
-       PrintFormat("🕵️ STEALTH ENGINE: New Identity Created. Magic %I64d -> %I64d", InpMagicNumber, g_actual_magic);
+       // Check Global Variable for existing identity
+       string gvar_name = "Merkava_Identity_" + _Symbol;
+       if(GlobalVariableCheck(gvar_name)) {
+           g_actual_magic = (ulong)GlobalVariableGet(gvar_name);
+           PrintFormat("🕵️ STEALTH ENGINE: Resuming Identity. Magic %I64d", g_actual_magic);
+       } else {
+           g_actual_magic = Stealth->GetRotatedMagic(InpMagicNumber, InpMagicVariance);
+           GlobalVariableSet(gvar_name, (double)g_actual_magic);
+           PrintFormat("🕵️ STEALTH ENGINE: New Identity Created. Magic %I64d -> %I64d", InpMagicNumber, g_actual_magic);
+       }
+   }
+   else
+   {
+       g_actual_magic = InpMagicNumber;
+       Print("🕵️ STEALTH ENGINE: DISABLED.");
    }
 
    // 3. Setup Trade & Symbol
@@ -166,7 +182,7 @@ int OnInit()
 
    // 4. Initialize FireControl
    FireControl->Init(Trade, &SymbolInfo, InpComment, g_actual_magic);
-   FireControl->SetStealth(Stealth);
+   if(InpUseStealth) FireControl->SetStealth(Stealth);
 
    // 5. Initialize NavSystem (Barbed Wire Mode)
    string path_hybrid = InpIndPath + "Jules_Hybrid_Momentum_Pulse_v1.04";
