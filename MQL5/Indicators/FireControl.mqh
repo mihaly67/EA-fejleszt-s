@@ -120,22 +120,37 @@ public:
          // Place Orders
          string comm = m_comment_prefix + "_L" + IntegerToString(i);
 
-         // --- TEMPORAL CHAOS (Latency Injection) ---
-         // Random delay before Buy
-         if(m_stealth != NULL) m_stealth->ApplyLatency(50, 150);
+         // ---------------------------------------------------------
+         // FINGERPRINT & TEMPORAL CHAOS (Advanced Obfuscation)
+         // ---------------------------------------------------------
+         ENUM_ORDER_TYPE_TIME type_time_b = ORDER_TIME_GTC;
+         datetime expiration_b = 0;
+         ENUM_ORDER_TYPE_TIME type_time_s = ORDER_TIME_GTC;
+         datetime expiration_s = 0;
 
-         if (m_trade.BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
-            PrintFormat("   ✅ Buy Limit L%d @ %.5f", i, buy_price);
+         if(m_stealth != NULL) {
+            // Randomize Comment
+            comm = m_stealth->GetHumanizedComment(m_comment_prefix);
+            // Randomize Expiration
+            m_stealth->GetRandomExpiration(type_time_b, expiration_b);
+            m_stealth->GetRandomExpiration(type_time_s, expiration_s);
+            // Inject Latency
+            m_stealth->ApplyLatency(50, 150);
+         }
+
+         // Execute Buy Limit
+         if (m_trade.OrderOpen(m_symbol_name, ORDER_TYPE_BUY_LIMIT, lot_size, 0.0, buy_price, 0, 0, type_time_b, expiration_b, comm)) {
+            PrintFormat("   ✅ Buy Limit L%d @ %.5f [Exp:%s]", i, buy_price, EnumToString(type_time_b));
          } else {
             PrintFormat("   ❌ Buy Limit L%d Failed: %d", i, GetLastError());
          }
 
-         // --- TEMPORAL CHAOS (Latency Injection) ---
-         // Random delay between Buy and Sell (Asymmetry in time)
+         // Asymmetric Latency
          if(m_stealth != NULL) m_stealth->ApplyLatency(80, 250);
 
-         if (m_trade.SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
-             PrintFormat("   ✅ Sell Limit L%d @ %.5f", i, sell_price);
+         // Execute Sell Limit
+         if (m_trade.OrderOpen(m_symbol_name, ORDER_TYPE_SELL_LIMIT, lot_size, 0.0, sell_price, 0, 0, type_time_s, expiration_s, comm)) {
+             PrintFormat("   ✅ Sell Limit L%d @ %.5f [Exp:%s]", i, sell_price, EnumToString(type_time_s));
          } else {
              PrintFormat("   ❌ Sell Limit L%d Failed: %d", i, GetLastError());
          }
