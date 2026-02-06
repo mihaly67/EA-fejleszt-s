@@ -16,6 +16,7 @@
 #include "../Indicators/NavSystem.mqh"
 #include "../Indicators/PhysicsEngine.mqh"
 #include "../Indicators/FireControl.mqh"
+#include "../Indicators/Stealth/StealthEngine.mqh"
 
 //--- Inputs
 // [Strategy Settings]
@@ -81,9 +82,11 @@ string            g_transaction_buffer = "";
 ulong             g_last_deal_ticket = 0;
 long              g_last_deal_time_msc = 0;
 double            g_user_lot_size = InpLotSize;
+ulong             g_actual_magic = 0; // Rotated Magic
 
 //--- Modules
 CMimicCamouflage  *Camouflage;
+StealthEngine     *Stealth;
 CMimicBlackBox    *BlackBox;
 CMimicNavSystem   *NavSystem;
 PhysicsEngine     *Physics;
@@ -129,16 +132,31 @@ int OnInit()
 
    // 2. Initialize Modules
    Camouflage  = new CMimicCamouflage();
+   Stealth     = new StealthEngine();
    BlackBox    = new CMimicBlackBox();
    NavSystem   = new CMimicNavSystem();
    Physics     = new PhysicsEngine(50);
    FireControl = new CFireControl();
    Trade       = new CTrade();
 
+   // 2.1 Stealth Init (Identity Obfuscation)
+   Stealth->Initialize();
+
+   // Check Global Variable for existing identity
+   string gvar_name = "Merkava_Identity_" + _Symbol;
+   if(GlobalVariableCheck(gvar_name)) {
+       g_actual_magic = (ulong)GlobalVariableGet(gvar_name);
+       PrintFormat("🕵️ STEALTH ENGINE: Resuming Identity. Magic %I64d", g_actual_magic);
+   } else {
+       g_actual_magic = Stealth->GetRotatedMagic(InpMagicNumber);
+       GlobalVariableSet(gvar_name, (double)g_actual_magic);
+       PrintFormat("🕵️ STEALTH ENGINE: New Identity Created. Magic %I64d -> %I64d", InpMagicNumber, g_actual_magic);
+   }
+
    // 3. Setup Trade & Symbol
-   Trade.SetExpertMagicNumber(InpMagicNumber);
-   Trade.SetMarginMode();
-   Trade.SetDeviationInPoints(InpSlippage);
+   Trade->SetExpertMagicNumber(g_actual_magic);
+   Trade->SetMarginMode();
+   Trade->SetDeviationInPoints(InpSlippage);
 
    if(!SymbolInfo.Name(_Symbol)) return INIT_FAILED;
    SymbolInfo.RefreshRates();
@@ -147,13 +165,14 @@ int OnInit()
    g_user_lot_size = InpLotSize;
 
    // 4. Initialize FireControl
-   FireControl.Init(Trade, &SymbolInfo, InpComment, InpMagicNumber);
+   FireControl->Init(Trade, &SymbolInfo, InpComment, g_actual_magic);
+   FireControl->SetStealth(Stealth);
 
    // 5. Initialize NavSystem (Barbed Wire Mode)
    string path_hybrid = InpIndPath + "Jules_Hybrid_Momentum_Pulse_v1.04";
    string path_flow = InpIndPath + "HybridFlowIndicator_v1.125";
 
-   if(!NavSystem.InitializeBarbedWire(
+   if(!NavSystem->InitializeBarbedWire(
        _Symbol, _Period,
        path_hybrid,
        Hybrid_InpPeriodFastEMA, Hybrid_InpPeriodSlowEMA, Hybrid_InpPeriodBB, Hybrid_InpDeviationBB, Hybrid_InpMethodBB,
@@ -164,10 +183,10 @@ int OnInit()
        Flow_InpVROCThreshold, Flow_InpUseApproxDelta, Flow_InpDeltaSmooth, Flow_InpNormalizationLen, Flow_InpDeltaScaleFactor, Flow_InpHistogramVisualGain
    )) return INIT_FAILED;
 
-   NavSystem.AttachIndicatorsToChart(0, 1, 2);
+   NavSystem->AttachIndicatorsToChart(0, 1, 2);
 
    // 6. Initialize BlackBox
-   if(!BlackBox.Initialize(_Symbol, "v1.05_BW_DirectCalc")) return INIT_FAILED;
+   if(!BlackBox->Initialize(_Symbol, "v1.05_BW_DirectCalc")) return INIT_FAILED;
 
    // 7. Initialize Forensic Polling
    if (HistorySelect(0, TimeCurrent())) {
@@ -201,6 +220,7 @@ void OnDeinit(const int reason)
    if(BlackBox) delete BlackBox;
    if(NavSystem) delete NavSystem;
    if(Camouflage) delete Camouflage;
+   if(Stealth) delete Stealth;
    if(Physics) delete Physics;
    if(FireControl) delete FireControl;
    if(Trade) delete Trade;
@@ -223,7 +243,7 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
          double center = (SymbolInfo.Ask() + SymbolInfo.Bid()) / 2.0;
 
          // Use Module
-         FireControl.FireBurst(center, g_user_lot_size, InpLayers, InpSpreadMultStart, InpSpreadMultStep, InpSafeZonePts);
+         FireControl->FireBurst(center, g_user_lot_size, InpLayers, InpSpreadMultStart, InpSpreadMultStep, InpSafeZonePts);
 
          g_last_action = "BURST_FIRED";
          g_decision_log += "Burst Fired L" + IntegerToString(InpLayers) + ";";
@@ -238,7 +258,7 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
          ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
 
          // Use Module
-         FireControl.CeaseFire();
+         FireControl->CeaseFire();
 
          g_last_action = "CEASE_FIRE";
          g_decision_log += "Cease Fire;";
@@ -266,26 +286,26 @@ void OnTick()
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol, tick)) return;
 
-   Physics.Update(tick);
-   PhysicsState p = Physics.GetState();
+   Physics->Update(tick);
+   PhysicsState p = Physics->GetState();
 
    SymbolInfo.RefreshRates();
-   NavSystem.Refresh(_Symbol);
+   NavSystem->Refresh(_Symbol);
 
    CheckForNewDeals(); // Polling for ActionDetails string
 
    // -- GATHER DATA FOR BLACKBOX --
    double mfi, dup, ddown;
-   NavSystem.GetBarbedWireFlow(mfi, dup, ddown);
+   NavSystem->GetBarbedWireFlow(mfi, dup, ddown);
 
    // Reconstruct Net Delta from Split Logic (Center 50)
    double net_delta = dup + ddown - 50.0;
-   double flow_roc = NavSystem.GetFlowROC();
+   double flow_roc = NavSystem->GetFlowROC();
 
-   double rsi = NavSystem.GetRSI();
+   double rsi = NavSystem->GetRSI();
    // CCI removed as per user request
-   double hybrid_macd = NavSystem.GetHybridMACD();
-   double hybrid_dfcurve = NavSystem.GetPulse();
+   double hybrid_macd = NavSystem->GetHybridMACD();
+   double hybrid_dfcurve = NavSystem->GetPulse();
 
    double float_pl = GetFloatingPL();
 
@@ -316,7 +336,7 @@ void OnTick()
 
    // -- LOG --
    // Use 'tick' directly for Bid/Ask to avoid any SymbolInfo cache lag
-   BlackBox.RecordTick(
+   BlackBox->RecordTick(
       g_last_action, 0, verdict,
       tick.bid, tick.ask, p.spread_avg,
       bid_vol, ask_vol,
@@ -399,7 +419,7 @@ double GetFloatingPL() {
     for(int i=PositionsTotal()-1; i>=0; i--) {
        if(PositionSelectByTicket(PositionGetTicket(i)))
        {
-           if(PositionGetInteger(POSITION_MAGIC)==InpMagicNumber)
+           if(PositionGetInteger(POSITION_MAGIC)==g_actual_magic)
                pl += PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP); // Commission removed (deprecated)
        }
     }
@@ -412,7 +432,7 @@ string GetNetLotDirection(double &total_lots)
     total_lots = 0.0;
     for(int i=PositionsTotal()-1; i>=0; i--) {
        if(PositionSelectByTicket(PositionGetTicket(i))) {
-           if(PositionGetInteger(POSITION_MAGIC)==InpMagicNumber) {
+           if(PositionGetInteger(POSITION_MAGIC)==g_actual_magic) {
                double vol = PositionGetDouble(POSITION_VOLUME);
                total_lots += vol;
                if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) net_lots += vol;
@@ -432,7 +452,7 @@ string GetSLTPSnapshot()
     int count = 0;
     for(int i=PositionsTotal()-1; i>=0; i--) {
        if(PositionSelectByTicket(PositionGetTicket(i))) {
-           if(PositionGetInteger(POSITION_MAGIC)==InpMagicNumber) {
+           if(PositionGetInteger(POSITION_MAGIC)==g_actual_magic) {
                if(count > 0) s += "|";
                string type = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) ? "B" : "S";
                s += type + ":" + DoubleToString(PositionGetDouble(POSITION_SL), _Digits) + "/" + DoubleToString(PositionGetDouble(POSITION_TP), _Digits);
