@@ -8,6 +8,7 @@
 
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
+#include "Stealth/StealthEngine.mqh"
 
 //+------------------------------------------------------------------+
 //| Class CFireControl                                               |
@@ -18,6 +19,7 @@ class CFireControl
 private:
    CTrade      *m_trade;
    CSymbolInfo *m_symbol;
+   StealthEngine *m_stealth; // Optional Stealth Engine
    string      m_symbol_name;
    double      m_point;
    int         m_digits;
@@ -25,7 +27,7 @@ private:
    ulong       m_magic;
 
 public:
-   CFireControl() { m_trade = NULL; m_symbol = NULL; }
+   CFireControl() { m_trade = NULL; m_symbol = NULL; m_stealth = NULL; }
    ~CFireControl() {}
 
    void Init(CTrade *trade_ptr, CSymbolInfo *symbol_ptr, string comment, ulong magic)
@@ -37,6 +39,12 @@ public:
       m_digits = m_symbol.Digits();
       m_comment_prefix = comment;
       m_magic = magic;
+   }
+
+   // Inject Stealth Engine
+   void SetStealth(StealthEngine *stealth_ptr)
+   {
+      m_stealth = stealth_ptr;
    }
 
    //+------------------------------------------------------------------+
@@ -57,37 +65,77 @@ public:
 
       PrintFormat("🔥 FIRE BURST: Center=%.5f, Spread=%.1f pts, Layers=%d", center_price, spread/m_point, layers);
 
+      // --- Stealth Initialization ---
+      // Determine if we use Chaos or Linear logic
+      double buy_start_mult = spread_mult_start;
+      double sell_start_mult = spread_mult_start;
+      double buy_step = spread_mult_step;
+      double sell_step = spread_mult_step;
+
+      if(m_stealth != NULL)
+      {
+          // ASYMMETRY: Distinct Start and Step for Buy/Sell
+          // Jitter the Start Multiplier slightly
+          buy_start_mult = m_stealth->GetJitterSpread(spread_mult_start, 0.10);
+          sell_start_mult = m_stealth->GetJitterSpread(spread_mult_start, 0.10);
+
+          // Jitter the Step
+          m_stealth->GetAsymmetricParams(spread_mult_step, buy_step, sell_step);
+          PrintFormat("   🕵️ STEALTH ACTIVE: BuyStep=%.2f, SellStep=%.2f", buy_step, sell_step);
+      }
+      // -----------------------------
+
       for (int i = 1; i <= layers; i++)
       {
-         double current_mult = spread_mult_start + (i - 1) * spread_mult_step;
-         double dist = spread * current_mult;
+         // Distinct Distance Calculations
+         double buy_mult = buy_start_mult + (i - 1) * buy_step;
+         double sell_mult = sell_start_mult + (i - 1) * sell_step;
+
+         double dist_buy = spread * buy_mult;
+         double dist_sell = spread * sell_mult;
 
          // ENFORCE SAFETY (The Fix)
-         if (dist < min_safety) {
-             dist = min_safety + (i*10 * m_point); // Add small step to avoid stacking
+         if (dist_buy < min_safety) dist_buy = min_safety + (i*10 * m_point);
+         if (dist_sell < min_safety) dist_sell = min_safety + (i*10 * m_point);
+
+         // Stealth Price Jitter (Micro-offsets)
+         if(m_stealth != NULL) {
+             // Jitter the exact price point to avoid round numbers or exact spreads
+             // This applies logic AFTER the safety check, so we re-verify safety later implicitly
+             // But simpler: just add noise to the computed price.
          }
 
-         double buy_price = NormalizeDouble(center_price - dist, m_digits);
-         double sell_price = NormalizeDouble(center_price + dist, m_digits);
+         double buy_price = NormalizeDouble(center_price - dist_buy, m_digits);
+         double sell_price = NormalizeDouble(center_price + dist_sell, m_digits);
+
+         if(m_stealth != NULL) {
+            buy_price = NormalizeDouble(m_stealth->GetJitterPrice(buy_price, m_point), m_digits);
+            sell_price = NormalizeDouble(m_stealth->GetJitterPrice(sell_price, m_point), m_digits);
+         }
 
          // Double Check Logic (Validate against current Ask/Bid)
-         // BuyLimit must be below Ask - StopsLevel
          if (buy_price > m_symbol.Ask() - min_safety) buy_price = m_symbol.Ask() - min_safety - (i*m_point);
-
-         // SellLimit must be above Bid + StopsLevel
          if (sell_price < m_symbol.Bid() + min_safety) sell_price = m_symbol.Bid() + min_safety + (i*m_point);
 
          // Place Orders
          string comm = m_comment_prefix + "_L" + IntegerToString(i);
 
+         // --- TEMPORAL CHAOS (Latency Injection) ---
+         // Random delay before Buy
+         if(m_stealth != NULL) m_stealth->ApplyLatency(50, 150);
+
          if (m_trade.BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
-            PrintFormat("   ✅ Buy Limit L%d @ %.5f (Dist: %.1f pts)", i, buy_price, (center_price-buy_price)/m_point);
+            PrintFormat("   ✅ Buy Limit L%d @ %.5f", i, buy_price);
          } else {
             PrintFormat("   ❌ Buy Limit L%d Failed: %d", i, GetLastError());
          }
 
+         // --- TEMPORAL CHAOS (Latency Injection) ---
+         // Random delay between Buy and Sell (Asymmetry in time)
+         if(m_stealth != NULL) m_stealth->ApplyLatency(80, 250);
+
          if (m_trade.SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
-             PrintFormat("   ✅ Sell Limit L%d @ %.5f (Dist: %.1f pts)", i, sell_price, (sell_price-center_price)/m_point);
+             PrintFormat("   ✅ Sell Limit L%d @ %.5f", i, sell_price);
          } else {
              PrintFormat("   ❌ Sell Limit L%d Failed: %d", i, GetLastError());
          }
