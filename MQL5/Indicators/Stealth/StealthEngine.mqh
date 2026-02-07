@@ -8,7 +8,8 @@
 #property strict
 
 // Add Math library for M_PI and Math functions
-#include <Math\Math.mqh>
+// CORRECT PATH for MQL5 standard library
+#include <Math\Stat\Math.mqh>
 
 //+------------------------------------------------------------------+
 //| StealthEngine - The Core of "Total Chaos"                        |
