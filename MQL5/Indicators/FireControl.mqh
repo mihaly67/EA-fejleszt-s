@@ -8,7 +8,7 @@
 
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
-#include "Stealth/StealthEngine.mqh"
+#include "StealthEngine.mqh"
 
 //+------------------------------------------------------------------+
 //| Class CFireControl                                               |
@@ -243,7 +243,16 @@ public:
                if(m_stealth != NULL) m_stealth->ApplyLatency(20, 80);
 
                // Modify
-               if (m_trade.OrderModify(ticket, new_price, OrderGetDouble(ORDER_SL), OrderGetDouble(ORDER_TP), OrderGetInteger(ORDER_TYPE_TIME), OrderGetInteger(ORDER_TIME_EXPIRATION))) {
+               // FIXED: Added missing stoplimit parameter (0.0)
+               if (m_trade.OrderModify(
+                   ticket,
+                   new_price,
+                   OrderGetDouble(ORDER_SL),
+                   OrderGetDouble(ORDER_TP),
+                   (ENUM_ORDER_TYPE_TIME)OrderGetInteger(ORDER_TYPE_TIME),
+                   (datetime)OrderGetInteger(ORDER_TIME_EXPIRATION),
+                   0.0 // StopLimit
+               )) {
                    // Quiet success (spam reduction)
                }
            }
