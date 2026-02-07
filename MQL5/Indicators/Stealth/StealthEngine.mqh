@@ -7,6 +7,9 @@
 #property link      "https://github.com/MimicProject"
 #property strict
 
+// Add Math library for M_PI and Math functions
+#include <Math\Math.mqh>
+
 //+------------------------------------------------------------------+
 //| StealthEngine - The Core of "Total Chaos"                        |
 //| Implements advanced obfuscation:                                 |

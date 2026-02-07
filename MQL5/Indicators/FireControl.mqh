@@ -8,6 +8,12 @@
 
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
+
+// Forward declaration to help compiler resolve pointer types
+class StealthEngine;
+
+// Include the class definition
+// Flat structure as per user requirement (Indicators\Indicators)
 #include "StealthEngine.mqh"
 
 //+------------------------------------------------------------------+
