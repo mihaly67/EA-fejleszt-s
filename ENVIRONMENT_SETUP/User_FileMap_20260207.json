@@ -1,0 +1,4695 @@
+{
+  "timestamp": "2026-02-08 11:35:08",
+  "root_directory": "MQL5",
+  "structure": {
+    "experts.dat": {
+      "_type": "file",
+      "size": 124086,
+      "modified": "2026-02-08 11:25:55"
+    },
+    "Include": {
+      "_type": "dir",
+      "_content": {
+        "AccountInfo.mqh": {
+          "_type": "file",
+          "size": 18130,
+          "modified": "2026-02-08 11:25:56"
+        },
+        "StdLibErr.mqh": {
+          "_type": "file",
+          "size": 683,
+          "modified": "2026-02-08 11:25:56"
+        },
+        "Object.mqh": {
+          "_type": "file",
+          "size": 2036,
+          "modified": "2026-02-08 11:25:56"
+        },
+        "MovingAverages.mqh": {
+          "_type": "file",
+          "size": 10737,
+          "modified": "2026-02-08 11:25:56"
+        },
+        "VirtualKeys.mqh": {
+          "_type": "file",
+          "size": 5755,
+          "modified": "2026-02-08 11:25:56"
+        },
+        "Math": {
+          "_type": "dir",
+          "_content": {
+            "Alglib": {
+              "_type": "dir",
+              "_content": {
+                "alglib.mqh": {
+                  "_type": "file",
+                  "size": 2478270,
+                  "modified": "2026-02-08 11:26:56"
+                },
+                "optimization.mqh": {
+                  "_type": "file",
+                  "size": 2300652,
+                  "modified": "2026-02-08 11:27:01"
+                },
+                "arrayresize.mqh": {
+                  "_type": "file",
+                  "size": 4080,
+                  "modified": "2026-02-08 11:26:54"
+                },
+                "fasttransforms.mqh": {
+                  "_type": "file",
+                  "size": 94444,
+                  "modified": "2026-02-08 11:26:56"
+                },
+                "alglibinternal.mqh": {
+                  "_type": "file",
+                  "size": 593648,
+                  "modified": "2026-02-08 11:26:53"
+                },
+                "integration.mqh": {
+                  "_type": "file",
+                  "size": 119413,
+                  "modified": "2026-02-08 11:26:56"
+                },
+                "solvers.mqh": {
+                  "_type": "file",
+                  "size": 302159,
+                  "modified": "2026-02-08 11:26:59"
+                },
+                "bitconvert.mqh": {
+                  "_type": "file",
+                  "size": 13809,
+                  "modified": "2026-02-08 11:26:54"
+                },
+                "linalg.mqh": {
+                  "_type": "file",
+                  "size": 1490029,
+                  "modified": "2026-02-08 11:26:59"
+                },
+                "interpolation.mqh": {
+                  "_type": "file",
+                  "size": 1465208,
+                  "modified": "2026-02-08 11:26:58"
+                },
+                "dataanalysis.mqh": {
+                  "_type": "file",
+                  "size": 1151833,
+                  "modified": "2026-02-08 11:26:56"
+                },
+                "ap.mqh": {
+                  "_type": "file",
+                  "size": 92144,
+                  "modified": "2026-02-08 11:26:54"
+                },
+                "matrix.mqh": {
+                  "_type": "file",
+                  "size": 46475,
+                  "modified": "2026-02-08 11:26:58"
+                },
+                "alglibmisc.mqh": {
+                  "_type": "file",
+                  "size": 122283,
+                  "modified": "2026-02-08 11:26:54"
+                },
+                "diffequations.mqh": {
+                  "_type": "file",
+                  "size": 33183,
+                  "modified": "2026-02-08 11:26:56"
+                },
+                "delegatefunctions.mqh": {
+                  "_type": "file",
+                  "size": 21765,
+                  "modified": "2026-02-08 11:26:56"
+                },
+                "statistics.mqh": {
+                  "_type": "file",
+                  "size": 417177,
+                  "modified": "2026-02-08 11:27:00"
+                },
+                "specialfunctions.mqh": {
+                  "_type": "file",
+                  "size": 241208,
+                  "modified": "2026-02-08 11:27:00"
+                }
+              }
+            },
+            "Fuzzy": {
+              "_type": "dir",
+              "_content": {
+                "mamdanifuzzysystem.mqh": {
+                  "_type": "file",
+                  "size": 23075,
+                  "modified": "2026-02-08 11:27:02"
+                },
+                "fuzzyterm.mqh": {
+                  "_type": "file",
+                  "size": 3819,
+                  "modified": "2026-02-08 11:27:01"
+                },
+                "helper.mqh": {
+                  "_type": "file",
+                  "size": 7352,
+                  "modified": "2026-02-08 11:27:01"
+                },
+                "genericfuzzysystem.mqh": {
+                  "_type": "file",
+                  "size": 12170,
+                  "modified": "2026-02-08 11:27:01"
+                },
+                "sugenovariable.mqh": {
+                  "_type": "file",
+                  "size": 11248,
+                  "modified": "2026-02-08 11:27:02"
+                },
+                "inferencemethod.mqh": {
+                  "_type": "file",
+                  "size": 7238,
+                  "modified": "2026-02-08 11:27:01"
+                },
+                "fuzzyrule.mqh": {
+                  "_type": "file",
+                  "size": 18196,
+                  "modified": "2026-02-08 11:27:01"
+                },
+                "membershipfunction.mqh": {
+                  "_type": "file",
+                  "size": 44306,
+                  "modified": "2026-02-08 11:27:02"
+                },
+                "sugenofuzzysystem.mqh": {
+                  "_type": "file",
+                  "size": 13323,
+                  "modified": "2026-02-08 11:27:02"
+                },
+                "dictionary.mqh": {
+                  "_type": "file",
+                  "size": 9060,
+                  "modified": "2026-02-08 11:27:01"
+                },
+                "fuzzyvariable.mqh": {
+                  "_type": "file",
+                  "size": 5586,
+                  "modified": "2026-02-08 11:27:01"
+                },
+                "ruleparser.mqh": {
+                  "_type": "file",
+                  "size": 37389,
+                  "modified": "2026-02-08 11:27:02"
+                }
+              }
+            },
+            "Stat": {
+              "_type": "dir",
+              "_content": {
+                "Logistic.mqh": {
+                  "_type": "file",
+                  "size": 27860,
+                  "modified": "2026-02-08 11:27:03"
+                },
+                "Binomial.mqh": {
+                  "_type": "file",
+                  "size": 35728,
+                  "modified": "2026-02-08 11:27:02"
+                },
+                "Beta.mqh": {
+                  "_type": "file",
+                  "size": 33321,
+                  "modified": "2026-02-08 11:27:02"
+                },
+                "Exponential.mqh": {
+                  "_type": "file",
+                  "size": 24774,
+                  "modified": "2026-02-08 11:27:02"
+                },
+                "Weibull.mqh": {
+                  "_type": "file",
+                  "size": 27532,
+                  "modified": "2026-02-08 11:27:04"
+                },
+                "Poisson.mqh": {
+                  "_type": "file",
+                  "size": 32547,
+                  "modified": "2026-02-08 11:27:03"
+                },
+                "NegativeBinomial.mqh": {
+                  "_type": "file",
+                  "size": 29634,
+                  "modified": "2026-02-08 11:27:03"
+                },
+                "Hypergeometric.mqh": {
+                  "_type": "file",
+                  "size": 35334,
+                  "modified": "2026-02-08 11:27:03"
+                },
+                "Math.mqh": {
+                  "_type": "file",
+                  "size": 434790,
+                  "modified": "2026-02-08 11:27:03"
+                },
+                "Stat.mqh": {
+                  "_type": "file",
+                  "size": 1139,
+                  "modified": "2026-02-08 11:27:04"
+                },
+                "T.mqh": {
+                  "_type": "file",
+                  "size": 28548,
+                  "modified": "2026-02-08 11:27:04"
+                },
+                "Geometric.mqh": {
+                  "_type": "file",
+                  "size": 25490,
+                  "modified": "2026-02-08 11:27:03"
+                },
+                "F.mqh": {
+                  "_type": "file",
+                  "size": 27612,
+                  "modified": "2026-02-08 11:27:02"
+                },
+                "Cauchy.mqh": {
+                  "_type": "file",
+                  "size": 25520,
+                  "modified": "2026-02-08 11:27:02"
+                },
+                "Uniform.mqh": {
+                  "_type": "file",
+                  "size": 25659,
+                  "modified": "2026-02-08 11:27:04"
+                },
+                "NoncentralBeta.mqh": {
+                  "_type": "file",
+                  "size": 41195,
+                  "modified": "2026-02-08 11:27:03"
+                },
+                "ChiSquare.mqh": {
+                  "_type": "file",
+                  "size": 24891,
+                  "modified": "2026-02-08 11:27:02"
+                },
+                "Gamma.mqh": {
+                  "_type": "file",
+                  "size": 32373,
+                  "modified": "2026-02-08 11:27:03"
+                },
+                "NoncentralF.mqh": {
+                  "_type": "file",
+                  "size": 35826,
+                  "modified": "2026-02-08 11:27:03"
+                },
+                "Normal.mqh": {
+                  "_type": "file",
+                  "size": 40671,
+                  "modified": "2026-02-08 11:27:03"
+                },
+                "NoncentralChiSquare.mqh": {
+                  "_type": "file",
+                  "size": 37497,
+                  "modified": "2026-02-08 11:27:03"
+                },
+                "Lognormal.mqh": {
+                  "_type": "file",
+                  "size": 29245,
+                  "modified": "2026-02-08 11:27:03"
+                },
+                "NoncentralT.mqh": {
+                  "_type": "file",
+                  "size": 47734,
+                  "modified": "2026-02-08 11:27:03"
+                }
+              }
+            }
+          }
+        },
+        "Graphics": {
+          "_type": "dir",
+          "_content": {
+            "ColorGenerator.mqh": {
+              "_type": "file",
+              "size": 3120,
+              "modified": "2026-02-08 11:26:14"
+            },
+            "Axis.mqh": {
+              "_type": "file",
+              "size": 12581,
+              "modified": "2026-02-08 11:26:14"
+            },
+            "Graphic.mqh": {
+              "_type": "file",
+              "size": 173136,
+              "modified": "2026-02-08 11:26:14"
+            },
+            "Curve.mqh": {
+              "_type": "file",
+              "size": 22801,
+              "modified": "2026-02-08 11:26:14"
+            }
+          }
+        },
+        "Generic": {
+          "_type": "dir",
+          "_content": {
+            "LinkedList.mqh": {
+              "_type": "file",
+              "size": 21261,
+              "modified": "2026-02-08 11:26:13"
+            },
+            "ArrayList.mqh": {
+              "_type": "file",
+              "size": 50384,
+              "modified": "2026-02-08 11:26:13"
+            },
+            "HashSet.mqh": {
+              "_type": "file",
+              "size": 37086,
+              "modified": "2026-02-08 11:26:13"
+            },
+            "SortedMap.mqh": {
+              "_type": "file",
+              "size": 14431,
+              "modified": "2026-02-08 11:26:13"
+            },
+            "HashMap.mqh": {
+              "_type": "file",
+              "size": 25714,
+              "modified": "2026-02-08 11:26:13"
+            },
+            "RedBlackTree.mqh": {
+              "_type": "file",
+              "size": 74814,
+              "modified": "2026-02-08 11:26:13"
+            },
+            "Queue.mqh": {
+              "_type": "file",
+              "size": 29814,
+              "modified": "2026-02-08 11:26:13"
+            },
+            "Stack.mqh": {
+              "_type": "file",
+              "size": 8953,
+              "modified": "2026-02-08 11:26:13"
+            },
+            "SortedSet.mqh": {
+              "_type": "file",
+              "size": 25573,
+              "modified": "2026-02-08 11:26:13"
+            },
+            "Interfaces": {
+              "_type": "dir",
+              "_content": {
+                "IComparer.mqh": {
+                  "_type": "file",
+                  "size": 998,
+                  "modified": "2026-02-08 11:26:51"
+                },
+                "IEqualityComparer.mqh": {
+                  "_type": "file",
+                  "size": 1027,
+                  "modified": "2026-02-08 11:26:51"
+                },
+                "IMap.mqh": {
+                  "_type": "file",
+                  "size": 1391,
+                  "modified": "2026-02-08 11:26:51"
+                },
+                "ICollection.mqh": {
+                  "_type": "file",
+                  "size": 1142,
+                  "modified": "2026-02-08 11:26:50"
+                },
+                "IComparable.mqh": {
+                  "_type": "file",
+                  "size": 1057,
+                  "modified": "2026-02-08 11:26:50"
+                },
+                "ISet.mqh": {
+                  "_type": "file",
+                  "size": 2031,
+                  "modified": "2026-02-08 11:26:51"
+                },
+                "IList.mqh": {
+                  "_type": "file",
+                  "size": 1352,
+                  "modified": "2026-02-08 11:26:51"
+                },
+                "IEqualityComparable.mqh": {
+                  "_type": "file",
+                  "size": 1012,
+                  "modified": "2026-02-08 11:26:51"
+                }
+              }
+            },
+            "Internal": {
+              "_type": "dir",
+              "_content": {
+                "EqualFunction.mqh": {
+                  "_type": "file",
+                  "size": 1103,
+                  "modified": "2026-02-08 11:26:52"
+                },
+                "HashFunction.mqh": {
+                  "_type": "file",
+                  "size": 7249,
+                  "modified": "2026-02-08 11:26:52"
+                },
+                "DefaultEqualityComparer.mqh": {
+                  "_type": "file",
+                  "size": 1457,
+                  "modified": "2026-02-08 11:26:51"
+                },
+                "Introsort.mqh": {
+                  "_type": "file",
+                  "size": 8348,
+                  "modified": "2026-02-08 11:26:52"
+                },
+                "PrimeGenerator.mqh": {
+                  "_type": "file",
+                  "size": 3601,
+                  "modified": "2026-02-08 11:26:52"
+                },
+                "CompareFunction.mqh": {
+                  "_type": "file",
+                  "size": 7190,
+                  "modified": "2026-02-08 11:26:51"
+                },
+                "DefaultComparer.mqh": {
+                  "_type": "file",
+                  "size": 1253,
+                  "modified": "2026-02-08 11:26:51"
+                },
+                "ArrayFunction.mqh": {
+                  "_type": "file",
+                  "size": 4695,
+                  "modified": "2026-02-08 11:26:51"
+                }
+              }
+            }
+          }
+        },
+        "Strings": {
+          "_type": "dir",
+          "_content": {
+            "String.mqh": {
+              "_type": "file",
+              "size": 13847,
+              "modified": "2026-02-08 11:26:15"
+            }
+          }
+        },
+        "Controls": {
+          "_type": "dir",
+          "_content": {
+            "WndObj.mqh": {
+              "_type": "file",
+              "size": 10629,
+              "modified": "2026-02-08 11:26:11"
+            },
+            "Rect.mqh": {
+              "_type": "file",
+              "size": 11086,
+              "modified": "2026-02-08 11:26:11"
+            },
+            "DateDropList.mqh": {
+              "_type": "file",
+              "size": 15174,
+              "modified": "2026-02-08 11:26:10"
+            },
+            "Panel.mqh": {
+              "_type": "file",
+              "size": 5871,
+              "modified": "2026-02-08 11:26:11"
+            },
+            "CheckBox.mqh": {
+              "_type": "file",
+              "size": 7677,
+              "modified": "2026-02-08 11:26:10"
+            },
+            "Edit.mqh": {
+              "_type": "file",
+              "size": 8938,
+              "modified": "2026-02-08 11:26:10"
+            },
+            "BmpButton.mqh": {
+              "_type": "file",
+              "size": 11453,
+              "modified": "2026-02-08 11:26:10"
+            },
+            "Dialog.mqh": {
+              "_type": "file",
+              "size": 38884,
+              "modified": "2026-02-08 11:26:10"
+            },
+            "Button.mqh": {
+              "_type": "file",
+              "size": 6892,
+              "modified": "2026-02-08 11:26:10"
+            },
+            "Wnd.mqh": {
+              "_type": "file",
+              "size": 30356,
+              "modified": "2026-02-08 11:26:11"
+            },
+            "SpinEdit.mqh": {
+              "_type": "file",
+              "size": 10338,
+              "modified": "2026-02-08 11:26:11"
+            },
+            "Picture.mqh": {
+              "_type": "file",
+              "size": 5602,
+              "modified": "2026-02-08 11:26:11"
+            },
+            "ComboBox.mqh": {
+              "_type": "file",
+              "size": 13397,
+              "modified": "2026-02-08 11:26:10"
+            },
+            "WndClient.mqh": {
+              "_type": "file",
+              "size": 12237,
+              "modified": "2026-02-08 11:26:11"
+            },
+            "Scrolls.mqh": {
+              "_type": "file",
+              "size": 26735,
+              "modified": "2026-02-08 11:26:11"
+            },
+            "Defines.mqh": {
+              "_type": "file",
+              "size": 12589,
+              "modified": "2026-02-08 11:26:10"
+            },
+            "Label.mqh": {
+              "_type": "file",
+              "size": 4309,
+              "modified": "2026-02-08 11:26:10"
+            },
+            "RadioGroup.mqh": {
+              "_type": "file",
+              "size": 13558,
+              "modified": "2026-02-08 11:26:11"
+            },
+            "RadioButton.mqh": {
+              "_type": "file",
+              "size": 6989,
+              "modified": "2026-02-08 11:26:11"
+            },
+            "ListView.mqh": {
+              "_type": "file",
+              "size": 20099,
+              "modified": "2026-02-08 11:26:10"
+            },
+            "DatePicker.mqh": {
+              "_type": "file",
+              "size": 10702,
+              "modified": "2026-02-08 11:26:10"
+            },
+            "WndContainer.mqh": {
+              "_type": "file",
+              "size": 16382,
+              "modified": "2026-02-08 11:26:11"
+            },
+            "CheckGroup.mqh": {
+              "_type": "file",
+              "size": 14144,
+              "modified": "2026-02-08 11:26:10"
+            },
+            "res": {
+              "_type": "dir",
+              "_content": {
+                "RadioButtonOn.bmp": {
+                  "_type": "file",
+                  "size": 632,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "Left.bmp": {
+                  "_type": "file",
+                  "size": 824,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "RightTransp.bmp": {
+                  "_type": "file",
+                  "size": 1080,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "Down.bmp": {
+                  "_type": "file",
+                  "size": 824,
+                  "modified": "2026-02-08 11:26:46"
+                },
+                "ThumbHor.bmp": {
+                  "_type": "file",
+                  "size": 1144,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "CheckBoxOn.bmp": {
+                  "_type": "file",
+                  "size": 576,
+                  "modified": "2026-02-08 11:26:46"
+                },
+                "DateDropOff.bmp": {
+                  "_type": "file",
+                  "size": 2104,
+                  "modified": "2026-02-08 11:26:46"
+                },
+                "RadioButtonOff.bmp": {
+                  "_type": "file",
+                  "size": 632,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "LeftTransp.bmp": {
+                  "_type": "file",
+                  "size": 1080,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "ThumbVert.bmp": {
+                  "_type": "file",
+                  "size": 1112,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "SpinInc.bmp": {
+                  "_type": "file",
+                  "size": 568,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "DropOn.bmp": {
+                  "_type": "file",
+                  "size": 1080,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "DownTransp.bmp": {
+                  "_type": "file",
+                  "size": 1080,
+                  "modified": "2026-02-08 11:26:46"
+                },
+                "Up.bmp": {
+                  "_type": "file",
+                  "size": 824,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "DropOff.bmp": {
+                  "_type": "file",
+                  "size": 1080,
+                  "modified": "2026-02-08 11:26:46"
+                },
+                "UpTransp.bmp": {
+                  "_type": "file",
+                  "size": 1080,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "Turn.bmp": {
+                  "_type": "file",
+                  "size": 1080,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "Right.bmp": {
+                  "_type": "file",
+                  "size": 824,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "CheckBoxOff.bmp": {
+                  "_type": "file",
+                  "size": 576,
+                  "modified": "2026-02-08 11:26:46"
+                },
+                "SpinDec.bmp": {
+                  "_type": "file",
+                  "size": 568,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "Restore.bmp": {
+                  "_type": "file",
+                  "size": 1080,
+                  "modified": "2026-02-08 11:26:47"
+                },
+                "DateDropOn.bmp": {
+                  "_type": "file",
+                  "size": 2104,
+                  "modified": "2026-02-08 11:26:46"
+                },
+                "Close.bmp": {
+                  "_type": "file",
+                  "size": 1080,
+                  "modified": "2026-02-08 11:26:46"
+                }
+              }
+            }
+          }
+        },
+        "ChartObjects": {
+          "_type": "dir",
+          "_content": {
+            "ChartObjectsLines.mqh": {
+              "_type": "file",
+              "size": 15506,
+              "modified": "2026-02-08 11:26:09"
+            },
+            "ChartObjectsShapes.mqh": {
+              "_type": "file",
+              "size": 7288,
+              "modified": "2026-02-08 11:26:09"
+            },
+            "ChartObjectsArrows.mqh": {
+              "_type": "file",
+              "size": 23807,
+              "modified": "2026-02-08 11:26:09"
+            },
+            "ChartObjectsTxtControls.mqh": {
+              "_type": "file",
+              "size": 38305,
+              "modified": "2026-02-08 11:26:09"
+            },
+            "ChartObjectsBmpControls.mqh": {
+              "_type": "file",
+              "size": 21277,
+              "modified": "2026-02-08 11:26:09"
+            },
+            "ChartObjectSubChart.mqh": {
+              "_type": "file",
+              "size": 17330,
+              "modified": "2026-02-08 11:26:09"
+            },
+            "ChartObjectsChannels.mqh": {
+              "_type": "file",
+              "size": 11883,
+              "modified": "2026-02-08 11:26:09"
+            },
+            "ChartObject.mqh": {
+              "_type": "file",
+              "size": 41365,
+              "modified": "2026-02-08 11:26:09"
+            },
+            "ChartObjectsElliott.mqh": {
+              "_type": "file",
+              "size": 9567,
+              "modified": "2026-02-08 11:26:09"
+            },
+            "ChartObjectPanel.mqh": {
+              "_type": "file",
+              "size": 8273,
+              "modified": "2026-02-08 11:26:09"
+            },
+            "ChartObjectsGann.mqh": {
+              "_type": "file",
+              "size": 17095,
+              "modified": "2026-02-08 11:26:09"
+            },
+            "ChartObjectsFibo.mqh": {
+              "_type": "file",
+              "size": 17506,
+              "modified": "2026-02-08 11:26:09"
+            }
+          }
+        },
+        "OpenCL": {
+          "_type": "dir",
+          "_content": {
+            "OpenCL.mqh": {
+              "_type": "file",
+              "size": 28662,
+              "modified": "2026-02-08 11:26:15"
+            }
+          }
+        },
+        "Trade": {
+          "_type": "dir",
+          "_content": {
+            "SymbolInfo.mqh": {
+              "_type": "file",
+              "size": 35851,
+              "modified": "2026-02-08 11:26:16"
+            },
+            "AccountInfo.mqh": {
+              "_type": "file",
+              "size": 18130,
+              "modified": "2026-02-08 11:26:16"
+            },
+            "OrderInfo.mqh": {
+              "_type": "file",
+              "size": 22087,
+              "modified": "2026-02-08 11:26:16"
+            },
+            "TerminalInfo.mqh": {
+              "_type": "file",
+              "size": 10730,
+              "modified": "2026-02-08 11:26:16"
+            },
+            "PositionInfo.mqh": {
+              "_type": "file",
+              "size": 15820,
+              "modified": "2026-02-08 11:26:16"
+            },
+            "DealInfo.mqh": {
+              "_type": "file",
+              "size": 16313,
+              "modified": "2026-02-08 11:26:16"
+            },
+            "HistoryOrderInfo.mqh": {
+              "_type": "file",
+              "size": 20018,
+              "modified": "2026-02-08 11:26:16"
+            },
+            "Trade.mqh": {
+              "_type": "file",
+              "size": 69541,
+              "modified": "2026-02-08 11:26:16"
+            }
+          }
+        },
+        "Charts": {
+          "_type": "dir",
+          "_content": {
+            "Chart.mqh": {
+              "_type": "file",
+              "size": 63640,
+              "modified": "2026-02-08 11:26:10"
+            }
+          }
+        },
+        "Expert": {
+          "_type": "dir",
+          "_content": {
+            "ExpertTrade.mqh": {
+              "_type": "file",
+              "size": 6502,
+              "modified": "2026-02-08 11:26:12"
+            },
+            "Expert.mqh": {
+              "_type": "file",
+              "size": 122604,
+              "modified": "2026-02-08 11:26:12"
+            },
+            "ExpertSignal.mqh": {
+              "_type": "file",
+              "size": 20246,
+              "modified": "2026-02-08 11:26:12"
+            },
+            "ExpertBase.mqh": {
+              "_type": "file",
+              "size": 27603,
+              "modified": "2026-02-08 11:26:12"
+            },
+            "ExpertMoney.mqh": {
+              "_type": "file",
+              "size": 4963,
+              "modified": "2026-02-08 11:26:12"
+            },
+            "ExpertTrailing.mqh": {
+              "_type": "file",
+              "size": 1738,
+              "modified": "2026-02-08 11:26:12"
+            },
+            "Money": {
+              "_type": "dir",
+              "_content": {
+                "MoneyFixedRisk.mqh": {
+                  "_type": "file",
+                  "size": 4454,
+                  "modified": "2026-02-08 11:26:48"
+                },
+                "MoneyFixedLot.mqh": {
+                  "_type": "file",
+                  "size": 3531,
+                  "modified": "2026-02-08 11:26:48"
+                },
+                "MoneySizeOptimized.mqh": {
+                  "_type": "file",
+                  "size": 6231,
+                  "modified": "2026-02-08 11:26:48"
+                },
+                "MoneyFixedMargin.mqh": {
+                  "_type": "file",
+                  "size": 3619,
+                  "modified": "2026-02-08 11:26:48"
+                },
+                "MoneyNone.mqh": {
+                  "_type": "file",
+                  "size": 3356,
+                  "modified": "2026-02-08 11:26:48"
+                }
+              }
+            },
+            "Signal": {
+              "_type": "dir",
+              "_content": {
+                "SignalDeMarker.mqh": {
+                  "_type": "file",
+                  "size": 17303,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalITF.mqh": {
+                  "_type": "file",
+                  "size": 4646,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalMA.mqh": {
+                  "_type": "file",
+                  "size": 12007,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalTRIX.mqh": {
+                  "_type": "file",
+                  "size": 18103,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalSAR.mqh": {
+                  "_type": "file",
+                  "size": 7834,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalRVI.mqh": {
+                  "_type": "file",
+                  "size": 8156,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalTEMA.mqh": {
+                  "_type": "file",
+                  "size": 11732,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalDEMA.mqh": {
+                  "_type": "file",
+                  "size": 11738,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalRSI.mqh": {
+                  "_type": "file",
+                  "size": 18757,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalFrAMA.mqh": {
+                  "_type": "file",
+                  "size": 11764,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalAO.mqh": {
+                  "_type": "file",
+                  "size": 13681,
+                  "modified": "2026-02-08 11:26:48"
+                },
+                "SignalAMA.mqh": {
+                  "_type": "file",
+                  "size": 12351,
+                  "modified": "2026-02-08 11:26:48"
+                },
+                "SignalBearsPower.mqh": {
+                  "_type": "file",
+                  "size": 11971,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalEnvelopes.mqh": {
+                  "_type": "file",
+                  "size": 9652,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalWPR.mqh": {
+                  "_type": "file",
+                  "size": 16579,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalAC.mqh": {
+                  "_type": "file",
+                  "size": 7678,
+                  "modified": "2026-02-08 11:26:48"
+                },
+                "SignalCCI.mqh": {
+                  "_type": "file",
+                  "size": 17541,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalMACD.mqh": {
+                  "_type": "file",
+                  "size": 19863,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalStoch.mqh": {
+                  "_type": "file",
+                  "size": 20197,
+                  "modified": "2026-02-08 11:26:49"
+                },
+                "SignalBullsPower.mqh": {
+                  "_type": "file",
+                  "size": 11979,
+                  "modified": "2026-02-08 11:26:49"
+                }
+              }
+            },
+            "Trailing": {
+              "_type": "dir",
+              "_content": {
+                "TrailingMA.mqh": {
+                  "_type": "file",
+                  "size": 6725,
+                  "modified": "2026-02-08 11:26:50"
+                },
+                "TrailingFixedPips.mqh": {
+                  "_type": "file",
+                  "size": 5639,
+                  "modified": "2026-02-08 11:26:50"
+                },
+                "TrailingNone.mqh": {
+                  "_type": "file",
+                  "size": 2139,
+                  "modified": "2026-02-08 11:26:50"
+                },
+                "TrailingParabolicSAR.mqh": {
+                  "_type": "file",
+                  "size": 5527,
+                  "modified": "2026-02-08 11:26:50"
+                }
+              }
+            }
+          }
+        },
+        "Tools": {
+          "_type": "dir",
+          "_content": {
+            "DateTime.mqh": {
+              "_type": "file",
+              "size": 17883,
+              "modified": "2026-02-08 11:26:16"
+            }
+          }
+        },
+        "Canvas": {
+          "_type": "dir",
+          "_content": {
+            "Canvas.mqh": {
+              "_type": "file",
+              "size": 156459,
+              "modified": "2026-02-08 11:26:08"
+            },
+            "FlameCanvas.mqh": {
+              "_type": "file",
+              "size": 27042,
+              "modified": "2026-02-08 11:26:08"
+            },
+            "Canvas3D.mqh": {
+              "_type": "file",
+              "size": 34652,
+              "modified": "2026-02-08 11:26:08"
+            },
+            "DX": {
+              "_type": "dir",
+              "_content": {
+                "DXMesh.mqh": {
+                  "_type": "file",
+                  "size": 15738,
+                  "modified": "2026-02-08 11:26:45"
+                },
+                "DXTexture.mqh": {
+                  "_type": "file",
+                  "size": 6890,
+                  "modified": "2026-02-08 11:26:46"
+                },
+                "DXUtils.mqh": {
+                  "_type": "file",
+                  "size": 36695,
+                  "modified": "2026-02-08 11:26:46"
+                },
+                "DXObject.mqh": {
+                  "_type": "file",
+                  "size": 1744,
+                  "modified": "2026-02-08 11:26:45"
+                },
+                "DXBox.mqh": {
+                  "_type": "file",
+                  "size": 3208,
+                  "modified": "2026-02-08 11:26:45"
+                },
+                "DXHandle.mqh": {
+                  "_type": "file",
+                  "size": 8568,
+                  "modified": "2026-02-08 11:26:45"
+                },
+                "DXMath.mqh": {
+                  "_type": "file",
+                  "size": 155150,
+                  "modified": "2026-02-08 11:26:45"
+                },
+                "DXInput.mqh": {
+                  "_type": "file",
+                  "size": 4968,
+                  "modified": "2026-02-08 11:26:45"
+                },
+                "DXShader.mqh": {
+                  "_type": "file",
+                  "size": 16984,
+                  "modified": "2026-02-08 11:26:46"
+                },
+                "DXSurface.mqh": {
+                  "_type": "file",
+                  "size": 6405,
+                  "modified": "2026-02-08 11:26:46"
+                },
+                "DXBuffers.mqh": {
+                  "_type": "file",
+                  "size": 4354,
+                  "modified": "2026-02-08 11:26:45"
+                },
+                "DXData.mqh": {
+                  "_type": "file",
+                  "size": 4048,
+                  "modified": "2026-02-08 11:26:45"
+                },
+                "DXObjectBase.mqh": {
+                  "_type": "file",
+                  "size": 2106,
+                  "modified": "2026-02-08 11:26:45"
+                },
+                "DXDispatcher.mqh": {
+                  "_type": "file",
+                  "size": 13160,
+                  "modified": "2026-02-08 11:26:45"
+                },
+                "Shaders": {
+                  "_type": "dir",
+                  "_content": {
+                    "DefaultShaderVertex.hlsl": {
+                      "_type": "file",
+                      "size": 2805,
+                      "modified": "2026-02-08 11:27:19"
+                    },
+                    "DefaultShaderPixel.hlsl": {
+                      "_type": "file",
+                      "size": 3307,
+                      "modified": "2026-02-08 11:27:19"
+                    }
+                  }
+                }
+              }
+            },
+            "Charts": {
+              "_type": "dir",
+              "_content": {
+                "HistogramChart.mqh": {
+                  "_type": "file",
+                  "size": 11932,
+                  "modified": "2026-02-08 11:26:44"
+                },
+                "PieChart.mqh": {
+                  "_type": "file",
+                  "size": 13713,
+                  "modified": "2026-02-08 11:26:44"
+                },
+                "ChartCanvas.mqh": {
+                  "_type": "file",
+                  "size": 36139,
+                  "modified": "2026-02-08 11:26:44"
+                },
+                "LineChart.mqh": {
+                  "_type": "file",
+                  "size": 12605,
+                  "modified": "2026-02-08 11:26:44"
+                }
+              }
+            }
+          }
+        },
+        "Indicators": {
+          "_type": "dir",
+          "_content": {
+            "Oscilators.mqh": {
+              "_type": "file",
+              "size": 73859,
+              "modified": "2026-02-08 11:26:15"
+            },
+            "Custom.mqh": {
+              "_type": "file",
+              "size": 8168,
+              "modified": "2026-02-08 11:26:14"
+            },
+            "Indicator.mqh": {
+              "_type": "file",
+              "size": 19825,
+              "modified": "2026-02-08 11:26:15"
+            },
+            "Volumes.mqh": {
+              "_type": "file",
+              "size": 17740,
+              "modified": "2026-02-08 11:26:15"
+            },
+            "TimeSeries.mqh": {
+              "_type": "file",
+              "size": 63360,
+              "modified": "2026-02-08 11:26:15"
+            },
+            "Series.mqh": {
+              "_type": "file",
+              "size": 12629,
+              "modified": "2026-02-08 11:26:15"
+            },
+            "Indicators.mqh": {
+              "_type": "file",
+              "size": 12252,
+              "modified": "2026-02-08 11:26:15"
+            },
+            "BillWilliams.mqh": {
+              "_type": "file",
+              "size": 33009,
+              "modified": "2026-02-08 11:26:14"
+            },
+            "Trend.mqh": {
+              "_type": "file",
+              "size": 73766,
+              "modified": "2026-02-08 11:26:15"
+            }
+          }
+        },
+        "Files": {
+          "_type": "dir",
+          "_content": {
+            "FilePipe.mqh": {
+              "_type": "file",
+              "size": 12879,
+              "modified": "2026-02-08 11:26:12"
+            },
+            "FileBin.mqh": {
+              "_type": "file",
+              "size": 20944,
+              "modified": "2026-02-08 11:26:12"
+            },
+            "File.mqh": {
+              "_type": "file",
+              "size": 12206,
+              "modified": "2026-02-08 11:26:12"
+            },
+            "FileTxt.mqh": {
+              "_type": "file",
+              "size": 2825,
+              "modified": "2026-02-08 11:26:12"
+            },
+            "FileBMP.mqh": {
+              "_type": "file",
+              "size": 6995,
+              "modified": "2026-02-08 11:26:12"
+            }
+          }
+        },
+        "Arrays": {
+          "_type": "dir",
+          "_content": {
+            "Array.mqh": {
+              "_type": "file",
+              "size": 6965,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "TreeNode.mqh": {
+              "_type": "file",
+              "size": 6801,
+              "modified": "2026-02-08 11:26:08"
+            },
+            "ArrayUChar.mqh": {
+              "_type": "file",
+              "size": 24915,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "ArrayUShort.mqh": {
+              "_type": "file",
+              "size": 25009,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "ArrayUInt.mqh": {
+              "_type": "file",
+              "size": 24792,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "ArrayLong.mqh": {
+              "_type": "file",
+              "size": 24776,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "ArrayDatetime.mqh": {
+              "_type": "file",
+              "size": 25106,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "ArrayChar.mqh": {
+              "_type": "file",
+              "size": 24826,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "ArrayString.mqh": {
+              "_type": "file",
+              "size": 25106,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "List.mqh": {
+              "_type": "file",
+              "size": 21080,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "ArrayULong.mqh": {
+              "_type": "file",
+              "size": 24865,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "ArrayShort.mqh": {
+              "_type": "file",
+              "size": 24921,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "ArrayFloat.mqh": {
+              "_type": "file",
+              "size": 25358,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "Tree.mqh": {
+              "_type": "file",
+              "size": 14241,
+              "modified": "2026-02-08 11:26:08"
+            },
+            "ArrayObj.mqh": {
+              "_type": "file",
+              "size": 25319,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "ArrayColor.mqh": {
+              "_type": "file",
+              "size": 24841,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "ArrayInt.mqh": {
+              "_type": "file",
+              "size": 24704,
+              "modified": "2026-02-08 11:26:07"
+            },
+            "ArrayDouble.mqh": {
+              "_type": "file",
+              "size": 25433,
+              "modified": "2026-02-08 11:26:07"
+            }
+          }
+        },
+        "WinAPI": {
+          "_type": "dir",
+          "_content": {
+            "winnt.mqh": {
+              "_type": "file",
+              "size": 97680,
+              "modified": "2026-02-08 11:26:18"
+            },
+            "fileapi.mqh": {
+              "_type": "file",
+              "size": 9487,
+              "modified": "2026-02-08 11:26:17"
+            },
+            "winbase.mqh": {
+              "_type": "file",
+              "size": 44329,
+              "modified": "2026-02-08 11:26:17"
+            },
+            "libloaderapi.mqh": {
+              "_type": "file",
+              "size": 2952,
+              "modified": "2026-02-08 11:26:17"
+            },
+            "windef.mqh": {
+              "_type": "file",
+              "size": 8839,
+              "modified": "2026-02-08 11:26:17"
+            },
+            "winuser.mqh": {
+              "_type": "file",
+              "size": 82945,
+              "modified": "2026-02-08 11:26:18"
+            },
+            "wingdi.mqh": {
+              "_type": "file",
+              "size": 64995,
+              "modified": "2026-02-08 11:26:18"
+            },
+            "securitybaseapi.mqh": {
+              "_type": "file",
+              "size": 16588,
+              "modified": "2026-02-08 11:26:17"
+            },
+            "winapi.mqh": {
+              "_type": "file",
+              "size": 827,
+              "modified": "2026-02-08 11:26:17"
+            },
+            "sysinfoapi.mqh": {
+              "_type": "file",
+              "size": 4827,
+              "modified": "2026-02-08 11:26:17"
+            },
+            "winreg.mqh": {
+              "_type": "file",
+              "size": 6133,
+              "modified": "2026-02-08 11:26:18"
+            },
+            "processthreadsapi.mqh": {
+              "_type": "file",
+              "size": 10250,
+              "modified": "2026-02-08 11:26:17"
+            },
+            "handleapi.mqh": {
+              "_type": "file",
+              "size": 1165,
+              "modified": "2026-02-08 11:26:17"
+            },
+            "errhandlingapi.mqh": {
+              "_type": "file",
+              "size": 1933,
+              "modified": "2026-02-08 11:26:17"
+            },
+            "memoryapi.mqh": {
+              "_type": "file",
+              "size": 5838,
+              "modified": "2026-02-08 11:26:17"
+            },
+            "processenv.mqh": {
+              "_type": "file",
+              "size": 1589,
+              "modified": "2026-02-08 11:26:17"
+            }
+          }
+        }
+      }
+    },
+    "Scripts": {
+      "_type": "dir",
+      "_content": {
+        "Chart_Designer_Tool_v2.03.mq5": {
+          "_type": "file",
+          "size": 14324,
+          "modified": "2026-02-08 11:25:58"
+        },
+        "Configure_Chart_Template.ex5": {
+          "_type": "file",
+          "size": 10364,
+          "modified": "2026-02-08 11:25:58"
+        },
+        "Configure_Chart_Template.mq5": {
+          "_type": "file",
+          "size": 4382,
+          "modified": "2026-02-08 11:25:58"
+        },
+        "Chart_Designer_Tool_v2.03.ex5": {
+          "_type": "file",
+          "size": 94056,
+          "modified": "2026-02-08 11:25:58"
+        },
+        "UnitTests": {
+          "_type": "dir",
+          "_content": {
+            "Alglib": {
+              "_type": "dir",
+              "_content": {
+                "TestClasses.mqh": {
+                  "_type": "file",
+                  "size": 3105290,
+                  "modified": "2026-02-08 11:27:16"
+                },
+                "TestInterfaces.mqh": {
+                  "_type": "file",
+                  "size": 695999,
+                  "modified": "2026-02-08 11:27:15"
+                },
+                "TestClasses.mq5": {
+                  "_type": "file",
+                  "size": 31148,
+                  "modified": "2026-02-08 11:27:13"
+                },
+                "TestInterfaces.mq5": {
+                  "_type": "file",
+                  "size": 17911,
+                  "modified": "2026-02-08 11:27:13"
+                }
+              }
+            },
+            "Generic": {
+              "_type": "dir",
+              "_content": {
+                "TestArrayList.mq5": {
+                  "_type": "file",
+                  "size": 34226,
+                  "modified": "2026-02-08 11:27:16"
+                },
+                "TestQueue.mq5": {
+                  "_type": "file",
+                  "size": 8756,
+                  "modified": "2026-02-08 11:27:17"
+                },
+                "TestSortedSet.mq5": {
+                  "_type": "file",
+                  "size": 5426,
+                  "modified": "2026-02-08 11:27:17"
+                },
+                "TestLinkedList.mq5": {
+                  "_type": "file",
+                  "size": 62465,
+                  "modified": "2026-02-08 11:27:17"
+                },
+                "TestHashSet.mq5": {
+                  "_type": "file",
+                  "size": 5013,
+                  "modified": "2026-02-08 11:27:17"
+                },
+                "TestRedBlackTree.mq5": {
+                  "_type": "file",
+                  "size": 12001,
+                  "modified": "2026-02-08 11:27:17"
+                },
+                "TestStack.mq5": {
+                  "_type": "file",
+                  "size": 8752,
+                  "modified": "2026-02-08 11:27:17"
+                },
+                "TestHashMap.mq5": {
+                  "_type": "file",
+                  "size": 6302,
+                  "modified": "2026-02-08 11:27:17"
+                },
+                "TestSortedMap.mq5": {
+                  "_type": "file",
+                  "size": 6443,
+                  "modified": "2026-02-08 11:27:17"
+                }
+              }
+            },
+            "Fuzzy": {
+              "_type": "dir",
+              "_content": {
+                "TestFuzzy.mq5": {
+                  "_type": "file",
+                  "size": 27020,
+                  "modified": "2026-02-08 11:27:16"
+                }
+              }
+            },
+            "Stat": {
+              "_type": "dir",
+              "_content": {
+                "TestStatBenchmark.mq5": {
+                  "_type": "file",
+                  "size": 58178,
+                  "modified": "2026-02-08 11:27:18"
+                },
+                "TestStatPrecision.mq5": {
+                  "_type": "file",
+                  "size": 16162,
+                  "modified": "2026-02-08 11:27:18"
+                },
+                "TestStat.mq5": {
+                  "_type": "file",
+                  "size": 216091,
+                  "modified": "2026-02-08 11:27:18"
+                }
+              }
+            }
+          }
+        },
+        "Examples": {
+          "_type": "dir",
+          "_content": {
+            "OrderInfo": {
+              "_type": "dir",
+              "_content": {
+                "OrderInfoSample.ex5": {
+                  "_type": "file",
+                  "size": 26630,
+                  "modified": "2026-02-08 11:27:11"
+                },
+                "OrderInfoSampleInit.mqh": {
+                  "_type": "file",
+                  "size": 931,
+                  "modified": "2026-02-08 11:27:11"
+                },
+                "OrderInfoSample.mq5": {
+                  "_type": "file",
+                  "size": 7459,
+                  "modified": "2026-02-08 11:27:11"
+                }
+              }
+            },
+            "Remnant 3D": {
+              "_type": "dir",
+              "_content": {
+                "Remnant 3D.mqproj": {
+                  "_type": "file",
+                  "size": 1744,
+                  "modified": "2026-02-08 11:27:12"
+                },
+                "Remnant 3D.mq5": {
+                  "_type": "file",
+                  "size": 5696,
+                  "modified": "2026-02-08 11:27:12"
+                },
+                "Remnant 3D.ex5": {
+                  "_type": "file",
+                  "size": 16782,
+                  "modified": "2026-02-08 11:27:12"
+                },
+                "Shaders": {
+                  "_type": "dir",
+                  "_content": {
+                    "vertex.hlsl": {
+                      "_type": "file",
+                      "size": 254,
+                      "modified": "2026-02-08 11:27:24"
+                    },
+                    "pixel.hlsl": {
+                      "_type": "file",
+                      "size": 10093,
+                      "modified": "2026-02-08 11:27:24"
+                    }
+                  }
+                }
+              }
+            },
+            "ObjectSphere": {
+              "_type": "dir",
+              "_content": {
+                "SphereSample.ex5": {
+                  "_type": "file",
+                  "size": 20318,
+                  "modified": "2026-02-08 11:27:11"
+                },
+                "Sphere.mqh": {
+                  "_type": "file",
+                  "size": 8030,
+                  "modified": "2026-02-08 11:27:11"
+                },
+                "SphereSample.mq5": {
+                  "_type": "file",
+                  "size": 6030,
+                  "modified": "2026-02-08 11:27:11"
+                }
+              }
+            },
+            "OpenCL": {
+              "_type": "dir",
+              "_content": {
+                "Double": {
+                  "_type": "dir",
+                  "_content": {
+                    "MatrixMult.ex5": {
+                      "_type": "file",
+                      "size": 21292,
+                      "modified": "2026-02-08 11:27:22"
+                    },
+                    "FFT.ex5": {
+                      "_type": "file",
+                      "size": 28176,
+                      "modified": "2026-02-08 11:27:22"
+                    },
+                    "MatrixMult.mq5": {
+                      "_type": "file",
+                      "size": 8654,
+                      "modified": "2026-02-08 11:27:22"
+                    },
+                    "Wavelet.ex5": {
+                      "_type": "file",
+                      "size": 107798,
+                      "modified": "2026-02-08 11:27:23"
+                    },
+                    "BitonicSort.mq5": {
+                      "_type": "file",
+                      "size": 7941,
+                      "modified": "2026-02-08 11:27:22"
+                    },
+                    "BitonicSort.ex5": {
+                      "_type": "file",
+                      "size": 19772,
+                      "modified": "2026-02-08 11:27:22"
+                    },
+                    "Wavelet.mq5": {
+                      "_type": "file",
+                      "size": 15353,
+                      "modified": "2026-02-08 11:27:22"
+                    },
+                    "FFT.mq5": {
+                      "_type": "file",
+                      "size": 13394,
+                      "modified": "2026-02-08 11:27:22"
+                    },
+                    "Kernels": {
+                      "_type": "dir",
+                      "_content": {
+                        "wavelet.cl": {
+                          "_type": "file",
+                          "size": 1792,
+                          "modified": "2026-02-08 11:27:25"
+                        },
+                        "bitonicsort.cl": {
+                          "_type": "file",
+                          "size": 1516,
+                          "modified": "2026-02-08 11:27:25"
+                        },
+                        "fft.cl": {
+                          "_type": "file",
+                          "size": 6038,
+                          "modified": "2026-02-08 11:27:25"
+                        },
+                        "matrixmult.cl": {
+                          "_type": "file",
+                          "size": 2808,
+                          "modified": "2026-02-08 11:27:25"
+                        }
+                      }
+                    }
+                  }
+                },
+                "Float": {
+                  "_type": "dir",
+                  "_content": {
+                    "MatrixMult.ex5": {
+                      "_type": "file",
+                      "size": 20634,
+                      "modified": "2026-02-08 11:27:23"
+                    },
+                    "FFT.ex5": {
+                      "_type": "file",
+                      "size": 27980,
+                      "modified": "2026-02-08 11:27:23"
+                    },
+                    "MatrixMult.mq5": {
+                      "_type": "file",
+                      "size": 8434,
+                      "modified": "2026-02-08 11:27:23"
+                    },
+                    "Wavelet.ex5": {
+                      "_type": "file",
+                      "size": 108176,
+                      "modified": "2026-02-08 11:27:23"
+                    },
+                    "BitonicSort.mq5": {
+                      "_type": "file",
+                      "size": 7718,
+                      "modified": "2026-02-08 11:27:23"
+                    },
+                    "BitonicSort.ex5": {
+                      "_type": "file",
+                      "size": 19920,
+                      "modified": "2026-02-08 11:27:23"
+                    },
+                    "Wavelet.mq5": {
+                      "_type": "file",
+                      "size": 15753,
+                      "modified": "2026-02-08 11:27:23"
+                    },
+                    "FFT.mq5": {
+                      "_type": "file",
+                      "size": 13169,
+                      "modified": "2026-02-08 11:27:23"
+                    },
+                    "Kernels": {
+                      "_type": "dir",
+                      "_content": {
+                        "wavelet.cl": {
+                          "_type": "file",
+                          "size": 1601,
+                          "modified": "2026-02-08 11:27:26"
+                        },
+                        "bitonicsort.cl": {
+                          "_type": "file",
+                          "size": 1348,
+                          "modified": "2026-02-08 11:27:26"
+                        },
+                        "fft.cl": {
+                          "_type": "file",
+                          "size": 5862,
+                          "modified": "2026-02-08 11:27:26"
+                        },
+                        "matrixmult.cl": {
+                          "_type": "file",
+                          "size": 2635,
+                          "modified": "2026-02-08 11:27:26"
+                        }
+                      }
+                    }
+                  }
+                },
+                "Seascape": {
+                  "_type": "dir",
+                  "_content": {
+                    "Seascape.cl": {
+                      "_type": "file",
+                      "size": 8264,
+                      "modified": "2026-02-08 11:27:24"
+                    },
+                    "Seascape.mqproj": {
+                      "_type": "file",
+                      "size": 2486,
+                      "modified": "2026-02-08 11:27:24"
+                    },
+                    "Seascape.mq5": {
+                      "_type": "file",
+                      "size": 6215,
+                      "modified": "2026-02-08 11:27:24"
+                    },
+                    "Seascape.ex5": {
+                      "_type": "file",
+                      "size": 14170,
+                      "modified": "2026-02-08 11:27:24"
+                    }
+                  }
+                }
+              }
+            },
+            "ArrayDouble": {
+              "_type": "dir",
+              "_content": {
+                "ArrayDoubleSample.ex5": {
+                  "_type": "file",
+                  "size": 18142,
+                  "modified": "2026-02-08 11:27:09"
+                },
+                "ArrayDoubleSample.mq5": {
+                  "_type": "file",
+                  "size": 4195,
+                  "modified": "2026-02-08 11:27:09"
+                }
+              }
+            },
+            "PositionInfo": {
+              "_type": "dir",
+              "_content": {
+                "PositionInfoSample.ex5": {
+                  "_type": "file",
+                  "size": 21362,
+                  "modified": "2026-02-08 11:27:12"
+                },
+                "PositionInfoSampleInit.mqh": {
+                  "_type": "file",
+                  "size": 830,
+                  "modified": "2026-02-08 11:27:12"
+                },
+                "PositionInfoSample.mq5": {
+                  "_type": "file",
+                  "size": 7287,
+                  "modified": "2026-02-08 11:27:12"
+                }
+              }
+            },
+            "ObjectChart": {
+              "_type": "dir",
+              "_content": {
+                "ObjChartSample.ex5": {
+                  "_type": "file",
+                  "size": 56626,
+                  "modified": "2026-02-08 11:27:10"
+                },
+                "ObjChartSample.mq5": {
+                  "_type": "file",
+                  "size": 25357,
+                  "modified": "2026-02-08 11:27:10"
+                },
+                "ChartSampleInit.mqh": {
+                  "_type": "file",
+                  "size": 4182,
+                  "modified": "2026-02-08 11:27:10"
+                }
+              }
+            },
+            "Canvas": {
+              "_type": "dir",
+              "_content": {
+                "CanvasSample.ex5": {
+                  "_type": "file",
+                  "size": 30884,
+                  "modified": "2026-02-08 11:27:10"
+                },
+                "CanvasSample.mq5": {
+                  "_type": "file",
+                  "size": 6073,
+                  "modified": "2026-02-08 11:27:10"
+                },
+                "Charts": {
+                  "_type": "dir",
+                  "_content": {
+                    "LineChartSample.ex5": {
+                      "_type": "file",
+                      "size": 50876,
+                      "modified": "2026-02-08 11:27:21"
+                    },
+                    "HistogramChartSample.mq5": {
+                      "_type": "file",
+                      "size": 2205,
+                      "modified": "2026-02-08 11:27:21"
+                    },
+                    "HistogramChartSample.ex5": {
+                      "_type": "file",
+                      "size": 49090,
+                      "modified": "2026-02-08 11:27:21"
+                    },
+                    "LineChartSample.mq5": {
+                      "_type": "file",
+                      "size": 2172,
+                      "modified": "2026-02-08 11:27:21"
+                    },
+                    "PieChartSample.mq5": {
+                      "_type": "file",
+                      "size": 3201,
+                      "modified": "2026-02-08 11:27:21"
+                    },
+                    "PieChartSample.ex5": {
+                      "_type": "file",
+                      "size": 70222,
+                      "modified": "2026-02-08 11:27:21"
+                    }
+                  }
+                }
+              }
+            },
+            "SymbolInfo": {
+              "_type": "dir",
+              "_content": {
+                "SymbolInfoSample.ex5": {
+                  "_type": "file",
+                  "size": 34688,
+                  "modified": "2026-02-08 11:27:13"
+                },
+                "SymbolInfoSample.mq5": {
+                  "_type": "file",
+                  "size": 8811,
+                  "modified": "2026-02-08 11:27:13"
+                },
+                "SymbolInfoSampleInit.mqh": {
+                  "_type": "file",
+                  "size": 1774,
+                  "modified": "2026-02-08 11:27:13"
+                }
+              }
+            },
+            "AccountInfo": {
+              "_type": "dir",
+              "_content": {
+                "AccountInfoSampleInit.mqh": {
+                  "_type": "file",
+                  "size": 917,
+                  "modified": "2026-02-08 11:27:09"
+                },
+                "AccountInfoSample.mq5": {
+                  "_type": "file",
+                  "size": 5904,
+                  "modified": "2026-02-08 11:27:09"
+                },
+                "AccountInfoSample.ex5": {
+                  "_type": "file",
+                  "size": 19940,
+                  "modified": "2026-02-08 11:27:09"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Shared Projects": {
+      "_type": "dir",
+      "_content": {}
+    },
+    "Experts": {
+      "_type": "dir",
+      "_content": {
+        "Advisors": {
+          "_type": "dir",
+          "_content": {
+            "ExpertMAPSARSizeOptimized.ex5": {
+              "_type": "file",
+              "size": 156030,
+              "modified": "2026-02-08 11:25:59"
+            },
+            "ExpertMAPSARSizeOptimized.mq5": {
+              "_type": "file",
+              "size": 6710,
+              "modified": "2026-02-08 11:25:59"
+            },
+            "ExpertMAMA.ex5": {
+              "_type": "file",
+              "size": 153620,
+              "modified": "2026-02-08 11:25:59"
+            },
+            "ExpertMACD.mq5": {
+              "_type": "file",
+              "size": 6074,
+              "modified": "2026-02-08 11:25:59"
+            },
+            "ExpertMAPSAR.ex5": {
+              "_type": "file",
+              "size": 152058,
+              "modified": "2026-02-08 11:25:59"
+            },
+            "ExpertMAPSAR.mq5": {
+              "_type": "file",
+              "size": 6342,
+              "modified": "2026-02-08 11:25:59"
+            },
+            "ExpertMAMA.mq5": {
+              "_type": "file",
+              "size": 6427,
+              "modified": "2026-02-08 11:25:59"
+            },
+            "ExpertMACD.ex5": {
+              "_type": "file",
+              "size": 143752,
+              "modified": "2026-02-08 11:25:59"
+            }
+          }
+        },
+        "Free Robots": {
+          "_type": "dir",
+          "_content": {
+            "BullishBearish MeetingLines RSI.ex5": {
+              "_type": "file",
+              "size": 46958,
+              "modified": "2026-02-08 11:26:03"
+            },
+            "HangingMan Hammer CCI.mq5": {
+              "_type": "file",
+              "size": 24583,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "BlackCrows WhiteSoldiers CCI.mq5": {
+              "_type": "file",
+              "size": 23577,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "DarkCloud PiercingLine MFI.ex5": {
+              "_type": "file",
+              "size": 47088,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "BlackCrows WhiteSoldiers RSI.ex5": {
+              "_type": "file",
+              "size": 47692,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "MorningEvening StarDoji Stoch.ex5": {
+              "_type": "file",
+              "size": 48436,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "MorningEvening StarDoji RSI.ex5": {
+              "_type": "file",
+              "size": 47752,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "BlackCrows WhiteSoldiers RSI.mq5": {
+              "_type": "file",
+              "size": 23595,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "BullishBearish Engulfing MFI.ex5": {
+              "_type": "file",
+              "size": 47236,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "MorningEvening StarDoji Stoch.mq5": {
+              "_type": "file",
+              "size": 26665,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "MorningEvening StarDoji CCI.ex5": {
+              "_type": "file",
+              "size": 47728,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "BullishBearish MeetingLines RSI.mq5": {
+              "_type": "file",
+              "size": 23595,
+              "modified": "2026-02-08 11:26:03"
+            },
+            "BullishBearish Engulfing RSI.mq5": {
+              "_type": "file",
+              "size": 25064,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "BullishBearish Harami Stoch.mq5": {
+              "_type": "file",
+              "size": 25599,
+              "modified": "2026-02-08 11:26:03"
+            },
+            "BullishBearish MeetingLines CCI.mq5": {
+              "_type": "file",
+              "size": 23595,
+              "modified": "2026-02-08 11:26:03"
+            },
+            "HangingMan Hammer Stoch.mq5": {
+              "_type": "file",
+              "size": 25084,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "BullishBearish Engulfing MFI.mq5": {
+              "_type": "file",
+              "size": 25066,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "HangingMan Hammer CCI.ex5": {
+              "_type": "file",
+              "size": 47574,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "BullishBearish MeetingLines MFI.ex5": {
+              "_type": "file",
+              "size": 46064,
+              "modified": "2026-02-08 11:26:03"
+            },
+            "HangingMan Hammer RSI.ex5": {
+              "_type": "file",
+              "size": 48466,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "HangingMan Hammer MFI.mq5": {
+              "_type": "file",
+              "size": 24583,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "BullishBearish Harami RSI.ex5": {
+              "_type": "file",
+              "size": 48194,
+              "modified": "2026-02-08 11:26:03"
+            },
+            "DarkCloud PiercingLine MFI.mq5": {
+              "_type": "file",
+              "size": 25012,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "BullishBearish MeetingLines Stoch.mq5": {
+              "_type": "file",
+              "size": 24047,
+              "modified": "2026-02-08 11:26:03"
+            },
+            "BullishBearish Engulfing CCI.ex5": {
+              "_type": "file",
+              "size": 47662,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "BlackCrows WhiteSoldiers MFI.mq5": {
+              "_type": "file",
+              "size": 23582,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "MorningEvening StarDoji MFI.mq5": {
+              "_type": "file",
+              "size": 26170,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "MorningEvening StarDoji MFI.ex5": {
+              "_type": "file",
+              "size": 47220,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "BullishBearish Engulfing Stoch.ex5": {
+              "_type": "file",
+              "size": 48028,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "BullishBearish Harami Stoch.ex5": {
+              "_type": "file",
+              "size": 48328,
+              "modified": "2026-02-08 11:26:03"
+            },
+            "BullishBearish MeetingLines MFI.mq5": {
+              "_type": "file",
+              "size": 23591,
+              "modified": "2026-02-08 11:26:03"
+            },
+            "BullishBearish Harami RSI.mq5": {
+              "_type": "file",
+              "size": 25138,
+              "modified": "2026-02-08 11:26:03"
+            },
+            "DarkCloud PiercingLine RSI.ex5": {
+              "_type": "file",
+              "size": 47640,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "HangingMan Hammer Stoch.ex5": {
+              "_type": "file",
+              "size": 48080,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "BullishBearish Engulfing Stoch.mq5": {
+              "_type": "file",
+              "size": 25559,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "DarkCloud PiercingLine RSI.mq5": {
+              "_type": "file",
+              "size": 25013,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "DarkCloud PiercingLine CCI.ex5": {
+              "_type": "file",
+              "size": 47324,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "DarkCloud PiercingLine Stoch.ex5": {
+              "_type": "file",
+              "size": 48582,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "BullishBearish Harami MFI.mq5": {
+              "_type": "file",
+              "size": 25140,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "BullishBearish Engulfing RSI.ex5": {
+              "_type": "file",
+              "size": 47288,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "MorningEvening StarDoji CCI.mq5": {
+              "_type": "file",
+              "size": 26197,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "BullishBearish Harami CCI.ex5": {
+              "_type": "file",
+              "size": 47984,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "BlackCrows WhiteSoldiers Stoch.ex5": {
+              "_type": "file",
+              "size": 47692,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "BlackCrows WhiteSoldiers CCI.ex5": {
+              "_type": "file",
+              "size": 47744,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "HangingMan Hammer MFI.ex5": {
+              "_type": "file",
+              "size": 47262,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "BullishBearish Harami MFI.ex5": {
+              "_type": "file",
+              "size": 47058,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "DarkCloud PiercingLine Stoch.mq5": {
+              "_type": "file",
+              "size": 25492,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "HangingMan Hammer RSI.mq5": {
+              "_type": "file",
+              "size": 24592,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "BullishBearish Engulfing CCI.mq5": {
+              "_type": "file",
+              "size": 25070,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "BullishBearish Harami CCI.mq5": {
+              "_type": "file",
+              "size": 25144,
+              "modified": "2026-02-08 11:26:02"
+            },
+            "BlackCrows WhiteSoldiers MFI.ex5": {
+              "_type": "file",
+              "size": 46818,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "BullishBearish MeetingLines CCI.ex5": {
+              "_type": "file",
+              "size": 47204,
+              "modified": "2026-02-08 11:26:03"
+            },
+            "BullishBearish MeetingLines Stoch.ex5": {
+              "_type": "file",
+              "size": 47840,
+              "modified": "2026-02-08 11:26:03"
+            },
+            "DarkCloud PiercingLine CCI.mq5": {
+              "_type": "file",
+              "size": 25013,
+              "modified": "2026-02-08 11:26:01"
+            },
+            "BlackCrows WhiteSoldiers Stoch.mq5": {
+              "_type": "file",
+              "size": 24062,
+              "modified": "2026-02-08 11:26:00"
+            },
+            "MorningEvening StarDoji RSI.mq5": {
+              "_type": "file",
+              "size": 26192,
+              "modified": "2026-02-08 11:26:02"
+            }
+          }
+        },
+        "NewFolder": {
+          "_type": "dir",
+          "_content": {}
+        },
+        "Examples": {
+          "_type": "dir",
+          "_content": {
+            "Math 3D": {
+              "_type": "dir",
+              "_content": {
+                "Math 3D.mqproj": {
+                  "_type": "file",
+                  "size": 6042,
+                  "modified": "2026-02-08 11:26:43"
+                },
+                "Math 3D.ico": {
+                  "_type": "file",
+                  "size": 16958,
+                  "modified": "2026-02-08 11:26:43"
+                },
+                "Math 3D.ex5": {
+                  "_type": "file",
+                  "size": 40456,
+                  "modified": "2026-02-08 11:26:43"
+                },
+                "Math 3D.mq5": {
+                  "_type": "file",
+                  "size": 6986,
+                  "modified": "2026-02-08 11:26:43"
+                },
+                "Functions.mqh": {
+                  "_type": "file",
+                  "size": 16008,
+                  "modified": "2026-02-08 11:26:43"
+                },
+                "Sets": {
+                  "_type": "dir",
+                  "_content": {
+                    "Hill.set": {
+                      "_type": "file",
+                      "size": 688,
+                      "modified": "2026-02-08 11:27:18"
+                    },
+                    "ClimberDream.set": {
+                      "_type": "file",
+                      "size": 696,
+                      "modified": "2026-02-08 11:27:18"
+                    },
+                    "DoubleScrew.set": {
+                      "_type": "file",
+                      "size": 684,
+                      "modified": "2026-02-08 11:27:18"
+                    },
+                    "Chomolungma.set": {
+                      "_type": "file",
+                      "size": 684,
+                      "modified": "2026-02-08 11:27:18"
+                    },
+                    "MultyExtremalScrew.set": {
+                      "_type": "file",
+                      "size": 684,
+                      "modified": "2026-02-08 11:27:18"
+                    },
+                    "Trapfall.set": {
+                      "_type": "file",
+                      "size": 686,
+                      "modified": "2026-02-08 11:27:19"
+                    },
+                    "Josephine.set": {
+                      "_type": "file",
+                      "size": 688,
+                      "modified": "2026-02-08 11:27:18"
+                    },
+                    "Screw.set": {
+                      "_type": "file",
+                      "size": 684,
+                      "modified": "2026-02-08 11:27:19"
+                    },
+                    "Hedgehog.set": {
+                      "_type": "file",
+                      "size": 692,
+                      "modified": "2026-02-08 11:27:18"
+                    },
+                    "Sink.set": {
+                      "_type": "file",
+                      "size": 686,
+                      "modified": "2026-02-08 11:27:19"
+                    },
+                    "Granite.set": {
+                      "_type": "file",
+                      "size": 684,
+                      "modified": "2026-02-08 11:27:18"
+                    },
+                    "Skin.set": {
+                      "_type": "file",
+                      "size": 686,
+                      "modified": "2026-02-08 11:27:19"
+                    }
+                  }
+                }
+              }
+            },
+            "Controls": {
+              "_type": "dir",
+              "_content": {
+                "Controls.mq5": {
+                  "_type": "file",
+                  "size": 2161,
+                  "modified": "2026-02-08 11:26:41"
+                },
+                "ControlsDialog.mqh": {
+                  "_type": "file",
+                  "size": 17723,
+                  "modified": "2026-02-08 11:26:41"
+                },
+                "Controls.ex5": {
+                  "_type": "file",
+                  "size": 176438,
+                  "modified": "2026-02-08 11:26:41"
+                }
+              }
+            },
+            "Math 3D Morpher": {
+              "_type": "dir",
+              "_content": {
+                "Math 3D Morpher.ex5": {
+                  "_type": "file",
+                  "size": 69910,
+                  "modified": "2026-02-08 11:26:43"
+                },
+                "Math 3D Morpher.mqproj": {
+                  "_type": "file",
+                  "size": 16042,
+                  "modified": "2026-02-08 11:26:43"
+                },
+                "Math 3D Morpher.mq5": {
+                  "_type": "file",
+                  "size": 35776,
+                  "modified": "2026-02-08 11:26:43"
+                },
+                "Functions.mqh": {
+                  "_type": "file",
+                  "size": 13957,
+                  "modified": "2026-02-08 11:26:43"
+                },
+                "Textures": {
+                  "_type": "dir",
+                  "_content": {
+                    "checker.bmp": {
+                      "_type": "file",
+                      "size": 196662,
+                      "modified": "2026-02-08 11:27:19"
+                    }
+                  }
+                }
+              }
+            },
+            "Correlation Matrix 3D": {
+              "_type": "dir",
+              "_content": {
+                "Correlation Matrix 3D.mq5": {
+                  "_type": "file",
+                  "size": 77294,
+                  "modified": "2026-02-08 11:26:42"
+                },
+                "Correlation Matrix 3D.ex5": {
+                  "_type": "file",
+                  "size": 69154,
+                  "modified": "2026-02-08 11:26:42"
+                },
+                "Correlation Matrix 3D.mqproj": {
+                  "_type": "file",
+                  "size": 8302,
+                  "modified": "2026-02-08 11:26:42"
+                }
+              }
+            },
+            "ChartInChart": {
+              "_type": "dir",
+              "_content": {
+                "ChartInChart.mq5": {
+                  "_type": "file",
+                  "size": 30556,
+                  "modified": "2026-02-08 11:26:40"
+                },
+                "ChartInChart.ex5": {
+                  "_type": "file",
+                  "size": 19212,
+                  "modified": "2026-02-08 11:26:40"
+                }
+              }
+            },
+            "MACD": {
+              "_type": "dir",
+              "_content": {
+                "MACD Sample.ex5": {
+                  "_type": "file",
+                  "size": 45914,
+                  "modified": "2026-02-08 11:26:42"
+                },
+                "MACD Sample.mq5": {
+                  "_type": "file",
+                  "size": 18514,
+                  "modified": "2026-02-08 11:26:42"
+                }
+              }
+            },
+            "Moving Average": {
+              "_type": "dir",
+              "_content": {
+                "Moving Average.mq5": {
+                  "_type": "file",
+                  "size": 8003,
+                  "modified": "2026-02-08 11:26:44"
+                },
+                "Moving Average.ex5": {
+                  "_type": "file",
+                  "size": 36146,
+                  "modified": "2026-02-08 11:26:44"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Logs": {
+      "_type": "dir",
+      "_content": {
+        "20260131.log": {
+          "_type": "file",
+          "size": 51782,
+          "modified": "2026-02-08 11:25:57"
+        },
+        "20260201.log": {
+          "_type": "file",
+          "size": 33188,
+          "modified": "2026-02-08 11:25:57"
+        },
+        "20260203.log": {
+          "_type": "file",
+          "size": 7064,
+          "modified": "2026-02-08 11:25:57"
+        },
+        "20260204.log": {
+          "_type": "file",
+          "size": 806,
+          "modified": "2026-02-08 11:25:57"
+        },
+        "20260202.log": {
+          "_type": "file",
+          "size": 143936,
+          "modified": "2026-02-08 11:25:57"
+        },
+        "20260206.log": {
+          "_type": "file",
+          "size": 11710,
+          "modified": "2026-02-08 11:25:57"
+        },
+        "20260205.log": {
+          "_type": "file",
+          "size": 16768,
+          "modified": "2026-02-08 11:25:57"
+        }
+      }
+    },
+    "Services": {
+      "_type": "dir",
+      "_content": {}
+    },
+    "Images": {
+      "_type": "dir",
+      "_content": {
+        "dollar.bmp": {
+          "_type": "file",
+          "size": 4152,
+          "modified": "2026-02-08 11:25:56"
+        },
+        "euro.bmp": {
+          "_type": "file",
+          "size": 4152,
+          "modified": "2026-02-08 11:25:56"
+        }
+      }
+    },
+    "Libraries": {
+      "_type": "dir",
+      "_content": {}
+    },
+    "Indicators": {
+      "_type": "dir",
+      "_content": {
+        "Free Indicators": {
+          "_type": "dir",
+          "_content": {
+            "MarketProfile Canvas.ex5": {
+              "_type": "file",
+              "size": 35572,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "MarketProfile.mq5": {
+              "_type": "file",
+              "size": 8828,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "MarketProfile Canvas.mq5": {
+              "_type": "file",
+              "size": 19467,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "Parabolic Channel.mq5": {
+              "_type": "file",
+              "size": 7589,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "NRTR Channel.ex5": {
+              "_type": "file",
+              "size": 16538,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "Donchian Channel.mq5": {
+              "_type": "file",
+              "size": 14346,
+              "modified": "2026-02-08 11:26:33"
+            },
+            "Parabolic Channel.ex5": {
+              "_type": "file",
+              "size": 14730,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "Donchian Channel.ex5": {
+              "_type": "file",
+              "size": 13770,
+              "modified": "2026-02-08 11:26:33"
+            },
+            "Keltner Channel.mq5": {
+              "_type": "file",
+              "size": 9871,
+              "modified": "2026-02-08 11:26:33"
+            },
+            "Fibonacci Channel.mq5": {
+              "_type": "file",
+              "size": 11225,
+              "modified": "2026-02-08 11:26:33"
+            },
+            "MarketProfile.ex5": {
+              "_type": "file",
+              "size": 19514,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "MurreyMath Channel.mq5": {
+              "_type": "file",
+              "size": 15173,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "MurreyMath Channel.ex5": {
+              "_type": "file",
+              "size": 25644,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "Pivot Channel.ex5": {
+              "_type": "file",
+              "size": 19494,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "Fibonacci Channel.ex5": {
+              "_type": "file",
+              "size": 19330,
+              "modified": "2026-02-08 11:26:33"
+            },
+            "Woodie Channel.ex5": {
+              "_type": "file",
+              "size": 18104,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "NRTR Channel.mq5": {
+              "_type": "file",
+              "size": 11473,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "Camarilla Channel.ex5": {
+              "_type": "file",
+              "size": 19526,
+              "modified": "2026-02-08 11:26:33"
+            },
+            "DeMark Channel.mq5": {
+              "_type": "file",
+              "size": 8529,
+              "modified": "2026-02-08 11:26:33"
+            },
+            "Pivot Channel.mq5": {
+              "_type": "file",
+              "size": 11242,
+              "modified": "2026-02-08 11:26:34"
+            },
+            "Camarilla Channel.mq5": {
+              "_type": "file",
+              "size": 10647,
+              "modified": "2026-02-08 11:26:33"
+            },
+            "DeMark Channel.ex5": {
+              "_type": "file",
+              "size": 14392,
+              "modified": "2026-02-08 11:26:33"
+            },
+            "Keltner Channel.ex5": {
+              "_type": "file",
+              "size": 16730,
+              "modified": "2026-02-08 11:26:33"
+            },
+            "Woodie Channel.mq5": {
+              "_type": "file",
+              "size": 10104,
+              "modified": "2026-02-08 11:26:34"
+            }
+          }
+        },
+        "Examples": {
+          "_type": "dir",
+          "_content": {
+            "MACD_Osmax.ex5": {
+              "_type": "file",
+              "size": 13734,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "VIDYA.ex5": {
+              "_type": "file",
+              "size": 10276,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "MACD beginner tutorial by William210.ex5": {
+              "_type": "file",
+              "size": 9494,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "MFI.ex5": {
+              "_type": "file",
+              "size": 11486,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "OBV.ex5": {
+              "_type": "file",
+              "size": 8682,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "W_AD.ex5": {
+              "_type": "file",
+              "size": 7514,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "Stochastic_Histogram.ex5": {
+              "_type": "file",
+              "size": 12428,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "StochasticEx.mq5": {
+              "_type": "file",
+              "size": 12696,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "Super trend - simple.mq5": {
+              "_type": "file",
+              "size": 9608,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "StochasticMomentum.ex5": {
+              "_type": "file",
+              "size": 17284,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "Gator_2.ex5": {
+              "_type": "file",
+              "size": 15224,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "Bulls.mq5": {
+              "_type": "file",
+              "size": 3693,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "MACD Crossing the zero level (color candles).mq5": {
+              "_type": "file",
+              "size": 15210,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "macd_histogram_mc.mq5": {
+              "_type": "file",
+              "size": 18068,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "AD.mq5": {
+              "_type": "file",
+              "size": 3375,
+              "modified": "2026-02-08 11:26:18"
+            },
+            "MACD_Signal_Divergence.mq5": {
+              "_type": "file",
+              "size": 29498,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "ATR.ex5": {
+              "_type": "file",
+              "size": 9920,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "ParabolicSAR.ex5": {
+              "_type": "file",
+              "size": 12242,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "Stochastic_experiment.ex5": {
+              "_type": "file",
+              "size": 17984,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "Macd Hull.mq5": {
+              "_type": "file",
+              "size": 12866,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "CCI.ex5": {
+              "_type": "file",
+              "size": 9990,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "Fractals.mq5": {
+              "_type": "file",
+              "size": 3424,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "FrAMA.mq5": {
+              "_type": "file",
+              "size": 3675,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "ColorLine.ex5": {
+              "_type": "file",
+              "size": 7988,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "MACD slope divergence.mq5": {
+              "_type": "file",
+              "size": 18904,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "MACD of average.ex5": {
+              "_type": "file",
+              "size": 17458,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "Price_Channel.mq5": {
+              "_type": "file",
+              "size": 4521,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "WPR.mq5": {
+              "_type": "file",
+              "size": 8490,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "ROC.mq5": {
+              "_type": "file",
+              "size": 2682,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "stochastic_of_super_smoother.mq5": {
+              "_type": "file",
+              "size": 6791,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "MACD of RSI adaptive EMA (fl).ex5": {
+              "_type": "file",
+              "size": 17750,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "ColorBars.ex5": {
+              "_type": "file",
+              "size": 7222,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "StdDev.ex5": {
+              "_type": "file",
+              "size": 13334,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "MACD_Signal_Divergence.ex5": {
+              "_type": "file",
+              "size": 21420,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "Super trend - simple Alert.mq5": {
+              "_type": "file",
+              "size": 16718,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "Stochastic Momentum Index.mq5": {
+              "_type": "file",
+              "size": 9906,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "ZigZag.ex5": {
+              "_type": "file",
+              "size": 13378,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "RSI.mq5": {
+              "_type": "file",
+              "size": 4453,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "TRIX.mq5": {
+              "_type": "file",
+              "size": 3343,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "Custom Moving Average.ex5": {
+              "_type": "file",
+              "size": 13822,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "EMA to SMA MACD.mq5": {
+              "_type": "file",
+              "size": 11672,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "AMA.mq5": {
+              "_type": "file",
+              "size": 5035,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "DEMA.ex5": {
+              "_type": "file",
+              "size": 10506,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "Macd hl.mq5": {
+              "_type": "file",
+              "size": 12732,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "Stochastic_Histogram_Alert.ex5": {
+              "_type": "file",
+              "size": 24734,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "OBV.mq5": {
+              "_type": "file",
+              "size": 3410,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "MarketFacilitationIndex.ex5": {
+              "_type": "file",
+              "size": 8720,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "MACD Crossing the zero level (color candles).ex5": {
+              "_type": "file",
+              "size": 15596,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "Stochastic_Rsidomaw.ex5": {
+              "_type": "file",
+              "size": 46778,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "Force_Index.ex5": {
+              "_type": "file",
+              "size": 12322,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "macd-2.mq5": {
+              "_type": "file",
+              "size": 7262,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "Bulls.ex5": {
+              "_type": "file",
+              "size": 8646,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "Stochastic_Slow.ex5": {
+              "_type": "file",
+              "size": 11822,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "Macd DEMA.ex5": {
+              "_type": "file",
+              "size": 13456,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "Stochastic_ROC.ex5": {
+              "_type": "file",
+              "size": 14268,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "Zero lag DEMA.mq5": {
+              "_type": "file",
+              "size": 10124,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "MACD_Flat_Trend.ex5": {
+              "_type": "file",
+              "size": 15902,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "EMA to SMA MACD.ex5": {
+              "_type": "file",
+              "size": 14164,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "RVI.mq5": {
+              "_type": "file",
+              "size": 4258,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "CCI.mq5": {
+              "_type": "file",
+              "size": 3641,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "ASI.mq5": {
+              "_type": "file",
+              "size": 4129,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "MI.ex5": {
+              "_type": "file",
+              "size": 14940,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "MACD_CW_Mashhadi.ex5": {
+              "_type": "file",
+              "size": 13044,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "MACD.mq5": {
+              "_type": "file",
+              "size": 4901,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "Price_Channel.ex5": {
+              "_type": "file",
+              "size": 9166,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "OsMA.ex5": {
+              "_type": "file",
+              "size": 14298,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "macd_of_qwma.ex5": {
+              "_type": "file",
+              "size": 30754,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "ADXW.ex5": {
+              "_type": "file",
+              "size": 14370,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "stochastic_rsi.mq5": {
+              "_type": "file",
+              "size": 7141,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "Stochastic MACD.ex5": {
+              "_type": "file",
+              "size": 14702,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "macd_of_qwma.mq5": {
+              "_type": "file",
+              "size": 28926,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "StdDev.mq5": {
+              "_type": "file",
+              "size": 5185,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "Stochastic_Threads.ex5": {
+              "_type": "file",
+              "size": 37312,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "ADX.ex5": {
+              "_type": "file",
+              "size": 13316,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "Delta_MFI.ex5": {
+              "_type": "file",
+              "size": 10886,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "MACD_Osmax.mq5": {
+              "_type": "file",
+              "size": 13100,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "Stochastic_Threads.mq5": {
+              "_type": "file",
+              "size": 29140,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "Stochastic_Histogram_Alert.mq5": {
+              "_type": "file",
+              "size": 27888,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "Awesome_Oscillator.ex5": {
+              "_type": "file",
+              "size": 8318,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "ParabolicSAR.mq5": {
+              "_type": "file",
+              "size": 7056,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "Alligator.ex5": {
+              "_type": "file",
+              "size": 16250,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "MACD of RSI adaptive EMA.ex5": {
+              "_type": "file",
+              "size": 14612,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "VIDYA.mq5": {
+              "_type": "file",
+              "size": 3799,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "MACD.ex5": {
+              "_type": "file",
+              "size": 12348,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "macd_histogram.ex5": {
+              "_type": "file",
+              "size": 14096,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "Alligator.mq5": {
+              "_type": "file",
+              "size": 6064,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "EhlersPredictiveMovingAverage.mq5": {
+              "_type": "file",
+              "size": 8530,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "Custom Moving Average.mq5": {
+              "_type": "file",
+              "size": 7326,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "Stochastic Momentum Index.ex5": {
+              "_type": "file",
+              "size": 13794,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "Stochastic extended.ex5": {
+              "_type": "file",
+              "size": 23520,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "Macd hl.ex5": {
+              "_type": "file",
+              "size": 16282,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "Stochastic_MACD.mq5": {
+              "_type": "file",
+              "size": 13194,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "Stochastic RVI lvl.mq5": {
+              "_type": "file",
+              "size": 9096,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "Bears.ex5": {
+              "_type": "file",
+              "size": 9334,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "Super trend - simple Alert.ex5": {
+              "_type": "file",
+              "size": 21540,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "Heiken_Ashi.ex5": {
+              "_type": "file",
+              "size": 8046,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "MACD_ca.ex5": {
+              "_type": "file",
+              "size": 17652,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "ROC.ex5": {
+              "_type": "file",
+              "size": 9692,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "AMA.ex5": {
+              "_type": "file",
+              "size": 10670,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "MACD (sr).mq5": {
+              "_type": "file",
+              "size": 16660,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "CHV.ex5": {
+              "_type": "file",
+              "size": 15514,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "DeMarker.ex5": {
+              "_type": "file",
+              "size": 10950,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "Heiken_Ashi.mq5": {
+              "_type": "file",
+              "size": 3733,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "MACD Crossing the zero level.mq5": {
+              "_type": "file",
+              "size": 13370,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "Super trend - simple.ex5": {
+              "_type": "file",
+              "size": 12998,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "TEMA.ex5": {
+              "_type": "file",
+              "size": 10630,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "stochastic_histogram.mq5": {
+              "_type": "file",
+              "size": 8553,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "ZigzagColor.mq5": {
+              "_type": "file",
+              "size": 9567,
+              "modified": "2026-02-08 11:26:33"
+            },
+            "CHO.mq5": {
+              "_type": "file",
+              "size": 5356,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "ATR.mq5": {
+              "_type": "file",
+              "size": 3880,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "Gator.ex5": {
+              "_type": "file",
+              "size": 15724,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "PVT.mq5": {
+              "_type": "file",
+              "size": 3309,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "ZigzagColor.ex5": {
+              "_type": "file",
+              "size": 14378,
+              "modified": "2026-02-08 11:26:33"
+            },
+            "DPO.mq5": {
+              "_type": "file",
+              "size": 2876,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "MACD Stochastic Square.mq5": {
+              "_type": "file",
+              "size": 26164,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "Ultimate_Oscillator.ex5": {
+              "_type": "file",
+              "size": 13140,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "stochastic_of_super_smoother_2111.mq5": {
+              "_type": "file",
+              "size": 7520,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "Momentum.ex5": {
+              "_type": "file",
+              "size": 9686,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "MACD slope divergence.ex5": {
+              "_type": "file",
+              "size": 20004,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "Gator.mq5": {
+              "_type": "file",
+              "size": 10247,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "RVI.ex5": {
+              "_type": "file",
+              "size": 11636,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "MFI.mq5": {
+              "_type": "file",
+              "size": 4823,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "Stochastic RVI.mq5": {
+              "_type": "file",
+              "size": 7106,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "Accelerator.ex5": {
+              "_type": "file",
+              "size": 9188,
+              "modified": "2026-02-08 11:26:18"
+            },
+            "Envelopes.mq5": {
+              "_type": "file",
+              "size": 4337,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "MACD of RSI adaptive EMA (fl).mq5": {
+              "_type": "file",
+              "size": 17082,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "Super trend - extended.mq5": {
+              "_type": "file",
+              "size": 13720,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "ZigZag.mq5": {
+              "_type": "file",
+              "size": 18820,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "TRIX.ex5": {
+              "_type": "file",
+              "size": 10334,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "MACD_Divergence.ex5": {
+              "_type": "file",
+              "size": 20726,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "Elders_Safe_Zone_Triple.mq5": {
+              "_type": "file",
+              "size": 17158,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "MACD of average.mq5": {
+              "_type": "file",
+              "size": 8832,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "Awesome_Oscillator.mq5": {
+              "_type": "file",
+              "size": 4591,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "macd-2.ex5": {
+              "_type": "file",
+              "size": 10786,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "MACD AO Colors.ex5": {
+              "_type": "file",
+              "size": 13466,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "DeltaForce.mq5": {
+              "_type": "file",
+              "size": 15068,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "Stochastic_Rsidomaw.mq5": {
+              "_type": "file",
+              "size": 60108,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "Ultimate_Oscillator.mq5": {
+              "_type": "file",
+              "size": 6907,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "Accelerator.mq5": {
+              "_type": "file",
+              "size": 5306,
+              "modified": "2026-02-08 11:26:18"
+            },
+            "AD.ex5": {
+              "_type": "file",
+              "size": 8124,
+              "modified": "2026-02-08 11:26:18"
+            },
+            "MACD_Color_Histogram.ex5": {
+              "_type": "file",
+              "size": 18322,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "Stochastic_ROC.mq5": {
+              "_type": "file",
+              "size": 9768,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "MACD of deviation scaled MA.mq5": {
+              "_type": "file",
+              "size": 13690,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "Gator_2.mq5": {
+              "_type": "file",
+              "size": 9877,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "MACD_Color_Histogram.mq5": {
+              "_type": "file",
+              "size": 29998,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "ColorLine.mq5": {
+              "_type": "file",
+              "size": 5175,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "vwap.mq5": {
+              "_type": "file",
+              "size": 22411,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "EhlersPredictiveMovingAverage.ex5": {
+              "_type": "file",
+              "size": 9434,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "MACD_Signal_Line.ex5": {
+              "_type": "file",
+              "size": 11674,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "MACD Stochastic Square.ex5": {
+              "_type": "file",
+              "size": 15686,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "MarketFacilitationIndex.mq5": {
+              "_type": "file",
+              "size": 5003,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "ASI.ex5": {
+              "_type": "file",
+              "size": 9376,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "Envelopes.ex5": {
+              "_type": "file",
+              "size": 13584,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "BW-ZoneTrade.ex5": {
+              "_type": "file",
+              "size": 8580,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "ElderImpulse.ex5": {
+              "_type": "file",
+              "size": 11414,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "PVT.ex5": {
+              "_type": "file",
+              "size": 7938,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "Delta_MFI.mq5": {
+              "_type": "file",
+              "size": 16130,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "stochastic_of_adaptive_smoother.mq5": {
+              "_type": "file",
+              "size": 8972,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "stochastic_of_rsx.mq5": {
+              "_type": "file",
+              "size": 7191,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "Stochastic_Bar.mq5": {
+              "_type": "file",
+              "size": 14352,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "RSI.ex5": {
+              "_type": "file",
+              "size": 11124,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "MACD_Divergence.mq5": {
+              "_type": "file",
+              "size": 28856,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "Stochastics_Overlay.mq5": {
+              "_type": "file",
+              "size": 18674,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "Volumes.ex5": {
+              "_type": "file",
+              "size": 7538,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "Macd DEMA.mq5": {
+              "_type": "file",
+              "size": 11002,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "MACD_Flat_Trend.mq5": {
+              "_type": "file",
+              "size": 18284,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "ColorBars.mq5": {
+              "_type": "file",
+              "size": 3059,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "WPR.ex5": {
+              "_type": "file",
+              "size": 9800,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "Stochastic_Slow.mq5": {
+              "_type": "file",
+              "size": 11466,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "ColorCandlesDaily.ex5": {
+              "_type": "file",
+              "size": 7880,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "Ichimoku.ex5": {
+              "_type": "file",
+              "size": 12758,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "Fractals.ex5": {
+              "_type": "file",
+              "size": 8142,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "OsMA.mq5": {
+              "_type": "file",
+              "size": 5177,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "Stochastic.ex5": {
+              "_type": "file",
+              "size": 11818,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "MACD AO Colors.mq5": {
+              "_type": "file",
+              "size": 16424,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "MACD_CW_Mashhadi.mq5": {
+              "_type": "file",
+              "size": 4675,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "Macd TEMA.mq5": {
+              "_type": "file",
+              "size": 11598,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "MACD beginner tutorial by William210.mq5": {
+              "_type": "file",
+              "size": 9622,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "CHO.ex5": {
+              "_type": "file",
+              "size": 17436,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "Stochastic RSI.mq5": {
+              "_type": "file",
+              "size": 7022,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "MACD slope divergence (mtf).ex5": {
+              "_type": "file",
+              "size": 34534,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "Stochastic_Convergence_Divergence.ex5": {
+              "_type": "file",
+              "size": 21296,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "Super trend - extended.ex5": {
+              "_type": "file",
+              "size": 15560,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "Volumes.mq5": {
+              "_type": "file",
+              "size": 3368,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "VROC.mq5": {
+              "_type": "file",
+              "size": 3968,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "Stochastic_MACD.ex5": {
+              "_type": "file",
+              "size": 17444,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "VROC.ex5": {
+              "_type": "file",
+              "size": 10474,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "Stochastic.mq5": {
+              "_type": "file",
+              "size": 4996,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "DPO.ex5": {
+              "_type": "file",
+              "size": 10522,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "StochasticMomentum.mq5": {
+              "_type": "file",
+              "size": 19138,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "Stochastic_Histogram.mq5": {
+              "_type": "file",
+              "size": 8548,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "MACDfMFI.mq5": {
+              "_type": "file",
+              "size": 21254,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "MACD_Squeeze.ex5": {
+              "_type": "file",
+              "size": 15836,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "Ichimoku.mq5": {
+              "_type": "file",
+              "size": 5204,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "W_AD.mq5": {
+              "_type": "file",
+              "size": 3381,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "Stochastic_Convergence_Divergence.mq5": {
+              "_type": "file",
+              "size": 26926,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "Stochastic RSI.ex5": {
+              "_type": "file",
+              "size": 12634,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "Momentum.mq5": {
+              "_type": "file",
+              "size": 2870,
+              "modified": "2026-02-08 11:26:21"
+            },
+            "MI.mq5": {
+              "_type": "file",
+              "size": 4876,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "BB.mq5": {
+              "_type": "file",
+              "size": 5817,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "ADXW.mq5": {
+              "_type": "file",
+              "size": 6836,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "Stochastic_experiment.mq5": {
+              "_type": "file",
+              "size": 15522,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "MACD of RSI adaptive EMA.mq5": {
+              "_type": "file",
+              "size": 12678,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "BB.ex5": {
+              "_type": "file",
+              "size": 13976,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "Stochastic_RSI.mq5": {
+              "_type": "file",
+              "size": 12912,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "Stochastic MACD.mq5": {
+              "_type": "file",
+              "size": 11164,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "Zero_Lag_TEMA.mq5": {
+              "_type": "file",
+              "size": 11102,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "Force_Index.mq5": {
+              "_type": "file",
+              "size": 3927,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "Bears.mq5": {
+              "_type": "file",
+              "size": 3688,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "CHV.mq5": {
+              "_type": "file",
+              "size": 4440,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "Super Trend.mq5": {
+              "_type": "file",
+              "size": 19422,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "stochastic_of_super_smoother.ex5": {
+              "_type": "file",
+              "size": 11824,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "Super trend.mq5": {
+              "_type": "file",
+              "size": 8700,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "DeMarker.mq5": {
+              "_type": "file",
+              "size": 4177,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "Elders_Safe_Zone_Triple.ex5": {
+              "_type": "file",
+              "size": 13084,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "Macd Hull.ex5": {
+              "_type": "file",
+              "size": 14602,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "macd_histogram_mc.ex5": {
+              "_type": "file",
+              "size": 18066,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "DEMA.mq5": {
+              "_type": "file",
+              "size": 2940,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "stochastic_of_rsx.ex5": {
+              "_type": "file",
+              "size": 12230,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "Super Trend.ex5": {
+              "_type": "file",
+              "size": 14946,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "MACD of deviation scaled MA.ex5": {
+              "_type": "file",
+              "size": 15072,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "Stochastic Custom.mq5": {
+              "_type": "file",
+              "size": 10624,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "Stochastic volatility.ex5": {
+              "_type": "file",
+              "size": 16288,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "Stochastic_Fast.mq5": {
+              "_type": "file",
+              "size": 10762,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "Stochastic RVI lvl.ex5": {
+              "_type": "file",
+              "size": 13346,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "Stochastic Custom.ex5": {
+              "_type": "file",
+              "size": 11442,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "StochasticEx.ex5": {
+              "_type": "file",
+              "size": 10956,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "Stochastic_RSI.ex5": {
+              "_type": "file",
+              "size": 12482,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "macd_histogram.mq5": {
+              "_type": "file",
+              "size": 5591,
+              "modified": "2026-02-08 11:26:31"
+            },
+            "MACD slope divergence (mtf).mq5": {
+              "_type": "file",
+              "size": 36956,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "Macd TEMA.ex5": {
+              "_type": "file",
+              "size": 14268,
+              "modified": "2026-02-08 11:26:25"
+            },
+            "BW-ZoneTrade.mq5": {
+              "_type": "file",
+              "size": 5020,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "MACD_Squeeze.mq5": {
+              "_type": "file",
+              "size": 18724,
+              "modified": "2026-02-08 11:26:20"
+            },
+            "MACD (sr).ex5": {
+              "_type": "file",
+              "size": 18402,
+              "modified": "2026-02-08 11:26:23"
+            },
+            "Stochastic volatility.mq5": {
+              "_type": "file",
+              "size": 15494,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "ZeroLagMACD.mq5": {
+              "_type": "file",
+              "size": 21200,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "MACD Crossing the zero level.ex5": {
+              "_type": "file",
+              "size": 14666,
+              "modified": "2026-02-08 11:26:30"
+            },
+            "ElderImpulse.mq5": {
+              "_type": "file",
+              "size": 5237,
+              "modified": "2026-02-08 11:26:28"
+            },
+            "DeltaForce.ex5": {
+              "_type": "file",
+              "size": 9030,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "Stochastic_Bar.ex5": {
+              "_type": "file",
+              "size": 14340,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "ADX.mq5": {
+              "_type": "file",
+              "size": 5609,
+              "modified": "2026-02-08 11:26:19"
+            },
+            "MACD_ca.mq5": {
+              "_type": "file",
+              "size": 9476,
+              "modified": "2026-02-08 11:26:26"
+            },
+            "stochastic_of_adaptive_smoother.ex5": {
+              "_type": "file",
+              "size": 13620,
+              "modified": "2026-02-08 11:26:29"
+            },
+            "MACD_Signal_Line.mq5": {
+              "_type": "file",
+              "size": 10268,
+              "modified": "2026-02-08 11:26:32"
+            },
+            "FrAMA.ex5": {
+              "_type": "file",
+              "size": 9480,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "Stochastic extended.mq5": {
+              "_type": "file",
+              "size": 18090,
+              "modified": "2026-02-08 11:26:22"
+            },
+            "TEMA.mq5": {
+              "_type": "file",
+              "size": 3236,
+              "modified": "2026-02-08 11:26:24"
+            },
+            "Stochastic_Fast.ex5": {
+              "_type": "file",
+              "size": 11050,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "ColorCandlesDaily.mq5": {
+              "_type": "file",
+              "size": 3136,
+              "modified": "2026-02-08 11:26:27"
+            },
+            "Panels": {
+              "_type": "dir",
+              "_content": {
+                "ChartPanel": {
+                  "_type": "dir",
+                  "_content": {
+                    "PanelDialog.mqh": {
+                      "_type": "file",
+                      "size": 15250,
+                      "modified": "2026-02-08 11:27:20"
+                    },
+                    "ChartPanel.mq5": {
+                      "_type": "file",
+                      "size": 2757,
+                      "modified": "2026-02-08 11:27:20"
+                    },
+                    "ChartPanel.ex5": {
+                      "_type": "file",
+                      "size": 135756,
+                      "modified": "2026-02-08 11:27:20"
+                    }
+                  }
+                },
+                "SimplePanel": {
+                  "_type": "dir",
+                  "_content": {
+                    "SimplePanel.mq5": {
+                      "_type": "file",
+                      "size": 2757,
+                      "modified": "2026-02-08 11:27:21"
+                    },
+                    "SimplePanel.ex5": {
+                      "_type": "file",
+                      "size": 138484,
+                      "modified": "2026-02-08 11:27:21"
+                    },
+                    "PanelDialog.mqh": {
+                      "_type": "file",
+                      "size": 14765,
+                      "modified": "2026-02-08 11:27:21"
+                    }
+                  }
+                }
+              }
+            },
+            "Canvas": {
+              "_type": "dir",
+              "_content": {
+                "FlameChart.ex5": {
+                  "_type": "file",
+                  "size": 26752,
+                  "modified": "2026-02-08 11:27:04"
+                },
+                "FlameChart.mq5": {
+                  "_type": "file",
+                  "size": 3577,
+                  "modified": "2026-02-08 11:27:04"
+                }
+              }
+            }
+          }
+        },
+        "Jules": {
+          "_type": "dir",
+          "_content": {
+            "DeltaForce_Cust.mq5": {
+              "_type": "file",
+              "size": 7015,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "Mimic_Trap_Research_EA_v2.14.ex5": {
+              "_type": "file",
+              "size": 78578,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "Hybrid_Conviction_Monitor.ex5": {
+              "_type": "file",
+              "size": 10214,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "HybridFlowIndicator_v1.125.mq5": {
+              "_type": "file",
+              "size": 10875,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "Mimic_Merkava_v1.05_BarbedWire.ex5": {
+              "_type": "file",
+              "size": 68012,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "HybridInstitutionalIndicator_v1.0.ex5": {
+              "_type": "file",
+              "size": 15686,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "Mimic_Merkava_v1.05_BarbedWire.mq5": {
+              "_type": "file",
+              "size": 24728,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "Mimic_BarbedWire_Probe_EA_v1.03.ex5": {
+              "_type": "file",
+              "size": 64312,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "Hybrid_Velocity_Acceleration_VA.mq5": {
+              "_type": "file",
+              "size": 4367,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "Mimic_BarbedWire_Probe_EA_v1.02.ex5": {
+              "_type": "file",
+              "size": 57518,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "Mimic_Trap_Research_EA_v2.15.mq5": {
+              "_type": "file",
+              "size": 48617,
+              "modified": "2026-02-08 11:26:38"
+            },
+            "Hybrid_Microstructure_Monitor_v1.7.mq5": {
+              "_type": "file",
+              "size": 7910,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "DeltaForce_Cust.ex5": {
+              "_type": "file",
+              "size": 8402,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "Mimic_BarbedWire_Probe_EA.ex5": {
+              "_type": "file",
+              "size": 63576,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "HybridWVFIndicator_v1.4.mq5": {
+              "_type": "file",
+              "size": 5387,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "HybridContextIndicator_v3.17.ex5": {
+              "_type": "file",
+              "size": 29486,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "Hybrid_Conviction_Monitor.mq5": {
+              "_type": "file",
+              "size": 6997,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "Hybrid_Microstructure_Monitor_v1.7.ex5": {
+              "_type": "file",
+              "size": 10646,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "MACD_Squeeze_Cust.ex5": {
+              "_type": "file",
+              "size": 16340,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "HybridFlowIndicator_v1.125.ex5": {
+              "_type": "file",
+              "size": 12776,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "Hybrid_Velocity_Acceleration_VA.ex5": {
+              "_type": "file",
+              "size": 11724,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "HybridMomentumIndicator_v2.82.ex5": {
+              "_type": "file",
+              "size": 17340,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "Jules_Hybrid_Momentum_Pulse_v1.04.ex5": {
+              "_type": "file",
+              "size": 14864,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "WVF.ex5": {
+              "_type": "file",
+              "size": 9990,
+              "modified": "2026-02-08 11:26:38"
+            },
+            "HybridInstitutionalIndicator_v1.0.mq5": {
+              "_type": "file",
+              "size": 5634,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "Delta_MFI_Cust.mq5": {
+              "_type": "file",
+              "size": 7665,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "HybridWVFIndicator_v1.4.ex5": {
+              "_type": "file",
+              "size": 8844,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "Mimic_BarbedWire_Probe_EA_v1.03.mq5": {
+              "_type": "file",
+              "size": 24511,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "MACD_Squeeze_Cust.mq5": {
+              "_type": "file",
+              "size": 9130,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "HybridMomentumIndicator_v2.82.mq5": {
+              "_type": "file",
+              "size": 13903,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "HybridContextIndicator_v3.17.mq5": {
+              "_type": "file",
+              "size": 26143,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "Mimic_Trap_Research_EA_v2.15.ex5": {
+              "_type": "file",
+              "size": 81538,
+              "modified": "2026-02-08 11:26:38"
+            },
+            "Jules_Hybrid_Momentum_Pulse_v1.04.mq5": {
+              "_type": "file",
+              "size": 9602,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "Delta_MFI_Cust.ex5": {
+              "_type": "file",
+              "size": 10326,
+              "modified": "2026-02-08 11:26:36"
+            },
+            "WVF.mq5": {
+              "_type": "file",
+              "size": 8286,
+              "modified": "2026-02-08 11:26:38"
+            },
+            "Mimic_Merkava_v1.04_Fixed.ex5": {
+              "_type": "file",
+              "size": 20024,
+              "modified": "2026-02-08 11:26:37"
+            },
+            "DOM": {
+              "_type": "dir",
+              "_content": {
+                "Trojan_Horse_EA_v3.0.ex5": {
+                  "_type": "file",
+                  "size": 59572,
+                  "modified": "2026-02-08 11:27:05"
+                },
+                "Hybrid_DOM_Scanner.ex5": {
+                  "_type": "file",
+                  "size": 10508,
+                  "modified": "2026-02-08 11:27:05"
+                },
+                "TickRoller_v3.07.mq5": {
+                  "_type": "file",
+                  "size": 39868,
+                  "modified": "2026-02-08 11:27:05"
+                },
+                "Trojan_Horse_EA_v3.0.mq5": {
+                  "_type": "file",
+                  "size": 26276,
+                  "modified": "2026-02-08 11:27:05"
+                },
+                "Mimic_Trap_EA_v1.1.ex5": {
+                  "_type": "file",
+                  "size": 49422,
+                  "modified": "2026-02-08 11:27:05"
+                },
+                "Mimic_Trap_EA_v1.1.mq5": {
+                  "_type": "file",
+                  "size": 17748,
+                  "modified": "2026-02-08 11:27:05"
+                },
+                "Hybrid_DOM_Logger.ex5": {
+                  "_type": "file",
+                  "size": 16204,
+                  "modified": "2026-02-08 11:27:05"
+                },
+                "Hybrid_DOM_Scanner.mq5": {
+                  "_type": "file",
+                  "size": 5289,
+                  "modified": "2026-02-08 11:27:05"
+                },
+                "Hybrid_DOM_Logger.mq5": {
+                  "_type": "file",
+                  "size": 7170,
+                  "modified": "2026-02-08 11:27:05"
+                },
+                "TickRoller_v3.07.ex5": {
+                  "_type": "file",
+                  "size": 41528,
+                  "modified": "2026-02-08 11:27:05"
+                },
+                "Hybrid_DOM_Monitor_v1.09.mq5": {
+                  "_type": "file",
+                  "size": 13217,
+                  "modified": "2026-02-08 11:27:05"
+                }
+              }
+            },
+            "Indicators": {
+              "_type": "dir",
+              "_content": {
+                "Hybrid_DOM_Monitor_v1.09.ex5": {
+                  "_type": "file",
+                  "size": 23528,
+                  "modified": "2026-02-08 11:27:06"
+                }
+              }
+            }
+          }
+        },
+        "Indicators": {
+          "_type": "dir",
+          "_content": {
+            "PhysicsEngine.mqh": {
+              "_type": "file",
+              "size": 4415,
+              "modified": "2026-02-08 11:26:35"
+            },
+            "BlackBox.mqh": {
+              "_type": "file",
+              "size": 5224,
+              "modified": "2026-02-08 11:26:35"
+            },
+            "StealthEngine.mqh": {
+              "_type": "file",
+              "size": 7692,
+              "modified": "2026-02-08 11:26:35"
+            },
+            "NavSystem.mqh": {
+              "_type": "file",
+              "size": 14542,
+              "modified": "2026-02-08 11:26:35"
+            },
+            "FireControl.mqh": {
+              "_type": "file",
+              "size": 11181,
+              "modified": "2026-02-08 11:26:35"
+            },
+            "Camouflage.mqh": {
+              "_type": "file",
+              "size": 1517,
+              "modified": "2026-02-08 11:26:35"
+            }
+          }
+        }
+      }
+    },
+    "Files": {
+      "_type": "dir",
+      "_content": {
+        "mimic merkava gold.zip": {
+          "_type": "file",
+          "size": 106819,
+          "modified": "2026-02-08 11:25:55"
+        },
+        "mimic merkava gold2.zip": {
+          "_type": "file",
+          "size": 96405,
+          "modified": "2026-02-08 11:25:55"
+        },
+        "Mimic_Merkava_GOLD_v1.05_BW_DirectCalc_20260206_174251.csv.zip": {
+          "_type": "file",
+          "size": 65166,
+          "modified": "2026-02-08 11:25:55"
+        },
+        "Mimic_Merkava_GOLD_v1.05_BW_DirectCalc_20260206_174251.csv": {
+          "_type": "file",
+          "size": 353795,
+          "modified": "2026-02-08 11:25:55"
+        },
+        "kell": {
+          "_type": "dir",
+          "_content": {
+            "Mimic_Trap_Research_EA_v2.12.mq5": {
+              "_type": "file",
+              "size": 43326,
+              "modified": "2026-02-08 11:26:05"
+            },
+            "Handover_Report_2026_01_29_FINAL.md": {
+              "_type": "file",
+              "size": 4480,
+              "modified": "2026-02-08 11:26:05"
+            },
+            "LAST_SESSION_HANDOVER_RECOVERY.md": {
+              "_type": "file",
+              "size": 2779,
+              "modified": "2026-02-08 11:26:05"
+            },
+            "Stress_Test_Report_2026_01_29.md": {
+              "_type": "file",
+              "size": 4646,
+              "modified": "2026-02-08 11:26:06"
+            },
+            "analysis_gold_hybrid.txt": {
+              "_type": "file",
+              "size": 1079,
+              "modified": "2026-02-08 11:26:04"
+            },
+            "Colombo_Story_Gold_20260129.txt": {
+              "_type": "file",
+              "size": 3877,
+              "modified": "2026-02-08 11:26:05"
+            },
+            "Mimic_BarbedWire_Probe_EA.mq5": {
+              "_type": "file",
+              "size": 24388,
+              "modified": "2026-02-08 11:26:05"
+            },
+            "analysis_gold_output_new.txt": {
+              "_type": "file",
+              "size": 5241,
+              "modified": "2026-02-08 11:26:04"
+            },
+            "Mimic_Trap_Research_EA_v2.13.mq5": {
+              "_type": "file",
+              "size": 43320,
+              "modified": "2026-02-08 11:26:05"
+            },
+            "Trojan_Horse_Log_[SP500]_20260128_225718.csv.zip": {
+              "_type": "file",
+              "size": 30692,
+              "modified": "2026-02-08 11:26:06"
+            },
+            "Trojan_Horse_Log_[SP500]_20260128_225718.csv": {
+              "_type": "file",
+              "size": 216895,
+              "modified": "2026-02-08 11:26:06"
+            },
+            "analyze_inverse_correlation.py": {
+              "_type": "file",
+              "size": 2778,
+              "modified": "2026-02-08 11:26:05"
+            },
+            "Analysis_Report_GOLD_20260129_1450.md": {
+              "_type": "file",
+              "size": 3566,
+              "modified": "2026-02-08 11:26:05"
+            },
+            "Mimic_Research_GOLD_20260129_145051.csv": {
+              "_type": "file",
+              "size": 1144235,
+              "modified": "2026-02-08 11:26:06"
+            }
+          }
+        },
+        "githubra": {
+          "_type": "dir",
+          "_content": {
+            "LAST_SESSION_HANDOVER_NEXT_STEPS.md": {
+              "_type": "file",
+              "size": 2867,
+              "modified": "2026-02-08 11:26:04"
+            },
+            "Mimic_BarbedWire_Probe_EA_1.00.mq5": {
+              "_type": "file",
+              "size": 24388,
+              "modified": "2026-02-08 11:26:04"
+            },
+            "restore_environment_extended.py": {
+              "_type": "file",
+              "size": 15417,
+              "modified": "2026-02-08 11:26:04"
+            },
+            "Handover_Report_WIRE_ANALYSIS_2026_01_30.md": {
+              "_type": "file",
+              "size": 3390,
+              "modified": "2026-02-08 11:26:04"
+            },
+            "Handover_Report_2026_01_29_0043.md": {
+              "_type": "file",
+              "size": 2413,
+              "modified": "2026-02-08 11:26:04"
+            },
+            "analyze_barbed_wire.py": {
+              "_type": "file",
+              "size": 2516,
+              "modified": "2026-02-08 11:26:04"
+            },
+            "Mimic_BarbedWire_Probe_EA_v1.01.mq5": {
+              "_type": "file",
+              "size": 25597,
+              "modified": "2026-02-08 11:26:04"
+            },
+            "LAST_SESSION_HANDOVER_FINAL_CLEANUP.md": {
+              "_type": "file",
+              "size": 2206,
+              "modified": "2026-02-08 11:26:04"
+            }
+          }
+        }
+      }
+    },
+    "Profiles": {
+      "_type": "dir",
+      "_content": {
+        "Tester": {
+          "_type": "dir",
+          "_content": {}
+        },
+        "SymbolSets": {
+          "_type": "dir",
+          "_content": {
+            "forex.crosses.set": {
+              "_type": "file",
+              "size": 218,
+              "modified": "2026-02-08 11:26:39"
+            },
+            "forex.major.set": {
+              "_type": "file",
+              "size": 64,
+              "modified": "2026-02-08 11:26:39"
+            },
+            "forex.all.set": {
+              "_type": "file",
+              "size": 288,
+              "modified": "2026-02-08 11:26:39"
+            }
+          }
+        },
+        "Charts": {
+          "_type": "dir",
+          "_content": {
+            "Default": {
+              "_type": "dir",
+              "_content": {
+                "chart01.chr": {
+                  "_type": "file",
+                  "size": 2832,
+                  "modified": "2026-02-08 11:27:07"
+                },
+                "order.wnd": {
+                  "_type": "file",
+                  "size": 28,
+                  "modified": "2026-02-08 11:27:07"
+                }
+              }
+            },
+            "Euro": {
+              "_type": "dir",
+              "_content": {
+                "chart03.chr": {
+                  "_type": "file",
+                  "size": 4432,
+                  "modified": "2026-02-08 11:27:07"
+                },
+                "chart04.chr": {
+                  "_type": "file",
+                  "size": 4434,
+                  "modified": "2026-02-08 11:27:07"
+                },
+                "chart01.chr": {
+                  "_type": "file",
+                  "size": 4434,
+                  "modified": "2026-02-08 11:27:07"
+                },
+                "order.wnd": {
+                  "_type": "file",
+                  "size": 106,
+                  "modified": "2026-02-08 11:27:07"
+                },
+                "chart02.chr": {
+                  "_type": "file",
+                  "size": 4432,
+                  "modified": "2026-02-08 11:27:07"
+                }
+              }
+            },
+            "British Pound": {
+              "_type": "dir",
+              "_content": {
+                "chart03.chr": {
+                  "_type": "file",
+                  "size": 4432,
+                  "modified": "2026-02-08 11:27:06"
+                },
+                "chart04.chr": {
+                  "_type": "file",
+                  "size": 4434,
+                  "modified": "2026-02-08 11:27:06"
+                },
+                "chart01.chr": {
+                  "_type": "file",
+                  "size": 4434,
+                  "modified": "2026-02-08 11:27:06"
+                },
+                "order.wnd": {
+                  "_type": "file",
+                  "size": 106,
+                  "modified": "2026-02-08 11:27:06"
+                },
+                "chart02.chr": {
+                  "_type": "file",
+                  "size": 4432,
+                  "modified": "2026-02-08 11:27:06"
+                }
+              }
+            },
+            "Market Overview": {
+              "_type": "dir",
+              "_content": {
+                "chart03.chr": {
+                  "_type": "file",
+                  "size": 3022,
+                  "modified": "2026-02-08 11:27:08"
+                },
+                "chart04.chr": {
+                  "_type": "file",
+                  "size": 3168,
+                  "modified": "2026-02-08 11:27:08"
+                },
+                "chart01.chr": {
+                  "_type": "file",
+                  "size": 5652,
+                  "modified": "2026-02-08 11:27:08"
+                },
+                "order.wnd": {
+                  "_type": "file",
+                  "size": 106,
+                  "modified": "2026-02-08 11:27:08"
+                },
+                "chart02.chr": {
+                  "_type": "file",
+                  "size": 3166,
+                  "modified": "2026-02-08 11:27:08"
+                }
+              }
+            }
+          }
+        },
+        "Community": {
+          "_type": "dir",
+          "_content": {}
+        },
+        "Templates": {
+          "_type": "dir",
+          "_content": {
+            "default.tpl": {
+              "_type": "file",
+              "size": 4494,
+              "modified": "2026-02-08 11:26:40"
+            },
+            "BollingerBands.tpl": {
+              "_type": "file",
+              "size": 4866,
+              "modified": "2026-02-08 11:26:40"
+            },
+            "ADX.tpl": {
+              "_type": "file",
+              "size": 4082,
+              "modified": "2026-02-08 11:26:40"
+            },
+            "Momentum.tpl": {
+              "_type": "file",
+              "size": 7214,
+              "modified": "2026-02-08 11:26:40"
+            }
+          }
+        },
+        "deleted": {
+          "_type": "dir",
+          "_content": {
+            "09.chr": {
+              "_type": "file",
+              "size": 3590,
+              "modified": "2026-02-08 11:26:38"
+            },
+            "10.chr": {
+              "_type": "file",
+              "size": 2830,
+              "modified": "2026-02-08 11:26:39"
+            },
+            "06.chr": {
+              "_type": "file",
+              "size": 310984,
+              "modified": "2026-02-08 11:26:39"
+            },
+            "08.chr": {
+              "_type": "file",
+              "size": 2834,
+              "modified": "2026-02-08 11:26:38"
+            }
+          }
+        }
+      }
+    }
+  }
+}
