@@ -9,9 +9,10 @@
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
 
+// [Jules] DISABLED STEALTH ENGINE FOR STABILITY RESTORATION
 // Include the class definition (RENAMED to CStealthEngine)
 // Flat structure as per user requirement (Indicators\Indicators)
-#include "StealthEngine.mqh"
+//#include "StealthEngine.mqh"
 
 //+------------------------------------------------------------------+
 //| Class CFireControl                                               |
@@ -22,7 +23,7 @@ class CFireControl
 private:
    CTrade      *m_trade;
    CSymbolInfo *m_symbol;
-   CStealthEngine *m_stealth; // Optional Stealth Engine (Renamed)
+   //CStealthEngine *m_stealth; // Optional Stealth Engine (Disabled)
    string      m_symbol_name;
    double      m_point;
    int         m_digits;
@@ -30,7 +31,7 @@ private:
    ulong       m_magic;
 
 public:
-   CFireControl() { m_trade = NULL; m_symbol = NULL; m_stealth = NULL; }
+   CFireControl() { m_trade = NULL; m_symbol = NULL; /*m_stealth = NULL;*/ }
    ~CFireControl() {}
 
    void Init(CTrade *trade_ptr, CSymbolInfo *symbol_ptr, string comment, ulong magic)
@@ -44,11 +45,11 @@ public:
       m_magic = magic;
    }
 
-   // Inject Stealth Engine
-   void SetStealth(CStealthEngine *stealth_ptr)
-   {
-      m_stealth = stealth_ptr;
-   }
+   // Inject Stealth Engine (Disabled)
+   //void SetStealth(CStealthEngine *stealth_ptr)
+   //{
+   //   m_stealth = stealth_ptr;
+   //}
 
    //+------------------------------------------------------------------+
    //| FireBurst                                                        |
@@ -75,6 +76,7 @@ public:
       double buy_step = spread_mult_step;
       double sell_step = spread_mult_step;
 
+      /* [Jules] Stealth Logic Disabled for Stability
       if(m_stealth != NULL)
       {
           // ASYMMETRY: Distinct Start and Step for Buy/Sell
@@ -86,6 +88,7 @@ public:
           m_stealth->GetAsymmetricParams(spread_mult_step, buy_step, sell_step);
           PrintFormat("   🕵️ STEALTH ACTIVE: BuyStep=%.2f, SellStep=%.2f", buy_step, sell_step);
       }
+      */
       // -----------------------------
 
       for (int i = 1; i <= layers; i++)
@@ -102,19 +105,23 @@ public:
          if (dist_sell < min_safety) dist_sell = min_safety + (i*10 * m_point);
 
          // Stealth Price Jitter (Micro-offsets)
+         /* [Jules] Stealth Logic Disabled for Stability
          if(m_stealth != NULL) {
              // Jitter the exact price point to avoid round numbers or exact spreads
              // This applies logic AFTER the safety check, so we re-verify safety later implicitly
              // But simpler: just add noise to the computed price.
          }
+         */
 
          double buy_price = NormalizeDouble(center_price - dist_buy, m_digits);
          double sell_price = NormalizeDouble(center_price + dist_sell, m_digits);
 
+         /* [Jules] Stealth Logic Disabled for Stability
          if(m_stealth != NULL) {
             buy_price = NormalizeDouble(m_stealth->GetJitterPrice(buy_price, m_point), m_digits);
             sell_price = NormalizeDouble(m_stealth->GetJitterPrice(sell_price, m_point), m_digits);
          }
+         */
 
          // Double Check Logic (Validate against current Ask/Bid)
          if (buy_price > m_symbol.Ask() - min_safety) buy_price = m_symbol.Ask() - min_safety - (i*m_point);
@@ -131,6 +138,7 @@ public:
          ENUM_ORDER_TYPE_TIME type_time_s = ORDER_TIME_GTC;
          datetime expiration_s = 0;
 
+         /* [Jules] Stealth Logic Disabled for Stability
          if(m_stealth != NULL) {
             // Randomize Comment
             comm = m_stealth->GetHumanizedComment(m_comment_prefix);
@@ -140,6 +148,7 @@ public:
             // Inject Latency
             m_stealth->ApplyLatency(50, 150);
          }
+         */
 
          // Execute Buy Limit
          if (m_trade.OrderOpen(m_symbol_name, ORDER_TYPE_BUY_LIMIT, lot_size, 0.0, buy_price, 0, 0, type_time_b, expiration_b, comm)) {
@@ -148,8 +157,10 @@ public:
             PrintFormat("   ❌ Buy Limit L%d Failed: %d", i, GetLastError());
          }
 
+         /* [Jules] Stealth Logic Disabled for Stability
          // Asymmetric Latency
          if(m_stealth != NULL) m_stealth->ApplyLatency(80, 250);
+         */
 
          // Execute Sell Limit
          if (m_trade.OrderOpen(m_symbol_name, ORDER_TYPE_SELL_LIMIT, lot_size, 0.0, sell_price, 0, 0, type_time_s, expiration_s, comm)) {
@@ -214,6 +225,7 @@ public:
            // Determine target drift (Jitter + Trend?)
            // For now, simple chaotic drift within range
            double drift = 0.0;
+           /* [Jules] Stealth Logic Disabled for Stability
            if (m_stealth != NULL) {
                // Drift is a small Gaussian walk relative to current pos
                drift = m_stealth->GetJitterPrice(0, m_point, (int)range_pts);
@@ -221,6 +233,9 @@ public:
                // Minimal drift if no stealth
                drift = ((MathRand()%3) - 1) * m_point;
            }
+           */
+           // Fallback to simple drift
+           drift = ((MathRand()%3) - 1) * m_point;
 
            double current_price = OrderGetDouble(ORDER_PRICE_OPEN);
            double new_price = NormalizeDouble(current_price + drift, m_digits);
@@ -242,8 +257,10 @@ public:
            // Only modify if difference is meaningful (> 0.5 point) to save API calls
            if (MathAbs(new_price - current_price) > m_point * 0.5) {
 
+               /* [Jules] Stealth Logic Disabled for Stability
                // Latency Injection before Modify
                if(m_stealth != NULL) m_stealth->ApplyLatency(20, 80);
+               */
 
                // Modify
                // FIXED: Added missing stoplimit parameter (0.0)
