@@ -16,7 +16,8 @@
 #include "../Indicators/NavSystem.mqh"
 #include "../Indicators/PhysicsEngine.mqh"
 #include "../Indicators/FireControl.mqh"
-#include "../Indicators/Stealth/StealthEngine.mqh"
+// [Jules] STEALTH DISABLED FOR STABILITY
+//#include "../Indicators/Stealth/StealthEngine.mqh"
 
 //--- Inputs
 // [Strategy Settings]
@@ -36,7 +37,7 @@ input string        InpComment           = "MerkavaWire"; // [Risk] Comment
 
 // [Stealth Systems (Advanced Chaos)]
 input group         "Stealth Systems";
-input bool          InpUseStealth        = true;   // [Stealth] Enable Chaos Engine
+input bool          InpUseStealth        = false;  // [Stealth] Enable Chaos Engine (FORCED FALSE)
 input double        InpChaosLevel        = 1.0;    // [Stealth] Jitter Intensity (0.1 - 2.0)
 input int           InpLatencyMin        = 50;     // [Stealth] Latency Min (ms)
 input int           InpLatencyMax        = 300;    // [Stealth] Latency Max (ms)
@@ -96,7 +97,7 @@ ulong             g_actual_magic = 0; // Rotated Magic
 
 //--- Modules
 CMimicCamouflage  *Camouflage;
-StealthEngine     *Stealth;
+//StealthEngine     *Stealth; // [Jules] Disabled
 CMimicBlackBox    *BlackBox;
 CMimicNavSystem   *NavSystem;
 PhysicsEngine     *Physics;
@@ -142,7 +143,7 @@ int OnInit()
 
    // 2. Initialize Modules
    Camouflage  = new CMimicCamouflage();
-   Stealth     = new StealthEngine();
+   //Stealth     = new StealthEngine(); // [Jules] Disabled
    BlackBox    = new CMimicBlackBox();
    NavSystem   = new CMimicNavSystem();
    Physics     = new PhysicsEngine(50);
@@ -150,6 +151,7 @@ int OnInit()
    Trade       = new CTrade();
 
    // 2.1 Stealth Init (Identity Obfuscation)
+   /* [Jules] STEALTH DISABLED
    if(InpUseStealth)
    {
        Stealth->Initialize(InpChaosLevel, InpLatencyMin, InpLatencyMax);
@@ -170,6 +172,8 @@ int OnInit()
        g_actual_magic = InpMagicNumber;
        Print("🕵️ STEALTH ENGINE: DISABLED.");
    }
+   */
+   g_actual_magic = InpMagicNumber; // [Jules] Fallback to fixed magic
 
    // 3. Setup Trade & Symbol
    Trade->SetExpertMagicNumber(g_actual_magic);
@@ -184,7 +188,7 @@ int OnInit()
 
    // 4. Initialize FireControl
    FireControl->Init(Trade, &SymbolInfo, InpComment, g_actual_magic);
-   if(InpUseStealth) FireControl->SetStealth(Stealth);
+   //if(InpUseStealth) FireControl->SetStealth(Stealth); // [Jules] Disabled
 
    // 5. Initialize NavSystem (Barbed Wire Mode)
    string path_hybrid = InpIndPath + "Jules_Hybrid_Momentum_Pulse_v1.04";
@@ -238,7 +242,7 @@ void OnDeinit(const int reason)
    if(BlackBox) delete BlackBox;
    if(NavSystem) delete NavSystem;
    if(Camouflage) delete Camouflage;
-   if(Stealth) delete Stealth;
+   //if(Stealth) delete Stealth; // [Jules] Disabled
    if(Physics) delete Physics;
    if(FireControl) delete FireControl;
    if(Trade) delete Trade;
