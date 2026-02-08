@@ -4,6 +4,7 @@
 //|                       Focused Strategy: Barbed Wire (Szögesdrót) |
 //|                       Mode: MANUAL BURST FIRE (Grid Trap)        |
 //|                       Modular Architecture (Merkava Tank)        |
+//|                       STABLE BASE - NO STEALTH                   |
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent & User"
 #property link      "https://www.mql5.com"
@@ -11,13 +12,15 @@
 #property strict
 
 // --- Modular Includes ---
-#include "../Indicators/Camouflage.mqh"
-#include "../Indicators/BlackBox.mqh"
-#include "../Indicators/NavSystem.mqh"
-#include "../Indicators/PhysicsEngine.mqh"
-#include "../Indicators/FireControl.mqh"
-// [Jules] STEALTH DISABLED FOR STABILITY
-//#include "../Indicators/Stealth/StealthEngine.mqh"
+#include <Trade\Trade.mqh> // Explicit Include FIRST
+#include <Trade\SymbolInfo.mqh> // Explicit Include
+
+// Corrected Paths for Jules Self-Contained Project Structure
+#include "Indicators/Camouflage.mqh"
+#include "Indicators/BlackBox.mqh"
+#include "Indicators/NavSystem.mqh"
+#include "Indicators/PhysicsEngine.mqh"
+#include "Indicators/FireControl.mqh"
 
 //--- Inputs
 // [Strategy Settings]
@@ -35,15 +38,10 @@ input int           InpSlippage          = 10;     // [Risk] Slippage
 input ulong         InpMagicNumber       = 999004; // [Risk] Magic Number
 input string        InpComment           = "MerkavaWire"; // [Risk] Comment
 
-// [Stealth Systems (Advanced Chaos)]
-input group         "Stealth Systems";
+// [Stealth Systems (Advanced Chaos) - DISABLED]
+input group         "Stealth Systems (Disabled)";
 input bool          InpUseStealth        = false;  // [Stealth] Enable Chaos Engine (FORCED FALSE)
-input double        InpChaosLevel        = 1.0;    // [Stealth] Jitter Intensity (0.1 - 2.0)
-input int           InpLatencyMin        = 50;     // [Stealth] Latency Min (ms)
-input int           InpLatencyMax        = 300;    // [Stealth] Latency Max (ms)
-input int           InpMagicVariance     = 500;    // [Stealth] Magic Number Rotation Range
-input bool          InpActiveMorph       = true;   // [Stealth] Active Camouflage (Grid Drift)
-input double        InpMorphRange        = 10.0;   // [Stealth] Morph Range (Points)
+// Removed other inputs to clean up UI/Code
 
 // [Jules Hybrid Momentum Pulse v1.04 Settings]
 input uint           Hybrid_InpPeriodFastEMA     =  3;
@@ -97,12 +95,11 @@ ulong             g_actual_magic = 0; // Rotated Magic
 
 //--- Modules
 CMimicCamouflage  *Camouflage;
-//StealthEngine     *Stealth; // [Jules] Disabled
 CMimicBlackBox    *BlackBox;
 CMimicNavSystem   *NavSystem;
 PhysicsEngine     *Physics;
 CFireControl      *FireControl;
-CTrade            *Trade; // FireControl needs a pointer, but FireControl creates its own? No, it takes pointers.
+CTrade            *ExtTrade; // Renamed from Trade to avoid shadowing/conflict
 CSymbolInfo       SymbolInfo; // Needed for FireControl
 
 //--- GUI Objects
@@ -134,51 +131,22 @@ int OnInit()
 {
    // 1. Cleanup Old Objects
    CleanupChart();
-   // Note: We do NOT remove all indicators blindly to respect user setup,
-   // but Barbed Wire code did: "RemoveIndicators()".
-   // We will rely on NavSystem to manage its handles, but we might want to clean old instances.
-   // Given the "Exact Copy" instruction, I should probably clean.
-   // But modular systems usually behave nicer.
-   // I will skip aggressive indicator deletion to be safe, relying on `ChartIndicatorAdd`.
 
    // 2. Initialize Modules
    Camouflage  = new CMimicCamouflage();
-   //Stealth     = new StealthEngine(); // [Jules] Disabled
    BlackBox    = new CMimicBlackBox();
    NavSystem   = new CMimicNavSystem();
    Physics     = new PhysicsEngine(50);
    FireControl = new CFireControl();
-   Trade       = new CTrade();
+   ExtTrade    = new CTrade(); // Initialize new variable name
 
-   // 2.1 Stealth Init (Identity Obfuscation)
-   /* [Jules] STEALTH DISABLED
-   if(InpUseStealth)
-   {
-       Stealth->Initialize(InpChaosLevel, InpLatencyMin, InpLatencyMax);
-
-       // Check Global Variable for existing identity
-       string gvar_name = "Merkava_Identity_" + _Symbol;
-       if(GlobalVariableCheck(gvar_name)) {
-           g_actual_magic = (ulong)GlobalVariableGet(gvar_name);
-           PrintFormat("🕵️ STEALTH ENGINE: Resuming Identity. Magic %I64d", g_actual_magic);
-       } else {
-           g_actual_magic = Stealth->GetRotatedMagic(InpMagicNumber, InpMagicVariance);
-           GlobalVariableSet(gvar_name, (double)g_actual_magic);
-           PrintFormat("🕵️ STEALTH ENGINE: New Identity Created. Magic %I64d -> %I64d", InpMagicNumber, g_actual_magic);
-       }
-   }
-   else
-   {
-       g_actual_magic = InpMagicNumber;
-       Print("🕵️ STEALTH ENGINE: DISABLED.");
-   }
-   */
+   // 2.1 Stealth Init (Identity Obfuscation) - DISABLED
    g_actual_magic = InpMagicNumber; // [Jules] Fallback to fixed magic
 
    // 3. Setup Trade & Symbol
-   Trade->SetExpertMagicNumber(g_actual_magic);
-   Trade->SetMarginMode();
-   Trade->SetDeviationInPoints(InpSlippage);
+   ExtTrade->SetExpertMagicNumber(g_actual_magic);
+   ExtTrade->SetMarginMode();
+   ExtTrade->SetDeviationInPoints(InpSlippage);
 
    if(!SymbolInfo.Name(_Symbol)) return INIT_FAILED;
    SymbolInfo.RefreshRates();
@@ -187,8 +155,7 @@ int OnInit()
    g_user_lot_size = InpLotSize;
 
    // 4. Initialize FireControl
-   FireControl->Init(Trade, &SymbolInfo, InpComment, g_actual_magic);
-   //if(InpUseStealth) FireControl->SetStealth(Stealth); // [Jules] Disabled
+   FireControl->Init(ExtTrade, &SymbolInfo, InpComment, g_actual_magic);
 
    // 5. Initialize NavSystem (Barbed Wire Mode)
    string path_hybrid = InpIndPath + "Jules_Hybrid_Momentum_Pulse_v1.04";
@@ -242,10 +209,9 @@ void OnDeinit(const int reason)
    if(BlackBox) delete BlackBox;
    if(NavSystem) delete NavSystem;
    if(Camouflage) delete Camouflage;
-   //if(Stealth) delete Stealth; // [Jules] Disabled
    if(Physics) delete Physics;
    if(FireControl) delete FireControl;
-   if(Trade) delete Trade;
+   if(ExtTrade) delete ExtTrade;
 }
 
 //+------------------------------------------------------------------+
@@ -325,8 +291,9 @@ void OnTick()
    double flow_roc = NavSystem->GetFlowROC();
 
    // --- Active Camouflage (Grid Morphing) ---
-   // Probabilistic Trigger (e.g. 5% chance per tick if Stealth is active)
-   if (InpUseStealth && InpActiveMorph)
+   // Always active with fallback (simple drift) if requested
+   bool morph_active = true; // Hardcoded default for now
+   if (morph_active)
    {
        if (MathRand() % 100 < 5) // 5% chance per tick
        {
@@ -336,7 +303,7 @@ void OnTick()
 
            if(morph_buy || morph_sell) {
                // Trigger Morph
-               FireControl->MorphGrid((tick.bid + tick.ask)/2.0, InpMorphRange, morph_buy, morph_sell);
+               FireControl->MorphGrid((tick.bid + tick.ask)/2.0, 10.0, morph_buy, morph_sell);
            }
        }
    }
@@ -391,14 +358,6 @@ void OnTick()
    );
 
    // Reset Event Buffers
-   // g_last_realized_pl = 0.0; // Wait, BlackBox accumulates? No, BlackBox takes "realized_pl" argument.
-   // BarbedWire logic: g_last_realized_pl accumlates session profit?
-   // BarbedWire v1.03 code:
-   // "g_last_realized_pl += profit;" inside CheckForNewDeals loop.
-   // "g_session_realized_pl += profit;" inside CheckForNewDeals loop.
-   // "g_last_realized_pl = 0.0;" at end of OnTick.
-   // So g_last_realized_pl is TICK SPECIFIC. g_session_realized_pl is TOTAL.
-
    g_last_realized_pl = 0.0;
    g_tick_event_buffer = "";
    g_decision_log = "";
@@ -524,10 +483,6 @@ void CleanupChart()
        int total = ChartIndicatorsTotal(0, w);
        for (int i = total - 1; i >= 0; i--) {
            string name = ChartIndicatorName(0, w, i);
-           // Delete if it looks like our indicators (Jules, Hybrid, Flow)
-           // Or just delete everything if it's a subwindow > 0?
-           // User said "ahányszor állitok annyi görbe van egymáson" -> Delete duplicates.
-           // Ideally, we delete *specific* indicators we added.
            string nlow = name; StringToLower(nlow);
            if (StringFind(nlow, "hybrid") >= 0 || StringFind(nlow, "pulse") >= 0 || StringFind(nlow, "flow") >= 0)
                ChartIndicatorDelete(0, w, name);
