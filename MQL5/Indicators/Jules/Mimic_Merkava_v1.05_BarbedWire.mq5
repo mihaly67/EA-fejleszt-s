@@ -16,11 +16,11 @@
 #include <Trade\SymbolInfo.mqh> // Explicit Include
 
 // Corrected Paths for Jules Self-Contained Project Structure
-#include "Indicators/Camouflage.mqh"
-#include "Indicators/BlackBox.mqh"
-#include "Indicators/NavSystem.mqh"
-#include "Indicators/PhysicsEngine.mqh"
-#include "Indicators/FireControl.mqh"
+// User requested libraries in MQL5/Indicators/Indicators/
+#include "../../Indicators/Indicators/BlackBox.mqh"
+#include "../../Indicators/Indicators/NavSystem.mqh"
+#include "../../Indicators/Indicators/PhysicsEngine.mqh"
+#include "../../Indicators/Indicators/FireControl.mqh"
 
 //--- Inputs
 // [Strategy Settings]
@@ -37,11 +37,6 @@ input double        InpLotSize           = 0.01;      // [Position] Lot Size (Ed
 input int           InpSlippage          = 10;     // [Risk] Slippage
 input ulong         InpMagicNumber       = 999004; // [Risk] Magic Number
 input string        InpComment           = "MerkavaWire"; // [Risk] Comment
-
-// [Stealth Systems (Advanced Chaos) - DISABLED]
-input group         "Stealth Systems (Disabled)";
-input bool          InpUseStealth        = false;  // [Stealth] Enable Chaos Engine (FORCED FALSE)
-// Removed other inputs to clean up UI/Code
 
 // [Jules Hybrid Momentum Pulse v1.04 Settings]
 input uint           Hybrid_InpPeriodFastEMA     =  3;
@@ -94,7 +89,6 @@ double            g_user_lot_size = InpLotSize;
 ulong             g_actual_magic = 0; // Rotated Magic
 
 //--- Modules
-CMimicCamouflage  *Camouflage;
 CMimicBlackBox    *BlackBox;
 CMimicNavSystem   *NavSystem;
 PhysicsEngine     *Physics;
@@ -133,14 +127,13 @@ int OnInit()
    CleanupChart();
 
    // 2. Initialize Modules
-   Camouflage  = new CMimicCamouflage();
    BlackBox    = new CMimicBlackBox();
    NavSystem   = new CMimicNavSystem();
    Physics     = new PhysicsEngine(50);
    FireControl = new CFireControl();
    ExtTrade    = new CTrade(); // Initialize new variable name
 
-   // 2.1 Stealth Init (Identity Obfuscation) - DISABLED
+   // 2.1 Stealth Init (Identity Obfuscation) - REMOVED
    g_actual_magic = InpMagicNumber; // [Jules] Fallback to fixed magic
 
    // 3. Setup Trade & Symbol
@@ -191,7 +184,7 @@ int OnInit()
    CreatePanel();
    UpdateUI();
 
-   Print("Merkava Wire v1.05 (Modular) Initialized.");
+   Print("Merkava Wire v1.05 (Simple Mode) Initialized.");
    return(INIT_SUCCEEDED);
 }
 
@@ -208,7 +201,6 @@ void OnDeinit(const int reason)
 
    if(BlackBox) delete BlackBox;
    if(NavSystem) delete NavSystem;
-   if(Camouflage) delete Camouflage;
    if(Physics) delete Physics;
    if(FireControl) delete FireControl;
    if(ExtTrade) delete ExtTrade;
@@ -291,22 +283,7 @@ void OnTick()
    double flow_roc = NavSystem->GetFlowROC();
 
    // --- Active Camouflage (Grid Morphing) ---
-   // Always active with fallback (simple drift) if requested
-   bool morph_active = true; // Hardcoded default for now
-   if (morph_active)
-   {
-       if (MathRand() % 100 < 5) // 5% chance per tick
-       {
-           // Determine Asymmetry randomly
-           bool morph_buy = (MathRand() % 2 == 0);
-           bool morph_sell = (MathRand() % 2 == 0);
-
-           if(morph_buy || morph_sell) {
-               // Trigger Morph
-               FireControl->MorphGrid((tick.bid + tick.ask)/2.0, 10.0, morph_buy, morph_sell);
-           }
-       }
-   }
+   // REMOVED: Chaos logic deleted as per instruction.
    // -----------------------------------------
 
    double rsi = NavSystem->GetRSI();
