@@ -9,7 +9,7 @@
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
 
-// Include the class definition
+// Include the class definition (RENAMED to CStealthEngine)
 // Flat structure as per user requirement (Indicators\Indicators)
 #include "StealthEngine.mqh"
 
@@ -22,7 +22,7 @@ class CFireControl
 private:
    CTrade      *m_trade;
    CSymbolInfo *m_symbol;
-   StealthEngine *m_stealth; // Optional Stealth Engine
+   CStealthEngine *m_stealth; // Optional Stealth Engine (Renamed)
    string      m_symbol_name;
    double      m_point;
    int         m_digits;
@@ -45,7 +45,7 @@ public:
    }
 
    // Inject Stealth Engine
-   void SetStealth(StealthEngine *stealth_ptr)
+   void SetStealth(CStealthEngine *stealth_ptr)
    {
       m_stealth = stealth_ptr;
    }
