@@ -58,12 +58,10 @@ public:
 
       PrintFormat("🔥 FIRE BURST: Center=%.5f, Spread=%.1f pts, Layers=%d", center_price, spread/m_point, layers);
 
-      // --- Base Logic (No Stealth) ---
       double buy_start_mult = spread_mult_start;
       double sell_start_mult = spread_mult_start;
       double buy_step = spread_mult_step;
       double sell_step = spread_mult_step;
-      // -----------------------------
 
       for (int i = 1; i <= layers; i++)
       {
@@ -133,67 +131,5 @@ public:
            }
        }
        Print("🏳️ CEASE FIRE: All orders/positions cleared.");
-   }
-
-   //+------------------------------------------------------------------+
-   //| MorphGrid (Active Camouflage)                                    |
-   //| Modified: STABLE VERSION (Just simple drift)                     |
-   //+------------------------------------------------------------------+
-   void MorphGrid(double center_price, double range_pts, bool morph_buy, bool morph_sell)
-   {
-       int total = OrdersTotal();
-       if (total == 0) return;
-
-       m_symbol->RefreshRates();
-       double current_ask = m_symbol->Ask();
-       double current_bid = m_symbol->Bid();
-       int stops_level = m_symbol->StopsLevel();
-       double min_dist = stops_level * m_point;
-
-       for (int i = total - 1; i >= 0; i--) {
-           ulong ticket = OrderGetTicket(i);
-           if (!OrderSelect(ticket)) continue;
-
-           if (OrderGetString(ORDER_SYMBOL) != m_symbol_name || OrderGetInteger(ORDER_MAGIC) != m_magic) continue;
-
-           ENUM_ORDER_TYPE type = (ENUM_ORDER_TYPE)OrderGetInteger(ORDER_TYPE);
-
-           // Fallback to simple drift
-           double drift = ((MathRand()%3) - 1) * m_point;
-
-           double current_price = OrderGetDouble(ORDER_PRICE_OPEN);
-           double new_price = NormalizeDouble(current_price + drift, m_digits);
-
-           // Check if we should modify this side
-           if (type == ORDER_TYPE_BUY_LIMIT && !morph_buy) continue;
-           if (type == ORDER_TYPE_SELL_LIMIT && !morph_sell) continue;
-
-           // SAFETY CHECKS (Crucial for Modification)
-           // Don't move BuyLimit > Ask - StopsLevel
-           if (type == ORDER_TYPE_BUY_LIMIT) {
-               if (new_price > current_ask - min_dist) new_price = current_ask - min_dist - m_point;
-           }
-           // Don't move SellLimit < Bid + StopsLevel
-           if (type == ORDER_TYPE_SELL_LIMIT) {
-               if (new_price < current_bid + min_dist) new_price = current_bid + min_dist + m_point;
-           }
-
-           // Only modify if difference is meaningful (> 0.5 point) to save API calls
-           if (MathAbs(new_price - current_price) > m_point * 0.5) {
-               // Modify
-               // FIXED: Added missing stoplimit parameter (0.0)
-               if (m_trade->OrderModify(
-                   ticket,
-                   new_price,
-                   OrderGetDouble(ORDER_SL),
-                   OrderGetDouble(ORDER_TP),
-                   (ENUM_ORDER_TYPE_TIME)OrderGetInteger(ORDER_TYPE_TIME),
-                   (datetime)OrderGetInteger(ORDER_TIME_EXPIRATION),
-                   0.0 // StopLimit
-               )) {
-                   // Quiet success (spam reduction)
-               }
-           }
-       }
    }
 };
