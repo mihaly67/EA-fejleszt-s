@@ -97,8 +97,8 @@ public:
 
       string row = StringFormat(
          "%s,%d,%s,%d,%s,%.5f,%.5f,%.1f,%d,%d," +
-         "%.5f,%.5f,%.5f,%.5f,%.3f,%.5f,%.5f," +
-         "%.5f,%.5f,%.5f,%.5f,%.3f," + // Hybrids (Precision Upgraded)
+         "%.5f,%.5f,%.5f,%.5f,%.2f,%.5f,%.5f," +
+         "%.5f,%.2f,%.2f,%.2f,%.2f," + // Hybrids
          "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f," + // Financials
          "%d,%s,%.2f,%s,%s,%s",
 

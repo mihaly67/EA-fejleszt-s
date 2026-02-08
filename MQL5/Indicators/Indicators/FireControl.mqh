@@ -2,7 +2,6 @@
 //|                                                  FireControl.mqh |
 //|                                                      Jules Agent |
 //|                                       Part of Merkava Tank Logic |
-//|                                      STABLE BASE - NO STEALTH    |
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent"
 #property strict
@@ -58,47 +57,37 @@ public:
 
       PrintFormat("🔥 FIRE BURST: Center=%.5f, Spread=%.1f pts, Layers=%d", center_price, spread/m_point, layers);
 
-      double buy_start_mult = spread_mult_start;
-      double sell_start_mult = spread_mult_start;
-      double buy_step = spread_mult_step;
-      double sell_step = spread_mult_step;
-
       for (int i = 1; i <= layers; i++)
       {
-         // Distinct Distance Calculations
-         double buy_mult = buy_start_mult + (i - 1) * buy_step;
-         double sell_mult = sell_start_mult + (i - 1) * sell_step;
+         double current_mult = spread_mult_start + (i - 1) * spread_mult_step;
+         double dist = spread * current_mult;
 
-         double dist_buy = spread * buy_mult;
-         double dist_sell = spread * sell_mult;
+         // ENFORCE SAFETY (The Fix)
+         if (dist < min_safety) {
+             dist = min_safety + (i*10 * m_point); // Add small step to avoid stacking
+         }
 
-         // ENFORCE SAFETY
-         if (dist_buy < min_safety) dist_buy = min_safety + (i*10 * m_point);
-         if (dist_sell < min_safety) dist_sell = min_safety + (i*10 * m_point);
-
-         double buy_price = NormalizeDouble(center_price - dist_buy, m_digits);
-         double sell_price = NormalizeDouble(center_price + dist_sell, m_digits);
+         double buy_price = NormalizeDouble(center_price - dist, m_digits);
+         double sell_price = NormalizeDouble(center_price + dist, m_digits);
 
          // Double Check Logic (Validate against current Ask/Bid)
+         // BuyLimit must be below Ask - StopsLevel
          if (buy_price > m_symbol->Ask() - min_safety) buy_price = m_symbol->Ask() - min_safety - (i*m_point); // Fixed: ->
+
+         // SellLimit must be above Bid + StopsLevel
          if (sell_price < m_symbol->Bid() + min_safety) sell_price = m_symbol->Bid() + min_safety + (i*m_point); // Fixed: ->
 
          // Place Orders
          string comm = m_comment_prefix + "_L" + IntegerToString(i);
 
-         ENUM_ORDER_TYPE_TIME type_time = ORDER_TIME_GTC;
-         datetime expiration = 0;
-
-         // Execute Buy Limit
-         if (m_trade->OrderOpen(m_symbol_name, ORDER_TYPE_BUY_LIMIT, lot_size, 0.0, buy_price, 0, 0, type_time, expiration, comm)) {
-            PrintFormat("   ✅ Buy Limit L%d @ %.5f", i, buy_price);
+         if (m_trade->BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) { // Fixed: ->
+            PrintFormat("   ✅ Buy Limit L%d @ %.5f (Dist: %.1f pts)", i, buy_price, (center_price-buy_price)/m_point);
          } else {
             PrintFormat("   ❌ Buy Limit L%d Failed: %d", i, GetLastError());
          }
 
-         // Execute Sell Limit
-         if (m_trade->OrderOpen(m_symbol_name, ORDER_TYPE_SELL_LIMIT, lot_size, 0.0, sell_price, 0, 0, type_time, expiration, comm)) {
-             PrintFormat("   ✅ Sell Limit L%d @ %.5f", i, sell_price);
+         if (m_trade->SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) { // Fixed: ->
+            PrintFormat("   ✅ Sell Limit L%d @ %.5f (Dist: %.1f pts)", i, sell_price, (sell_price-center_price)/m_point);
          } else {
              PrintFormat("   ❌ Sell Limit L%d Failed: %d", i, GetLastError());
          }
