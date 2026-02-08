@@ -7,6 +7,10 @@
 #property link      "https://github.com/MimicProject"
 #property strict
 
+// Add include guard to prevent multiple inclusion
+#ifndef STEALTH_ENGINE_MQH
+#define STEALTH_ENGINE_MQH
+
 // Add Math library for M_PI and Math functions
 // CORRECT PATH for MQL5 standard library
 #include <Math\Stat\Math.mqh>
@@ -21,7 +25,7 @@
 //| Based on research from "Thief's Library" (Hummingbot) and        |
 //| "Colombo" (Adversarial Detection avoidance).                     |
 //+------------------------------------------------------------------+
-class StealthEngine
+class CStealthEngine
 {
 private:
    bool   m_initialized;
@@ -47,7 +51,7 @@ private:
    }
 
 public:
-   StealthEngine()
+   CStealthEngine()
    {
       m_initialized = false;
       m_chaos_level = 1.0;
@@ -221,3 +225,5 @@ public:
       }
    }
 };
+
+#endif // STEALTH_ENGINE_MQH
