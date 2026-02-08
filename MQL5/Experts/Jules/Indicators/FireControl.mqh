@@ -2,17 +2,13 @@
 //|                                                  FireControl.mqh |
 //|                                                      Jules Agent |
 //|                                       Part of Merkava Tank Logic |
+//|                                      STABLE BASE - NO STEALTH    |
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent"
 #property strict
 
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
-
-// [Jules] DISABLED STEALTH ENGINE FOR STABILITY RESTORATION
-// Include the class definition (RENAMED to CStealthEngine)
-// Flat structure as per user requirement (Indicators\Indicators)
-//#include "StealthEngine.mqh"
 
 //+------------------------------------------------------------------+
 //| Class CFireControl                                               |
@@ -23,7 +19,6 @@ class CFireControl
 private:
    CTrade      *m_trade;
    CSymbolInfo *m_symbol;
-   //CStealthEngine *m_stealth; // Optional Stealth Engine (Disabled)
    string      m_symbol_name;
    double      m_point;
    int         m_digits;
@@ -31,7 +26,7 @@ private:
    ulong       m_magic;
 
 public:
-   CFireControl() { m_trade = NULL; m_symbol = NULL; /*m_stealth = NULL;*/ }
+   CFireControl() { m_trade = NULL; m_symbol = NULL; }
    ~CFireControl() {}
 
    void Init(CTrade *trade_ptr, CSymbolInfo *symbol_ptr, string comment, ulong magic)
@@ -45,12 +40,6 @@ public:
       m_magic = magic;
    }
 
-   // Inject Stealth Engine (Disabled)
-   //void SetStealth(CStealthEngine *stealth_ptr)
-   //{
-   //   m_stealth = stealth_ptr;
-   //}
-
    //+------------------------------------------------------------------+
    //| FireBurst                                                        |
    //| Places a grid of BuyLimit/SellLimit orders around center price.  |
@@ -59,9 +48,9 @@ public:
    {
       if (layers <= 0) return;
 
-      m_symbol.RefreshRates();
-      double spread = m_symbol.Ask() - m_symbol.Bid();
-      int stops_level = m_symbol.StopsLevel();
+      m_symbol->RefreshRates();
+      double spread = m_symbol->Ask() - m_symbol->Bid();
+      int stops_level = m_symbol->StopsLevel();
 
       // Safety: Minimum distance (StopsLevel + SafeZone)
       double min_safety = stops_level * m_point;
@@ -69,26 +58,11 @@ public:
 
       PrintFormat("🔥 FIRE BURST: Center=%.5f, Spread=%.1f pts, Layers=%d", center_price, spread/m_point, layers);
 
-      // --- Stealth Initialization ---
-      // Determine if we use Chaos or Linear logic
+      // --- Base Logic (No Stealth) ---
       double buy_start_mult = spread_mult_start;
       double sell_start_mult = spread_mult_start;
       double buy_step = spread_mult_step;
       double sell_step = spread_mult_step;
-
-      /* [Jules] Stealth Logic Disabled for Stability
-      if(m_stealth != NULL)
-      {
-          // ASYMMETRY: Distinct Start and Step for Buy/Sell
-          // Jitter the Start Multiplier slightly
-          buy_start_mult = m_stealth->GetJitterSpread(spread_mult_start, 0.10);
-          sell_start_mult = m_stealth->GetJitterSpread(spread_mult_start, 0.10);
-
-          // Jitter the Step
-          m_stealth->GetAsymmetricParams(spread_mult_step, buy_step, sell_step);
-          PrintFormat("   🕵️ STEALTH ACTIVE: BuyStep=%.2f, SellStep=%.2f", buy_step, sell_step);
-      }
-      */
       // -----------------------------
 
       for (int i = 1; i <= layers; i++)
@@ -100,71 +74,33 @@ public:
          double dist_buy = spread * buy_mult;
          double dist_sell = spread * sell_mult;
 
-         // ENFORCE SAFETY (The Fix)
+         // ENFORCE SAFETY
          if (dist_buy < min_safety) dist_buy = min_safety + (i*10 * m_point);
          if (dist_sell < min_safety) dist_sell = min_safety + (i*10 * m_point);
-
-         // Stealth Price Jitter (Micro-offsets)
-         /* [Jules] Stealth Logic Disabled for Stability
-         if(m_stealth != NULL) {
-             // Jitter the exact price point to avoid round numbers or exact spreads
-             // This applies logic AFTER the safety check, so we re-verify safety later implicitly
-             // But simpler: just add noise to the computed price.
-         }
-         */
 
          double buy_price = NormalizeDouble(center_price - dist_buy, m_digits);
          double sell_price = NormalizeDouble(center_price + dist_sell, m_digits);
 
-         /* [Jules] Stealth Logic Disabled for Stability
-         if(m_stealth != NULL) {
-            buy_price = NormalizeDouble(m_stealth->GetJitterPrice(buy_price, m_point), m_digits);
-            sell_price = NormalizeDouble(m_stealth->GetJitterPrice(sell_price, m_point), m_digits);
-         }
-         */
-
          // Double Check Logic (Validate against current Ask/Bid)
-         if (buy_price > m_symbol.Ask() - min_safety) buy_price = m_symbol.Ask() - min_safety - (i*m_point);
-         if (sell_price < m_symbol.Bid() + min_safety) sell_price = m_symbol.Bid() + min_safety + (i*m_point);
+         if (buy_price > m_symbol->Ask() - min_safety) buy_price = m_symbol->Ask() - min_safety - (i*m_point);
+         if (sell_price < m_symbol->Bid() + min_safety) sell_price = m_symbol->Bid() + min_safety + (i*m_point);
 
          // Place Orders
          string comm = m_comment_prefix + "_L" + IntegerToString(i);
 
-         // ---------------------------------------------------------
-         // FINGERPRINT & TEMPORAL CHAOS (Advanced Obfuscation)
-         // ---------------------------------------------------------
-         ENUM_ORDER_TYPE_TIME type_time_b = ORDER_TIME_GTC;
-         datetime expiration_b = 0;
-         ENUM_ORDER_TYPE_TIME type_time_s = ORDER_TIME_GTC;
-         datetime expiration_s = 0;
-
-         /* [Jules] Stealth Logic Disabled for Stability
-         if(m_stealth != NULL) {
-            // Randomize Comment
-            comm = m_stealth->GetHumanizedComment(m_comment_prefix);
-            // Randomize Expiration
-            m_stealth->GetRandomExpiration(type_time_b, expiration_b);
-            m_stealth->GetRandomExpiration(type_time_s, expiration_s);
-            // Inject Latency
-            m_stealth->ApplyLatency(50, 150);
-         }
-         */
+         ENUM_ORDER_TYPE_TIME type_time = ORDER_TIME_GTC;
+         datetime expiration = 0;
 
          // Execute Buy Limit
-         if (m_trade.OrderOpen(m_symbol_name, ORDER_TYPE_BUY_LIMIT, lot_size, 0.0, buy_price, 0, 0, type_time_b, expiration_b, comm)) {
-            PrintFormat("   ✅ Buy Limit L%d @ %.5f [Exp:%s]", i, buy_price, EnumToString(type_time_b));
+         if (m_trade->OrderOpen(m_symbol_name, ORDER_TYPE_BUY_LIMIT, lot_size, 0.0, buy_price, 0, 0, type_time, expiration, comm)) {
+            PrintFormat("   ✅ Buy Limit L%d @ %.5f", i, buy_price);
          } else {
             PrintFormat("   ❌ Buy Limit L%d Failed: %d", i, GetLastError());
          }
 
-         /* [Jules] Stealth Logic Disabled for Stability
-         // Asymmetric Latency
-         if(m_stealth != NULL) m_stealth->ApplyLatency(80, 250);
-         */
-
          // Execute Sell Limit
-         if (m_trade.OrderOpen(m_symbol_name, ORDER_TYPE_SELL_LIMIT, lot_size, 0.0, sell_price, 0, 0, type_time_s, expiration_s, comm)) {
-             PrintFormat("   ✅ Sell Limit L%d @ %.5f [Exp:%s]", i, sell_price, EnumToString(type_time_s));
+         if (m_trade->OrderOpen(m_symbol_name, ORDER_TYPE_SELL_LIMIT, lot_size, 0.0, sell_price, 0, 0, type_time, expiration, comm)) {
+             PrintFormat("   ✅ Sell Limit L%d @ %.5f", i, sell_price);
          } else {
              PrintFormat("   ❌ Sell Limit L%d Failed: %d", i, GetLastError());
          }
@@ -201,17 +137,17 @@ public:
 
    //+------------------------------------------------------------------+
    //| MorphGrid (Active Camouflage)                                    |
-   //| Modifies existing pending orders to drift with price or noise.   |
+   //| Modified: STABLE VERSION (Just simple drift)                     |
    //+------------------------------------------------------------------+
    void MorphGrid(double center_price, double range_pts, bool morph_buy, bool morph_sell)
    {
        int total = OrdersTotal();
        if (total == 0) return;
 
-       m_symbol.RefreshRates();
-       double current_ask = m_symbol.Ask();
-       double current_bid = m_symbol.Bid();
-       int stops_level = m_symbol.StopsLevel();
+       m_symbol->RefreshRates();
+       double current_ask = m_symbol->Ask();
+       double current_bid = m_symbol->Bid();
+       int stops_level = m_symbol->StopsLevel();
        double min_dist = stops_level * m_point;
 
        for (int i = total - 1; i >= 0; i--) {
@@ -222,20 +158,8 @@ public:
 
            ENUM_ORDER_TYPE type = (ENUM_ORDER_TYPE)OrderGetInteger(ORDER_TYPE);
 
-           // Determine target drift (Jitter + Trend?)
-           // For now, simple chaotic drift within range
-           double drift = 0.0;
-           /* [Jules] Stealth Logic Disabled for Stability
-           if (m_stealth != NULL) {
-               // Drift is a small Gaussian walk relative to current pos
-               drift = m_stealth->GetJitterPrice(0, m_point, (int)range_pts);
-           } else {
-               // Minimal drift if no stealth
-               drift = ((MathRand()%3) - 1) * m_point;
-           }
-           */
            // Fallback to simple drift
-           drift = ((MathRand()%3) - 1) * m_point;
+           double drift = ((MathRand()%3) - 1) * m_point;
 
            double current_price = OrderGetDouble(ORDER_PRICE_OPEN);
            double new_price = NormalizeDouble(current_price + drift, m_digits);
@@ -256,15 +180,9 @@ public:
 
            // Only modify if difference is meaningful (> 0.5 point) to save API calls
            if (MathAbs(new_price - current_price) > m_point * 0.5) {
-
-               /* [Jules] Stealth Logic Disabled for Stability
-               // Latency Injection before Modify
-               if(m_stealth != NULL) m_stealth->ApplyLatency(20, 80);
-               */
-
                // Modify
                // FIXED: Added missing stoplimit parameter (0.0)
-               if (m_trade.OrderModify(
+               if (m_trade->OrderModify(
                    ticket,
                    new_price,
                    OrderGetDouble(ORDER_SL),
