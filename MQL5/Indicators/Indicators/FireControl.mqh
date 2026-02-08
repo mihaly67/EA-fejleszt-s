@@ -33,9 +33,9 @@ public:
    {
       m_trade = trade_ptr;
       m_symbol = symbol_ptr;
-      m_symbol_name = m_symbol.Name();
-      m_point = m_symbol.Point();
-      m_digits = m_symbol.Digits();
+      m_symbol_name = m_symbol->Name(); // Fixed: ->
+      m_point = m_symbol->Point();      // Fixed: ->
+      m_digits = m_symbol->Digits();    // Fixed: ->
       m_comment_prefix = comment;
       m_magic = magic;
    }
@@ -48,9 +48,9 @@ public:
    {
       if (layers <= 0) return;
 
-      m_symbol->RefreshRates();
-      double spread = m_symbol->Ask() - m_symbol->Bid();
-      int stops_level = m_symbol->StopsLevel();
+      m_symbol->RefreshRates(); // Fixed: ->
+      double spread = m_symbol->Ask() - m_symbol->Bid(); // Fixed: ->
+      int stops_level = m_symbol->StopsLevel(); // Fixed: ->
 
       // Safety: Minimum distance (StopsLevel + SafeZone)
       double min_safety = stops_level * m_point;
@@ -80,8 +80,8 @@ public:
          double sell_price = NormalizeDouble(center_price + dist_sell, m_digits);
 
          // Double Check Logic (Validate against current Ask/Bid)
-         if (buy_price > m_symbol->Ask() - min_safety) buy_price = m_symbol->Ask() - min_safety - (i*m_point);
-         if (sell_price < m_symbol->Bid() + min_safety) sell_price = m_symbol->Bid() + min_safety + (i*m_point);
+         if (buy_price > m_symbol->Ask() - min_safety) buy_price = m_symbol->Ask() - min_safety - (i*m_point); // Fixed: ->
+         if (sell_price < m_symbol->Bid() + min_safety) sell_price = m_symbol->Bid() + min_safety + (i*m_point); // Fixed: ->
 
          // Place Orders
          string comm = m_comment_prefix + "_L" + IntegerToString(i);
@@ -116,7 +116,7 @@ public:
            ulong ticket = OrderGetTicket(i);
            if (OrderSelect(ticket)) {
                if (OrderGetString(ORDER_SYMBOL) == m_symbol_name && OrderGetInteger(ORDER_MAGIC) == m_magic) {
-                   m_trade.OrderDelete(ticket);
+                   m_trade->OrderDelete(ticket); // Fixed: ->
                }
            }
        }
@@ -126,7 +126,7 @@ public:
            ulong ticket = PositionGetTicket(i);
            if (PositionSelectByTicket(ticket)) {
                if (PositionGetString(POSITION_SYMBOL) == m_symbol_name && PositionGetInteger(POSITION_MAGIC) == m_magic) {
-                   m_trade.PositionClose(ticket);
+                   m_trade->PositionClose(ticket); // Fixed: ->
                }
            }
        }
