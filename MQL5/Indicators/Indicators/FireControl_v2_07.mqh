@@ -35,7 +35,6 @@ public:
       m_trade = GetPointer(trade_obj);
       m_symbol = GetPointer(symbol_obj);
 
-      // Use pointer access explicitly
       m_symbol_name = m_symbol.Name();
       m_point = m_symbol.Point();
       m_digits = m_symbol.Digits();
@@ -46,8 +45,8 @@ public:
 
    //+------------------------------------------------------------------+
    //| FireBurst                                                        |
-   //| Places a grid of BuyLimit/SellLimit orders.                      |
-   //| FIX v2.07: Anchors to Bid/Ask for precise Barbed Wire symmetry.  |
+   //| Places a grid of BuyStop/SellStop orders (Breakout/BarbedWire).  |
+   //| FIX v2.07: Direction Correction (Long Above, Short Below).       |
    //+------------------------------------------------------------------+
    void FireBurst(double center_price_unused, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_dist_points)
    {
@@ -65,8 +64,7 @@ public:
       double min_safety = stops_level * m_point;
       if (min_dist_points * m_point > min_safety) min_safety = min_dist_points * m_point;
 
-      // Note: We ignore 'center_price_unused' to enforce Barbed Wire symmetry from Market Edges.
-      PrintFormat("🔥 FIRE BURST: Anchor=Ask/Bid, Spread=%.1f pts, Layers=%d", spread/m_point, layers);
+      PrintFormat("🔥 FIRE BURST (Breakout): Anchor=Ask/Bid, Spread=%.1f pts, Layers=%d", spread/m_point, layers);
 
       for (int i = 1; i <= layers; i++)
       {
@@ -81,27 +79,33 @@ public:
              dist_from_edge = min_safety + (i*10 * m_point); // Add small step to avoid stacking
          }
 
-         // FIX v2.07: Anchor to Market Edges for Symmetric Net
-         double buy_price = NormalizeDouble(current_bid - dist_from_edge, m_digits);
-         double sell_price = NormalizeDouble(current_ask + dist_from_edge, m_digits);
+         // FIX v2.07: Barbed Wire Breakout Logic
+         // Long Above Price -> Buy Stop (Anchor: Ask)
+         double buy_price = NormalizeDouble(current_ask + dist_from_edge, m_digits);
 
-         // Double Check Logic (Validate against current Ask/Bid with Safety)
-         if (buy_price > current_bid - min_safety) buy_price = current_bid - min_safety - (i*m_point);
-         if (sell_price < current_ask + min_safety) sell_price = current_ask + min_safety + (i*m_point);
+         // Short Below Price -> Sell Stop (Anchor: Bid)
+         double sell_price = NormalizeDouble(current_bid - dist_from_edge, m_digits);
+
+         // Double Check Logic (Validate against StopsLevel)
+         // Buy Stop must be > Ask + StopsLevel
+         if (buy_price < current_ask + min_safety) buy_price = current_ask + min_safety + (i*m_point);
+
+         // Sell Stop must be < Bid - StopsLevel
+         if (sell_price > current_bid - min_safety) sell_price = current_bid - min_safety - (i*m_point);
 
          // Place Orders
          string comm = m_comment_prefix + "_L" + IntegerToString(i);
 
-         if (m_trade.BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
-            PrintFormat("   ✅ Buy Limit L%d @ %.5f (Gap: %.1f pts)", i, buy_price, (current_bid-buy_price)/m_point);
+         if (m_trade.BuyStop(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
+            PrintFormat("   ✅ Buy Stop L%d @ %.5f (Gap: %.1f pts)", i, buy_price, (buy_price-current_ask)/m_point);
          } else {
-            PrintFormat("   ❌ Buy Limit L%d Failed: %d", i, GetLastError());
+            PrintFormat("   ❌ Buy Stop L%d Failed: %d", i, GetLastError());
          }
 
-         if (m_trade.SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
-            PrintFormat("   ✅ Sell Limit L%d @ %.5f (Gap: %.1f pts)", i, sell_price, (sell_price-current_ask)/m_point);
+         if (m_trade.SellStop(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
+            PrintFormat("   ✅ Sell Stop L%d @ %.5f (Gap: %.1f pts)", i, sell_price, (current_bid-sell_price)/m_point);
          } else {
-             PrintFormat("   ❌ Sell Limit L%d Failed: %d", i, GetLastError());
+             PrintFormat("   ❌ Sell Stop L%d Failed: %d", i, GetLastError());
          }
       }
    }
