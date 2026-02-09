@@ -35,9 +35,10 @@ public:
       m_trade = GetPointer(trade_obj);
       m_symbol = GetPointer(symbol_obj);
 
-      m_symbol_name = m_symbol.Name();
-      m_point = m_symbol.Point();
-      m_digits = m_symbol.Digits();
+      // Use Arrow Operator for Pointers in MQL5!
+      m_symbol_name = m_symbol->Name();
+      m_point = m_symbol->Point();
+      m_digits = m_symbol->Digits();
 
       m_comment_prefix = comment;
       m_magic = magic;
@@ -46,63 +47,58 @@ public:
    //+------------------------------------------------------------------+
    //| FireBurst                                                        |
    //| Places a grid of BuyStop/SellStop orders (Breakout/BarbedWire).  |
-   //| FIX v2.07: Direction Correction (Long Above, Short Below).       |
+   //| FIX v2.07: Adaptive Spacing (Min Spread Protection)              |
    //+------------------------------------------------------------------+
-   void FireBurst(double center_price_unused, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_dist_points)
+   void FireBurst(double center_price_unused, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_dist_points, int min_spread_limit)
    {
       if (layers <= 0) return;
       if (CheckPointer(m_symbol) == POINTER_INVALID || CheckPointer(m_trade) == POINTER_INVALID) return;
 
-      m_symbol.RefreshRates();
-      double spread = m_symbol.Ask() - m_symbol.Bid();
-      double current_bid = m_symbol.Bid();
-      double current_ask = m_symbol.Ask();
+      m_symbol->RefreshRates();
 
-      int stops_level = m_symbol.StopsLevel();
+      double current_bid = m_symbol->Bid();
+      double current_ask = m_symbol->Ask();
+      double raw_spread = current_ask - current_bid;
 
-      // Safety: Minimum distance (StopsLevel + SafeZone)
-      double min_safety = stops_level * m_point;
-      if (min_dist_points * m_point > min_safety) min_safety = min_dist_points * m_point;
+      // FIX v2.07: Adaptive Base Unit
+      // Use the larger of Actual Spread OR Minimum Fixed Spread (e.g. 60 points)
+      double min_base_spread = (double)min_spread_limit * m_point;
+      double effective_spread = MathMax(raw_spread, min_base_spread);
 
-      PrintFormat("🔥 FIRE BURST (Breakout): Anchor=Ask/Bid, Spread=%.1f pts, Layers=%d", spread/m_point, layers);
+      // Safety check for StopsLevel (Broker Requirement)
+      int stops_level = m_symbol->StopsLevel();
+      double min_safety = (double)stops_level * m_point;
+
+      PrintFormat("🔥 FIRE BURST (Adapt): BaseSpread=%.1f pts (Raw=%.1f), Layers=%d", effective_spread/m_point, raw_spread/m_point, layers);
 
       for (int i = 1; i <= layers; i++)
       {
-         // Calculate distance for this layer
-         double dist_from_edge = spread * spread_mult_start;
-         if (i > 1) {
-             dist_from_edge += spread * spread_mult_step * (i - 1);
-         }
+         // GEOMETRIC SPACING LOGIC
+         // Formula: EffectiveSpread * (Start + (i-1)*Step)
 
-         // ENFORCE SAFETY (Min Dist)
-         if (dist_from_edge < min_safety) {
-             dist_from_edge = min_safety + (i*10 * m_point); // Add small step to avoid stacking
-         }
+         double multiplier = spread_mult_start + ((double)(i - 1) * spread_mult_step);
+         double dist_from_edge = effective_spread * multiplier;
 
-         // FIX v2.07: Barbed Wire Breakout Logic
-         // Long Above Price -> Buy Stop (Anchor: Ask)
+         // Ensure distance is valid (outside StopsLevel)
+         if (dist_from_edge < min_safety) dist_from_edge = min_safety + (i * 2.0 * m_point);
+
+         // Barbed Wire Breakout Logic:
+         // Buy Stop: Ask + Dist
          double buy_price = NormalizeDouble(current_ask + dist_from_edge, m_digits);
 
-         // Short Below Price -> Sell Stop (Anchor: Bid)
+         // Sell Stop: Bid - Dist
          double sell_price = NormalizeDouble(current_bid - dist_from_edge, m_digits);
-
-         // Double Check Logic (Validate against StopsLevel)
-         // Buy Stop must be > Ask + StopsLevel
-         if (buy_price < current_ask + min_safety) buy_price = current_ask + min_safety + (i*m_point);
-
-         // Sell Stop must be < Bid - StopsLevel
-         if (sell_price > current_bid - min_safety) sell_price = current_bid - min_safety - (i*m_point);
 
          // Place Orders
          string comm = m_comment_prefix + "_L" + IntegerToString(i);
 
-         if (m_trade.BuyStop(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
+         if (m_trade->BuyStop(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
             PrintFormat("   ✅ Buy Stop L%d @ %.5f (Gap: %.1f pts)", i, buy_price, (buy_price-current_ask)/m_point);
          } else {
             PrintFormat("   ❌ Buy Stop L%d Failed: %d", i, GetLastError());
          }
 
-         if (m_trade.SellStop(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
+         if (m_trade->SellStop(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
             PrintFormat("   ✅ Sell Stop L%d @ %.5f (Gap: %.1f pts)", i, sell_price, (current_bid-sell_price)/m_point);
          } else {
              PrintFormat("   ❌ Sell Stop L%d Failed: %d", i, GetLastError());
@@ -123,7 +119,7 @@ public:
            ulong ticket = OrderGetTicket(i);
            if (OrderSelect(ticket)) {
                if (OrderGetString(ORDER_SYMBOL) == m_symbol_name && OrderGetInteger(ORDER_MAGIC) == m_magic) {
-                   m_trade.OrderDelete(ticket);
+                   m_trade->OrderDelete(ticket);
                }
            }
        }
@@ -133,7 +129,7 @@ public:
            ulong ticket = PositionGetTicket(i);
            if (PositionSelectByTicket(ticket)) {
                if (PositionGetString(POSITION_SYMBOL) == m_symbol_name && PositionGetInteger(POSITION_MAGIC) == m_magic) {
-                   m_trade.PositionClose(ticket);
+                   m_trade->PositionClose(ticket);
                }
            }
        }

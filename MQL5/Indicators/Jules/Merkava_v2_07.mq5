@@ -37,6 +37,7 @@ input double        InpSpreadMultStart   = 1.5;
 input double        InpSpreadMultStep    = 1.0;
 input int           InpLayers            = 3;
 input double        InpSafeZonePts       = 50.0;
+input int           InpMinSpreadPoints   = 60;        // [Grid] Minimum Spread Base (Points)
 input string        InpIndPath           = "Jules\\";
 
 // [Position Size]
@@ -187,7 +188,7 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
          ChartRedraw();
 
          double center = (m_symbol.Ask() + m_symbol.Bid()) / 2.0;
-         m_fire_control.FireBurst(center, g_user_lot_size, InpLayers, InpSpreadMultStart, InpSpreadMultStep, InpSafeZonePts);
+         m_fire_control.FireBurst(center, g_user_lot_size, InpLayers, InpSpreadMultStart, InpSpreadMultStep, InpSafeZonePts, InpMinSpreadPoints);
          g_last_action = "BURST_FIRED";
          g_decision_log += "Burst Fired L" + IntegerToString(InpLayers) + ";";
 
