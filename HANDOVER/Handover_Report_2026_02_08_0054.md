@@ -1,9 +1,9 @@
 # Handover Report - 2026.02.08 00:54
 **Tárgy:** Hybrid Pulse Pontosítása (Tizedesek) és Zero Latency Megőrzése
-**Státusz:** Sikeres Implementáció (v2.06 / v1.05)
+**Státusz:** Sikeres Implementáció (v2.07 / v1.05)
 
 ## 📌 Összefoglaló (Mit végeztünk el?)
-A mai session célja a Hybrid Pulse (DeltaForce) indikátor "darabosságának" megszüntetése volt, hogy a logokban és a charton tizedes pontosságú értékeket lássunk, de **anélkül, hogy simítást (késleltetést) alkalmaznánk**.
+A mai session célja a Hybrid Pulse (DeltaForce) indikátor "darabosságának" megszüntetése és a Barbed Wire hálózási logika javítása volt.
 
 1.  **Hybrid Pulse v1.05 (Új Indikátor):**
     *   A simítás (SMA/EMA) helyett bevezettünk egy **Divisor (Osztó)** paramétert.
@@ -11,10 +11,10 @@ A mai session célja a Hybrid Pulse (DeltaForce) indikátor "darabosságának" m
     *   Működés: A nyers, egész számú DeltaForce értékeket elosztjuk 7-tel. Így a kimenet tizedesjegyeket tartalmaz (pl. 50 / 7 = 7.14285), de az érték **azonnal, késés nélkül** követi az árat.
     *   A MACD komponens is skálázva van ugyanezzel az osztóval, hogy a vizuális arányok megmaradjanak.
 
-2.  **Merkava v2.06 (Új EA):**
-    *   Frissítettük az EA-t, hogy kezelje az új `Hybrid_Divisor` bemenetet.
-    *   A `NavSystem_v2_06.mqh` könyvtár biztosítja a kommunikációt az új indikátorral.
-    *   A rendszer továbbra is `CopyBuffer`-t használ a 0-ás indexre, garantálva a **Zero Latency** (Real-time) adatelérést.
+2.  **Merkava v2.07 (Új EA):**
+    *   Frissítettük az EA-t (és könyvtárait: `NavSystem_v2_07.mqh`, `FireControl_v2_07.mqh`).
+    *   Kezeli az új `Hybrid_Divisor` bemenetet.
+    *   **Barbed Wire Fix:** A `FireControl` könyvtárban javítottuk a `FireBurst` logikát. A háló mostantól szimmetrikusan a **Bid/Ask árakhoz** van rögzítve (nem a középárhoz), így pontosan a megadott `Spread * Multiplier` távolságra (pl. 1.5 spread) kezdődik a rács.
 
 3.  **Technikai Ellenőrzés:**
     *   Kódinspekcióval igazoltuk, hogy a logikában nincs "múltba tekintő" átlagolás, sem "előző gyertyára" váró lekérdezés. Minden számítás az aktuális tick `bid/ask` értékeiből származik.
@@ -27,4 +27,4 @@ A felhasználó jelezte, hogy a **Profit/Loss (PL), Lot és Margin** oszlopok lo
 3.  **Margin/Balance:** Ellenőrizni, hogy a `BlackBox` helyes időpillanatban kéri-e le az `AccountInfoDouble` adatokat.
 4.  **Eseménylog:** Validálni a string összefűzést (`|` szeparátorok) sűrű kereskedés esetén.
 
-**Jelenlegi Állapot:** A rendszer stabil, fordítható, az indikátorok "finomított" (tizedes) értékeket adnak késés nélkül. A kereskedési logika (Burst/CeaseFire) változatlan.
+**Jelenlegi Állapot:** A rendszer stabil, fordítható (v2.07). Az indikátorok tizedes pontosságúak és késleltetésmentesek. A Barbed Wire logika javítva (szimmetrikus háló).

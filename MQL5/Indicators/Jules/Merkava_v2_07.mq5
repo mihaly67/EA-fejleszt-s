@@ -1,12 +1,12 @@
 //+------------------------------------------------------------------+
-//|                                                Merkava_v2_06.mq5 |
+//|                                                Merkava_v2_07.mq5 |
 //|                                    Copyright 2026, Jules (Mimic) |
 //|                                             For Project Merkava  |
-//|                                                   Version 2.06   |
+//|                                                   Version 2.07   |
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
 #property link      "https://github.com/MimicProject"
-#property version   "2.06"
+#property version   "2.07"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -14,10 +14,10 @@
 #include <Trade\PositionInfo.mqh>
 #include <AccountInfo.mqh>
 
-// Library Organization (v2.06)
-#include "../Indicators/FireControl.mqh"
+// Library Organization (v2.07)
+#include "../Indicators/FireControl_v2_07.mqh" // v2.07: Explicit Versioning
 #include "../Indicators/PhysicsEngine.mqh"
-#include "../Indicators/NavSystem_v2_06.mqh" // v2.06: Hybrid Divisor Logic
+#include "../Indicators/NavSystem_v2_07.mqh" // v2.07: Hybrid Divisor Logic
 #include "../Indicators/BlackBox_v2_05.mqh" // v2.05: Keep existing
 
 //--- Objects
@@ -141,7 +141,7 @@ int OnInit()
        m_nav_system.AttachToChart(0);
    }
 
-   m_black_box.Initialize(_Symbol, "v2.06"); // Update Log Version
+   m_black_box.Initialize(_Symbol, "v2.07"); // Update Log Version
 
    if (HistorySelect(0, TimeCurrent())) {
        int total = HistoryDealsTotal();
@@ -155,7 +155,7 @@ int OnInit()
    CreatePanel();
    UpdateUI();
 
-   Print("Merkava v2.06 Initialized (Hybrid v1.05 - Divisor Mode).");
+   Print("Merkava v2.07 Initialized (Hybrid v1.05 - Divisor Mode).");
    return(INIT_SUCCEEDED);
 }
 
@@ -374,7 +374,7 @@ void CreatePanel() {
    int cy = y+10;
    ObjectCreate(0, ObjStat, OBJ_LABEL, 0, 0, 0);
    ObjectSetInteger(0, ObjStat, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjStat, OBJPROP_YDISTANCE, cy);
-   ObjectSetString(0, ObjStat, OBJPROP_TEXT, "MERKAVA v2.06");
+   ObjectSetString(0, ObjStat, OBJPROP_TEXT, "MERKAVA v2.07");
    ObjectSetInteger(0, ObjStat, OBJPROP_COLOR, clrLime);
 
    cy+=25;
