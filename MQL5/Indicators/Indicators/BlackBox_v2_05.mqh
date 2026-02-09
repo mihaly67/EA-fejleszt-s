@@ -1,123 +1,149 @@
 //+------------------------------------------------------------------+
-//|                                            BlackBox_v2_05.mqh |
-//|                                    Copyright 2026, Jules (Mimic) |
-//|                                             For Project Merkava  |
-//|                                                   Version 2.05   |
+//|                                           PhysicsEngine.mqh |
+//|                                                      Jules Agent |
+//|                                     Market Physics Calculation Class |
 //+------------------------------------------------------------------+
-#property copyright "Jules (Mimic)"
-#property link      "https://github.com/MimicProject"
-#property strict
+#property copyright "Jules Agent"
+#property link      "https://mql5.com"
 
-//+------------------------------------------------------------------+
-//| Forensic Recorder - CSV Logging (v2.05)                          |
-//| Core Improvement: Precision Logging                              |
-//+------------------------------------------------------------------+
-class CBlackBox
-{
+struct PhysicsState {
+   double velocity;      // Pips/sec
+   double acceleration;  // Pips/sec^2
+   double volatility;    // StdDev of last N ticks
+   double spread_avg;    // Average spread
+   long time_ms;         // Timestamp of last update
+};
+
+class PhysicsEngine {
 private:
-   int      m_file_handle;
-   string   m_filename;
-   string   m_headers;
-   bool     m_is_active;
+   struct TickNode {
+      long time_msc;
+      double price;
+      double ask;
+      double bid;
+   };
+
+   TickNode m_buffer[];
+   int m_head;
+   int m_size;
+   int m_capacity;
+
+   double m_current_velocity;
+   double m_current_acceleration;
+   double m_prev_velocity;
 
 public:
-   CBlackBox()
-   {
-      m_file_handle = INVALID_HANDLE;
-      m_is_active = false;
-      // v2.05 Unified Headers
-      m_headers = "Time,TickMSC,Phase,MimicMode,Verdict,Bid,Ask,Spread,BidVol,AskVol," +
-                  "Bar_Open,Bar_High,Bar_Low,Bar_Close,RSI,Velocity,Acceleration," +
-                  "Hybrid_MACD,Hybrid_DFCurve," +
-                  "Flow_MFI,Flow_ROC,Flow_Delta," + // Unified
-                  "Balance,Margin,MarginPercent,Floating_PL,Realized_PL,Session_PL," +
-                  "PosCount,LotDir,TotalLots,SLTP_Levels,ActionDetails,LastEvent";
+   PhysicsEngine(int history_size = 50) {
+      m_capacity = history_size;
+      ArrayResize(m_buffer, m_capacity);
+      Reset();
    }
 
-   ~CBlackBox()
-   {
-      CloseLog();
+   void Reset() {
+      m_head = 0;
+      m_size = 0;
+      m_current_velocity = 0;
+      m_current_acceleration = 0;
+      m_prev_velocity = 0;
    }
 
-   //-- Initialize the Log File
-   bool Initialize(string symbol, string version)
-   {
-      string date = TimeToString(TimeCurrent(), TIME_DATE);
-      StringReplace(date, ".", "");
-      string time = TimeToString(TimeCurrent(), TIME_MINUTES|TIME_SECONDS);
-      StringReplace(time, ":", "");
+   void Update(const MqlTick &tick) {
+      // 1. Add to Circular Buffer
+      m_buffer[m_head].time_msc = tick.time_msc;
+      m_buffer[m_head].price = tick.last;
+      if(m_buffer[m_head].price == 0) m_buffer[m_head].price = (tick.bid + tick.ask) / 2.0;
+      m_buffer[m_head].ask = tick.ask;
+      m_buffer[m_head].bid = tick.bid;
 
-      m_filename = "Merkava_" + symbol + "_" + version + "_" + date + "_" + time + ".csv";
+      m_head = (m_head + 1) % m_capacity;
+      if(m_size < m_capacity) m_size++;
 
-      m_file_handle = FileOpen(m_filename, FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
+      // 2. Calculate Metrics (if enough data)
+      if(m_size > 5) CalculateMetrics();
+   }
 
-      if(m_file_handle == INVALID_HANDLE)
-      {
-         Print("CRITICAL: Failed to create log file: ", m_filename);
-         m_is_active = false;
-         return false;
+   PhysicsState GetState() {
+      PhysicsState s;
+      s.velocity = m_current_velocity;
+      s.acceleration = m_current_acceleration;
+      s.volatility = CalculateVolatility();
+      s.spread_avg = CalculateAvgSpread();
+      s.time_ms = GetTickCount();
+      return s;
+   }
+
+private:
+   void CalculateMetrics() {
+      // Simple Linear Regression for Velocity (Slope of Price vs Time)
+      // or simpler: Delta Price / Delta Time over last N ticks (e.g. 1 sec window)
+
+      long now = m_buffer[(m_head - 1 + m_capacity) % m_capacity].time_msc;
+      long window_start = now - 1000; // 1 second window
+
+      double price_now = m_buffer[(m_head - 1 + m_capacity) % m_capacity].price;
+      double price_old = price_now;
+      long time_old = now;
+
+      // Find the tick ~1 sec ago
+      for(int i=0; i<m_size; i++) {
+         int idx = (m_head - 1 - i + m_capacity) % m_capacity;
+         if(m_buffer[idx].time_msc <= window_start) {
+            price_old = m_buffer[idx].price;
+            time_old = m_buffer[idx].time_msc;
+            break;
+         }
+         // If we reached the end of buffer but didn't reach 1 sec, take the oldest
+         if(i == m_size - 1) {
+            price_old = m_buffer[idx].price;
+            time_old = m_buffer[idx].time_msc;
+         }
       }
 
-      FileWrite(m_file_handle, m_headers);
-      m_is_active = true;
-      Print("BlackBox v2.05 Recording to: ", m_filename);
-      return true;
+      long dt = now - time_old;
+      if(dt < 10) dt = 10; // Avoid div by zero
+
+      double dp = MathAbs(price_now - price_old);
+
+      // Velocity in Points per Second
+      double raw_velocity = (dp / _Point) / (dt / 1000.0);
+
+      // Smoothing (EMA)
+      double alpha = 0.2;
+      m_current_velocity = alpha * raw_velocity + (1.0 - alpha) * m_current_velocity;
+
+      // Acceleration
+      double dv = m_current_velocity - m_prev_velocity;
+      m_current_acceleration = dv;
+
+      m_prev_velocity = m_current_velocity;
    }
 
-   void CloseLog()
-   {
-      if(m_file_handle != INVALID_HANDLE)
-      {
-         FileClose(m_file_handle);
-         m_file_handle = INVALID_HANDLE;
-         m_is_active = false;
+   double CalculateVolatility() {
+      // Standard Deviation of Price in buffer
+      if(m_size < 2) return 0;
+
+      double sum = 0;
+      double sum_sq = 0;
+
+      for(int i=0; i<m_size; i++) {
+         int idx = (m_head - 1 - i + m_capacity) % m_capacity;
+         double p = m_buffer[idx].price;
+         sum += p;
+         sum_sq += p * p;
       }
+
+      double mean = sum / m_size;
+      double variance = (sum_sq / m_size) - (mean * mean);
+      return MathSqrt(variance) / _Point; // In points
    }
 
-   //-- The Main Logging Function (Zero Latency)
-   void RecordTick(
-      long tick_time_msc, // Master Source of Truth (Epoch MS)
-      string phase, int mimic_mode, string verdict,
-      double bid, double ask, double spread,
-      long bid_vol, long ask_vol,
-      double b_open, double b_high, double b_low, double b_close,
-      double rsi, double velocity, double accel,
-      double h_macd, double h_dfcurve,
-      double f_mfi, double f_roc, double f_delta, // v2.05 Inputs
-      double balance, double margin, double margin_pct,
-      double floating_pl, double realized_pl, double session_pl,
-      int pos_count, string lot_dir, double total_lots,
-      string sltp_levels, string action_details, string last_event
-   )
-   {
-      if(!m_is_active || m_file_handle == INVALID_HANDLE) return;
-
-      // Timestamp Formatting from MSC
-      datetime time_sec = (datetime)(tick_time_msc / 1000);
-      int ms = (int)(tick_time_msc % 1000);
-      string time_str = TimeToString(time_sec, TIME_DATE|TIME_SECONDS) + StringFormat(".%03d", ms);
-
-      // Formatting Updates v2.05:
-      // ALL Indicators set to %.5f precision
-      // TickMSC: %I64d (Safe Long Int)
-
-      string row = StringFormat(
-         "%s,%I64d,%s,%d,%s,%.5f,%.5f,%.1f,%d,%d," +
-         "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f," +
-         "%.5f,%.5f," +
-         "%.5f,%.5f,%.5f," +
-         "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f," +
-         "%d,%s,%.2f,%s,%s,%s",
-
-         time_str, tick_time_msc, phase, mimic_mode, verdict, bid, ask, spread, bid_vol, ask_vol,
-         b_open, b_high, b_low, b_close, rsi, velocity, accel,
-         h_macd, h_dfcurve,
-         f_mfi, f_roc, f_delta,
-         balance, margin, margin_pct, floating_pl, realized_pl, session_pl,
-         pos_count, lot_dir, total_lots, sltp_levels, action_details, last_event
-      );
-
-      FileWrite(m_file_handle, row);
-      FileFlush(m_file_handle);
+   double CalculateAvgSpread() {
+      if(m_size < 1) return 0;
+      double sum = 0;
+      for(int i=0; i<m_size; i++) {
+         int idx = (m_head - 1 - i + m_capacity) % m_capacity;
+         sum += (m_buffer[idx].ask - m_buffer[idx].bid);
+      }
+      return (sum / m_size) / _Point;
    }
 };
