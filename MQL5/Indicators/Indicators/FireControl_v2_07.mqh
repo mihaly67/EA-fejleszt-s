@@ -29,13 +29,17 @@ public:
    CFireControl() { m_trade = NULL; m_symbol = NULL; }
    ~CFireControl() {}
 
-   void Init(CTrade *trade_ptr, CSymbolInfo *symbol_ptr, string comment, ulong magic)
+   // Updated Init: Accepts objects by reference, stores pointers
+   void Init(CTrade &trade_obj, CSymbolInfo &symbol_obj, string comment, ulong magic)
    {
-      m_trade = trade_ptr;
-      m_symbol = symbol_ptr;
-      m_symbol_name = m_symbol->Name();
-      m_point = m_symbol->Point();
-      m_digits = m_symbol->Digits();
+      m_trade = GetPointer(trade_obj);
+      m_symbol = GetPointer(symbol_obj);
+
+      // Use pointer access explicitly
+      m_symbol_name = m_symbol.Name();
+      m_point = m_symbol.Point();
+      m_digits = m_symbol.Digits();
+
       m_comment_prefix = comment;
       m_magic = magic;
    }
@@ -48,13 +52,14 @@ public:
    void FireBurst(double center_price_unused, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_dist_points)
    {
       if (layers <= 0) return;
+      if (CheckPointer(m_symbol) == POINTER_INVALID || CheckPointer(m_trade) == POINTER_INVALID) return;
 
-      m_symbol->RefreshRates();
-      double spread = m_symbol->Ask() - m_symbol->Bid();
-      double current_bid = m_symbol->Bid();
-      double current_ask = m_symbol->Ask();
+      m_symbol.RefreshRates();
+      double spread = m_symbol.Ask() - m_symbol.Bid();
+      double current_bid = m_symbol.Bid();
+      double current_ask = m_symbol.Ask();
 
-      int stops_level = m_symbol->StopsLevel();
+      int stops_level = m_symbol.StopsLevel();
 
       // Safety: Minimum distance (StopsLevel + SafeZone)
       double min_safety = stops_level * m_point;
@@ -66,10 +71,6 @@ public:
       for (int i = 1; i <= layers; i++)
       {
          // Calculate distance for this layer
-         // Layer 1: StartMult * Spread
-         // Layer 2: StartMult * Spread + (StepMult * Spread)
-         // Logic: The "Step" applies to the gap BETWEEN layers.
-
          double dist_from_edge = spread * spread_mult_start;
          if (i > 1) {
              dist_from_edge += spread * spread_mult_step * (i - 1);
@@ -81,10 +82,7 @@ public:
          }
 
          // FIX v2.07: Anchor to Market Edges for Symmetric Net
-         // Buy Limit is below Bid
          double buy_price = NormalizeDouble(current_bid - dist_from_edge, m_digits);
-
-         // Sell Limit is above Ask
          double sell_price = NormalizeDouble(current_ask + dist_from_edge, m_digits);
 
          // Double Check Logic (Validate against current Ask/Bid with Safety)
@@ -94,13 +92,13 @@ public:
          // Place Orders
          string comm = m_comment_prefix + "_L" + IntegerToString(i);
 
-         if (m_trade->BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
+         if (m_trade.BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
             PrintFormat("   ✅ Buy Limit L%d @ %.5f (Gap: %.1f pts)", i, buy_price, (current_bid-buy_price)/m_point);
          } else {
             PrintFormat("   ❌ Buy Limit L%d Failed: %d", i, GetLastError());
          }
 
-         if (m_trade->SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
+         if (m_trade.SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
             PrintFormat("   ✅ Sell Limit L%d @ %.5f (Gap: %.1f pts)", i, sell_price, (sell_price-current_ask)/m_point);
          } else {
              PrintFormat("   ❌ Sell Limit L%d Failed: %d", i, GetLastError());
@@ -114,12 +112,14 @@ public:
    //+------------------------------------------------------------------+
    void CeaseFire()
    {
+       if (CheckPointer(m_trade) == POINTER_INVALID) return;
+
        // 1. Delete Pending
        for (int i = OrdersTotal() - 1; i >= 0; i--) {
            ulong ticket = OrderGetTicket(i);
            if (OrderSelect(ticket)) {
                if (OrderGetString(ORDER_SYMBOL) == m_symbol_name && OrderGetInteger(ORDER_MAGIC) == m_magic) {
-                   m_trade->OrderDelete(ticket);
+                   m_trade.OrderDelete(ticket);
                }
            }
        }
@@ -129,7 +129,7 @@ public:
            ulong ticket = PositionGetTicket(i);
            if (PositionSelectByTicket(ticket)) {
                if (PositionGetString(POSITION_SYMBOL) == m_symbol_name && PositionGetInteger(POSITION_MAGIC) == m_magic) {
-                   m_trade->PositionClose(ticket);
+                   m_trade.PositionClose(ticket);
                }
            }
        }
