@@ -8,6 +8,9 @@
 #property link      "https://github.com/MimicProject"
 #property strict
 
+#ifndef BLACKBOX_V2_05_MQH
+#define BLACKBOX_V2_05_MQH
+
 //+------------------------------------------------------------------+
 //| Forensic Recorder - CSV Logging (v2.05)                          |
 //| Core Improvement: Precision Logging                              |
@@ -121,3 +124,4 @@ public:
       FileFlush(m_file_handle);
    }
 };
+#endif

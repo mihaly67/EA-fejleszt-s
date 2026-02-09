@@ -8,6 +8,9 @@
 #property link      "https://github.com/MimicProject"
 #property strict
 
+#ifndef NAVSYSTEM_V2_07_MQH
+#define NAVSYSTEM_V2_07_MQH
+
 class CNavSystem
 {
 private:
@@ -288,3 +291,4 @@ private:
        }
    }
 };
+#endif
