@@ -35,10 +35,10 @@ public:
       m_trade = GetPointer(trade_obj);
       m_symbol = GetPointer(symbol_obj);
 
-      // Use Arrow Operator for Pointers in MQL5!
-      m_symbol_name = m_symbol->Name();
-      m_point = m_symbol->Point();
-      m_digits = m_symbol->Digits();
+      // MQL5 Syntax Fix: Use DOT (.) for object pointers!
+      m_symbol_name = m_symbol.Name();
+      m_point = m_symbol.Point();
+      m_digits = m_symbol.Digits();
 
       m_comment_prefix = comment;
       m_magic = magic;
@@ -54,10 +54,10 @@ public:
       if (layers <= 0) return;
       if (CheckPointer(m_symbol) == POINTER_INVALID || CheckPointer(m_trade) == POINTER_INVALID) return;
 
-      m_symbol->RefreshRates();
+      m_symbol.RefreshRates();
 
-      double current_bid = m_symbol->Bid();
-      double current_ask = m_symbol->Ask();
+      double current_bid = m_symbol.Bid();
+      double current_ask = m_symbol.Ask();
       double raw_spread = current_ask - current_bid;
 
       // FIX v2.07: Adaptive Base Unit
@@ -66,7 +66,7 @@ public:
       double effective_spread = MathMax(raw_spread, min_base_spread);
 
       // Safety check for StopsLevel (Broker Requirement)
-      int stops_level = m_symbol->StopsLevel();
+      int stops_level = m_symbol.StopsLevel();
       double min_safety = (double)stops_level * m_point;
 
       PrintFormat("🔥 FIRE BURST (Adapt): BaseSpread=%.1f pts (Raw=%.1f), Layers=%d", effective_spread/m_point, raw_spread/m_point, layers);
@@ -92,13 +92,13 @@ public:
          // Place Orders
          string comm = m_comment_prefix + "_L" + IntegerToString(i);
 
-         if (m_trade->BuyStop(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
+         if (m_trade.BuyStop(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
             PrintFormat("   ✅ Buy Stop L%d @ %.5f (Gap: %.1f pts)", i, buy_price, (buy_price-current_ask)/m_point);
          } else {
             PrintFormat("   ❌ Buy Stop L%d Failed: %d", i, GetLastError());
          }
 
-         if (m_trade->SellStop(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
+         if (m_trade.SellStop(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
             PrintFormat("   ✅ Sell Stop L%d @ %.5f (Gap: %.1f pts)", i, sell_price, (current_bid-sell_price)/m_point);
          } else {
              PrintFormat("   ❌ Sell Stop L%d Failed: %d", i, GetLastError());
@@ -119,7 +119,7 @@ public:
            ulong ticket = OrderGetTicket(i);
            if (OrderSelect(ticket)) {
                if (OrderGetString(ORDER_SYMBOL) == m_symbol_name && OrderGetInteger(ORDER_MAGIC) == m_magic) {
-                   m_trade->OrderDelete(ticket);
+                   m_trade.OrderDelete(ticket);
                }
            }
        }
@@ -129,7 +129,7 @@ public:
            ulong ticket = PositionGetTicket(i);
            if (PositionSelectByTicket(ticket)) {
                if (PositionGetString(POSITION_SYMBOL) == m_symbol_name && PositionGetInteger(POSITION_MAGIC) == m_magic) {
-                   m_trade->PositionClose(ticket);
+                   m_trade.PositionClose(ticket);
                }
            }
        }
