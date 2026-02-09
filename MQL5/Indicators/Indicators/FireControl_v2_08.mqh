@@ -34,9 +34,9 @@ public:
    {
       m_trade = trade_ptr;
       m_symbol = symbol_ptr;
-      m_symbol_name = m_symbol->Name();
-      m_point = m_symbol->Point();
-      m_digits = m_symbol->Digits();
+      m_symbol_name = m_symbol.Name(); // Reverted to dot operator
+      m_point = m_symbol.Point();
+      m_digits = m_symbol.Digits();
       m_comment_prefix = comment;
       m_magic = magic;
    }
@@ -50,9 +50,9 @@ public:
    {
       if (layers <= 0) return;
 
-      m_symbol->RefreshRates();
-      double raw_spread = m_symbol->Ask() - m_symbol->Bid();
-      int stops_level = m_symbol->StopsLevel();
+      m_symbol.RefreshRates(); // Reverted to dot operator
+      double raw_spread = m_symbol.Ask() - m_symbol.Bid();
+      int stops_level = m_symbol.StopsLevel();
 
       // Adaptive Spread Logic: Use larger of Market Spread or User Min Spread (e.g. 60 pts)
       double effective_spread = raw_spread;
@@ -71,8 +71,8 @@ public:
       PrintFormat("🔥 FIRE BURST (v2.08 Trap): Layers=%d, BaseSpread=%.1f pts", layers, effective_spread/m_point);
 
       // Tracking prices for cumulative steps
-      double prev_buy_price = m_symbol->Ask();
-      double prev_sell_price = m_symbol->Bid();
+      double prev_buy_price = m_symbol.Ask();
+      double prev_sell_price = m_symbol.Bid();
 
       for (int i = 1; i <= layers; i++)
       {
@@ -104,14 +104,14 @@ public:
          string comm = m_comment_prefix + "_L" + IntegerToString(i);
 
          // BUY STOP (Breakout Up)
-         if (m_trade->BuyStop(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
+         if (m_trade.BuyStop(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
             PrintFormat("   ✅ Buy Stop L%d @ %.5f (Gap: %.1f pts)", i, buy_price, dist/m_point);
          } else {
             PrintFormat("   ❌ Buy Stop L%d Failed: %d", i, GetLastError());
          }
 
          // SELL STOP (Breakout Down)
-         if (m_trade->SellStop(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
+         if (m_trade.SellStop(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
              PrintFormat("   ✅ Sell Stop L%d @ %.5f (Gap: %.1f pts)", i, sell_price, dist/m_point);
          } else {
              PrintFormat("   ❌ Sell Stop L%d Failed: %d", i, GetLastError());
@@ -130,7 +130,7 @@ public:
            ulong ticket = OrderGetTicket(i);
            if (OrderSelect(ticket)) {
                if (OrderGetString(ORDER_SYMBOL) == m_symbol_name && OrderGetInteger(ORDER_MAGIC) == m_magic) {
-                   m_trade->OrderDelete(ticket);
+                   m_trade.OrderDelete(ticket);
                }
            }
        }
@@ -140,7 +140,7 @@ public:
            ulong ticket = PositionGetTicket(i);
            if (PositionSelectByTicket(ticket)) {
                if (PositionGetString(POSITION_SYMBOL) == m_symbol_name && PositionGetInteger(POSITION_MAGIC) == m_magic) {
-                   m_trade->PositionClose(ticket);
+                   m_trade.PositionClose(ticket);
                }
            }
        }
