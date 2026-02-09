@@ -32,62 +32,75 @@ public:
    {
       m_trade = trade_ptr;
       m_symbol = symbol_ptr;
-      m_symbol_name = m_symbol->Name(); // Fixed: ->
-      m_point = m_symbol->Point();      // Fixed: ->
-      m_digits = m_symbol->Digits();    // Fixed: ->
+      m_symbol_name = m_symbol->Name();
+      m_point = m_symbol->Point();
+      m_digits = m_symbol->Digits();
       m_comment_prefix = comment;
       m_magic = magic;
    }
 
    //+------------------------------------------------------------------+
    //| FireBurst                                                        |
-   //| Places a grid of BuyLimit/SellLimit orders around center price.  |
+   //| Places a grid of BuyLimit/SellLimit orders.                      |
+   //| FIX v2.06: Anchors to Bid/Ask for precise Barbed Wire symmetry.  |
    //+------------------------------------------------------------------+
-   void FireBurst(double center_price, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_dist_points)
+   void FireBurst(double center_price_unused, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_dist_points)
    {
       if (layers <= 0) return;
 
-      m_symbol->RefreshRates(); // Fixed: ->
-      double spread = m_symbol->Ask() - m_symbol->Bid(); // Fixed: ->
-      int stops_level = m_symbol->StopsLevel(); // Fixed: ->
+      m_symbol->RefreshRates();
+      double spread = m_symbol->Ask() - m_symbol->Bid();
+      double current_bid = m_symbol->Bid();
+      double current_ask = m_symbol->Ask();
+
+      int stops_level = m_symbol->StopsLevel();
 
       // Safety: Minimum distance (StopsLevel + SafeZone)
       double min_safety = stops_level * m_point;
       if (min_dist_points * m_point > min_safety) min_safety = min_dist_points * m_point;
 
-      PrintFormat("🔥 FIRE BURST: Center=%.5f, Spread=%.1f pts, Layers=%d", center_price, spread/m_point, layers);
+      // Note: We ignore 'center_price_unused' to enforce Barbed Wire symmetry from Market Edges.
+      PrintFormat("🔥 FIRE BURST: Anchor=Ask/Bid, Spread=%.1f pts, Layers=%d", spread/m_point, layers);
 
       for (int i = 1; i <= layers; i++)
       {
-         double current_mult = spread_mult_start + (i - 1) * spread_mult_step;
-         double dist = spread * current_mult;
+         // Calculate distance for this layer
+         // Layer 1: StartMult * Spread
+         // Layer 2: StartMult * Spread + (StepMult * Spread)
+         // Logic: The "Step" applies to the gap BETWEEN layers.
 
-         // ENFORCE SAFETY (The Fix)
-         if (dist < min_safety) {
-             dist = min_safety + (i*10 * m_point); // Add small step to avoid stacking
+         double dist_from_edge = spread * spread_mult_start;
+         if (i > 1) {
+             dist_from_edge += spread * spread_mult_step * (i - 1);
          }
 
-         double buy_price = NormalizeDouble(center_price - dist, m_digits);
-         double sell_price = NormalizeDouble(center_price + dist, m_digits);
+         // ENFORCE SAFETY (Min Dist)
+         if (dist_from_edge < min_safety) {
+             dist_from_edge = min_safety + (i*10 * m_point); // Add small step to avoid stacking
+         }
 
-         // Double Check Logic (Validate against current Ask/Bid)
-         // BuyLimit must be below Ask - StopsLevel
-         if (buy_price > m_symbol->Ask() - min_safety) buy_price = m_symbol->Ask() - min_safety - (i*m_point); // Fixed: ->
+         // FIX: Anchor to Market Edges for Symmetric Net
+         // Buy Limit is below Bid
+         double buy_price = NormalizeDouble(current_bid - dist_from_edge, m_digits);
 
-         // SellLimit must be above Bid + StopsLevel
-         if (sell_price < m_symbol->Bid() + min_safety) sell_price = m_symbol->Bid() + min_safety + (i*m_point); // Fixed: ->
+         // Sell Limit is above Ask
+         double sell_price = NormalizeDouble(current_ask + dist_from_edge, m_digits);
+
+         // Double Check Logic (Validate against current Ask/Bid with Safety)
+         if (buy_price > current_bid - min_safety) buy_price = current_bid - min_safety - (i*m_point);
+         if (sell_price < current_ask + min_safety) sell_price = current_ask + min_safety + (i*m_point);
 
          // Place Orders
          string comm = m_comment_prefix + "_L" + IntegerToString(i);
 
-         if (m_trade->BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) { // Fixed: ->
-            PrintFormat("   ✅ Buy Limit L%d @ %.5f (Dist: %.1f pts)", i, buy_price, (center_price-buy_price)/m_point);
+         if (m_trade->BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm)) {
+            PrintFormat("   ✅ Buy Limit L%d @ %.5f (Gap: %.1f pts)", i, buy_price, (current_bid-buy_price)/m_point);
          } else {
             PrintFormat("   ❌ Buy Limit L%d Failed: %d", i, GetLastError());
          }
 
-         if (m_trade->SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) { // Fixed: ->
-            PrintFormat("   ✅ Sell Limit L%d @ %.5f (Dist: %.1f pts)", i, sell_price, (sell_price-center_price)/m_point);
+         if (m_trade->SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm)) {
+            PrintFormat("   ✅ Sell Limit L%d @ %.5f (Gap: %.1f pts)", i, sell_price, (sell_price-current_ask)/m_point);
          } else {
              PrintFormat("   ❌ Sell Limit L%d Failed: %d", i, GetLastError());
          }
@@ -105,7 +118,7 @@ public:
            ulong ticket = OrderGetTicket(i);
            if (OrderSelect(ticket)) {
                if (OrderGetString(ORDER_SYMBOL) == m_symbol_name && OrderGetInteger(ORDER_MAGIC) == m_magic) {
-                   m_trade->OrderDelete(ticket); // Fixed: ->
+                   m_trade->OrderDelete(ticket);
                }
            }
        }
@@ -115,7 +128,7 @@ public:
            ulong ticket = PositionGetTicket(i);
            if (PositionSelectByTicket(ticket)) {
                if (PositionGetString(POSITION_SYMBOL) == m_symbol_name && PositionGetInteger(POSITION_MAGIC) == m_magic) {
-                   m_trade->PositionClose(ticket); // Fixed: ->
+                   m_trade->PositionClose(ticket);
                }
            }
        }
