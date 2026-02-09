@@ -123,7 +123,7 @@ int OnInit()
 
    g_user_lot_size = InpLotSize;
 
-   m_fire_control.Init(&m_trade, &m_symbol, InpComment, InpMagicNumber);
+   m_fire_control.Init(m_trade, m_symbol, InpComment, InpMagicNumber);
 
    bool init_ok = m_nav_system.Initialize(
        _Symbol, _Period,
