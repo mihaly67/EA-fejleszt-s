@@ -6,9 +6,6 @@
 #property copyright "Jules Agent"
 #property link      "https://mql5.com"
 
-#ifndef PHYSICSENGINE_MQH
-#define PHYSICSENGINE_MQH
-
 struct PhysicsState {
    double velocity;      // Pips/sec
    double acceleration;  // Pips/sec^2
@@ -150,4 +147,3 @@ private:
       return (sum / m_size) / _Point;
    }
 };
-#endif
