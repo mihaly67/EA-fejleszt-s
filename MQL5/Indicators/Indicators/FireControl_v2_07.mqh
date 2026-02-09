@@ -1,7 +1,8 @@
 //+------------------------------------------------------------------+
-//|                                                  FireControl.mqh |
+//|                                            FireControl_v2_07.mqh |
 //|                                                      Jules Agent |
 //|                                       Part of Merkava Tank Logic |
+//|                                                   Version 2.07   |
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent"
 #property strict
@@ -42,7 +43,7 @@ public:
    //+------------------------------------------------------------------+
    //| FireBurst                                                        |
    //| Places a grid of BuyLimit/SellLimit orders.                      |
-   //| FIX v2.06: Anchors to Bid/Ask for precise Barbed Wire symmetry.  |
+   //| FIX v2.07: Anchors to Bid/Ask for precise Barbed Wire symmetry.  |
    //+------------------------------------------------------------------+
    void FireBurst(double center_price_unused, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_dist_points)
    {
@@ -79,7 +80,7 @@ public:
              dist_from_edge = min_safety + (i*10 * m_point); // Add small step to avoid stacking
          }
 
-         // FIX: Anchor to Market Edges for Symmetric Net
+         // FIX v2.07: Anchor to Market Edges for Symmetric Net
          // Buy Limit is below Bid
          double buy_price = NormalizeDouble(current_bid - dist_from_edge, m_digits);
 

@@ -1,8 +1,8 @@
 //+------------------------------------------------------------------+
-//|                                            NavSystem_v2_06.mqh |
+//|                                            NavSystem_v2_07.mqh |
 //|                                    Copyright 2026, Jules (Mimic) |
 //|                                             For Project Merkava  |
-//|                                                   Version 2.06   |
+//|                                                   Version 2.07   |
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
 #property link      "https://github.com/MimicProject"
@@ -159,7 +159,7 @@ public:
       // 2. Indicators
       m_val_rsi = CalcRSI(copied, 5);
 
-      // v2.06: Fetch Hybrid Pulse directly from Indicator Handle to get exact chart visual values
+      // v2.07: Fetch Hybrid Pulse directly from Indicator Handle to get exact chart visual values
       if(m_handle_hybrid_macd != INVALID_HANDLE) {
           double buf_macd[1];
           double buf_df[1];
