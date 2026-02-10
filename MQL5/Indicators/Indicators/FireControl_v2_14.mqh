@@ -49,11 +49,12 @@ public:
    //+------------------------------------------------------------------+
    //| FireGrid                                                         |
    //| Places a grid of orders relative to ASK/BID.                     |
-   //| v2.14: Supports Directional Attack (Buy/Sell/Both).              |
+   //| v2.14: Supports Directional Attack (Buy/Sell/Both) + Solo Mode.  |
    //+------------------------------------------------------------------+
-   void FireGrid(double center_price, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_spread_points, ENUM_FIRE_MODE fire_mode, ENUM_ENTRY_MODE entry_mode, ENUM_ATTACK_DIR attack_dir)
+   void FireGrid(double center_price, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_spread_points,
+                 ENUM_FIRE_MODE fire_mode, ENUM_ENTRY_MODE entry_mode, ENUM_ATTACK_DIR attack_dir, ENUM_ACTION_TYPE action_type)
    {
-      if (layers <= 0) return;
+      if (layers <= 0 && action_type == ACTION_COMBO) return; // Allow 0 layers if Solo
 
       // Enable Async Mode for "Carpet Bombing" speed
       m_trade.SetAsyncMode(true);
@@ -75,12 +76,13 @@ public:
       string mode_str = (fire_mode == FIRE_MODE_STOP) ? "STOP (Breakout)" : "LIMIT (Reversion)";
       string entry_str = (entry_mode == ENTRY_MARKET) ? "MARKET (Instant)" : "PENDING";
       string dir_str = (attack_dir == ATTACK_BUY) ? "BUY ONLY" : (attack_dir == ATTACK_SELL) ? "SELL ONLY" : "BOTH (Trap)";
+      string act_str = (action_type == ACTION_SOLO) ? "SOLO (Single Shot)" : "COMBO (Burst+Grid)";
 
-      PrintFormat("🕸️ FIRE GRID (ASYNC): %s | %s | %s | Ask=%.5f | Bid=%.5f | EffSpread=%.1f",
-                  mode_str, entry_str, dir_str, tick.ask, tick.bid, effective_spread/m_point);
+      PrintFormat("🕸️ FIRE GRID (ASYNC): %s | %s | %s | %s | Ask=%.5f | Bid=%.5f",
+                  mode_str, entry_str, dir_str, act_str, tick.ask, tick.bid);
 
       int pending_start_layer = 1;
-      int loop_layers = layers;
+      int loop_layers = (action_type == ACTION_SOLO) ? 0 : layers; // Skip pending loop if Solo
 
       // --- 1. HANDLE INSTANT ENTRY (Level 1) ---
       if (entry_mode == ENTRY_MARKET)
@@ -101,10 +103,11 @@ public:
 
           // Adjust loop for pending orders
           pending_start_layer = 2; // Next layer is L2
-          loop_layers = layers - 1; // Remaining layers
+          if(action_type == ACTION_COMBO) loop_layers = layers - 1; // Decrease pending count
       }
 
       // --- 2. HANDLE PENDING GRID (Remaining Levels) ---
+      // If Action is SOLO, loop_layers is 0, so this is skipped.
       for (int i = 1; i <= loop_layers; i++)
       {
          // Distance Calculation

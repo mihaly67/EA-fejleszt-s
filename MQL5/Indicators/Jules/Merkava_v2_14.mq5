@@ -160,7 +160,7 @@ int OnInit()
    m_panel.Create();
    m_panel.UpdateUI(GetFloatingPL());
 
-   Print("Merkava v2.14 Initialized (Dual Mode + Instant Entry + PanelControl).");
+   Print("Merkava v2.14 Initialized (Dual Mode + Instant Entry + PanelControl + Solo/Combo).");
    return(INIT_SUCCEEDED);
 }
 
@@ -195,11 +195,13 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
        ENUM_FIRE_MODE mode = m_panel.GetFireMode();
        ENUM_ENTRY_MODE entry = m_panel.GetEntryMode();
        ENUM_ATTACK_DIR dir = m_panel.GetAttackDir();
+       ENUM_ACTION_TYPE action = m_panel.GetActionType();
 
-       m_fire_control.FireGrid(center, lot, layers, mstart, mstep, mindist, mode, entry, dir);
+       m_fire_control.FireGrid(center, lot, layers, mstart, mstep, mindist, mode, entry, dir, action);
 
        g_last_action = (mode == FIRE_MODE_STOP) ? "TRAP_SET" : "LIMIT_GRID";
        if (entry == ENTRY_MARKET) g_last_action += "_INSTANT";
+       if (action == ACTION_SOLO) g_last_action += "_SOLO";
 
        g_decision_log += "Grid Fired L" + IntegerToString(layers) + " (" + ((mode==FIRE_MODE_STOP)?"Breakout":"Reversion") + "/" + ((entry==ENTRY_MARKET)?"Market":"Pending") + ");";
    }
