@@ -22,13 +22,14 @@ enum ENUM_PANEL_EVENT
    EVENT_CEASE_FIRE,
    EVENT_CHANGE_MODE,
    EVENT_CHANGE_ENTRY,
+   EVENT_CHANGE_ACTION,
    EVENT_PARAM_UPDATE
 };
 
 //+------------------------------------------------------------------+
 //| Class CPanelControl                                              |
 //| Handles the GUI (Buttons, Inputs) for the Merkava EA.            |
-//| v2.14: Compact Layout & Directional Attack Buttons               |
+//| v2.14: Compact Layout & Directional Attack Buttons & Action Type |
 //+------------------------------------------------------------------+
 class CPanelControl
 {
@@ -42,11 +43,13 @@ private:
    // Objects
    string ObjBG;
    string ObjStat;
-   string ObjBtnAttackBuy;  // New v2.14
-   string ObjBtnAttackSell; // New v2.14
+   string ObjBtnAttackBuy;
+   string ObjBtnAttackSell;
    string ObjBtnClear;
    string ObjBtnMode;
    string ObjBtnEntry;
+   string ObjBtnAction;
+   string ObjLineSep; // Separator Line
 
    // Compact Labels/Edits
    string ObjLabelLot;
@@ -69,7 +72,8 @@ private:
    double      m_min_dist;
    ENUM_FIRE_MODE m_fire_mode;
    ENUM_ENTRY_MODE m_entry_mode;
-   ENUM_ATTACK_DIR m_attack_dir; // New v2.14
+   ENUM_ATTACK_DIR m_attack_dir;
+   ENUM_ACTION_TYPE m_action_type;
 
 public:
    CPanelControl() {
@@ -77,6 +81,7 @@ public:
        m_fire_mode = FIRE_MODE_STOP;
        m_entry_mode = ENTRY_PENDING;
        m_attack_dir = ATTACK_BOTH;
+       m_action_type = ACTION_COMBO;
    }
    ~CPanelControl() {}
 
@@ -86,8 +91,8 @@ public:
       m_prefix = prefix;
       m_x = x; m_y = y;
       m_bg_color = bg; m_txt_color = txt;
-      m_width = 140; // Reduced width (v2.13 was 160)
-      m_height = 320; // Reduced height
+      m_width = 140; // Reduced width
+      m_height = 360; // Adjusted height
 
       // Initialize State
       m_lot_size = def_lot;
@@ -98,6 +103,7 @@ public:
       m_fire_mode = FIRE_MODE_STOP; // Default: Breakout
       m_entry_mode = ENTRY_PENDING; // Default: Pending
       m_attack_dir = ATTACK_BOTH;
+      m_action_type = ACTION_COMBO; // Default: Grid + Burst
 
       // Define Object Names
       ObjBG = m_prefix + "BG";
@@ -107,6 +113,8 @@ public:
       ObjBtnClear = m_prefix + "BtnClear";
       ObjBtnMode = m_prefix + "BtnMode";
       ObjBtnEntry = m_prefix + "BtnEntry";
+      ObjBtnAction = m_prefix + "BtnAction";
+      ObjLineSep = m_prefix + "LineSep";
 
       ObjLabelLot = m_prefix + "LblLot";
       ObjEditLot = m_prefix + "EdtLot";
@@ -133,6 +141,7 @@ public:
    ENUM_FIRE_MODE GetFireMode() const { return m_fire_mode; }
    ENUM_ENTRY_MODE GetEntryMode() const { return m_entry_mode; }
    ENUM_ATTACK_DIR GetAttackDir() const { return m_attack_dir; }
+   ENUM_ACTION_TYPE GetActionType() const { return m_action_type; }
 
    // --- Core Methods ---
    void Create()
@@ -230,30 +239,44 @@ public:
        ObjectSetInteger(0, ObjEditMinDist, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditMinDist, OBJPROP_COLOR, clrBlack);
        ObjectSetInteger(0, ObjEditMinDist, OBJPROP_FONTSIZE, font_size);
 
-       // --- Separator ---
+       // --- Separator Line ---
        cy+=20;
+       ObjectCreate(0, ObjLineSep, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+       ObjectSetInteger(0, ObjLineSep, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjLineSep, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjLineSep, OBJPROP_XSIZE, w-10); ObjectSetInteger(0, ObjLineSep, OBJPROP_YSIZE, 2);
+       ObjectSetInteger(0, ObjLineSep, OBJPROP_BGCOLOR, clrGray);
+       ObjectSetInteger(0, ObjLineSep, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+
+       cy+=5; // Margin after line
 
        // --- Mode Toggle Button ---
        ObjectCreate(0, ObjBtnMode, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnMode, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnMode, OBJPROP_XSIZE, w-10); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YSIZE, 25);
+       ObjectSetInteger(0, ObjBtnMode, OBJPROP_XSIZE, w-10); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YSIZE, 22);
        ObjectSetInteger(0, ObjBtnMode, OBJPROP_FONTSIZE, font_size);
 
        // --- Entry Toggle Button ---
-       cy+=30;
+       cy+=25;
        ObjectCreate(0, ObjBtnEntry, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XSIZE, w-10); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YSIZE, 25);
+       ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XSIZE, w-10); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YSIZE, 22);
        ObjectSetInteger(0, ObjBtnEntry, OBJPROP_FONTSIZE, font_size);
 
+       // --- Action Type Toggle Button (Solo/Combo) ---
+       cy+=25;
+       ObjectCreate(0, ObjBtnAction, OBJ_BUTTON, 0, 0, 0);
+       ObjectSetInteger(0, ObjBtnAction, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjBtnAction, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjBtnAction, OBJPROP_XSIZE, w-10); ObjectSetInteger(0, ObjBtnAction, OBJPROP_YSIZE, 22);
+       ObjectSetInteger(0, ObjBtnAction, OBJPROP_FONTSIZE, font_size);
+
        // --- ATTACK BUTTONS (Side by Side) ---
-       cy+=35;
+       cy+=30;
        int btn_w = (w-15)/2;
 
        // BUY Button
        ObjectCreate(0, ObjBtnAttackBuy, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_XSIZE, btn_w); ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_YSIZE, 40);
+       ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_XSIZE, btn_w); ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_YSIZE, 35);
        ObjectSetString(0, ObjBtnAttackBuy, OBJPROP_TEXT, "BUY");
        ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_BGCOLOR, clrForestGreen); ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_COLOR, clrWhite);
        ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_FONTSIZE, 8);
@@ -261,13 +284,13 @@ public:
        // SELL Button
        ObjectCreate(0, ObjBtnAttackSell, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_XDISTANCE, x+5+btn_w+5); ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_XSIZE, btn_w); ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_YSIZE, 40);
+       ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_XSIZE, btn_w); ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_YSIZE, 35);
        ObjectSetString(0, ObjBtnAttackSell, OBJPROP_TEXT, "SELL");
        ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_BGCOLOR, clrFireBrick); ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_COLOR, clrWhite);
        ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_FONTSIZE, 8);
 
        // --- Cease Fire ---
-       cy+=45;
+       cy+=40;
        ObjectCreate(0, ObjBtnClear, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnClear, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjBtnClear, OBJPROP_YDISTANCE, cy);
        ObjectSetInteger(0, ObjBtnClear, OBJPROP_XSIZE, w-10); ObjectSetInteger(0, ObjBtnClear, OBJPROP_YSIZE, 25);
@@ -291,6 +314,8 @@ public:
        ObjectDelete(0, ObjBtnAttackBuy); ObjectDelete(0, ObjBtnAttackSell);
        ObjectDelete(0, ObjBtnClear); ObjectDelete(0, ObjLabelPL);
        ObjectDelete(0, ObjBtnMode); ObjectDelete(0, ObjBtnEntry);
+       ObjectDelete(0, ObjBtnAction);
+       ObjectDelete(0, ObjLineSep); // Delete Line
 
        ObjectDelete(0, ObjLabelLot); ObjectDelete(0, ObjEditLot);
        ObjectDelete(0, ObjLabelLayers); ObjectDelete(0, ObjEditLayers);
@@ -323,6 +348,16 @@ public:
             ObjectSetString(0, ObjBtnEntry, OBJPROP_TEXT, "ENTRY: PENDING");
             ObjectSetInteger(0, ObjBtnEntry, OBJPROP_BGCOLOR, clrDimGray);
         }
+
+        // Action Type (Solo vs Combo)
+        if(m_action_type == ACTION_SOLO) {
+            ObjectSetString(0, ObjBtnAction, OBJPROP_TEXT, "SCOPE: SOLO (Burst)");
+            ObjectSetInteger(0, ObjBtnAction, OBJPROP_BGCOLOR, clrPurple);
+        } else {
+            ObjectSetString(0, ObjBtnAction, OBJPROP_TEXT, "SCOPE: COMBO (Trap)");
+            ObjectSetInteger(0, ObjBtnAction, OBJPROP_BGCOLOR, clrTeal);
+        }
+
         ChartRedraw();
    }
 
@@ -372,6 +407,13 @@ public:
              m_entry_mode = (m_entry_mode == ENTRY_PENDING) ? ENTRY_MARKET : ENTRY_PENDING;
              UpdateButtons();
              return EVENT_CHANGE_ENTRY;
+          }
+          else if (sparam == ObjBtnAction)
+          {
+             // Toggle Action Type
+             m_action_type = (m_action_type == ACTION_COMBO) ? ACTION_SOLO : ACTION_COMBO;
+             UpdateButtons();
+             return EVENT_CHANGE_ACTION;
           }
        }
        else if(id == CHARTEVENT_OBJECT_ENDEDIT)

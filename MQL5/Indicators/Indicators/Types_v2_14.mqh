@@ -27,4 +27,11 @@ enum ENUM_ATTACK_DIR
    ATTACK_SELL = 2  // Only Sell side
 };
 
+// v2.14: Action Type (Solo vs Combo)
+enum ENUM_ACTION_TYPE
+{
+   ACTION_COMBO = 0, // Burst + Grid (Standard)
+   ACTION_SOLO  = 1  // Burst Only (Single Shot, no pending grid)
+};
+
 #endif
