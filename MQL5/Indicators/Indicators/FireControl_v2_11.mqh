@@ -49,7 +49,7 @@ public:
 
    //+------------------------------------------------------------------+
    //| FireGrid (formerly FireTrap/FireBurst)                           |
-   //| Places a grid of orders around center price based on mode.       |
+   //| Places a grid of orders relative to ASK/BID (not center).        |
    //| Uses ASYNC MODE for instant "Carpet Bombing" placement.          |
    //+------------------------------------------------------------------+
    void FireGrid(double center_price, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_spread_points, ENUM_FIRE_MODE mode)
@@ -74,15 +74,15 @@ public:
       if (min_safety == 0) min_safety = 10 * m_point; // Absolute minimum fallback
 
       string mode_str = (mode == FIRE_MODE_STOP) ? "STOP (Breakout)" : "LIMIT (Reversion)";
-      PrintFormat("🕸️ FIRE GRID (ASYNC): %s | Center=%.5f | RealSpread=%.1f | EffSpread=%.1f",
-                  mode_str, center_price, real_spread/m_point, effective_spread/m_point);
+      PrintFormat("🕸️ FIRE GRID (ASYNC): %s | Ask=%.5f | Bid=%.5f | EffSpread=%.1f",
+                  mode_str, tick.ask, tick.bid, effective_spread/m_point);
 
       for (int i = 1; i <= layers; i++)
       {
          double current_mult = spread_mult_start + (i - 1) * spread_mult_step;
          double dist = effective_spread * current_mult;
 
-         // Ensure distance is at least MinSafety
+         // Ensure distance is at least MinSafety (StopsLevel)
          if (dist < min_safety) dist = min_safety + (i * 10 * m_point);
 
          double buy_price = 0;
@@ -92,21 +92,13 @@ public:
          if (mode == FIRE_MODE_STOP)
          {
              // --- BREAKOUT (STOP) ---
-             buy_price = NormalizeDouble(center_price + dist, m_digits);
-             sell_price = NormalizeDouble(center_price - dist, m_digits);
+             // Calculate from EDGE (Ask/Bid) outwards
+             buy_price = NormalizeDouble(tick.ask + dist, m_digits);
+             sell_price = NormalizeDouble(tick.bid - dist, m_digits);
 
-             // VALIDATION & CORRECTION (Crypto Fix)
-             // BuyStop MUST be > Ask. If calculated price is <= Ask (due to center/spread volatility), push it up.
-             if (buy_price <= tick.ask + min_safety) {
-                 buy_price = NormalizeDouble(tick.ask + min_safety + (i * m_point), m_digits);
-                 PrintFormat("   ⚠️ L%d BuyStop Corrected to %.5f (Inside Spread)", i, buy_price);
-             }
-
-             // SellStop MUST be < Bid.
-             if (sell_price >= tick.bid - min_safety) {
-                 sell_price = NormalizeDouble(tick.bid - min_safety - (i * m_point), m_digits);
-                 PrintFormat("   ⚠️ L%d SellStop Corrected to %.5f (Inside Spread)", i, sell_price);
-             }
+             // Final Validation (Push out if somehow still inside)
+             if (buy_price <= tick.ask + min_safety) buy_price = NormalizeDouble(tick.ask + min_safety + (i * m_point), m_digits);
+             if (sell_price >= tick.bid - min_safety) sell_price = NormalizeDouble(tick.bid - min_safety - (i * m_point), m_digits);
 
              m_trade.BuyStop(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm);
              m_trade.SellStop(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm);
@@ -114,20 +106,13 @@ public:
          else
          {
              // --- REVERSION (LIMIT) ---
-             buy_price = NormalizeDouble(center_price - dist, m_digits);
-             sell_price = NormalizeDouble(center_price + dist, m_digits);
+             // Calculate from EDGE (Bid/Ask) outwards (Reversion means buying below Bid, Selling above Ask)
+             buy_price = NormalizeDouble(tick.bid - dist, m_digits);
+             sell_price = NormalizeDouble(tick.ask + dist, m_digits);
 
-             // VALIDATION
-             // BuyLimit MUST be < Ask. (Ideally < Bid too for immediate execution logic, but < Ask is the constraint).
-             // Actually, BuyLimit must be < Ask - StopsLevel.
-             if (buy_price >= tick.ask - min_safety) {
-                 buy_price = NormalizeDouble(tick.ask - min_safety - (i * m_point), m_digits);
-             }
-
-             // SellLimit MUST be > Bid + StopsLevel.
-             if (sell_price <= tick.bid + min_safety) {
-                 sell_price = NormalizeDouble(tick.bid + min_safety + (i * m_point), m_digits);
-             }
+             // Final Validation
+             if (buy_price >= tick.ask - min_safety) buy_price = NormalizeDouble(tick.ask - min_safety - (i * m_point), m_digits);
+             if (sell_price <= tick.bid + min_safety) sell_price = NormalizeDouble(tick.bid + min_safety + (i * m_point), m_digits);
 
              m_trade.BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm);
              m_trade.SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm);
