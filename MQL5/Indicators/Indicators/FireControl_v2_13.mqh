@@ -38,9 +38,10 @@ public:
    {
       m_trade = trade_ptr;
       m_symbol = symbol_ptr;
-      m_symbol_name = m_symbol->Name();
-      m_point = m_symbol->Point();
-      m_digits = m_symbol->Digits();
+      // Reverted to dot syntax (.) as MQL5 pointers to objects often use dot
+      m_symbol_name = m_symbol.Name();
+      m_point = m_symbol.Point();
+      m_digits = m_symbol.Digits();
       m_comment_prefix = comment;
       m_magic = magic;
    }
@@ -55,7 +56,7 @@ public:
       if (layers <= 0) return;
 
       // Enable Async Mode for "Carpet Bombing" speed
-      m_trade->SetAsyncMode(true);
+      m_trade.SetAsyncMode(true);
 
       // USE DIRECT TICK DATA for maximum reliability
       MqlTick tick;
@@ -87,8 +88,8 @@ public:
           string comm = m_comment_prefix + "_L1";
 
           // Note: In Async mode, result is not checked immediately.
-          m_trade->Buy(lot_size, m_symbol_name, 0, 0, 0, comm);
-          m_trade->Sell(lot_size, m_symbol_name, 0, 0, 0, comm);
+          m_trade.Buy(lot_size, m_symbol_name, 0, 0, 0, comm);
+          m_trade.Sell(lot_size, m_symbol_name, 0, 0, 0, comm);
 
           Print("🚀 FIRED MARKET L1 (Hedge)");
 
@@ -101,8 +102,6 @@ public:
       for (int i = 1; i <= loop_layers; i++)
       {
          // Distance Calculation
-         // i=1 (First Pending Layer): Dist = Start + 0*Step = Start.
-         // i=2 (Second Pending Layer): Dist = Start + 1*Step.
          double current_mult = spread_mult_start + (i - 1) * spread_mult_step;
          double dist = effective_spread * current_mult;
 
@@ -127,8 +126,8 @@ public:
              if (buy_price <= tick.ask + min_safety) buy_price = NormalizeDouble(tick.ask + min_safety + (i * m_point), m_digits);
              if (sell_price >= tick.bid - min_safety) sell_price = NormalizeDouble(tick.bid - min_safety - (i * m_point), m_digits);
 
-             m_trade->BuyStop(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm);
-             m_trade->SellStop(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm);
+             m_trade.BuyStop(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm);
+             m_trade.SellStop(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm);
          }
          else
          {
@@ -141,12 +140,12 @@ public:
              if (buy_price >= tick.ask - min_safety) buy_price = NormalizeDouble(tick.ask - min_safety - (i * m_point), m_digits);
              if (sell_price <= tick.bid + min_safety) sell_price = NormalizeDouble(tick.bid + min_safety + (i * m_point), m_digits);
 
-             m_trade->BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm);
-             m_trade->SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm);
+             m_trade.BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm);
+             m_trade.SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm);
          }
       }
 
-      m_trade->SetAsyncMode(false);
+      m_trade.SetAsyncMode(false);
    }
 
    //+------------------------------------------------------------------+
@@ -155,14 +154,14 @@ public:
    //+------------------------------------------------------------------+
    void CeaseFire()
    {
-       m_trade->SetAsyncMode(true);
+       m_trade.SetAsyncMode(true);
 
        // 1. Delete Pending
        for (int i = OrdersTotal() - 1; i >= 0; i--) {
            ulong ticket = OrderGetTicket(i);
            if (OrderSelect(ticket)) {
                if (OrderGetString(ORDER_SYMBOL) == m_symbol_name && OrderGetInteger(ORDER_MAGIC) == m_magic) {
-                   m_trade->OrderDelete(ticket);
+                   m_trade.OrderDelete(ticket);
                }
            }
        }
@@ -172,12 +171,12 @@ public:
            ulong ticket = PositionGetTicket(i);
            if (PositionSelectByTicket(ticket)) {
                if (PositionGetString(POSITION_SYMBOL) == m_symbol_name && PositionGetInteger(POSITION_MAGIC) == m_magic) {
-                   m_trade->PositionClose(ticket);
+                   m_trade.PositionClose(ticket);
                }
            }
        }
 
-       m_trade->SetAsyncMode(false);
+       m_trade.SetAsyncMode(false);
        Print("🏳️ CEASE FIRE (ASYNC): Sweep Complete.");
    }
 };
