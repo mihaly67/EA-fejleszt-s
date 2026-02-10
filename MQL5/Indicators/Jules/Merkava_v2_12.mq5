@@ -16,6 +16,7 @@
 
 // Library Organization (v2.12)
 #include "../Indicators/FireControl_v2_12.mqh" // v2.12: Instant Entry (Market)
+#include "../Indicators/PanelControl_v2_12.mqh" // v2.12: Encapsulated UI
 #include "../Indicators/PhysicsEngine.mqh"
 #include "../Indicators/NavSystem_v2_06.mqh" // v2.06: Hybrid Divisor Logic
 #include "../Indicators/BlackBox_v2_05.mqh" // v2.05: Keep existing
@@ -28,6 +29,7 @@ CAccountInfo  m_account;
 
 PhysicsEngine m_physics(50);
 CFireControl  m_fire_control;
+CPanelControl m_panel;
 CNavSystem    m_nav_system;
 CBlackBox     m_black_box;
 
@@ -72,15 +74,6 @@ input color         InpTxtColor          = clrWhite;
 bool              g_active = false;
 bool              g_book_subscribed = false;
 
-// User Configurable Runtime Globals
-double            g_user_lot_size;
-double            g_user_mult_start;
-double            g_user_mult_step;
-int               g_user_layers;
-double            g_user_min_dist;
-int               g_user_fire_mode = 1; // Default to STOP (Breakout) = 1. Limit = 0.
-int               g_user_entry_mode = 0; // Default to PENDING = 0. Market = 1.
-
 string            g_last_action = "IDLE";
 double            g_last_realized_pl = 0.0;
 double            g_session_realized_pl = 0.0;
@@ -91,41 +84,11 @@ string            g_transaction_buffer = "";
 ulong             g_last_deal_ticket = 0;
 long              g_last_deal_time_msc = 0;
 
-//--- GUI Objects
 string Prefix = "MerkavaV2_";
-string ObjBG = Prefix + "BG";
-string ObjStat = Prefix + "Status";
-string ObjBtnFire = Prefix + "BtnFire";
-string ObjBtnClear = Prefix + "BtnClear";
-string ObjBtnMode = Prefix + "BtnMode"; // Strategy Toggle
-string ObjBtnEntry = Prefix + "BtnEntry"; // Entry Toggle (New v2.12)
-
-string ObjLabelLot = Prefix + "LabelLot";
-string ObjEditLot = Prefix + "EditLot";
-
-string ObjLabelMultStart = Prefix + "LabelMultStart";
-string ObjEditMultStart = Prefix + "EditMultStart";
-
-string ObjLabelMultStep = Prefix + "LabelMultStep";
-string ObjEditMultStep = Prefix + "EditMultStep";
-
-string ObjLabelLayers = Prefix + "LabelLayers";
-string ObjEditLayers = Prefix + "EditLayers";
-
-string ObjLabelMinDist = Prefix + "LabelMinDist";
-string ObjEditMinDist = Prefix + "EditMinDist";
-
-string ObjLabelPL = Prefix + "LabelPL";
 
 //====================================================================
-// HELPER FUNCTIONS (Defined BEFORE usage to avoid Forward Decl errors)
+// HELPER FUNCTIONS
 //====================================================================
-
-void CleanupChart()
-{
-   ObjectsDeleteAll(0, Prefix);
-   ChartRedraw();
-}
 
 double GetFloatingPL() {
     double pl = 0.0;
@@ -136,192 +99,31 @@ double GetFloatingPL() {
     return pl;
 }
 
-void UpdateToggleButtons() {
-    // Strategy Mode Button
-    if(g_user_fire_mode == 1) {
-        ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: STOP (Breakout)");
-        ObjectSetInteger(0, ObjBtnMode, OBJPROP_BGCOLOR, clrOrangeRed);
-    } else {
-        ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: LIMIT (Revert)");
-        ObjectSetInteger(0, ObjBtnMode, OBJPROP_BGCOLOR, clrCornflowerBlue);
-    }
-
-    // Entry Mode Button
-    if(g_user_entry_mode == 1) {
-        ObjectSetString(0, ObjBtnEntry, OBJPROP_TEXT, "ENTRY: MARKET (Instant)");
-        ObjectSetInteger(0, ObjBtnEntry, OBJPROP_BGCOLOR, clrRed);
-    } else {
-        ObjectSetString(0, ObjBtnEntry, OBJPROP_TEXT, "ENTRY: PENDING");
-        ObjectSetInteger(0, ObjBtnEntry, OBJPROP_BGCOLOR, clrDimGray);
-    }
-    ChartRedraw();
-}
-
-void CreatePanel() {
-   int x=InpX, y=InpY;
-   int w=160;
-   int h=380; // Increased Height for new button
-
-   ObjectCreate(0, ObjBG, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, ObjBG, OBJPROP_XDISTANCE, x); ObjectSetInteger(0, ObjBG, OBJPROP_YDISTANCE, y);
-   ObjectSetInteger(0, ObjBG, OBJPROP_XSIZE, w); ObjectSetInteger(0, ObjBG, OBJPROP_YSIZE, h);
-   ObjectSetInteger(0, ObjBG, OBJPROP_BGCOLOR, InpBgColor);
-
-   int cy = y+10;
-   ObjectCreate(0, ObjStat, OBJ_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, ObjStat, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjStat, OBJPROP_YDISTANCE, cy);
-   ObjectSetString(0, ObjStat, OBJPROP_TEXT, "MERKAVA v2.12");
-   ObjectSetInteger(0, ObjStat, OBJPROP_COLOR, clrLime);
-
-   // --- Lot Size ---
-   cy+=30;
-   ObjectCreate(0, ObjLabelLot, OBJ_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, ObjLabelLot, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjLabelLot, OBJPROP_YDISTANCE, cy);
-   ObjectSetString(0, ObjLabelLot, OBJPROP_TEXT, "Lot:");
-   ObjectSetInteger(0, ObjLabelLot, OBJPROP_COLOR, InpTxtColor);
-
-   ObjectCreate(0, ObjEditLot, OBJ_EDIT, 0, 0, 0);
-   ObjectSetInteger(0, ObjEditLot, OBJPROP_XDISTANCE, x+80); ObjectSetInteger(0, ObjEditLot, OBJPROP_YDISTANCE, cy);
-   ObjectSetInteger(0, ObjEditLot, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjEditLot, OBJPROP_YSIZE, 18);
-   ObjectSetString(0, ObjEditLot, OBJPROP_TEXT, DoubleToString(g_user_lot_size, 2));
-   ObjectSetInteger(0, ObjEditLot, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditLot, OBJPROP_COLOR, clrBlack);
-
-   // --- Mult Start ---
-   cy+=25;
-   ObjectCreate(0, ObjLabelMultStart, OBJ_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, ObjLabelMultStart, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjLabelMultStart, OBJPROP_YDISTANCE, cy);
-   ObjectSetString(0, ObjLabelMultStart, OBJPROP_TEXT, "Mult Start:");
-   ObjectSetInteger(0, ObjLabelMultStart, OBJPROP_COLOR, InpTxtColor);
-
-   ObjectCreate(0, ObjEditMultStart, OBJ_EDIT, 0, 0, 0);
-   ObjectSetInteger(0, ObjEditMultStart, OBJPROP_XDISTANCE, x+80); ObjectSetInteger(0, ObjEditMultStart, OBJPROP_YDISTANCE, cy);
-   ObjectSetInteger(0, ObjEditMultStart, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjEditMultStart, OBJPROP_YSIZE, 18);
-   ObjectSetString(0, ObjEditMultStart, OBJPROP_TEXT, DoubleToString(g_user_mult_start, 1));
-   ObjectSetInteger(0, ObjEditMultStart, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditMultStart, OBJPROP_COLOR, clrBlack);
-
-   // --- Mult Step ---
-   cy+=25;
-   ObjectCreate(0, ObjLabelMultStep, OBJ_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, ObjLabelMultStep, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjLabelMultStep, OBJPROP_YDISTANCE, cy);
-   ObjectSetString(0, ObjLabelMultStep, OBJPROP_TEXT, "Mult Step:");
-   ObjectSetInteger(0, ObjLabelMultStep, OBJPROP_COLOR, InpTxtColor);
-
-   ObjectCreate(0, ObjEditMultStep, OBJ_EDIT, 0, 0, 0);
-   ObjectSetInteger(0, ObjEditMultStep, OBJPROP_XDISTANCE, x+80); ObjectSetInteger(0, ObjEditMultStep, OBJPROP_YDISTANCE, cy);
-   ObjectSetInteger(0, ObjEditMultStep, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjEditMultStep, OBJPROP_YSIZE, 18);
-   ObjectSetString(0, ObjEditMultStep, OBJPROP_TEXT, DoubleToString(g_user_mult_step, 1));
-   ObjectSetInteger(0, ObjEditMultStep, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditMultStep, OBJPROP_COLOR, clrBlack);
-
-   // --- Layers ---
-   cy+=25;
-   ObjectCreate(0, ObjLabelLayers, OBJ_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, ObjLabelLayers, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjLabelLayers, OBJPROP_YDISTANCE, cy);
-   ObjectSetString(0, ObjLabelLayers, OBJPROP_TEXT, "Layers:");
-   ObjectSetInteger(0, ObjLabelLayers, OBJPROP_COLOR, InpTxtColor);
-
-   ObjectCreate(0, ObjEditLayers, OBJ_EDIT, 0, 0, 0);
-   ObjectSetInteger(0, ObjEditLayers, OBJPROP_XDISTANCE, x+80); ObjectSetInteger(0, ObjEditLayers, OBJPROP_YDISTANCE, cy);
-   ObjectSetInteger(0, ObjEditLayers, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjEditLayers, OBJPROP_YSIZE, 18);
-   ObjectSetString(0, ObjEditLayers, OBJPROP_TEXT, IntegerToString(g_user_layers));
-   ObjectSetInteger(0, ObjEditLayers, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditLayers, OBJPROP_COLOR, clrBlack);
-
-   // --- Min Dist ---
-   cy+=25;
-   ObjectCreate(0, ObjLabelMinDist, OBJ_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, ObjLabelMinDist, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjLabelMinDist, OBJPROP_YDISTANCE, cy);
-   ObjectSetString(0, ObjLabelMinDist, OBJPROP_TEXT, "Min Dist:");
-   ObjectSetInteger(0, ObjLabelMinDist, OBJPROP_COLOR, InpTxtColor);
-
-   ObjectCreate(0, ObjEditMinDist, OBJ_EDIT, 0, 0, 0);
-   ObjectSetInteger(0, ObjEditMinDist, OBJPROP_XDISTANCE, x+80); ObjectSetInteger(0, ObjEditMinDist, OBJPROP_YDISTANCE, cy);
-   ObjectSetInteger(0, ObjEditMinDist, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjEditMinDist, OBJPROP_YSIZE, 18);
-   ObjectSetString(0, ObjEditMinDist, OBJPROP_TEXT, DoubleToString(g_user_min_dist, 0));
-   ObjectSetInteger(0, ObjEditMinDist, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditMinDist, OBJPROP_COLOR, clrBlack);
-
-   // --- Mode Toggle Button (Breakout/Limit) ---
-   cy+=30;
-   ObjectCreate(0, ObjBtnMode, OBJ_BUTTON, 0, 0, 0);
-   ObjectSetInteger(0, ObjBtnMode, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YDISTANCE, cy);
-   ObjectSetInteger(0, ObjBtnMode, OBJPROP_XSIZE, w-20); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YSIZE, 30);
-   ObjectSetInteger(0, ObjBtnMode, OBJPROP_FONTSIZE, 8);
-   // Initial State is set by UpdateToggleButtons
-
-   // --- Entry Toggle Button (Pending/Market) ---
-   cy+=35;
-   ObjectCreate(0, ObjBtnEntry, OBJ_BUTTON, 0, 0, 0);
-   ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YDISTANCE, cy);
-   ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XSIZE, w-20); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YSIZE, 30);
-   ObjectSetInteger(0, ObjBtnEntry, OBJPROP_FONTSIZE, 8);
-   // Initial State is set by UpdateToggleButtons
-
-   // --- Fire Button ---
-   cy+=40;
-   ObjectCreate(0, ObjBtnFire, OBJ_BUTTON, 0, 0, 0);
-   ObjectSetInteger(0, ObjBtnFire, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnFire, OBJPROP_YDISTANCE, cy);
-   ObjectSetInteger(0, ObjBtnFire, OBJPROP_XSIZE, w-20); ObjectSetInteger(0, ObjBtnFire, OBJPROP_YSIZE, 40);
-   ObjectSetString(0, ObjBtnFire, OBJPROP_TEXT, "FIRE GRID");
-   ObjectSetInteger(0, ObjBtnFire, OBJPROP_BGCOLOR, clrRed); ObjectSetInteger(0, ObjBtnFire, OBJPROP_COLOR, clrWhite);
-
-   // --- Cease Fire ---
-   cy+=50;
-   ObjectCreate(0, ObjBtnClear, OBJ_BUTTON, 0, 0, 0);
-   ObjectSetInteger(0, ObjBtnClear, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnClear, OBJPROP_YDISTANCE, cy);
-   ObjectSetInteger(0, ObjBtnClear, OBJPROP_XSIZE, w-20); ObjectSetInteger(0, ObjBtnClear, OBJPROP_YSIZE, 30);
-   ObjectSetString(0, ObjBtnClear, OBJPROP_TEXT, "CEASE FIRE");
-   ObjectSetInteger(0, ObjBtnClear, OBJPROP_BGCOLOR, clrOrange); ObjectSetInteger(0, ObjBtnClear, OBJPROP_COLOR, clrBlack);
-
-   // --- PL Label ---
-   cy+=40;
-   ObjectCreate(0, ObjLabelPL, OBJ_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, ObjLabelPL, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjLabelPL, OBJPROP_YDISTANCE, cy);
-   ObjectSetInteger(0, ObjLabelPL, OBJPROP_COLOR, clrWhite);
-
-   UpdateToggleButtons();
-}
-
-void UpdateUI() {
-   ObjectSetString(0, ObjLabelPL, OBJPROP_TEXT, "PL: " + DoubleToString(GetFloatingPL(), 2));
-   ChartRedraw();
-}
-
-void DestroyPanel() {
-   ObjectDelete(0, ObjBG); ObjectDelete(0, ObjStat); ObjectDelete(0, ObjBtnFire);
-   ObjectDelete(0, ObjBtnClear); ObjectDelete(0, ObjLabelPL);
-   ObjectDelete(0, ObjBtnMode); ObjectDelete(0, ObjBtnEntry);
-
-   ObjectDelete(0, ObjLabelLot); ObjectDelete(0, ObjEditLot);
-   ObjectDelete(0, ObjLabelMultStart); ObjectDelete(0, ObjEditMultStart);
-   ObjectDelete(0, ObjLabelMultStep); ObjectDelete(0, ObjEditMultStep);
-   ObjectDelete(0, ObjLabelLayers); ObjectDelete(0, ObjEditLayers);
-   ObjectDelete(0, ObjLabelMinDist); ObjectDelete(0, ObjEditMinDist);
-}
-
 //+------------------------------------------------------------------+
 //| Initialization                                                   |
 //+------------------------------------------------------------------+
 int OnInit()
 {
-   CleanupChart();
+   ObjectsDeleteAll(0, Prefix);
+   ChartRedraw();
+
    m_nav_system.Release();
    ChartSetInteger(0, CHART_SHOW_TRADE_HISTORY, false);
 
    m_trade.SetExpertMagicNumber(InpMagicNumber);
-   m_trade.SetMarginMode();
+   // m_trade.SetMarginMode(); // Removed: Not a valid method in standard library.
    m_trade.SetDeviationInPoints(InpSlippage);
+
+   // Verify Hedging Mode
+   if((ENUM_ACCOUNT_MARGIN_MODE)AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING) {
+       Print("⚠️ WARNING: Account is NOT in Hedging Mode! Instant Entry (Hedge) may fail or close positions.");
+       // We do not return INIT_FAILED to allow testing, but warn loudly.
+   }
 
    if(!m_symbol.Name(_Symbol)) return INIT_FAILED;
    m_symbol.RefreshRates();
 
    if(MarketBookAdd(_Symbol)) g_book_subscribed = true;
-
-   // Initialize User Globals from Inputs
-   g_user_lot_size = InpLotSize;
-   g_user_mult_start = InpSpreadMultStart;
-   g_user_mult_step = InpSpreadMultStep;
-   g_user_layers = InpLayers;
-   g_user_min_dist = InpMinSpreadPoints;
-   g_user_fire_mode = 1; // Default: Breakout (Stop)
-   g_user_entry_mode = 0; // Default: Pending
 
    // v2.12: Initialize FireControl with pointers
    m_fire_control.Init(&m_trade, &m_symbol, InpComment, InpMagicNumber);
@@ -353,17 +155,21 @@ int OnInit()
        }
    }
 
-   CreatePanel();
-   UpdateUI();
+   // Initialize Panel v2.12
+   m_panel.Init(Prefix, InpX, InpY, InpBgColor, InpTxtColor,
+                InpLotSize, InpSpreadMultStart, InpSpreadMultStep, InpLayers, InpMinSpreadPoints);
+   m_panel.Create();
+   m_panel.UpdateUI(GetFloatingPL());
 
-   Print("Merkava v2.12 Initialized (Dual Mode + Instant Entry).");
+   Print("Merkava v2.12 Initialized (Dual Mode + Instant Entry + PanelControl).");
    return(INIT_SUCCEEDED);
 }
 
 void OnDeinit(const int reason)
 {
-   DestroyPanel();
-   CleanupChart();
+   m_panel.Destroy();
+   ObjectsDeleteAll(0, Prefix);
+   ChartRedraw();
    m_nav_system.Release();
    m_black_box.CloseLog();
    if(g_book_subscribed) MarketBookRelease(_Symbol);
@@ -374,82 +180,42 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnChartEvent(const int id, const long &lparam, const double &dparam, const string &sparam)
 {
-   if(id == CHARTEVENT_OBJECT_CLICK)
+   // Delegate to Panel Control
+   ENUM_PANEL_EVENT event = m_panel.OnEvent(id, lparam, dparam, sparam);
+
+   if (event == EVENT_FIRE)
    {
-      if(sparam == ObjBtnFire)
-      {
-         ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
-         ChartRedraw();
+       double center = (m_symbol.Ask() + m_symbol.Bid()) / 2.0;
 
-         double center = (m_symbol.Ask() + m_symbol.Bid()) / 2.0;
+       // Retrieve Params from Panel
+       double lot = m_panel.GetLotSize();
+       int layers = m_panel.GetLayers();
+       double mstart = m_panel.GetMultStart();
+       double mstep = m_panel.GetMultStep();
+       double mindist = m_panel.GetMinDist();
+       ENUM_FIRE_MODE mode = m_panel.GetFireMode();
+       ENUM_ENTRY_MODE entry = m_panel.GetEntryMode();
 
-         // v2.12: Fire with Entry Mode
-         ENUM_FIRE_MODE mode = (g_user_fire_mode == 1) ? FIRE_MODE_STOP : FIRE_MODE_LIMIT;
-         ENUM_ENTRY_MODE entry = (g_user_entry_mode == 1) ? ENTRY_MARKET : ENTRY_PENDING;
+       m_fire_control.FireGrid(center, lot, layers, mstart, mstep, mindist, mode, entry);
 
-         m_fire_control.FireGrid(center, g_user_lot_size, g_user_layers, g_user_mult_start, g_user_mult_step, g_user_min_dist, mode, entry);
+       g_last_action = (mode == FIRE_MODE_STOP) ? "TRAP_SET" : "LIMIT_GRID";
+       if (entry == ENTRY_MARKET) g_last_action += "_INSTANT";
 
-         g_last_action = (mode == FIRE_MODE_STOP) ? "TRAP_SET" : "LIMIT_GRID";
-         if (entry == ENTRY_MARKET) g_last_action += "_INSTANT";
-
-         g_decision_log += "Grid Fired L" + IntegerToString(g_user_layers) + " (" + ((mode==FIRE_MODE_STOP)?"Breakout":"Reversion") + "/" + ((entry==ENTRY_MARKET)?"Market":"Pending") + ");";
-
-         Sleep(100);
-         ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
-         ChartRedraw();
-      }
-      else if (sparam == ObjBtnClear)
-      {
-         ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
-         m_fire_control.CeaseFire();
-         g_last_action = "CEASE_FIRE";
-         g_decision_log += "Cease Fire;";
-         Sleep(100);
-         ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
-      }
-      else if (sparam == ObjBtnMode)
-      {
-         // Toggle Strategy Mode
-         if(g_user_fire_mode == 1) g_user_fire_mode = 0; // Switch to Limit
-         else g_user_fire_mode = 1; // Switch to Stop
-         UpdateToggleButtons();
-      }
-      else if (sparam == ObjBtnEntry)
-      {
-         // Toggle Entry Mode (v2.12)
-         if(g_user_entry_mode == 0) g_user_entry_mode = 1; // Switch to Market
-         else g_user_entry_mode = 0; // Switch to Pending
-         UpdateToggleButtons();
-      }
-      UpdateUI();
+       g_decision_log += "Grid Fired L" + IntegerToString(layers) + " (" + ((mode==FIRE_MODE_STOP)?"Breakout":"Reversion") + "/" + ((entry==ENTRY_MARKET)?"Market":"Pending") + ");";
    }
-   else if(id == CHARTEVENT_OBJECT_ENDEDIT)
+   else if (event == EVENT_CEASE_FIRE)
    {
-      // Handle UI Updates
-      if(sparam == ObjEditLot) {
-           double val = StringToDouble(ObjectGetString(0, ObjEditLot, OBJPROP_TEXT));
-           if(val > 0) g_user_lot_size = val;
-      }
-      else if(sparam == ObjEditMultStart) {
-           double val = StringToDouble(ObjectGetString(0, ObjEditMultStart, OBJPROP_TEXT));
-           if(val > 0) g_user_mult_start = val;
-      }
-      else if(sparam == ObjEditMultStep) {
-           double val = StringToDouble(ObjectGetString(0, ObjEditMultStep, OBJPROP_TEXT));
-           if(val > 0) g_user_mult_step = val;
-      }
-      else if(sparam == ObjEditLayers) {
-           long val = StringToInteger(ObjectGetString(0, ObjEditLayers, OBJPROP_TEXT));
-           if(val > 0 && val < 20) g_user_layers = (int)val;
-      }
-      else if(sparam == ObjEditMinDist) {
-           double val = StringToDouble(ObjectGetString(0, ObjEditMinDist, OBJPROP_TEXT));
-           if(val >= 0) g_user_min_dist = val;
-      }
-
-      PrintFormat("Merkava Params Updated: Lot=%.2f, MultStart=%.1f, MultStep=%.1f, Layers=%d, MinDist=%.0f",
-                  g_user_lot_size, g_user_mult_start, g_user_mult_step, g_user_layers, g_user_min_dist);
+       m_fire_control.CeaseFire();
+       g_last_action = "CEASE_FIRE";
+       g_decision_log += "Cease Fire;";
    }
+   else if (event == EVENT_PARAM_UPDATE)
+   {
+       PrintFormat("Merkava Params Updated: Lot=%.2f, MultStart=%.1f, MultStep=%.1f, Layers=%d",
+                  m_panel.GetLotSize(), m_panel.GetMultStart(), m_panel.GetMultStep(), m_panel.GetLayers());
+   }
+
+   m_panel.UpdateUI(GetFloatingPL());
 }
 
 string GetNetLotDirection(double &total_lots) {
