@@ -1,9 +1,12 @@
 //+------------------------------------------------------------------+
-//|                                              FireControl_v2_12.mqh |
+//|                                              FireControl_v2_13.mqh |
 //|                                                      Jules Agent |
 //|                                       Part of Merkava Tank Logic |
-//|                                                    Version 2.12  |
+//|                                                    Version 2.13  |
 //+------------------------------------------------------------------+
+#ifndef FIRECONTROL_V2_13_MQH
+#define FIRECONTROL_V2_13_MQH
+
 #property copyright "Jules Agent"
 #property strict
 
@@ -25,7 +28,7 @@ enum ENUM_ENTRY_MODE
 //+------------------------------------------------------------------+
 //| Class CFireControl                                               |
 //| Handles the "Trap" logic for placing Breakout (Stop) orders.     |
-//| v2.12: Instant Entry (Market) + Grid Logic                       |
+//| v2.13: Instant Entry (Market) + Grid Logic                       |
 //+------------------------------------------------------------------+
 class CFireControl
 {
@@ -56,7 +59,7 @@ public:
    //+------------------------------------------------------------------+
    //| FireGrid (formerly FireTrap/FireBurst)                           |
    //| Places a grid of orders relative to ASK/BID.                     |
-   //| v2.12: Supports Instant Entry (Market) via 'entry_mode'.         |
+   //| v2.13: Supports Instant Entry (Market) via 'entry_mode'.         |
    //+------------------------------------------------------------------+
    void FireGrid(double center_price, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_spread_points, ENUM_FIRE_MODE fire_mode, ENUM_ENTRY_MODE entry_mode)
    {
@@ -189,3 +192,4 @@ public:
        Print("🏳️ CEASE FIRE (ASYNC): Sweep Complete.");
    }
 };
+#endif

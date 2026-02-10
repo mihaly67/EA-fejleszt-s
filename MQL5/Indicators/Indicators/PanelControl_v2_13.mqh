@@ -1,15 +1,15 @@
 //+------------------------------------------------------------------+
-//|                                             PanelControl_v2_12.mqh |
+//|                                             PanelControl_v2_13.mqh |
 //|                                                      Jules Agent |
 //|                                       Part of Merkava Tank Logic |
-//|                                                    Version 2.12  |
+//|                                                    Version 2.13  |
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent"
 #property strict
 
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
-#include "FireControl_v2_12.mqh" // For Enums
+#include "FireControl_v2_13.mqh" // For Enums
 
 // --- Panel Events ---
 enum ENUM_PANEL_EVENT
@@ -78,7 +78,7 @@ public:
       m_prefix = prefix;
       m_x = x; m_y = y;
       m_bg_color = bg; m_txt_color = txt;
-      m_width = 160; m_height = 380; // Standard v2.12 Height
+      m_width = 160; m_height = 380; // Standard v2.13 Height
 
       // Initialize State
       m_lot_size = def_lot;
@@ -132,7 +132,7 @@ public:
        int cy = y+10;
        ObjectCreate(0, ObjStat, OBJ_LABEL, 0, 0, 0);
        ObjectSetInteger(0, ObjStat, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjStat, OBJPROP_YDISTANCE, cy);
-       ObjectSetString(0, ObjStat, OBJPROP_TEXT, "MERKAVA v2.12");
+       ObjectSetString(0, ObjStat, OBJPROP_TEXT, "MERKAVA v2.13");
        ObjectSetInteger(0, ObjStat, OBJPROP_COLOR, clrLime);
 
        // --- Lot Size ---

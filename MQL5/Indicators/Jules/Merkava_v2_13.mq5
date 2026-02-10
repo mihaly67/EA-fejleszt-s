@@ -1,12 +1,12 @@
 //+------------------------------------------------------------------+
-//|                                                Merkava_v2_12.mq5 |
+//|                                                Merkava_v2_13.mq5 |
 //|                                    Copyright 2026, Jules (Mimic) |
 //|                                             For Project Merkava  |
-//|                                                   Version 2.12   |
+//|                                                   Version 2.13   |
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
 #property link      "https://github.com/MimicProject"
-#property version   "2.12"
+#property version   "2.13"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -14,9 +14,9 @@
 #include <Trade\PositionInfo.mqh>
 #include <AccountInfo.mqh>
 
-// Library Organization (v2.12)
-#include "../Indicators/FireControl_v2_12.mqh" // v2.12: Instant Entry (Market)
-#include "../Indicators/PanelControl_v2_12.mqh" // v2.12: Encapsulated UI
+// Library Organization (v2.13)
+#include "../Indicators/FireControl_v2_13.mqh" // v2.13: Instant Entry (Market)
+#include "../Indicators/PanelControl_v2_13.mqh" // v2.13: Encapsulated UI
 #include "../Indicators/PhysicsEngine.mqh"
 #include "../Indicators/NavSystem_v2_06.mqh" // v2.06: Hybrid Divisor Logic
 #include "../Indicators/BlackBox_v2_05.mqh" // v2.05: Keep existing
@@ -47,8 +47,8 @@ input double        InpLotSize           = 0.01;
 
 // [Risk Management]
 input int           InpSlippage          = 10;
-input ulong         InpMagicNumber       = 999012; // Updated Magic v2.12
-input string        InpComment           = "Merkava_v2.12";
+input ulong         InpMagicNumber       = 999013; // Updated Magic v2.13
+input string        InpComment           = "Merkava_v2.13";
 
 // [Hybrid & Flow Settings]
 input int           Hybrid_FastEMA       = 3;
@@ -111,13 +111,11 @@ int OnInit()
    ChartSetInteger(0, CHART_SHOW_TRADE_HISTORY, false);
 
    m_trade.SetExpertMagicNumber(InpMagicNumber);
-   // m_trade.SetMarginMode(); // Removed: Not a valid method in standard library.
    m_trade.SetDeviationInPoints(InpSlippage);
 
    // Verify Hedging Mode
    if((ENUM_ACCOUNT_MARGIN_MODE)AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING) {
        Print("⚠️ WARNING: Account is NOT in Hedging Mode! Instant Entry (Hedge) may fail or close positions.");
-       // We do not return INIT_FAILED to allow testing, but warn loudly.
    }
 
    if(!m_symbol.Name(_Symbol)) return INIT_FAILED;
@@ -125,7 +123,7 @@ int OnInit()
 
    if(MarketBookAdd(_Symbol)) g_book_subscribed = true;
 
-   // v2.12: Initialize FireControl with pointers
+   // v2.13: Initialize FireControl with pointers
    m_fire_control.Init(&m_trade, &m_symbol, InpComment, InpMagicNumber);
 
    bool init_ok = m_nav_system.Initialize(
@@ -144,7 +142,7 @@ int OnInit()
        m_nav_system.AttachToChart(0);
    }
 
-   m_black_box.Initialize(_Symbol, "v2.12"); // Update Log Version
+   m_black_box.Initialize(_Symbol, "v2.13"); // Update Log Version
 
    if (HistorySelect(0, TimeCurrent())) {
        int total = HistoryDealsTotal();
@@ -155,13 +153,13 @@ int OnInit()
        }
    }
 
-   // Initialize Panel v2.12
+   // Initialize Panel v2.13
    m_panel.Init(Prefix, InpX, InpY, InpBgColor, InpTxtColor,
                 InpLotSize, InpSpreadMultStart, InpSpreadMultStep, InpLayers, InpMinSpreadPoints);
    m_panel.Create();
    m_panel.UpdateUI(GetFloatingPL());
 
-   Print("Merkava v2.12 Initialized (Dual Mode + Instant Entry + PanelControl).");
+   Print("Merkava v2.13 Initialized (Dual Mode + Instant Entry + PanelControl).");
    return(INIT_SUCCEEDED);
 }
 
