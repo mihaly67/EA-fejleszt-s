@@ -9,17 +9,18 @@
 #property version   "2.13"
 #property strict
 
+#include "../Indicators/Types_v2_13.mqh" // Types first
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
 #include <Trade\PositionInfo.mqh>
 #include <AccountInfo.mqh>
 
 // Library Organization (v2.13)
-#include "../Indicators/FireControl_v2_13.mqh" // v2.13: Instant Entry (Market)
-#include "../Indicators/PanelControl_v2_13.mqh" // v2.13: Encapsulated UI
+#include "../Indicators/FireControl_v2_13.mqh"
+#include "../Indicators/PanelControl_v2_13.mqh"
 #include "../Indicators/PhysicsEngine.mqh"
-#include "../Indicators/NavSystem_v2_06.mqh" // v2.06: Hybrid Divisor Logic
-#include "../Indicators/BlackBox_v2_05.mqh" // v2.05: Keep existing
+#include "../Indicators/NavSystem_v2_06.mqh"
+#include "../Indicators/BlackBox_v2_05.mqh"
 
 //--- Objects
 CTrade        m_trade;

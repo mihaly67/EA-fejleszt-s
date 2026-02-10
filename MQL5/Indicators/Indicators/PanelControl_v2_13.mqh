@@ -4,12 +4,15 @@
 //|                                       Part of Merkava Tank Logic |
 //|                                                    Version 2.13  |
 //+------------------------------------------------------------------+
+#ifndef PANELCONTROL_V2_13_MQH
+#define PANELCONTROL_V2_13_MQH
+
 #property copyright "Jules Agent"
 #property strict
 
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
-#include "FireControl_v2_13.mqh" // For Enums
+#include "Types_v2_13.mqh" // For Enums
 
 // --- Panel Events ---
 enum ENUM_PANEL_EVENT
@@ -345,3 +348,4 @@ public:
        return EVENT_NONE;
    }
 };
+#endif
