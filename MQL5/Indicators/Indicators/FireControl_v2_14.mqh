@@ -1,23 +1,23 @@
 //+------------------------------------------------------------------+
-//|                                              FireControl_v2_13.mqh |
+//|                                              FireControl_v2_14.mqh |
 //|                                                      Jules Agent |
 //|                                       Part of Merkava Tank Logic |
-//|                                                    Version 2.13  |
+//|                                                    Version 2.14  |
 //+------------------------------------------------------------------+
-#ifndef FIRECONTROL_V2_13_MQH
-#define FIRECONTROL_V2_13_MQH
+#ifndef FIRECONTROL_V2_14_MQH
+#define FIRECONTROL_V2_14_MQH
 
 #property copyright "Jules Agent"
 #property strict
 
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
-#include "Types_v2_13.mqh" // For Enums
+#include "Types_v2_14.mqh" // For Enums
 
 //+------------------------------------------------------------------+
 //| Class CFireControl                                               |
 //| Handles the "Trap" logic for placing Breakout (Stop) orders.     |
-//| v2.13: Instant Entry (Symmetric) + Pending Grid                  |
+//| v2.14: Instant Entry + Directional Attack (Buy/Sell)             |
 //+------------------------------------------------------------------+
 class CFireControl
 {
@@ -47,13 +47,14 @@ public:
    }
 
    //+------------------------------------------------------------------+
-   //| FireGrid (formerly FireTrap/FireBurst)                           |
+   //| FireGrid                                                         |
    //| Places a grid of orders relative to ASK/BID.                     |
-   //| v2.13: Supports Instant Entry (Market) via 'entry_mode'.         |
+   //| v2.14: Supports Directional Attack (Buy/Sell/Both) + Solo Mode.  |
    //+------------------------------------------------------------------+
-   void FireGrid(double center_price, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_spread_points, ENUM_FIRE_MODE fire_mode, ENUM_ENTRY_MODE entry_mode)
+   void FireGrid(double center_price, double lot_size, int layers, double spread_mult_start, double spread_mult_step, double min_spread_points,
+                 ENUM_FIRE_MODE fire_mode, ENUM_ENTRY_MODE entry_mode, ENUM_ATTACK_DIR attack_dir, ENUM_ACTION_TYPE action_type)
    {
-      if (layers <= 0) return;
+      if (layers <= 0 && action_type == ACTION_COMBO) return; // Allow 0 layers if Solo
 
       // Enable Async Mode for "Carpet Bombing" speed
       m_trade.SetAsyncMode(true);
@@ -74,31 +75,39 @@ public:
 
       string mode_str = (fire_mode == FIRE_MODE_STOP) ? "STOP (Breakout)" : "LIMIT (Reversion)";
       string entry_str = (entry_mode == ENTRY_MARKET) ? "MARKET (Instant)" : "PENDING";
+      string dir_str = (attack_dir == ATTACK_BUY) ? "BUY ONLY" : (attack_dir == ATTACK_SELL) ? "SELL ONLY" : "BOTH (Trap)";
+      string act_str = (action_type == ACTION_SOLO) ? "SOLO (Single Shot)" : "COMBO (Burst+Grid)";
 
-      PrintFormat("🕸️ FIRE GRID (ASYNC): %s | %s | Ask=%.5f | Bid=%.5f | EffSpread=%.1f",
-                  mode_str, entry_str, tick.ask, tick.bid, effective_spread/m_point);
+      PrintFormat("🕸️ FIRE GRID (ASYNC): %s | %s | %s | %s | Ask=%.5f | Bid=%.5f",
+                  mode_str, entry_str, dir_str, act_str, tick.ask, tick.bid);
 
       int pending_start_layer = 1;
-      int loop_layers = layers;
+      int loop_layers = (action_type == ACTION_SOLO) ? 0 : layers; // Skip pending loop if Solo
 
       // --- 1. HANDLE INSTANT ENTRY (Level 1) ---
       if (entry_mode == ENTRY_MARKET)
       {
-          // Fire Hedge (Buy + Sell) at Market
           string comm = m_comment_prefix + "_L1";
 
-          // Note: In Async mode, result is not checked immediately.
-          m_trade.Buy(lot_size, m_symbol_name, 0, 0, 0, comm);
-          m_trade.Sell(lot_size, m_symbol_name, 0, 0, 0, comm);
+          // Fire BUY if direction is BOTH or BUY
+          if(attack_dir == ATTACK_BOTH || attack_dir == ATTACK_BUY) {
+              m_trade.Buy(lot_size, m_symbol_name, 0, 0, 0, comm);
+              Print("🚀 FIRED MARKET BUY L1");
+          }
 
-          Print("🚀 FIRED MARKET L1 (Hedge)");
+          // Fire SELL if direction is BOTH or SELL
+          if(attack_dir == ATTACK_BOTH || attack_dir == ATTACK_SELL) {
+              m_trade.Sell(lot_size, m_symbol_name, 0, 0, 0, comm);
+              Print("🚀 FIRED MARKET SELL L1");
+          }
 
           // Adjust loop for pending orders
           pending_start_layer = 2; // Next layer is L2
-          loop_layers = layers - 1; // Remaining layers
+          if(action_type == ACTION_COMBO) loop_layers = layers - 1; // Decrease pending count
       }
 
       // --- 2. HANDLE PENDING GRID (Remaining Levels) ---
+      // If Action is SOLO, loop_layers is 0, so this is skipped.
       for (int i = 1; i <= loop_layers; i++)
       {
          // Distance Calculation
@@ -118,30 +127,36 @@ public:
          if (fire_mode == FIRE_MODE_STOP)
          {
              // --- BREAKOUT (STOP) ---
-             // Calculate from EDGE (Ask/Bid) outwards
-             buy_price = NormalizeDouble(tick.ask + dist, m_digits);
-             sell_price = NormalizeDouble(tick.bid - dist, m_digits);
+             // BUY logic (Ask + Dist)
+             if(attack_dir == ATTACK_BOTH || attack_dir == ATTACK_BUY) {
+                 buy_price = NormalizeDouble(tick.ask + dist, m_digits);
+                 if (buy_price <= tick.ask + min_safety) buy_price = NormalizeDouble(tick.ask + min_safety + (i * m_point), m_digits);
+                 m_trade.BuyStop(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm);
+             }
 
-             // Final Validation (Push out if somehow still inside)
-             if (buy_price <= tick.ask + min_safety) buy_price = NormalizeDouble(tick.ask + min_safety + (i * m_point), m_digits);
-             if (sell_price >= tick.bid - min_safety) sell_price = NormalizeDouble(tick.bid - min_safety - (i * m_point), m_digits);
-
-             m_trade.BuyStop(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm);
-             m_trade.SellStop(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm);
+             // SELL logic (Bid - Dist)
+             if(attack_dir == ATTACK_BOTH || attack_dir == ATTACK_SELL) {
+                 sell_price = NormalizeDouble(tick.bid - dist, m_digits);
+                 if (sell_price >= tick.bid - min_safety) sell_price = NormalizeDouble(tick.bid - min_safety - (i * m_point), m_digits);
+                 m_trade.SellStop(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm);
+             }
          }
          else
          {
              // --- REVERSION (LIMIT) ---
-             // Calculate from EDGE (Bid/Ask) outwards (Reversion means buying below Bid, Selling above Ask)
-             buy_price = NormalizeDouble(tick.bid - dist, m_digits);
-             sell_price = NormalizeDouble(tick.ask + dist, m_digits);
+             // BUY logic (Bid - Dist)
+             if(attack_dir == ATTACK_BOTH || attack_dir == ATTACK_BUY) {
+                 buy_price = NormalizeDouble(tick.bid - dist, m_digits);
+                 if (buy_price >= tick.ask - min_safety) buy_price = NormalizeDouble(tick.ask - min_safety - (i * m_point), m_digits);
+                 m_trade.BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm);
+             }
 
-             // Final Validation
-             if (buy_price >= tick.ask - min_safety) buy_price = NormalizeDouble(tick.ask - min_safety - (i * m_point), m_digits);
-             if (sell_price <= tick.bid + min_safety) sell_price = NormalizeDouble(tick.bid + min_safety + (i * m_point), m_digits);
-
-             m_trade.BuyLimit(lot_size, buy_price, m_symbol_name, 0, 0, 0, 0, comm);
-             m_trade.SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm);
+             // SELL logic (Ask + Dist)
+             if(attack_dir == ATTACK_BOTH || attack_dir == ATTACK_SELL) {
+                 sell_price = NormalizeDouble(tick.ask + dist, m_digits);
+                 if (sell_price <= tick.bid + min_safety) sell_price = NormalizeDouble(tick.bid + min_safety + (i * m_point), m_digits);
+                 m_trade.SellLimit(lot_size, sell_price, m_symbol_name, 0, 0, 0, 0, comm);
+             }
          }
       }
 

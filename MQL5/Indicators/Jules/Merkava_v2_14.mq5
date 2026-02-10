@@ -1,23 +1,23 @@
 //+------------------------------------------------------------------+
-//|                                                Merkava_v2_13.mq5 |
+//|                                                Merkava_v2_14.mq5 |
 //|                                    Copyright 2026, Jules (Mimic) |
 //|                                             For Project Merkava  |
-//|                                                   Version 2.13   |
+//|                                                   Version 2.14   |
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
 #property link      "https://github.com/MimicProject"
-#property version   "2.13"
+#property version   "2.14"
 #property strict
 
-#include "../Indicators/Types_v2_13.mqh" // Types first
+#include "../Indicators/Types_v2_14.mqh" // Types first
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
 #include <Trade\PositionInfo.mqh>
 #include <AccountInfo.mqh>
 
-// Library Organization (v2.13)
-#include "../Indicators/FireControl_v2_13.mqh"
-#include "../Indicators/PanelControl_v2_13.mqh"
+// Library Organization (v2.14)
+#include "../Indicators/FireControl_v2_14.mqh"
+#include "../Indicators/PanelControl_v2_14.mqh"
 #include "../Indicators/PhysicsEngine.mqh"
 #include "../Indicators/NavSystem_v2_06.mqh"
 #include "../Indicators/BlackBox_v2_05.mqh"
@@ -48,8 +48,8 @@ input double        InpLotSize           = 0.01;
 
 // [Risk Management]
 input int           InpSlippage          = 10;
-input ulong         InpMagicNumber       = 999013; // Restored Magic v2.13
-input string        InpComment           = "Merkava_v2.13";
+input ulong         InpMagicNumber       = 999014; // Updated Magic v2.14
+input string        InpComment           = "Merkava_v2.14";
 
 // [Hybrid & Flow Settings]
 input int           Hybrid_FastEMA       = 3;
@@ -143,7 +143,7 @@ int OnInit()
        m_nav_system.AttachToChart(0);
    }
 
-   m_black_box.Initialize(_Symbol, "v2.13"); // Update Log Version
+   m_black_box.Initialize(_Symbol, "v2.14"); // Update Log Version
 
    if (HistorySelect(0, TimeCurrent())) {
        int total = HistoryDealsTotal();
@@ -154,13 +154,13 @@ int OnInit()
        }
    }
 
-   // Initialize Panel v2.13
+   // Initialize Panel v2.14
    m_panel.Init(Prefix, InpX, InpY, InpBgColor, InpTxtColor,
                 InpLotSize, InpSpreadMultStart, InpSpreadMultStep, InpLayers, InpMinSpreadPoints);
    m_panel.Create();
    m_panel.UpdateUI(GetFloatingPL());
 
-   Print("Merkava v2.13 Initialized (Dual Mode + Instant Entry + PanelControl + Solo/Combo).");
+   Print("Merkava v2.14 Initialized (Dual Mode + Instant Entry + PanelControl + Solo/Combo).");
    return(INIT_SUCCEEDED);
 }
 
@@ -194,11 +194,14 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
        double mindist = m_panel.GetMinDist();
        ENUM_FIRE_MODE mode = m_panel.GetFireMode();
        ENUM_ENTRY_MODE entry = m_panel.GetEntryMode();
+       ENUM_ATTACK_DIR dir = m_panel.GetAttackDir();
+       ENUM_ACTION_TYPE action = m_panel.GetActionType();
 
-       m_fire_control.FireGrid(center, lot, layers, mstart, mstep, mindist, mode, entry);
+       m_fire_control.FireGrid(center, lot, layers, mstart, mstep, mindist, mode, entry, dir, action);
 
        g_last_action = (mode == FIRE_MODE_STOP) ? "TRAP_SET" : "LIMIT_GRID";
        if (entry == ENTRY_MARKET) g_last_action += "_INSTANT";
+       if (action == ACTION_SOLO) g_last_action += "_SOLO";
 
        g_decision_log += "Grid Fired L" + IntegerToString(layers) + " (" + ((mode==FIRE_MODE_STOP)?"Breakout":"Reversion") + "/" + ((entry==ENTRY_MARKET)?"Market":"Pending") + ");";
    }
