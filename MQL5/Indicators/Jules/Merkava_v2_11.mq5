@@ -135,11 +135,12 @@ double GetFloatingPL() {
 }
 
 void UpdateModeButton() {
+    // Shorter Text and Smaller Font to fit button
     if(g_user_fire_mode == 1) {
-        ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: BREAKOUT (Stop)");
+        ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: STOP (Breakout)");
         ObjectSetInteger(0, ObjBtnMode, OBJPROP_BGCOLOR, clrOrangeRed);
     } else {
-        ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: REVERSION (Limit)");
+        ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: LIMIT (Revert)");
         ObjectSetInteger(0, ObjBtnMode, OBJPROP_BGCOLOR, clrCornflowerBlue);
     }
     ChartRedraw();
@@ -231,6 +232,8 @@ void CreatePanel() {
    ObjectCreate(0, ObjBtnMode, OBJ_BUTTON, 0, 0, 0);
    ObjectSetInteger(0, ObjBtnMode, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YDISTANCE, cy);
    ObjectSetInteger(0, ObjBtnMode, OBJPROP_XSIZE, w-20); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YSIZE, 30);
+   // Decrease Font Size to fit text
+   ObjectSetInteger(0, ObjBtnMode, OBJPROP_FONTSIZE, 8);
    // Initial State
    ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: BREAKOUT");
    ObjectSetInteger(0, ObjBtnMode, OBJPROP_BGCOLOR, clrOrangeRed); ObjectSetInteger(0, ObjBtnMode, OBJPROP_COLOR, clrWhite);
