@@ -107,15 +107,16 @@ double GetFloatingPL() {
 
 double CalculateTotalHistoryProfit() {
     double total_profit = 0.0;
+    // Select entire history from beginning (0) to now
     if(HistorySelect(0, TimeCurrent())) {
         int total = HistoryDealsTotal();
         for(int i=0; i<total; i++) {
             ulong ticket = HistoryDealGetTicket(i);
-            if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == InpMagicNumber) {
-                 total_profit += HistoryDealGetDouble(ticket, DEAL_PROFIT);
-                 total_profit += HistoryDealGetDouble(ticket, DEAL_SWAP);
-                 total_profit += HistoryDealGetDouble(ticket, DEAL_COMMISSION);
-            }
+            // Sum ALL deals (Account History Profit), regardless of Magic Number or Symbol
+            // This matches MT5 "History" tab Total Profit
+            total_profit += HistoryDealGetDouble(ticket, DEAL_PROFIT);
+            total_profit += HistoryDealGetDouble(ticket, DEAL_SWAP);
+            total_profit += HistoryDealGetDouble(ticket, DEAL_COMMISSION);
         }
     }
     return total_profit;
