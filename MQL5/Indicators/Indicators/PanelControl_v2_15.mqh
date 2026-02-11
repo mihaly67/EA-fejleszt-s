@@ -24,7 +24,8 @@ enum ENUM_PANEL_EVENT
    EVENT_CEASE_FIRE,
    EVENT_CHANGE_MODE,
    EVENT_CHANGE_ENTRY,
-   EVENT_PARAM_UPDATE
+   EVENT_PARAM_UPDATE,
+   EVENT_TP_SL_UPDATE   // New: Virtual TP/SL Changed
 };
 
 //+------------------------------------------------------------------+
@@ -32,7 +33,7 @@ enum ENUM_PANEL_EVENT
 //| Handles the GUI (Buttons, Inputs) for the Merkava EA.            |
 //| Encapsulates object creation, events, and state.                 |
 //| v2.14: Split Layout (Left: Settings/Trap, Right: Directional)    |
-//| v2.15: UI Improvements (Stats, Fonts)                            |
+//| v2.15: UI Improvements (Stats, Fonts, Virtual TP/SL Input)       |
 //+------------------------------------------------------------------+
 class CPanelControl
 {
@@ -62,15 +63,21 @@ private:
    string ObjEditLayers;
    string ObjLabelMinDist;
    string ObjEditMinDist;
-   string ObjLabelPL;
+   string ObjLabelPL; // P/L Moved to Right Column Logic
 
-   // Right Column (New Directional + Stats)
+   // Right Column (New Directional + Stats + Virtual TP/SL)
    string ObjBtnFireBuy;
    string ObjBtnFireSell;
    string ObjLabelBalance;
    string ObjLabelEquity;
    string ObjLabelMargin;
    string ObjLabelMarginLevel;
+
+   // Virtual TP/SL Inputs (Right Column)
+   string ObjLabelVirtTP;
+   string ObjEditVirtTP;
+   string ObjLabelVirtSL;
+   string ObjEditVirtSL;
 
    // Current State (Values)
    double      m_lot_size;
@@ -81,22 +88,29 @@ private:
    ENUM_FIRE_MODE m_fire_mode;
    ENUM_ENTRY_MODE m_entry_mode;
 
+   // Virtual TP/SL State
+   double      m_virtual_tp;
+   double      m_virtual_sl;
+
 public:
    CPanelControl() {
        m_prefix = "Merkava_";
        m_fire_mode = FIRE_MODE_STOP;
        m_entry_mode = ENTRY_PENDING;
+       m_virtual_tp = 0.0;
+       m_virtual_sl = 0.0;
    }
    ~CPanelControl() {}
 
    void Init(string prefix, int x, int y, color bg, color txt,
-             double def_lot, double def_start, double def_step, int def_layers, double def_min_dist)
+             double def_lot, double def_start, double def_step, int def_layers, double def_min_dist,
+             double def_tp, double def_sl) // Added def_tp, def_sl
    {
       m_prefix = prefix;
       m_x = x; m_y = y;
       m_bg_color = bg; m_txt_color = txt;
       // Increased width for Split Layout (160 -> 320)
-      m_width = 320; m_height = 380;
+      m_width = 320; m_height = 450; // Increased height for TP/SL
 
       // Initialize State
       m_lot_size = def_lot;
@@ -106,6 +120,8 @@ public:
       m_min_dist = def_min_dist;
       m_fire_mode = FIRE_MODE_STOP; // Default: Breakout
       m_entry_mode = ENTRY_PENDING; // Default: Pending
+      m_virtual_tp = def_tp;
+      m_virtual_sl = def_sl;
 
       // Define Object Names
       ObjBG = m_prefix + "BG";
@@ -135,6 +151,12 @@ public:
       ObjLabelEquity = m_prefix + "LabelEquity";
       ObjLabelMargin = m_prefix + "LabelMargin";
       ObjLabelMarginLevel = m_prefix + "LabelMarginLevel";
+
+      // Virtual TP/SL
+      ObjLabelVirtTP = m_prefix + "LabelVirtTP";
+      ObjEditVirtTP = m_prefix + "EditVirtTP";
+      ObjLabelVirtSL = m_prefix + "LabelVirtSL";
+      ObjEditVirtSL = m_prefix + "EditVirtSL";
    }
 
    // --- Getters ---
@@ -145,6 +167,8 @@ public:
    double GetMinDist() const { return m_min_dist; }
    ENUM_FIRE_MODE GetFireMode() const { return m_fire_mode; }
    ENUM_ENTRY_MODE GetEntryMode() const { return m_entry_mode; }
+   double GetVirtualTP() const { return m_virtual_tp; }
+   double GetVirtualSL() const { return m_virtual_sl; }
 
    // --- Core Methods ---
    void Create()
@@ -324,6 +348,34 @@ public:
        ObjectSetString(0, ObjLabelMarginLevel, OBJPROP_TEXT, "Lvl: 0%");
        ObjectSetInteger(0, ObjLabelMarginLevel, OBJPROP_COLOR, clrSilver);
 
+       // === VIRTUAL TP/SL (Below Stats) ===
+       cy += 30;
+
+       // TP Input
+       ObjectCreate(0, ObjLabelVirtTP, OBJ_LABEL, 0, 0, 0);
+       ObjectSetInteger(0, ObjLabelVirtTP, OBJPROP_XDISTANCE, col2_x + 10); ObjectSetInteger(0, ObjLabelVirtTP, OBJPROP_YDISTANCE, cy);
+       ObjectSetString(0, ObjLabelVirtTP, OBJPROP_TEXT, "TP ($):");
+       ObjectSetInteger(0, ObjLabelVirtTP, OBJPROP_COLOR, clrLime);
+
+       ObjectCreate(0, ObjEditVirtTP, OBJ_EDIT, 0, 0, 0);
+       ObjectSetInteger(0, ObjEditVirtTP, OBJPROP_XDISTANCE, col2_x + 60); ObjectSetInteger(0, ObjEditVirtTP, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjEditVirtTP, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjEditVirtTP, OBJPROP_YSIZE, 18);
+       ObjectSetString(0, ObjEditVirtTP, OBJPROP_TEXT, DoubleToString(m_virtual_tp, 1));
+       ObjectSetInteger(0, ObjEditVirtTP, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditVirtTP, OBJPROP_COLOR, clrBlack);
+
+       // SL Input
+       cy += 25;
+       ObjectCreate(0, ObjLabelVirtSL, OBJ_LABEL, 0, 0, 0);
+       ObjectSetInteger(0, ObjLabelVirtSL, OBJPROP_XDISTANCE, col2_x + 10); ObjectSetInteger(0, ObjLabelVirtSL, OBJPROP_YDISTANCE, cy);
+       ObjectSetString(0, ObjLabelVirtSL, OBJPROP_TEXT, "SL ($):");
+       ObjectSetInteger(0, ObjLabelVirtSL, OBJPROP_COLOR, clrRed);
+
+       ObjectCreate(0, ObjEditVirtSL, OBJ_EDIT, 0, 0, 0);
+       ObjectSetInteger(0, ObjEditVirtSL, OBJPROP_XDISTANCE, col2_x + 60); ObjectSetInteger(0, ObjEditVirtSL, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjEditVirtSL, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjEditVirtSL, OBJPROP_YSIZE, 18);
+       ObjectSetString(0, ObjEditVirtSL, OBJPROP_TEXT, DoubleToString(m_virtual_sl, 1));
+       ObjectSetInteger(0, ObjEditVirtSL, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditVirtSL, OBJPROP_COLOR, clrBlack);
+
 
        UpdateButtons(); // Set Initial Text/Color
    }
@@ -345,6 +397,8 @@ public:
        // Delete New Labels
        ObjectDelete(0, ObjLabelBalance); ObjectDelete(0, ObjLabelEquity);
        ObjectDelete(0, ObjLabelMargin); ObjectDelete(0, ObjLabelMarginLevel);
+       ObjectDelete(0, ObjLabelVirtTP); ObjectDelete(0, ObjEditVirtTP);
+       ObjectDelete(0, ObjLabelVirtSL); ObjectDelete(0, ObjEditVirtSL);
    }
 
    void UpdateUI(double pl)
@@ -454,24 +508,39 @@ public:
           if(sparam == ObjEditLot) {
                double val = StringToDouble(ObjectGetString(0, ObjEditLot, OBJPROP_TEXT));
                if(val > 0) m_lot_size = val;
+               return EVENT_PARAM_UPDATE;
           }
           else if(sparam == ObjEditMultStart) {
                double val = StringToDouble(ObjectGetString(0, ObjEditMultStart, OBJPROP_TEXT));
                if(val > 0) m_mult_start = val;
+               return EVENT_PARAM_UPDATE;
           }
           else if(sparam == ObjEditMultStep) {
                double val = StringToDouble(ObjectGetString(0, ObjEditMultStep, OBJPROP_TEXT));
                if(val > 0) m_mult_step = val;
+               return EVENT_PARAM_UPDATE;
           }
           else if(sparam == ObjEditLayers) {
                long val = StringToInteger(ObjectGetString(0, ObjEditLayers, OBJPROP_TEXT));
                if(val > 0 && val < 20) m_layers = (int)val;
+               return EVENT_PARAM_UPDATE;
           }
           else if(sparam == ObjEditMinDist) {
                double val = StringToDouble(ObjectGetString(0, ObjEditMinDist, OBJPROP_TEXT));
                if(val >= 0) m_min_dist = val;
+               return EVENT_PARAM_UPDATE;
           }
-          return EVENT_PARAM_UPDATE;
+          // New: TP/SL Update
+          else if(sparam == ObjEditVirtTP) {
+               double val = StringToDouble(ObjectGetString(0, ObjEditVirtTP, OBJPROP_TEXT));
+               if(val >= 0) m_virtual_tp = val;
+               return EVENT_TP_SL_UPDATE;
+          }
+          else if(sparam == ObjEditVirtSL) {
+               double val = StringToDouble(ObjectGetString(0, ObjEditVirtSL, OBJPROP_TEXT));
+               if(val >= 0) m_virtual_sl = val;
+               return EVENT_TP_SL_UPDATE;
+          }
        }
 
        return EVENT_NONE;

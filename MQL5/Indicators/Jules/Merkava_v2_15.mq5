@@ -53,7 +53,8 @@ input double        InpLotSize           = 0.01;
 input int           InpSlippage          = 10;
 input ulong         InpMagicNumber       = 999015; // Updated Magic v2.15
 input double        InpVirtualTPCurrency = 0.0;    // Added: Invisible TP (0.0 = Off)
-input string        InpComment           = "Merkava_v2.15";
+input double        InpVirtualSLCurrency = 0.0;    // Added: Invisible SL (0.0 = Off)
+input string        InpComment           = "";     // Default: Empty
 
 // [Hybrid & Flow Settings]
 input int           Hybrid_FastEMA       = 3;
@@ -133,8 +134,14 @@ int OnInit()
 
    // v2.15: Initialize ProfitManager
    m_profit_manager.Init(&m_trade, &m_position, InpMagicNumber, _Symbol);
+
+   // Set initial TP/SL from Inputs
    m_profit_manager.SetVirtualTP(InpVirtualTPCurrency);
-   if(InpVirtualTPCurrency > 0) PrintFormat("💰 Profit Manager Active: Virtual TP = %.2f %s", InpVirtualTPCurrency, AccountInfoString(ACCOUNT_CURRENCY));
+   m_profit_manager.SetVirtualSL(InpVirtualSLCurrency);
+
+   if(InpVirtualTPCurrency > 0 || InpVirtualSLCurrency > 0)
+       PrintFormat("💰 Profit Manager Active: TP=%.2f, SL=%.2f (%s)",
+                   InpVirtualTPCurrency, InpVirtualSLCurrency, AccountInfoString(ACCOUNT_CURRENCY));
 
    bool init_ok = m_nav_system.Initialize(
        _Symbol, _Period,
@@ -163,9 +170,10 @@ int OnInit()
        }
    }
 
-   // Initialize Panel v2.15
+   // Initialize Panel v2.15 (with TP/SL inputs)
    m_panel.Init(Prefix, InpX, InpY, InpBgColor, InpTxtColor,
-                InpLotSize, InpSpreadMultStart, InpSpreadMultStep, InpLayers, InpMinSpreadPoints);
+                InpLotSize, InpSpreadMultStart, InpSpreadMultStep, InpLayers, InpMinSpreadPoints,
+                InpVirtualTPCurrency, InpVirtualSLCurrency); // Pass initial TP/SL
    m_panel.Create();
    m_panel.UpdateUI(GetFloatingPL());
 
@@ -250,6 +258,16 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
        else if (event == EVENT_CHANGE_ENTRY)
        {
            Print("⚡ Entry Changed: " + EnumToString(entry));
+       }
+       else if (event == EVENT_TP_SL_UPDATE) // New Event v2.15
+       {
+           double new_tp = m_panel.GetVirtualTP();
+           double new_sl = m_panel.GetVirtualSL();
+
+           m_profit_manager.SetVirtualTP(new_tp);
+           m_profit_manager.SetVirtualSL(new_sl);
+
+           PrintFormat("💰 Profit Manager Updated via Panel: TP=%.2f, SL=%.2f", new_tp, new_sl);
        }
    }
 
@@ -344,8 +362,8 @@ void OnTick()
    // 3. Profit Management (New v2.15)
    int closed = m_profit_manager.Check();
    if(closed > 0) {
-       g_last_action = "VIRTUAL_TP_HIT";
-       g_decision_log += "Closed " + IntegerToString(closed) + " positions via Virtual TP;";
+       g_last_action = "VIRTUAL_TPSL_HIT";
+       g_decision_log += "Closed " + IntegerToString(closed) + " positions via Virtual TP/SL;";
    }
 
    // 4. Update Panel
