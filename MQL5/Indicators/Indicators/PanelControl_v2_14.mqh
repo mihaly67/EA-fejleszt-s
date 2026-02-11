@@ -18,18 +18,20 @@
 enum ENUM_PANEL_EVENT
 {
    EVENT_NONE = 0,
-   EVENT_FIRE,
+   EVENT_FIRE,          // TRAP (Both)
+   EVENT_FIRE_BUY,      // BUY ONLY
+   EVENT_FIRE_SELL,     // SELL ONLY
    EVENT_CEASE_FIRE,
    EVENT_CHANGE_MODE,
    EVENT_CHANGE_ENTRY,
-   EVENT_CHANGE_ACTION,
    EVENT_PARAM_UPDATE
 };
 
 //+------------------------------------------------------------------+
 //| Class CPanelControl                                              |
 //| Handles the GUI (Buttons, Inputs) for the Merkava EA.            |
-//| v2.14: Compact Layout & Directional Attack Buttons & Action Type |
+//| Encapsulates object creation, events, and state.                 |
+//| v2.14: Split Layout (Left: Settings/Trap, Right: Directional)    |
 //+------------------------------------------------------------------+
 class CPanelControl
 {
@@ -43,26 +45,27 @@ private:
    // Objects
    string ObjBG;
    string ObjStat;
-   string ObjBtnAttackBuy;
-   string ObjBtnAttackSell;
+
+   // Left Column (Legacy)
+   string ObjBtnFire;
    string ObjBtnClear;
    string ObjBtnMode;
    string ObjBtnEntry;
-   string ObjBtnAction;
-   string ObjLineSep; // Separator Line
-
-   // Compact Labels/Edits
    string ObjLabelLot;
    string ObjEditLot;
-   string ObjLabelLayers;
-   string ObjEditLayers;
    string ObjLabelMultStart;
    string ObjEditMultStart;
    string ObjLabelMultStep;
    string ObjEditMultStep;
+   string ObjLabelLayers;
+   string ObjEditLayers;
    string ObjLabelMinDist;
    string ObjEditMinDist;
    string ObjLabelPL;
+
+   // Right Column (New Directional)
+   string ObjBtnFireBuy;
+   string ObjBtnFireSell;
 
    // Current State (Values)
    double      m_lot_size;
@@ -72,16 +75,12 @@ private:
    double      m_min_dist;
    ENUM_FIRE_MODE m_fire_mode;
    ENUM_ENTRY_MODE m_entry_mode;
-   ENUM_ATTACK_DIR m_attack_dir;
-   ENUM_ACTION_TYPE m_action_type;
 
 public:
    CPanelControl() {
        m_prefix = "Merkava_";
        m_fire_mode = FIRE_MODE_STOP;
        m_entry_mode = ENTRY_PENDING;
-       m_attack_dir = ATTACK_BOTH;
-       m_action_type = ACTION_COMBO;
    }
    ~CPanelControl() {}
 
@@ -91,8 +90,8 @@ public:
       m_prefix = prefix;
       m_x = x; m_y = y;
       m_bg_color = bg; m_txt_color = txt;
-      m_width = 140; // Reduced width
-      m_height = 360; // Adjusted height
+      // Increased width for Split Layout (160 -> 320)
+      m_width = 320; m_height = 380;
 
       // Initialize State
       m_lot_size = def_lot;
@@ -102,34 +101,31 @@ public:
       m_min_dist = def_min_dist;
       m_fire_mode = FIRE_MODE_STOP; // Default: Breakout
       m_entry_mode = ENTRY_PENDING; // Default: Pending
-      m_attack_dir = ATTACK_BOTH;
-      m_action_type = ACTION_COMBO; // Default: Grid + Burst
 
       // Define Object Names
       ObjBG = m_prefix + "BG";
       ObjStat = m_prefix + "Status";
-      ObjBtnAttackBuy = m_prefix + "BtnBuy";
-      ObjBtnAttackSell = m_prefix + "BtnSell";
+
+      // Left Column
+      ObjBtnFire = m_prefix + "BtnFire";
       ObjBtnClear = m_prefix + "BtnClear";
       ObjBtnMode = m_prefix + "BtnMode";
       ObjBtnEntry = m_prefix + "BtnEntry";
-      ObjBtnAction = m_prefix + "BtnAction";
-      ObjLineSep = m_prefix + "LineSep";
+      ObjLabelLot = m_prefix + "LabelLot";
+      ObjEditLot = m_prefix + "EditLot";
+      ObjLabelMultStart = m_prefix + "LabelMultStart";
+      ObjEditMultStart = m_prefix + "EditMultStart";
+      ObjLabelMultStep = m_prefix + "LabelMultStep";
+      ObjEditMultStep = m_prefix + "EditMultStep";
+      ObjLabelLayers = m_prefix + "LabelLayers";
+      ObjEditLayers = m_prefix + "EditLayers";
+      ObjLabelMinDist = m_prefix + "LabelMinDist";
+      ObjEditMinDist = m_prefix + "EditMinDist";
+      ObjLabelPL = m_prefix + "LabelPL";
 
-      ObjLabelLot = m_prefix + "LblLot";
-      ObjEditLot = m_prefix + "EdtLot";
-      ObjLabelLayers = m_prefix + "LblLay";
-      ObjEditLayers = m_prefix + "EdtLay";
-
-      ObjLabelMultStart = m_prefix + "LblMStart";
-      ObjEditMultStart = m_prefix + "EdtMStart";
-      ObjLabelMultStep = m_prefix + "LblMStep";
-      ObjEditMultStep = m_prefix + "EdtMStep";
-
-      ObjLabelMinDist = m_prefix + "LblDist";
-      ObjEditMinDist = m_prefix + "EdtDist";
-
-      ObjLabelPL = m_prefix + "LblPL";
+      // Right Column
+      ObjBtnFireBuy = m_prefix + "BtnFireBuy";
+      ObjBtnFireSell = m_prefix + "BtnFireSell";
    }
 
    // --- Getters ---
@@ -140,188 +136,171 @@ public:
    double GetMinDist() const { return m_min_dist; }
    ENUM_FIRE_MODE GetFireMode() const { return m_fire_mode; }
    ENUM_ENTRY_MODE GetEntryMode() const { return m_entry_mode; }
-   ENUM_ATTACK_DIR GetAttackDir() const { return m_attack_dir; }
-   ENUM_ACTION_TYPE GetActionType() const { return m_action_type; }
 
    // --- Core Methods ---
    void Create()
    {
        int x = m_x; int y = m_y;
        int w = m_width; int h = m_height;
-       int font_size = 7; // Compact font
-       int row_h = 22; // Reduced row height
 
+       // Half width for columns
+       int col_w = 150;
+       int col2_x = x + 160; // Offset for right column
+
+       // Main Background
        ObjectCreate(0, ObjBG, OBJ_RECTANGLE_LABEL, 0, 0, 0);
        ObjectSetInteger(0, ObjBG, OBJPROP_XDISTANCE, x); ObjectSetInteger(0, ObjBG, OBJPROP_YDISTANCE, y);
        ObjectSetInteger(0, ObjBG, OBJPROP_XSIZE, w); ObjectSetInteger(0, ObjBG, OBJPROP_YSIZE, h);
        ObjectSetInteger(0, ObjBG, OBJPROP_BGCOLOR, m_bg_color);
-       ObjectSetInteger(0, ObjBG, OBJPROP_BORDER_TYPE, BORDER_FLAT);
 
-       int cy = y+5;
+       int cy = y+10;
+
+       // Header
        ObjectCreate(0, ObjStat, OBJ_LABEL, 0, 0, 0);
-       ObjectSetInteger(0, ObjStat, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjStat, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjStat, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjStat, OBJPROP_YDISTANCE, cy);
        ObjectSetString(0, ObjStat, OBJPROP_TEXT, "MERKAVA v2.14");
        ObjectSetInteger(0, ObjStat, OBJPROP_COLOR, clrLime);
-       ObjectSetInteger(0, ObjStat, OBJPROP_FONTSIZE, 8);
 
-       // --- Row 1: Lot & Layers (Side by Side) ---
-       cy+=20;
-       // Lot
+       // === LEFT COLUMN (Legacy Controls) ===
+
+       // --- Lot Size ---
+       cy+=30;
        ObjectCreate(0, ObjLabelLot, OBJ_LABEL, 0, 0, 0);
-       ObjectSetInteger(0, ObjLabelLot, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjLabelLot, OBJPROP_YDISTANCE, cy);
-       ObjectSetString(0, ObjLabelLot, OBJPROP_TEXT, "L:");
+       ObjectSetInteger(0, ObjLabelLot, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjLabelLot, OBJPROP_YDISTANCE, cy);
+       ObjectSetString(0, ObjLabelLot, OBJPROP_TEXT, "Lot:");
        ObjectSetInteger(0, ObjLabelLot, OBJPROP_COLOR, m_txt_color);
-       ObjectSetInteger(0, ObjLabelLot, OBJPROP_FONTSIZE, font_size);
 
        ObjectCreate(0, ObjEditLot, OBJ_EDIT, 0, 0, 0);
-       ObjectSetInteger(0, ObjEditLot, OBJPROP_XDISTANCE, x+20); ObjectSetInteger(0, ObjEditLot, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjEditLot, OBJPROP_XSIZE, 40); ObjectSetInteger(0, ObjEditLot, OBJPROP_YSIZE, 16);
+       ObjectSetInteger(0, ObjEditLot, OBJPROP_XDISTANCE, x+80); ObjectSetInteger(0, ObjEditLot, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjEditLot, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjEditLot, OBJPROP_YSIZE, 18);
        ObjectSetString(0, ObjEditLot, OBJPROP_TEXT, DoubleToString(m_lot_size, 2));
        ObjectSetInteger(0, ObjEditLot, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditLot, OBJPROP_COLOR, clrBlack);
-       ObjectSetInteger(0, ObjEditLot, OBJPROP_FONTSIZE, font_size);
 
-       // Layers
-       ObjectCreate(0, ObjLabelLayers, OBJ_LABEL, 0, 0, 0);
-       ObjectSetInteger(0, ObjLabelLayers, OBJPROP_XDISTANCE, x+70); ObjectSetInteger(0, ObjLabelLayers, OBJPROP_YDISTANCE, cy);
-       ObjectSetString(0, ObjLabelLayers, OBJPROP_TEXT, "N:");
-       ObjectSetInteger(0, ObjLabelLayers, OBJPROP_COLOR, m_txt_color);
-       ObjectSetInteger(0, ObjLabelLayers, OBJPROP_FONTSIZE, font_size);
-
-       ObjectCreate(0, ObjEditLayers, OBJ_EDIT, 0, 0, 0);
-       ObjectSetInteger(0, ObjEditLayers, OBJPROP_XDISTANCE, x+85); ObjectSetInteger(0, ObjEditLayers, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjEditLayers, OBJPROP_XSIZE, 30); ObjectSetInteger(0, ObjEditLayers, OBJPROP_YSIZE, 16);
-       ObjectSetString(0, ObjEditLayers, OBJPROP_TEXT, IntegerToString(m_layers));
-       ObjectSetInteger(0, ObjEditLayers, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditLayers, OBJPROP_COLOR, clrBlack);
-       ObjectSetInteger(0, ObjEditLayers, OBJPROP_FONTSIZE, font_size);
-
-       // --- Row 2: Mult Start ---
-       cy+=row_h;
+       // --- Mult Start ---
+       cy+=25;
        ObjectCreate(0, ObjLabelMultStart, OBJ_LABEL, 0, 0, 0);
-       ObjectSetInteger(0, ObjLabelMultStart, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjLabelMultStart, OBJPROP_YDISTANCE, cy);
-       ObjectSetString(0, ObjLabelMultStart, OBJPROP_TEXT, "M.Start:");
+       ObjectSetInteger(0, ObjLabelMultStart, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjLabelMultStart, OBJPROP_YDISTANCE, cy);
+       ObjectSetString(0, ObjLabelMultStart, OBJPROP_TEXT, "Mult Start:");
        ObjectSetInteger(0, ObjLabelMultStart, OBJPROP_COLOR, m_txt_color);
-       ObjectSetInteger(0, ObjLabelMultStart, OBJPROP_FONTSIZE, font_size);
 
        ObjectCreate(0, ObjEditMultStart, OBJ_EDIT, 0, 0, 0);
-       ObjectSetInteger(0, ObjEditMultStart, OBJPROP_XDISTANCE, x+60); ObjectSetInteger(0, ObjEditMultStart, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjEditMultStart, OBJPROP_XSIZE, 55); ObjectSetInteger(0, ObjEditMultStart, OBJPROP_YSIZE, 16);
+       ObjectSetInteger(0, ObjEditMultStart, OBJPROP_XDISTANCE, x+80); ObjectSetInteger(0, ObjEditMultStart, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjEditMultStart, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjEditMultStart, OBJPROP_YSIZE, 18);
        ObjectSetString(0, ObjEditMultStart, OBJPROP_TEXT, DoubleToString(m_mult_start, 1));
        ObjectSetInteger(0, ObjEditMultStart, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditMultStart, OBJPROP_COLOR, clrBlack);
-       ObjectSetInteger(0, ObjEditMultStart, OBJPROP_FONTSIZE, font_size);
 
-       // --- Row 3: Mult Step ---
-       cy+=row_h;
+       // --- Mult Step ---
+       cy+=25;
        ObjectCreate(0, ObjLabelMultStep, OBJ_LABEL, 0, 0, 0);
-       ObjectSetInteger(0, ObjLabelMultStep, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjLabelMultStep, OBJPROP_YDISTANCE, cy);
-       ObjectSetString(0, ObjLabelMultStep, OBJPROP_TEXT, "M.Step:");
+       ObjectSetInteger(0, ObjLabelMultStep, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjLabelMultStep, OBJPROP_YDISTANCE, cy);
+       ObjectSetString(0, ObjLabelMultStep, OBJPROP_TEXT, "Mult Step:");
        ObjectSetInteger(0, ObjLabelMultStep, OBJPROP_COLOR, m_txt_color);
-       ObjectSetInteger(0, ObjLabelMultStep, OBJPROP_FONTSIZE, font_size);
 
        ObjectCreate(0, ObjEditMultStep, OBJ_EDIT, 0, 0, 0);
-       ObjectSetInteger(0, ObjEditMultStep, OBJPROP_XDISTANCE, x+60); ObjectSetInteger(0, ObjEditMultStep, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjEditMultStep, OBJPROP_XSIZE, 55); ObjectSetInteger(0, ObjEditMultStep, OBJPROP_YSIZE, 16);
+       ObjectSetInteger(0, ObjEditMultStep, OBJPROP_XDISTANCE, x+80); ObjectSetInteger(0, ObjEditMultStep, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjEditMultStep, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjEditMultStep, OBJPROP_YSIZE, 18);
        ObjectSetString(0, ObjEditMultStep, OBJPROP_TEXT, DoubleToString(m_mult_step, 1));
        ObjectSetInteger(0, ObjEditMultStep, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditMultStep, OBJPROP_COLOR, clrBlack);
-       ObjectSetInteger(0, ObjEditMultStep, OBJPROP_FONTSIZE, font_size);
 
-       // --- Row 4: Min Dist ---
-       cy+=row_h;
+       // --- Layers ---
+       cy+=25;
+       ObjectCreate(0, ObjLabelLayers, OBJ_LABEL, 0, 0, 0);
+       ObjectSetInteger(0, ObjLabelLayers, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjLabelLayers, OBJPROP_YDISTANCE, cy);
+       ObjectSetString(0, ObjLabelLayers, OBJPROP_TEXT, "Layers:");
+       ObjectSetInteger(0, ObjLabelLayers, OBJPROP_COLOR, m_txt_color);
+
+       ObjectCreate(0, ObjEditLayers, OBJ_EDIT, 0, 0, 0);
+       ObjectSetInteger(0, ObjEditLayers, OBJPROP_XDISTANCE, x+80); ObjectSetInteger(0, ObjEditLayers, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjEditLayers, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjEditLayers, OBJPROP_YSIZE, 18);
+       ObjectSetString(0, ObjEditLayers, OBJPROP_TEXT, IntegerToString(m_layers));
+       ObjectSetInteger(0, ObjEditLayers, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditLayers, OBJPROP_COLOR, clrBlack);
+
+       // --- Min Dist ---
+       cy+=25;
        ObjectCreate(0, ObjLabelMinDist, OBJ_LABEL, 0, 0, 0);
-       ObjectSetInteger(0, ObjLabelMinDist, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjLabelMinDist, OBJPROP_YDISTANCE, cy);
-       ObjectSetString(0, ObjLabelMinDist, OBJPROP_TEXT, "MinDist:");
+       ObjectSetInteger(0, ObjLabelMinDist, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjLabelMinDist, OBJPROP_YDISTANCE, cy);
+       ObjectSetString(0, ObjLabelMinDist, OBJPROP_TEXT, "Min Dist:");
        ObjectSetInteger(0, ObjLabelMinDist, OBJPROP_COLOR, m_txt_color);
-       ObjectSetInteger(0, ObjLabelMinDist, OBJPROP_FONTSIZE, font_size);
 
        ObjectCreate(0, ObjEditMinDist, OBJ_EDIT, 0, 0, 0);
-       ObjectSetInteger(0, ObjEditMinDist, OBJPROP_XDISTANCE, x+60); ObjectSetInteger(0, ObjEditMinDist, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjEditMinDist, OBJPROP_XSIZE, 55); ObjectSetInteger(0, ObjEditMinDist, OBJPROP_YSIZE, 16);
+       ObjectSetInteger(0, ObjEditMinDist, OBJPROP_XDISTANCE, x+80); ObjectSetInteger(0, ObjEditMinDist, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjEditMinDist, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjEditMinDist, OBJPROP_YSIZE, 18);
        ObjectSetString(0, ObjEditMinDist, OBJPROP_TEXT, DoubleToString(m_min_dist, 0));
        ObjectSetInteger(0, ObjEditMinDist, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditMinDist, OBJPROP_COLOR, clrBlack);
-       ObjectSetInteger(0, ObjEditMinDist, OBJPROP_FONTSIZE, font_size);
 
-       // --- Separator Line ---
-       cy+=20;
-       ObjectCreate(0, ObjLineSep, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-       ObjectSetInteger(0, ObjLineSep, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjLineSep, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjLineSep, OBJPROP_XSIZE, w-10); ObjectSetInteger(0, ObjLineSep, OBJPROP_YSIZE, 2);
-       ObjectSetInteger(0, ObjLineSep, OBJPROP_BGCOLOR, clrGray);
-       ObjectSetInteger(0, ObjLineSep, OBJPROP_BORDER_TYPE, BORDER_FLAT);
-
-       cy+=5; // Margin after line
-
-       // --- Mode Toggle Button ---
-       ObjectCreate(0, ObjBtnMode, OBJ_BUTTON, 0, 0, 0);
-       ObjectSetInteger(0, ObjBtnMode, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnMode, OBJPROP_XSIZE, w-10); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YSIZE, 22);
-       ObjectSetInteger(0, ObjBtnMode, OBJPROP_FONTSIZE, font_size);
-
-       // --- Entry Toggle Button ---
-       cy+=25;
-       ObjectCreate(0, ObjBtnEntry, OBJ_BUTTON, 0, 0, 0);
-       ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XSIZE, w-10); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YSIZE, 22);
-       ObjectSetInteger(0, ObjBtnEntry, OBJPROP_FONTSIZE, font_size);
-
-       // --- Action Type Toggle Button (Solo/Combo) ---
-       cy+=25;
-       ObjectCreate(0, ObjBtnAction, OBJ_BUTTON, 0, 0, 0);
-       ObjectSetInteger(0, ObjBtnAction, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjBtnAction, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnAction, OBJPROP_XSIZE, w-10); ObjectSetInteger(0, ObjBtnAction, OBJPROP_YSIZE, 22);
-       ObjectSetInteger(0, ObjBtnAction, OBJPROP_FONTSIZE, font_size);
-
-       // --- ATTACK BUTTONS (Side by Side) ---
+       // --- Mode Toggle Button (Breakout/Limit) ---
        cy+=30;
-       int btn_w = (w-15)/2;
+       ObjectCreate(0, ObjBtnMode, OBJ_BUTTON, 0, 0, 0);
+       ObjectSetInteger(0, ObjBtnMode, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjBtnMode, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YSIZE, 30);
+       ObjectSetInteger(0, ObjBtnMode, OBJPROP_FONTSIZE, 8);
 
-       // BUY Button
-       ObjectCreate(0, ObjBtnAttackBuy, OBJ_BUTTON, 0, 0, 0);
-       ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_XSIZE, btn_w); ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_YSIZE, 35);
-       ObjectSetString(0, ObjBtnAttackBuy, OBJPROP_TEXT, "BUY");
-       ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_BGCOLOR, clrForestGreen); ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_COLOR, clrWhite);
-       ObjectSetInteger(0, ObjBtnAttackBuy, OBJPROP_FONTSIZE, 8);
+       // --- Entry Toggle Button (Pending/Market) ---
+       cy+=35;
+       ObjectCreate(0, ObjBtnEntry, OBJ_BUTTON, 0, 0, 0);
+       ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YSIZE, 30);
+       ObjectSetInteger(0, ObjBtnEntry, OBJPROP_FONTSIZE, 8);
 
-       // SELL Button
-       ObjectCreate(0, ObjBtnAttackSell, OBJ_BUTTON, 0, 0, 0);
-       ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_XDISTANCE, x+5+btn_w+5); ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_XSIZE, btn_w); ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_YSIZE, 35);
-       ObjectSetString(0, ObjBtnAttackSell, OBJPROP_TEXT, "SELL");
-       ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_BGCOLOR, clrFireBrick); ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_COLOR, clrWhite);
-       ObjectSetInteger(0, ObjBtnAttackSell, OBJPROP_FONTSIZE, 8);
+       // --- Fire TRAP Button (Legacy) ---
+       cy+=40;
+       ObjectCreate(0, ObjBtnFire, OBJ_BUTTON, 0, 0, 0);
+       ObjectSetInteger(0, ObjBtnFire, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnFire, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjBtnFire, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnFire, OBJPROP_YSIZE, 40);
+       ObjectSetString(0, ObjBtnFire, OBJPROP_TEXT, "FIRE TRAP");
+       ObjectSetInteger(0, ObjBtnFire, OBJPROP_BGCOLOR, clrRed); ObjectSetInteger(0, ObjBtnFire, OBJPROP_COLOR, clrWhite);
 
        // --- Cease Fire ---
-       cy+=40;
+       cy+=50;
        ObjectCreate(0, ObjBtnClear, OBJ_BUTTON, 0, 0, 0);
-       ObjectSetInteger(0, ObjBtnClear, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjBtnClear, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnClear, OBJPROP_XSIZE, w-10); ObjectSetInteger(0, ObjBtnClear, OBJPROP_YSIZE, 25);
+       ObjectSetInteger(0, ObjBtnClear, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnClear, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjBtnClear, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnClear, OBJPROP_YSIZE, 30);
        ObjectSetString(0, ObjBtnClear, OBJPROP_TEXT, "CEASE FIRE");
        ObjectSetInteger(0, ObjBtnClear, OBJPROP_BGCOLOR, clrOrange); ObjectSetInteger(0, ObjBtnClear, OBJPROP_COLOR, clrBlack);
-       ObjectSetInteger(0, ObjBtnClear, OBJPROP_FONTSIZE, font_size);
 
        // --- PL Label ---
-       cy+=30;
+       cy+=40;
        ObjectCreate(0, ObjLabelPL, OBJ_LABEL, 0, 0, 0);
-       ObjectSetInteger(0, ObjLabelPL, OBJPROP_XDISTANCE, x+5); ObjectSetInteger(0, ObjLabelPL, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjLabelPL, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjLabelPL, OBJPROP_YDISTANCE, cy);
        ObjectSetInteger(0, ObjLabelPL, OBJPROP_COLOR, clrWhite);
-       ObjectSetInteger(0, ObjLabelPL, OBJPROP_FONTSIZE, font_size);
+
+
+       // === RIGHT COLUMN (New Directional Controls) ===
+       // Reset cy for right column, aligned with Mode buttons or slightly higher?
+       // Align with the first input fields for now, or just below header
+       cy = y + 40;
+
+       // --- Fire BUY ---
+       ObjectCreate(0, ObjBtnFireBuy, OBJ_BUTTON, 0, 0, 0);
+       ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_XDISTANCE, col2_x + 10); ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_YSIZE, 30);
+       ObjectSetString(0, ObjBtnFireBuy, OBJPROP_TEXT, "FIRE BUY");
+       ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_BGCOLOR, clrForestGreen); ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_COLOR, clrWhite);
+
+       // --- Fire SELL ---
+       ObjectCreate(0, ObjBtnFireSell, OBJ_BUTTON, 0, 0, 0);
+       ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_XDISTANCE, col2_x + 80); ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_YSIZE, 30);
+       ObjectSetString(0, ObjBtnFireSell, OBJPROP_TEXT, "FIRE SELL");
+       ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_BGCOLOR, clrFireBrick); ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_COLOR, clrWhite);
+
 
        UpdateButtons(); // Set Initial Text/Color
    }
 
    void Destroy()
    {
-       ObjectDelete(0, ObjBG); ObjectDelete(0, ObjStat);
-       ObjectDelete(0, ObjBtnAttackBuy); ObjectDelete(0, ObjBtnAttackSell);
+       ObjectDelete(0, ObjBG); ObjectDelete(0, ObjStat); ObjectDelete(0, ObjBtnFire);
        ObjectDelete(0, ObjBtnClear); ObjectDelete(0, ObjLabelPL);
        ObjectDelete(0, ObjBtnMode); ObjectDelete(0, ObjBtnEntry);
-       ObjectDelete(0, ObjBtnAction);
-       ObjectDelete(0, ObjLineSep); // Delete Line
 
        ObjectDelete(0, ObjLabelLot); ObjectDelete(0, ObjEditLot);
-       ObjectDelete(0, ObjLabelLayers); ObjectDelete(0, ObjEditLayers);
        ObjectDelete(0, ObjLabelMultStart); ObjectDelete(0, ObjEditMultStart);
        ObjectDelete(0, ObjLabelMultStep); ObjectDelete(0, ObjEditMultStep);
+       ObjectDelete(0, ObjLabelLayers); ObjectDelete(0, ObjEditLayers);
        ObjectDelete(0, ObjLabelMinDist); ObjectDelete(0, ObjEditMinDist);
+
+       ObjectDelete(0, ObjBtnFireBuy); ObjectDelete(0, ObjBtnFireSell);
    }
 
    void UpdateUI(double pl)
@@ -333,31 +312,21 @@ public:
    void UpdateButtons() {
         // Strategy Mode
         if(m_fire_mode == FIRE_MODE_STOP) {
-            ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: BREAKOUT");
+            ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: STOP (Breakout)");
             ObjectSetInteger(0, ObjBtnMode, OBJPROP_BGCOLOR, clrOrangeRed);
         } else {
-            ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: REVERT");
+            ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: LIMIT (Revert)");
             ObjectSetInteger(0, ObjBtnMode, OBJPROP_BGCOLOR, clrCornflowerBlue);
         }
 
         // Entry Mode
         if(m_entry_mode == ENTRY_MARKET) {
-            ObjectSetString(0, ObjBtnEntry, OBJPROP_TEXT, "ENTRY: INSTANT");
+            ObjectSetString(0, ObjBtnEntry, OBJPROP_TEXT, "ENTRY: MARKET (Instant)");
             ObjectSetInteger(0, ObjBtnEntry, OBJPROP_BGCOLOR, clrRed);
         } else {
             ObjectSetString(0, ObjBtnEntry, OBJPROP_TEXT, "ENTRY: PENDING");
             ObjectSetInteger(0, ObjBtnEntry, OBJPROP_BGCOLOR, clrDimGray);
         }
-
-        // Action Type (Solo vs Combo)
-        if(m_action_type == ACTION_SOLO) {
-            ObjectSetString(0, ObjBtnAction, OBJPROP_TEXT, "SCOPE: SOLO (Burst)");
-            ObjectSetInteger(0, ObjBtnAction, OBJPROP_BGCOLOR, clrPurple);
-        } else {
-            ObjectSetString(0, ObjBtnAction, OBJPROP_TEXT, "SCOPE: COMBO (Trap)");
-            ObjectSetInteger(0, ObjBtnAction, OBJPROP_BGCOLOR, clrTeal);
-        }
-
         ChartRedraw();
    }
 
@@ -366,9 +335,8 @@ public:
    {
        if(id == CHARTEVENT_OBJECT_CLICK)
        {
-          if(sparam == ObjBtnAttackBuy)
+          if(sparam == ObjBtnFire)
           {
-             m_attack_dir = ATTACK_BUY;
              ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
              ChartRedraw();
              Sleep(100);
@@ -376,15 +344,23 @@ public:
              ChartRedraw();
              return EVENT_FIRE;
           }
-          else if(sparam == ObjBtnAttackSell)
+          else if(sparam == ObjBtnFireBuy)
           {
-             m_attack_dir = ATTACK_SELL;
              ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
              ChartRedraw();
              Sleep(100);
              ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
              ChartRedraw();
-             return EVENT_FIRE;
+             return EVENT_FIRE_BUY;
+          }
+          else if(sparam == ObjBtnFireSell)
+          {
+             ObjectSetInteger(0, sparam, OBJPROP_STATE, true);
+             ChartRedraw();
+             Sleep(100);
+             ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
+             ChartRedraw();
+             return EVENT_FIRE_SELL;
           }
           else if (sparam == ObjBtnClear)
           {
@@ -407,13 +383,6 @@ public:
              m_entry_mode = (m_entry_mode == ENTRY_PENDING) ? ENTRY_MARKET : ENTRY_PENDING;
              UpdateButtons();
              return EVENT_CHANGE_ENTRY;
-          }
-          else if (sparam == ObjBtnAction)
-          {
-             // Toggle Action Type
-             m_action_type = (m_action_type == ACTION_COMBO) ? ACTION_SOLO : ACTION_COMBO;
-             UpdateButtons();
-             return EVENT_CHANGE_ACTION;
           }
        }
        else if(id == CHARTEVENT_OBJECT_ENDEDIT)

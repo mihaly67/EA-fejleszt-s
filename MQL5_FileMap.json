@@ -1,0 +1,521 @@
+{
+  "timestamp": "2026-02-11 00:47:05",
+  "root_directory": "MQL5",
+  "structure": {
+    "Indicators": {
+      "_type": "dir",
+      "_content": {
+        "Delta_MFI_Cust.mq5": {
+          "_type": "file",
+          "size": 7665,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "MACD_Squeeze_Cust.mq5": {
+          "_type": "file",
+          "size": 9130,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "Mimic_Trap_Research_EA_v2.11.mq5": {
+          "_type": "file",
+          "size": 44089,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "DeltaForce_Cust.mq5": {
+          "_type": "file",
+          "size": 7015,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "Indicators": {
+          "_type": "dir",
+          "_content": {
+            "NavSystem_v2_07.mqh": {
+              "_type": "file",
+              "size": 11404,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "BlackBox_v2_02.mqh": {
+              "_type": "file",
+              "size": 4507,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "NavSystem_v2_04.mqh": {
+              "_type": "file",
+              "size": 10704,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "BlackBox.mqh": {
+              "_type": "file",
+              "size": 5203,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "NavSystem_v2_03.mqh": {
+              "_type": "file",
+              "size": 12011,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Types_v2_14.mqh": {
+              "_type": "file",
+              "size": 951,
+              "modified": "2026-02-11 00:42:00"
+            },
+            "PanelControl_v2_13.mqh": {
+              "_type": "file",
+              "size": 15630,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Camouflage.mqh": {
+              "_type": "file",
+              "size": 1517,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "BlackBox_v2_04.mqh": {
+              "_type": "file",
+              "size": 4484,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "NavSystem_v2_05.mqh": {
+              "_type": "file",
+              "size": 11167,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "FireControl_v2_13.mqh": {
+              "_type": "file",
+              "size": 7573,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "FireControl.mqh": {
+              "_type": "file",
+              "size": 5673,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "NavSystem_v2_01.mqh": {
+              "_type": "file",
+              "size": 11251,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "FireControl_v2_07.mqh": {
+              "_type": "file",
+              "size": 6085,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "FireControl_v2_14.mqh": {
+              "_type": "file",
+              "size": 8388,
+              "modified": "2026-02-11 00:42:28"
+            },
+            "FireControl_v2_09.mqh": {
+              "_type": "file",
+              "size": 5238,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "BlackBox_v2_05.mqh": {
+              "_type": "file",
+              "size": 4415,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "PhysicsEngine.mqh": {
+              "_type": "file",
+              "size": 11404,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "NavSystem_v2_00.mqh": {
+              "_type": "file",
+              "size": 9716,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "BlackBox_v2_00.mqh": {
+              "_type": "file",
+              "size": 4375,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "BlackBox_v2_03.mqh": {
+              "_type": "file",
+              "size": 4484,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "BlackBox_v2_01.mqh": {
+              "_type": "file",
+              "size": 4375,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Types_v2_13.mqh": {
+              "_type": "file",
+              "size": 796,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "FireControl_v2_10.mqh": {
+              "_type": "file",
+              "size": 6056,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "FireControl_v2_06.mqh": {
+              "_type": "file",
+              "size": 5096,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "PanelControl_v2_14.mqh": {
+              "_type": "file",
+              "size": 18432,
+              "modified": "2026-02-11 00:43:20"
+            },
+            "FireControl_v2_11.mqh": {
+              "_type": "file",
+              "size": 6458,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "NavSystem_v2_06.mqh": {
+              "_type": "file",
+              "size": 4470,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "NavSystem.mqh": {
+              "_type": "file",
+              "size": 14542,
+              "modified": "2026-02-10 23:41:57"
+            }
+          }
+        },
+        "Jules": {
+          "_type": "dir",
+          "_content": {
+            "Mimic_Merkava_v1.05_BarbedWire.mq5": {
+              "_type": "file",
+              "size": 5623,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Merkava_v2_10.mq5": {
+              "_type": "file",
+              "size": 21971,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Merkava_v2_00.mq5": {
+              "_type": "file",
+              "size": 16218,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Merkava_v2_07.mq5": {
+              "_type": "file",
+              "size": 15987,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Merkava_v2_02.mq5": {
+              "_type": "file",
+              "size": 15647,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "HybridFlowIndicator_v1.125.mq5": {
+              "_type": "file",
+              "size": 10875,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Merkava_v2_03.mq5": {
+              "_type": "file",
+              "size": 15692,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Merkava_v2_01.mq5": {
+              "_type": "file",
+              "size": 16443,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Merkava_v2_12.mq5": {
+              "_type": "file",
+              "size": 24566,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Merkava_v2_14.mq5": {
+              "_type": "file",
+              "size": 14315,
+              "modified": "2026-02-11 00:46:33"
+            },
+            "Merkava_v2_09.mq5": {
+              "_type": "file",
+              "size": 16157,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Jules_Hybrid_Momentum_Pulse_v1.04.mq5": {
+              "_type": "file",
+              "size": 9602,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Merkava_v2_13.mq5": {
+              "_type": "file",
+              "size": 13034,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Merkava_v2_11.mq5": {
+              "_type": "file",
+              "size": 23223,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Jules_Hybrid_Momentum_Pulse_v1.05.mq5": {
+              "_type": "file",
+              "size": 9290,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Merkava_v2_05.mq5": {
+              "_type": "file",
+              "size": 15660,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Jules_Hybrid_Momentum_Pulse_v1.00.mq5": {
+              "_type": "file",
+              "size": 11668,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Merkava_v2_04.mq5": {
+              "_type": "file",
+              "size": 15649,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Jules_Hybrid_Momentum_Pulse_v1.03.mq5": {
+              "_type": "file",
+              "size": 9661,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Hybrid_Microstructure_Monitor_v1.7.mq5": {
+              "_type": "file",
+              "size": 7910,
+              "modified": "2026-02-10 23:41:57"
+            }
+          }
+        },
+        "Utilities": {
+          "_type": "dir",
+          "_content": {
+            "Chart_Designer_Tool_v2.03.mq5": {
+              "_type": "file",
+              "size": 14324,
+              "modified": "2026-02-10 23:41:57"
+            }
+          }
+        }
+      }
+    },
+    "Experts": {
+      "_type": "dir",
+      "_content": {
+        "Mimic_BarbedWire_Probe_EA_1.00.mq5": {
+          "_type": "file",
+          "size": 24388,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "Mimic_Trap_Research_EA_v2.14.mq5": {
+          "_type": "file",
+          "size": 44581,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "Mimic_BarbedWire_Probe_EA_v1.03.mq5": {
+          "_type": "file",
+          "size": 24511,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "restore_environment_extended.py": {
+          "_type": "file",
+          "size": 15417,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "Mimic_Trap_Research_EA_v2.10.mq5": {
+          "_type": "file",
+          "size": 43607,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "Mimic_Trap_Research_EA_v2.11.mq5": {
+          "_type": "file",
+          "size": 44089,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "Mimic_BarbedWire_Probe_EA_v1.02.mq5": {
+          "_type": "file",
+          "size": 17668,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "Mimic_Trap_Research_EA_v2.08.mq5": {
+          "_type": "file",
+          "size": 34093,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "Mimic_BarbedWire_Probe_EA_v1.01.mq5": {
+          "_type": "file",
+          "size": 25597,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "Mimic_Trap_Research_EA_v2.15.mq5": {
+          "_type": "file",
+          "size": 48617,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "Hybrid": {
+          "_type": "dir",
+          "_content": {
+            "Hybrid_System_EA.mq5": {
+              "_type": "file",
+              "size": 2891,
+              "modified": "2026-02-10 23:41:57"
+            }
+          }
+        },
+        "Utilities": {
+          "_type": "dir",
+          "_content": {
+            "Chart_Designer_Simple_Panel_v1.04.mq5": {
+              "_type": "file",
+              "size": 13534,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Chart_Designer_EA_v2.02.mq5": {
+              "_type": "file",
+              "size": 16075,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Chart_Designer_EA_v2.04.mq5": {
+              "_type": "file",
+              "size": 16292,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Chart_Designer_Simple_Panel_v1.03.mq5": {
+              "_type": "file",
+              "size": 11965,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Chart_Designer_Simple_Panel_v1.05.mq5": {
+              "_type": "file",
+              "size": 13752,
+              "modified": "2026-02-10 23:41:57"
+            }
+          }
+        }
+      }
+    },
+    "Include": {
+      "_type": "dir",
+      "_content": {
+        "Profit_Management": {
+          "_type": "dir",
+          "_content": {
+            "RiskManager.mqh": {
+              "_type": "file",
+              "size": 6398,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "TickVolatility.mqh": {
+              "_type": "file",
+              "size": 5495,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "ProfitMaximizer.mqh": {
+              "_type": "file",
+              "size": 5842,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "TradingPanel.mqh": {
+              "_type": "file",
+              "size": 8986,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "TradingAssistant.mqh": {
+              "_type": "file",
+              "size": 8724,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "SmartTrailing.mqh": {
+              "_type": "file",
+              "size": 5350,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Environment": {
+              "_type": "dir",
+              "_content": {
+                "BrokerInfo.mqh": {
+                  "_type": "file",
+                  "size": 6099,
+                  "modified": "2026-02-10 23:41:57"
+                }
+              }
+            }
+          }
+        },
+        "Hybrid": {
+          "_type": "dir",
+          "_content": {
+            "Hybrid_Panel.mqh": {
+              "_type": "file",
+              "size": 12427,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Hybrid_TradingAgent.mqh": {
+              "_type": "file",
+              "size": 8132,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Hybrid_Signal_Aggregator.mqh": {
+              "_type": "file",
+              "size": 10209,
+              "modified": "2026-02-10 23:41:57"
+            }
+          }
+        },
+        "Utilities": {
+          "_type": "dir",
+          "_content": {
+            "Chart_Designer_UI.mqh": {
+              "_type": "file",
+              "size": 9129,
+              "modified": "2026-02-10 23:41:57"
+            }
+          }
+        }
+      }
+    },
+    "Scripts": {
+      "_type": "dir",
+      "_content": {
+        "Configure_Chart_Template.mq5": {
+          "_type": "file",
+          "size": 4382,
+          "modified": "2026-02-10 23:41:57"
+        },
+        "Utilities": {
+          "_type": "dir",
+          "_content": {
+            "Color_Reference_Table_v2.mq5": {
+              "_type": "file",
+              "size": 5698,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Quick_Setup_Script_v1.05.mq5": {
+              "_type": "file",
+              "size": 3502,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Color_Reference_Table_v2.02.mq5": {
+              "_type": "file",
+              "size": 7777,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Color_Reference_Table_v2.01.mq5": {
+              "_type": "file",
+              "size": 3917,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Color_Reference_Table_v2.0.mq5": {
+              "_type": "file",
+              "size": 3448,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Color_Reference_Table_v2.03.mq5": {
+              "_type": "file",
+              "size": 10768,
+              "modified": "2026-02-10 23:41:57"
+            },
+            "Color_Reference_Table.mq5": {
+              "_type": "file",
+              "size": 3124,
+              "modified": "2026-02-10 23:41:57"
+            }
+          }
+        }
+      }
+    }
+  }
+}

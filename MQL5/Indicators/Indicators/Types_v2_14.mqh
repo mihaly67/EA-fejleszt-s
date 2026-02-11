@@ -19,19 +19,11 @@ enum ENUM_ENTRY_MODE
    ENTRY_MARKET  = 1  // Burst: Level 1 is Market (Hedge), others are pending
 };
 
-// v2.14: Directional Attack
 enum ENUM_ATTACK_DIR
 {
-   ATTACK_BOTH = 0, // Default: "Trap" (Buy + Sell)
-   ATTACK_BUY  = 1, // Only Buy side
-   ATTACK_SELL = 2  // Only Sell side
-};
-
-// v2.14: Action Type (Solo vs Combo)
-enum ENUM_ACTION_TYPE
-{
-   ACTION_COMBO = 0, // Burst + Grid (Standard)
-   ACTION_SOLO  = 1  // Burst Only (Single Shot, no pending grid)
+   ATTACK_BOTH = 0, // Legacy Trap (Buy + Sell)
+   ATTACK_BUY  = 1, // Long Only (Buy)
+   ATTACK_SELL = 2  // Short Only (Sell)
 };
 
 #endif

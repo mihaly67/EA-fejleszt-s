@@ -3,6 +3,7 @@
 //|                                    Copyright 2026, Jules (Mimic) |
 //|                                             For Project Merkava  |
 //|                                                   Version 2.14   |
+//|                          (Instant Entry + Split Panel + DirFire) |
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
 #property link      "https://github.com/MimicProject"
@@ -160,7 +161,7 @@ int OnInit()
    m_panel.Create();
    m_panel.UpdateUI(GetFloatingPL());
 
-   Print("Merkava v2.14 Initialized (Dual Mode + Instant Entry + PanelControl + Solo/Combo).");
+   Print("Merkava v2.14 Initialized (Dual Mode + Instant Entry + Split Panel + DirFire).");
    return(INIT_SUCCEEDED);
 }
 
@@ -182,7 +183,7 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
    // Delegate to Panel Control
    ENUM_PANEL_EVENT event = m_panel.OnEvent(id, lparam, dparam, sparam);
 
-   if (event == EVENT_FIRE)
+   if (event != EVENT_NONE)
    {
        double center = (m_symbol.Ask() + m_symbol.Bid()) / 2.0;
 
@@ -194,29 +195,57 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
        double mindist = m_panel.GetMinDist();
        ENUM_FIRE_MODE mode = m_panel.GetFireMode();
        ENUM_ENTRY_MODE entry = m_panel.GetEntryMode();
-       ENUM_ATTACK_DIR dir = m_panel.GetAttackDir();
-       ENUM_ACTION_TYPE action = m_panel.GetActionType();
 
-       m_fire_control.FireGrid(center, lot, layers, mstart, mstep, mindist, mode, entry, dir, action);
+       // Handle Events
+       if (event == EVENT_FIRE)
+       {
+           // TRAP (BOTH)
+           m_fire_control.FireGrid(center, lot, layers, mstart, mstep, mindist, mode, entry, ATTACK_BOTH);
 
-       g_last_action = (mode == FIRE_MODE_STOP) ? "TRAP_SET" : "LIMIT_GRID";
-       if (entry == ENTRY_MARKET) g_last_action += "_INSTANT";
-       if (action == ACTION_SOLO) g_last_action += "_SOLO";
+           g_last_action = (mode == FIRE_MODE_STOP) ? "TRAP_SET" : "LIMIT_GRID";
+           if (entry == ENTRY_MARKET) g_last_action += "_INSTANT";
+           g_decision_log += "Grid Fired BOTH L" + IntegerToString(layers) + ";";
+       }
+       else if (event == EVENT_FIRE_BUY)
+       {
+           // BUY ONLY
+           m_fire_control.FireGrid(center, lot, layers, mstart, mstep, mindist, mode, entry, ATTACK_BUY);
 
-       g_decision_log += "Grid Fired L" + IntegerToString(layers) + " (" + ((mode==FIRE_MODE_STOP)?"Breakout":"Reversion") + "/" + ((entry==ENTRY_MARKET)?"Market":"Pending") + ");";
+           g_last_action = "FIRE_BUY";
+           if (entry == ENTRY_MARKET) g_last_action += "_INSTANT";
+           g_decision_log += "Grid Fired BUY L" + IntegerToString(layers) + ";";
+       }
+       else if (event == EVENT_FIRE_SELL)
+       {
+           // SELL ONLY
+           m_fire_control.FireGrid(center, lot, layers, mstart, mstep, mindist, mode, entry, ATTACK_SELL);
+
+           g_last_action = "FIRE_SELL";
+           if (entry == ENTRY_MARKET) g_last_action += "_INSTANT";
+           g_decision_log += "Grid Fired SELL L" + IntegerToString(layers) + ";";
+       }
+       else if (event == EVENT_CEASE_FIRE)
+       {
+           m_fire_control.CeaseFire();
+           g_last_action = "CEASE_FIRE";
+           g_decision_log += "Cease Fire;";
+       }
+       else if (event == EVENT_PARAM_UPDATE)
+       {
+           PrintFormat("Merkava Params Updated: Lot=%.2f, MultStart=%.1f, MultStep=%.1f, Layers=%d",
+                      m_panel.GetLotSize(), m_panel.GetMultStart(), m_panel.GetMultStep(), m_panel.GetLayers());
+       }
+       else if (event == EVENT_CHANGE_MODE)
+       {
+           Print("🔄 Mode Changed: " + EnumToString(mode));
+       }
+       else if (event == EVENT_CHANGE_ENTRY)
+       {
+           Print("⚡ Entry Changed: " + EnumToString(entry));
+       }
    }
-   else if (event == EVENT_CEASE_FIRE)
-   {
-       m_fire_control.CeaseFire();
-       g_last_action = "CEASE_FIRE";
-       g_decision_log += "Cease Fire;";
-   }
-   else if (event == EVENT_PARAM_UPDATE)
-   {
-       PrintFormat("Merkava Params Updated: Lot=%.2f, MultStart=%.1f, MultStep=%.1f, Layers=%d",
-                  m_panel.GetLotSize(), m_panel.GetMultStart(), m_panel.GetMultStep(), m_panel.GetLayers());
-   }
 
+   // Always Update UI
    m_panel.UpdateUI(GetFloatingPL());
 }
 
@@ -304,6 +333,7 @@ void OnTick()
    CheckForNewDeals();
 
    double float_pl = GetFloatingPL();
+   m_panel.UpdateUI(float_pl); // Also update panel on tick for PL
 
    MqlBookInfo book[];
    double bid_vol = 0;
