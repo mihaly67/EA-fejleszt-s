@@ -53,8 +53,7 @@ input double        InpLotSize           = 0.01;
 input int           InpSlippage          = 10;
 input ulong         InpMagicNumber       = 999015; // Updated Magic v2.15
 input double        InpVirtualTPCurrency = 0.0;    // Added: Invisible TP (0.0 = Off)
-input double        InpVirtualSLCurrency = 0.0;    // Added: Invisible SL (0.0 = Off)
-input string        InpComment           = "";     // Default: Empty
+input string        InpComment           = "Merkava_v2.15";
 
 // [Hybrid & Flow Settings]
 input int           Hybrid_FastEMA       = 3;
@@ -105,27 +104,6 @@ double GetFloatingPL() {
     return pl;
 }
 
-double CalculateTotalHistoryProfit() {
-    double total_profit = 0.0;
-    // Select entire history from beginning (0) to now
-    if(HistorySelect(0, TimeCurrent())) {
-        int total = HistoryDealsTotal();
-        for(int i=0; i<total; i++) {
-            ulong ticket = HistoryDealGetTicket(i);
-            long type = HistoryDealGetInteger(ticket, DEAL_TYPE);
-
-            // Exclude Deposits/Withdrawals (Balance) and Credit
-            if(type == DEAL_TYPE_BALANCE || type == DEAL_TYPE_CREDIT) continue;
-
-            // Sum ALL TRADING deals (Account History Profit), regardless of Magic Number or Symbol
-            total_profit += HistoryDealGetDouble(ticket, DEAL_PROFIT);
-            total_profit += HistoryDealGetDouble(ticket, DEAL_SWAP);
-            total_profit += HistoryDealGetDouble(ticket, DEAL_COMMISSION);
-        }
-    }
-    return total_profit;
-}
-
 //+------------------------------------------------------------------+
 //| Initialization                                                   |
 //+------------------------------------------------------------------+
@@ -155,14 +133,8 @@ int OnInit()
 
    // v2.15: Initialize ProfitManager
    m_profit_manager.Init(&m_trade, &m_position, InpMagicNumber, _Symbol);
-
-   // Set initial TP/SL from Inputs
    m_profit_manager.SetVirtualTP(InpVirtualTPCurrency);
-   m_profit_manager.SetVirtualSL(InpVirtualSLCurrency);
-
-   if(InpVirtualTPCurrency > 0 || InpVirtualSLCurrency > 0)
-       PrintFormat("💰 Profit Manager Active: TP=%.2f, SL=%.2f (%s)",
-                   InpVirtualTPCurrency, InpVirtualSLCurrency, AccountInfoString(ACCOUNT_CURRENCY));
+   if(InpVirtualTPCurrency > 0) PrintFormat("💰 Profit Manager Active: Virtual TP = %.2f %s", InpVirtualTPCurrency, AccountInfoString(ACCOUNT_CURRENCY));
 
    bool init_ok = m_nav_system.Initialize(
        _Symbol, _Period,
@@ -191,10 +163,9 @@ int OnInit()
        }
    }
 
-   // Initialize Panel v2.15 (with TP/SL inputs)
+   // Initialize Panel v2.15
    m_panel.Init(Prefix, InpX, InpY, InpBgColor, InpTxtColor,
-                InpLotSize, InpSpreadMultStart, InpSpreadMultStep, InpLayers, InpMinSpreadPoints,
-                InpVirtualTPCurrency, InpVirtualSLCurrency); // Pass initial TP/SL
+                InpLotSize, InpSpreadMultStart, InpSpreadMultStep, InpLayers, InpMinSpreadPoints);
    m_panel.Create();
    m_panel.UpdateUI(GetFloatingPL());
 
@@ -279,16 +250,6 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
        else if (event == EVENT_CHANGE_ENTRY)
        {
            Print("⚡ Entry Changed: " + EnumToString(entry));
-       }
-       else if (event == EVENT_TP_SL_UPDATE) // New Event v2.15
-       {
-           double new_tp = m_panel.GetVirtualTP();
-           double new_sl = m_panel.GetVirtualSL();
-
-           m_profit_manager.SetVirtualTP(new_tp);
-           m_profit_manager.SetVirtualSL(new_sl);
-
-           PrintFormat("💰 Profit Manager Updated via Panel: TP=%.2f, SL=%.2f", new_tp, new_sl);
        }
    }
 
@@ -383,8 +344,8 @@ void OnTick()
    // 3. Profit Management (New v2.15)
    int closed = m_profit_manager.Check();
    if(closed > 0) {
-       g_last_action = "VIRTUAL_TPSL_HIT";
-       g_decision_log += "Closed " + IntegerToString(closed) + " positions via Virtual TP/SL;";
+       g_last_action = "VIRTUAL_TP_HIT";
+       g_decision_log += "Closed " + IntegerToString(closed) + " positions via Virtual TP;";
    }
 
    // 4. Update Panel
@@ -396,12 +357,7 @@ void OnTick()
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
    double margin = AccountInfoDouble(ACCOUNT_MARGIN);
    double margin_level = AccountInfoDouble(ACCOUNT_MARGIN_LEVEL);
-
-   // Calculate History Profit (Total) - Magic Filtered
-   double total_pl = CalculateTotalHistoryProfit();
-
-   // Update Panel (Session P/L is global)
-   m_panel.UpdateAccountStats(balance, equity, margin, margin_level, g_session_realized_pl, total_pl);
+   m_panel.UpdateAccountStats(balance, equity, margin, margin_level);
 
    MqlBookInfo book[];
    double bid_vol = 0;
