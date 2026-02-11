@@ -15,8 +15,8 @@
 
 //+------------------------------------------------------------------+
 //| Class CProfitManager                                             |
-//| Handles "Invisible" (Virtual) Take Profit logic.                 |
-//| v2.15: Supports Per-Position Virtual TP in Currency.             |
+//| Handles "Invisible" (Virtual) Take Profit and Stop Loss logic.   |
+//| v2.15: Supports Per-Position Virtual TP & SL in Currency.        |
 //+------------------------------------------------------------------+
 class CProfitManager
 {
@@ -26,9 +26,10 @@ private:
    ulong          m_magic;
    string         m_symbol;
    double         m_virtual_tp_currency;
+   double         m_virtual_sl_currency;
 
 public:
-   CProfitManager() { m_trade = NULL; m_position = NULL; m_virtual_tp_currency = 0.0; }
+   CProfitManager() { m_trade = NULL; m_position = NULL; m_virtual_tp_currency = 0.0; m_virtual_sl_currency = 0.0; }
    ~CProfitManager() {}
 
    //+------------------------------------------------------------------+
@@ -53,13 +54,24 @@ public:
    }
 
    //+------------------------------------------------------------------+
+   //| SetVirtualSL                                                     |
+   //| Sets the max loss in currency (0.0 = Disabled).                  |
+   //| Note: Provide a positive number (e.g., 50.0 means max loss 50).  |
+   //+------------------------------------------------------------------+
+   void SetVirtualSL(double sl_currency)
+   {
+      m_virtual_sl_currency = sl_currency;
+   }
+
+   //+------------------------------------------------------------------+
    //| Check                                                            |
-   //| Iterates all positions and closes those hitting the target.      |
+   //| Iterates all positions and closes those hitting TP or SL.        |
    //| Returns: Number of positions closed in this check.               |
    //+------------------------------------------------------------------+
    int Check()
    {
-      if (m_virtual_tp_currency <= 0.001) return 0; // Disabled
+      // If both disabled, exit early
+      if (m_virtual_tp_currency <= 0.001 && m_virtual_sl_currency <= 0.001) return 0;
       if (m_trade == NULL || m_position == NULL) return 0;
 
       int closed_count = 0;
@@ -74,15 +86,27 @@ public:
             if(m_position.Magic() == m_magic && m_position.Symbol() == m_symbol)
             {
                double profit = m_position.Profit() + m_position.Swap() + m_position.Commission();
+               ulong ticket = m_position.Ticket();
+               string type = (m_position.PositionType() == POSITION_TYPE_BUY) ? "BUY" : "SELL";
 
-               // Check if Profit >= Target
-               if(profit >= m_virtual_tp_currency)
+               bool close_needed = false;
+               string reason = "";
+
+               // Check TP
+               if(m_virtual_tp_currency > 0.001 && profit >= m_virtual_tp_currency) {
+                  close_needed = true;
+                  reason = "TP Hit (+" + DoubleToString(profit, 2) + ")";
+               }
+               // Check SL (Profit is negative, so check if profit <= -SL)
+               else if(m_virtual_sl_currency > 0.001 && profit <= -m_virtual_sl_currency) {
+                  close_needed = true;
+                  reason = "SL Hit (" + DoubleToString(profit, 2) + ")";
+               }
+
+               if(close_needed)
                {
-                  ulong ticket = m_position.Ticket();
-                  string type = (m_position.PositionType() == POSITION_TYPE_BUY) ? "BUY" : "SELL";
-
-                  PrintFormat("💰 Virtual TP Hit! Closing #%d (%s) Profit: %.2f >= Target: %.2f",
-                              ticket, type, profit, m_virtual_tp_currency);
+                  PrintFormat("⚖️ ProfitManager: Closing #%d (%s) | Reason: %s | Target TP: %.2f | Limit SL: %.2f",
+                              ticket, type, reason, m_virtual_tp_currency, m_virtual_sl_currency);
 
                   // Close Position
                   if(m_trade.PositionClose(ticket))
