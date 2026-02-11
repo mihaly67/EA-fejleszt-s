@@ -105,6 +105,22 @@ double GetFloatingPL() {
     return pl;
 }
 
+double CalculateTotalHistoryProfit() {
+    double total_profit = 0.0;
+    if(HistorySelect(0, TimeCurrent())) {
+        int total = HistoryDealsTotal();
+        for(int i=0; i<total; i++) {
+            ulong ticket = HistoryDealGetTicket(i);
+            if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == InpMagicNumber) {
+                 total_profit += HistoryDealGetDouble(ticket, DEAL_PROFIT);
+                 total_profit += HistoryDealGetDouble(ticket, DEAL_SWAP);
+                 total_profit += HistoryDealGetDouble(ticket, DEAL_COMMISSION);
+            }
+        }
+    }
+    return total_profit;
+}
+
 //+------------------------------------------------------------------+
 //| Initialization                                                   |
 //+------------------------------------------------------------------+
@@ -375,7 +391,12 @@ void OnTick()
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
    double margin = AccountInfoDouble(ACCOUNT_MARGIN);
    double margin_level = AccountInfoDouble(ACCOUNT_MARGIN_LEVEL);
-   m_panel.UpdateAccountStats(balance, equity, margin, margin_level);
+
+   // Calculate History Profit (Total) - Magic Filtered
+   double total_pl = CalculateTotalHistoryProfit();
+
+   // Update Panel (Session P/L is global)
+   m_panel.UpdateAccountStats(balance, equity, margin, margin_level, g_session_realized_pl, total_pl);
 
    MqlBookInfo book[];
    double bid_vol = 0;

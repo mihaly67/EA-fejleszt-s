@@ -73,6 +73,10 @@ private:
    string ObjLabelMargin;
    string ObjLabelMarginLevel;
 
+   // New: P/L Stats
+   string ObjLabelSessionPL;
+   string ObjLabelTotalPL;
+
    // Virtual TP/SL Inputs (Right Column)
    string ObjLabelVirtTP;
    string ObjEditVirtTP;
@@ -110,7 +114,7 @@ public:
       m_x = x; m_y = y;
       m_bg_color = bg; m_txt_color = txt;
       // Increased width for Split Layout (160 -> 320)
-      m_width = 320; m_height = 450; // Increased height for TP/SL
+      m_width = 320; m_height = 480; // Increased height for Stats (450 -> 480)
 
       // Initialize State
       m_lot_size = def_lot;
@@ -151,6 +155,10 @@ public:
       ObjLabelEquity = m_prefix + "LabelEquity";
       ObjLabelMargin = m_prefix + "LabelMargin";
       ObjLabelMarginLevel = m_prefix + "LabelMarginLevel";
+
+      // P/L Stats
+      ObjLabelSessionPL = m_prefix + "LabelSessionPL";
+      ObjLabelTotalPL = m_prefix + "LabelTotalPL";
 
       // Virtual TP/SL
       ObjLabelVirtTP = m_prefix + "LabelVirtTP";
@@ -314,11 +322,25 @@ public:
        // === ACCOUNT STATS (Below Buttons) ===
        cy += 40;
 
-       // P/L
+       // P/L (Floating)
        ObjectCreate(0, ObjLabelPL, OBJ_LABEL, 0, 0, 0);
        ObjectSetInteger(0, ObjLabelPL, OBJPROP_XDISTANCE, col2_x + 10); ObjectSetInteger(0, ObjLabelPL, OBJPROP_YDISTANCE, cy);
        ObjectSetString(0, ObjLabelPL, OBJPROP_TEXT, "P/L: 0.00");
        ObjectSetInteger(0, ObjLabelPL, OBJPROP_COLOR, clrWhite);
+
+       // Session P/L (New)
+       cy += 20;
+       ObjectCreate(0, ObjLabelSessionPL, OBJ_LABEL, 0, 0, 0);
+       ObjectSetInteger(0, ObjLabelSessionPL, OBJPROP_XDISTANCE, col2_x + 10); ObjectSetInteger(0, ObjLabelSessionPL, OBJPROP_YDISTANCE, cy);
+       ObjectSetString(0, ObjLabelSessionPL, OBJPROP_TEXT, "Sess: 0.00");
+       ObjectSetInteger(0, ObjLabelSessionPL, OBJPROP_COLOR, clrGold);
+
+       // Total P/L (New)
+       cy += 20;
+       ObjectCreate(0, ObjLabelTotalPL, OBJ_LABEL, 0, 0, 0);
+       ObjectSetInteger(0, ObjLabelTotalPL, OBJPROP_XDISTANCE, col2_x + 10); ObjectSetInteger(0, ObjLabelTotalPL, OBJPROP_YDISTANCE, cy);
+       ObjectSetString(0, ObjLabelTotalPL, OBJPROP_TEXT, "Hist: 0.00");
+       ObjectSetInteger(0, ObjLabelTotalPL, OBJPROP_COLOR, clrGold);
 
        // Balance
        cy += 20;
@@ -397,6 +419,7 @@ public:
        // Delete New Labels
        ObjectDelete(0, ObjLabelBalance); ObjectDelete(0, ObjLabelEquity);
        ObjectDelete(0, ObjLabelMargin); ObjectDelete(0, ObjLabelMarginLevel);
+       ObjectDelete(0, ObjLabelSessionPL); ObjectDelete(0, ObjLabelTotalPL); // New
        ObjectDelete(0, ObjLabelVirtTP); ObjectDelete(0, ObjEditVirtTP);
        ObjectDelete(0, ObjLabelVirtSL); ObjectDelete(0, ObjEditVirtSL);
    }
@@ -411,12 +434,16 @@ public:
        ChartRedraw();
    }
 
-   void UpdateAccountStats(double balance, double equity, double margin, double margin_level)
+   void UpdateAccountStats(double balance, double equity, double margin, double margin_level, double session_pl, double total_pl) // Updated
    {
        ObjectSetString(0, ObjLabelBalance, OBJPROP_TEXT, "Bal: " + DoubleToString(balance, 2));
        ObjectSetString(0, ObjLabelEquity, OBJPROP_TEXT, "Eq: " + DoubleToString(equity, 2));
        ObjectSetString(0, ObjLabelMargin, OBJPROP_TEXT, "Mrg: " + DoubleToString(margin, 2));
        ObjectSetString(0, ObjLabelMarginLevel, OBJPROP_TEXT, "Lvl: " + DoubleToString(margin_level, 1) + "%");
+
+       // New P/L
+       ObjectSetString(0, ObjLabelSessionPL, OBJPROP_TEXT, "Sess: " + DoubleToString(session_pl, 2));
+       ObjectSetString(0, ObjLabelTotalPL, OBJPROP_TEXT, "Hist: " + DoubleToString(total_pl, 2));
 
        // Color Logic for Level
        if (margin_level < 100) ObjectSetInteger(0, ObjLabelMarginLevel, OBJPROP_COLOR, clrRed);
