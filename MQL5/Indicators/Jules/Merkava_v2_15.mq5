@@ -112,8 +112,12 @@ double CalculateTotalHistoryProfit() {
         int total = HistoryDealsTotal();
         for(int i=0; i<total; i++) {
             ulong ticket = HistoryDealGetTicket(i);
-            // Sum ALL deals (Account History Profit), regardless of Magic Number or Symbol
-            // This matches MT5 "History" tab Total Profit
+            long type = HistoryDealGetInteger(ticket, DEAL_TYPE);
+
+            // Exclude Deposits/Withdrawals (Balance) and Credit
+            if(type == DEAL_TYPE_BALANCE || type == DEAL_TYPE_CREDIT) continue;
+
+            // Sum ALL TRADING deals (Account History Profit), regardless of Magic Number or Symbol
             total_profit += HistoryDealGetDouble(ticket, DEAL_PROFIT);
             total_profit += HistoryDealGetDouble(ticket, DEAL_SWAP);
             total_profit += HistoryDealGetDouble(ticket, DEAL_COMMISSION);
