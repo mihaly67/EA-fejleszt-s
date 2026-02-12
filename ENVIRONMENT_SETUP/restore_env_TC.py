@@ -5,6 +5,7 @@ import zipfile
 import logging
 import subprocess
 import json
+import time
 
 # --- AUTO-INSTALL DEPENDENCIES ---
 try:
@@ -176,20 +177,45 @@ def process_mt_libs():
     finally:
         shutil.rmtree(temp_dir)
 
-def sync_git():
-    print("\n🔄 Git Sync...")
+def force_git_sync():
+    """Attempts to forcefully sync the repo, even if .git is corrupted."""
+    repo_url = "https://github.com/mihaly67/EA-fejleszt-s.git"
+    print("\n🔄 Attempting GIT Synchronization (Force Mode v2)...")
+
     try:
+        # Check if .git exists and is valid
+        if os.path.exists(".git"):
+            print("   ℹ️ .git found. Trying fetch...")
+            subprocess.check_call(["git", "fetch", "--all"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.check_call(["git", "reset", "--hard", "origin/main"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print("   ✅ Synced via standard fetch/reset.")
+            return
+    except Exception as e:
+        print(f"   ⚠️ Standard sync failed ({e}). Trying Force Reset (Re-init)...")
+
+    # If we are here, standard sync failed or .git was missing/corrupt.
+    # We will DELETE .git and re-initialize.
+    try:
+        if os.path.exists(".git"):
+            print("   🗑️ Removing corrupted .git folder...")
+            shutil.rmtree(".git")
+            time.sleep(1) # Wait for OS to release lock
+
+        print("   🆕 Re-initializing Git repo...")
+        subprocess.check_call(["git", "init"], stdout=subprocess.DEVNULL)
+        subprocess.check_call(["git", "remote", "add", "origin", repo_url], stdout=subprocess.DEVNULL)
         subprocess.check_call(["git", "fetch", "--all"], stdout=subprocess.DEVNULL)
         subprocess.check_call(["git", "reset", "--hard", "origin/main"], stdout=subprocess.DEVNULL)
-        print("   ✅ Synced to origin/main")
-    except:
-        print("   ⚠️ Git Sync Skipped/Failed")
+        print("   ✅ Synced via FORCE RE-INIT (Success).")
+    except Exception as e:
+         print(f"   ❌ CRITICAL: Force Sync Failed! ({e})")
+         print("   ⚠️ Proceeding with file restore only.")
 
 def main():
-    print("=== 🚀 RESTORE ENV TC (Thief & Colombo) ===")
+    print("=== 🚀 RESTORE ENV TC (Enhanced v2 - 2026.02.12) ===")
 
-    # 1. Git
-    sync_git()
+    # 1. Git Sync (Robust)
+    force_git_sync()
 
     # 2. Iterate Configured Resources
     for key, config in ENVIRONMENT_RESOURCES.items():
@@ -217,7 +243,7 @@ def main():
                 f.write(f"{i}\n")
         print("   ✅ .gitignore updated.")
 
-    print("\n✅ Restore Complete.")
+    print("\n✅ Restore Complete (Jules Enhanced).")
 
 if __name__ == "__main__":
     main()
