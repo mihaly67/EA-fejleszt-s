@@ -200,6 +200,23 @@ int OnInit()
    if(InpVirtualSLCurrency > 0) PrintFormat("🛑 Profit Manager Active: Virtual SL = %.2f %s", InpVirtualSLCurrency, AccountInfoString(ACCOUNT_CURRENCY));
    if(InpMaxMarginPercent > 0) PrintFormat("🛡️ Safety Margin Active: Limit = %.1f%%", InpMaxMarginPercent);
 
+   // Prepare Context Params Struct (v2.16 Refactor)
+   ContextParams ctx_params;
+   ctx_params.path = InpContextPath;
+   ctx_params.show_pivots = InpShowPivots; ctx_params.show_trends = InpShowTrends; ctx_params.max_hist = InpMaxHistoryBars;
+   ctx_params.show_fibo = InpShowFibo; ctx_params.fibo_hist = InpFiboMicroHistory;
+   // Micro
+   ctx_params.m_use = InpUseMicro; ctx_params.m_depth = InpMicroDepth; ctx_params.m_dev = InpMicroDeviation; ctx_params.m_back = InpMicroBackstep;
+   ctx_params.m_style = InpMicroStyle; ctx_params.m_width = InpMicroWidth; ctx_params.m_c1 = InpMicroColorR1; ctx_params.m_c2 = InpMicroColorS1;
+   // Secondary
+   ctx_params.s_use = InpUseSecondary; ctx_params.s_depth = InpSecDepth; ctx_params.s_dev = InpSecDeviation; ctx_params.s_back = InpSecBackstep;
+   ctx_params.s_style = InpSecStyle; ctx_params.s_width = InpSecWidth; ctx_params.s_c1 = InpSecColorR1; ctx_params.s_c2 = InpSecColorS1;
+   // Tertiary
+   ctx_params.t_use = InpUseTertiary; ctx_params.t_depth = InpTerDepth; ctx_params.t_dev = InpTerDeviation; ctx_params.t_back = InpTerBackstep;
+   ctx_params.t_style = InpTerStyle; ctx_params.t_width = InpTerWidth; ctx_params.t_c1 = InpTerColorR1; ctx_params.t_c2 = InpTerColorS1;
+   // Trends
+   ctx_params.tr_fast = InpTrendFastPeriod; ctx_params.tr_slow = InpTrendSlowPeriod; ctx_params.tr_method = InpTrendMethod;
+
    bool init_ok = m_nav_system.Initialize(
        _Symbol, _Period,
        InpIndPath + "Jules_Hybrid_Momentum_Pulse_v1.05", // v2.06: Point to v1.05
@@ -210,13 +227,8 @@ int OnInit()
        InpIndPath + "HybridFlowIndicator_v1.125",
        false, -100, 200, Flow_MFIPeriod, true, Flow_VROCPeriod, 20.0, true,
        Flow_Smooth, Flow_NormLen, Flow_Scale, 3.0,
-       // Context
-       InpContextPath,
-       InpShowPivots, InpShowTrends, InpMaxHistoryBars, InpShowFibo, InpFiboMicroHistory,
-       InpUseMicro, InpMicroDepth, InpMicroDeviation, InpMicroBackstep, InpMicroStyle, InpMicroWidth, InpMicroColorR1, InpMicroColorS1,
-       InpUseSecondary, InpSecDepth, InpSecDeviation, InpSecBackstep, InpSecStyle, InpSecWidth, InpSecColorR1, InpSecColorS1,
-       InpUseTertiary, InpTerDepth, InpTerDeviation, InpTerBackstep, InpTerStyle, InpTerWidth, InpTerColorR1, InpTerColorS1,
-       InpTrendFastPeriod, InpTrendSlowPeriod, InpTrendMethod
+       // Context via Struct
+       ctx_params
    );
 
    if(init_ok) {

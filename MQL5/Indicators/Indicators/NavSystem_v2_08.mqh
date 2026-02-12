@@ -8,6 +8,25 @@
 #property link      "https://github.com/MimicProject"
 #property strict
 
+// Structure to hold Context Indicator Parameters (Refactored to avoid Param Limit)
+struct ContextParams {
+    string path;
+    bool show_pivots;
+    bool show_trends;
+    int max_hist;
+    bool show_fibo;
+    int fibo_hist;
+
+    // Micro
+    bool m_use; int m_depth; int m_dev; int m_back; ENUM_LINE_STYLE m_style; int m_width; color m_c1; color m_c2;
+    // Secondary
+    bool s_use; int s_depth; int s_dev; int s_back; ENUM_LINE_STYLE s_style; int s_width; color s_c1; color s_c2;
+    // Tertiary
+    bool t_use; int t_depth; int t_dev; int t_back; ENUM_LINE_STYLE t_style; int t_width; color t_c1; color t_c2;
+    // Trends
+    int tr_fast; int tr_slow; ENUM_MA_METHOD tr_method;
+};
+
 class CNavSystem
 {
 private:
@@ -103,13 +122,8 @@ public:
        string path_flow,
        bool _f_fixed, double _f_min, double _f_max, int _f_mfi, bool _f_vroc, int _f_vroc_p,
        double _f_thresh, bool _f_approx, int _f_smooth, int _f_norm, double _f_scale_f, double _f_vis,
-       // Context Inputs (v2.16)
-       string path_context,
-       bool c_show_p, bool c_show_t, int c_hist, bool c_fibo, int c_fibo_h,
-       bool c_mic, int c_mic_d, int c_mic_dev, int c_mic_b, ENUM_LINE_STYLE c_mic_st, int c_mic_w, color c_mic_c1, color c_mic_c2,
-       bool c_sec, int c_sec_d, int c_sec_dev, int c_sec_b, ENUM_LINE_STYLE c_sec_st, int c_sec_w, color c_sec_c1, color c_sec_c2,
-       bool c_ter, int c_ter_d, int c_ter_dev, int c_ter_b, ENUM_LINE_STYLE c_ter_st, int c_ter_w, color c_ter_c1, color c_ter_c2,
-       int c_tr_f, int c_tr_s, ENUM_MA_METHOD c_tr_m
+       // Context Inputs via Struct (v2.16 Fix)
+       ContextParams &ctx
    )
    {
        Release();
@@ -156,14 +170,14 @@ public:
 
        m_handle_flow = IndicatorCreate(symbol, period, IND_CUSTOM, 13, flow_params);
 
-       // v2.16: Context Indicator
-       m_handle_context = iCustom(symbol, period, path_context,
-           c_show_p, c_show_t, c_hist,
-           c_fibo, c_fibo_h,
-           c_mic, c_mic_d, c_mic_dev, c_mic_b, c_mic_st, c_mic_w, c_mic_c1, c_mic_c2,
-           c_sec, c_sec_d, c_sec_dev, c_sec_b, c_sec_st, c_sec_w, c_sec_c1, c_sec_c2,
-           c_ter, c_ter_d, c_ter_dev, c_ter_b, c_ter_st, c_ter_w, c_ter_c1, c_ter_c2,
-           c_tr_f, c_tr_s, c_tr_m
+       // v2.16: Context Indicator (Unpacked from Struct)
+       m_handle_context = iCustom(symbol, period, ctx.path,
+           ctx.show_pivots, ctx.show_trends, ctx.max_hist,
+           ctx.show_fibo, ctx.fibo_hist,
+           ctx.m_use, ctx.m_depth, ctx.m_dev, ctx.m_back, ctx.m_style, ctx.m_width, ctx.m_c1, ctx.m_c2,
+           ctx.s_use, ctx.s_depth, ctx.s_dev, ctx.s_back, ctx.s_style, ctx.s_width, ctx.s_c1, ctx.s_c2,
+           ctx.t_use, ctx.t_depth, ctx.t_dev, ctx.t_back, ctx.t_style, ctx.t_width, ctx.t_c1, ctx.t_c2,
+           ctx.tr_fast, ctx.tr_slow, ctx.tr_method
        );
 
        return true;
