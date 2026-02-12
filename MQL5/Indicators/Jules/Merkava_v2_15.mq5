@@ -54,7 +54,8 @@ input int           InpSlippage          = 10;
 input ulong         InpMagicNumber       = 999015; // Updated Magic v2.15
 input double        InpVirtualTPCurrency = 0.0;    // Added: Invisible TP (0.0 = Off)
 input double        InpVirtualSLCurrency = 0.0;    // Added: Invisible SL (0.0 = Off)
-input string        InpComment           = "";     // Default Empty
+input double        InpMaxMarginPercent  = 70.0;   // Added: Safety Margin (Stop Entry)
+input string        InpComment           = "Merkava_v2.15";
 
 // [Hybrid & Flow Settings]
 input int           Hybrid_FastEMA       = 3;
@@ -157,6 +158,7 @@ int OnInit()
 
    if(InpVirtualTPCurrency > 0) PrintFormat("💰 Profit Manager Active: Virtual TP = %.2f %s", InpVirtualTPCurrency, AccountInfoString(ACCOUNT_CURRENCY));
    if(InpVirtualSLCurrency > 0) PrintFormat("🛑 Profit Manager Active: Virtual SL = %.2f %s", InpVirtualSLCurrency, AccountInfoString(ACCOUNT_CURRENCY));
+   if(InpMaxMarginPercent > 0) PrintFormat("🛡️ Safety Margin Active: Limit = %.1f%%", InpMaxMarginPercent);
 
    bool init_ok = m_nav_system.Initialize(
        _Symbol, _Period,
@@ -192,7 +194,7 @@ int OnInit()
    m_panel.Create();
    m_panel.UpdateUI(GetFloatingPL());
 
-   Print("Merkava v2.15 Initialized (Dual Mode + Instant Entry + Split Panel + DirFire + ProfitManager).");
+   Print("Merkava v2.15 Initialized (Dual Mode + Instant Entry + Split Panel + DirFire + ProfitManager + SafetyMargin).");
    return(INIT_SUCCEEDED);
 }
 
@@ -226,6 +228,19 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
        double mindist = m_panel.GetMinDist();
        ENUM_FIRE_MODE mode = m_panel.GetFireMode();
        ENUM_ENTRY_MODE entry = m_panel.GetEntryMode();
+
+       // --- SAFETY MARGIN CHECK ---
+       double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+       double margin = AccountInfoDouble(ACCOUNT_MARGIN);
+       double margin_percent = (equity > 0) ? (margin / equity) * 100.0 : 0.0;
+
+       // Only block FIRE events (Buy, Sell, Both)
+       if (margin_percent > InpMaxMarginPercent && (event == EVENT_FIRE || event == EVENT_FIRE_BUY || event == EVENT_FIRE_SELL)) {
+           PrintFormat("⛔ SAFETY MARGIN LIMIT HIT! Used: %.1f%% > Limit: %.1f%%. Fire BLOCKED.", margin_percent, InpMaxMarginPercent);
+           Alert("⛔ SAFETY MARGIN LIMIT HIT! Used: %.1f%% > Limit: %.1f%%. Fire BLOCKED.");
+           return; // BLOCK EXECUTION
+       }
+       // --------------------------
 
        // Handle Events
        if (event == EVENT_FIRE)

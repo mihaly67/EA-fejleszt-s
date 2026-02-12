@@ -1,63 +1,54 @@
-# Handover Report - 2026.02.11 20:36 - Merkava v2.15
-**Status:** ✅ **v2.15 Implemented & Ready for Testing**
+# Handover Report - 2026.02.12 01:45 - Merkava v2.15 (FINAL)
+**Status:** ✅ **v2.15 Implemented, Tested & Ready**
 **Previous Version:** v2.14 (Directional Attack)
-**Current Version:** v2.15 (UI Update, Stats, Profit Management)
+**Current Version:** v2.15 (UI Update, Stats, Profit Management, Safety Margin)
 
 ## 🏆 Elért Eredmények (v2.15)
-Ebben a session-ben jelentős fejlesztéseket hajtottunk végre a felhasználói felületen és a profit menedzsment logikán.
+Ebben a session-ben jelentős fejlesztéseket hajtottunk végre a felhasználói felületen, a profit menedzsment logikán, és feltártunk egy kritikus bróker-specifikus korlátot.
 
 ### 1. Panel UI Fejlesztések (`PanelControl_v2_15.mqh`)
-*   **Betűméret:** A `FIRE BUY` és `FIRE SELL` gombok betűmérete csökkentve (8pt), hogy a szöveg kiférjen.
-*   **Statisztikák:** A jobb oldali oszlopban, a gombok alatt új statisztikák jelentek meg:
-    *   **P/L (Floating):** Aktuális lebegő nyereség/veszteség.
-    *   **Session P/L:** A munkamenet (EA indulása) óta realizált profit.
-    *   **Total P/L (Hist):** A számlanyitás óta realizált tiszta kereskedési eredmény (befizetések nélkül).
-    *   **Balance / Equity:** Számlaegyenleg és Saját Tőke.
-    *   **Margin Felbontás:**
-        *   `Mrg`: Felhasznált Margin (`ACCOUNT_MARGIN`).
-        *   `Free`: Szabad Margin (`ACCOUNT_MARGIN_FREE`).
-        *   `Lvl`: Margin Szint %.
-*   **Bemeneti Mezők (Inputs):**
-    *   `Virtual TP ($)`: Virtuális célprofit (Pénznemben).
-    *   `Virtual SL ($)`: Virtuális stop loss (Pénznemben).
-    *   A mezők szerkesztésekor az értékek azonnal frissülnek a logikában (`EVENT_TP_SL_UPDATE`).
-*   **Elrendezés:** A panel magassága 500px-re növelve, hogy minden új elem kényelmesen elférjen.
+*   **Statisztikák Bővítése:**
+    *   `Free Margin`: Szabad margin kijelzése.
+    *   `Total P/L (Hist)`: Számlatörténeti tiszta kereskedési profit (befizetések nélkül).
+    *   `Session P/L`: Aktuális munkamenet eredménye.
+*   **Új Funkciók:**
+    *   `Close Profit` Gomb: Azonnal lezár minden profitos pozíciót.
+    *   `Virtual TP ($)` és `Virtual SL ($)` beviteli mezők: Valós idejű módosítással.
+*   **Design:**
+    *   Betűméret csökkentés (8pt) a Fire gomboknál.
+    *   Panel magasság növelése (500px) a statisztikák számára.
 
-### 2. Profit Management (`ProfitManagement_v2_15.mqh`)
+### 2. Profit & Risk Management (`ProfitManagement_v2_15.mqh` & Main EA)
 *   **Virtual TP/SL:**
-    *   A `Check()` metódus minden tick-en ellenőrzi a pozíciókat.
-    *   Ha `Profit >= Virtual TP`, a pozíció zárásra kerül.
-    *   Ha `Profit <= -Virtual SL` (Veszteség), a pozíció zárásra kerül.
-*   **Close Profit Gomb:**
-    *   Új funkció: `CloseAllProfit()`.
-    *   Azonnal (`AsyncMode`) lezár minden olyan pozíciót, ahol a `Net Profit > 0`.
-    *   A gomb a jobb oldali oszlopban, a Fire gombok alatt kapott helyet.
+    *   A rendszer minden tick-en ellenőrzi a pozíciókat.
+    *   Ha `Profit >= Virtual TP` vagy `Profit <= -Virtual SL`, a pozíció zárásra kerül.
+*   **Safety Margin (Biztonsági Korlát):**
+    *   **Új Input:** `InpMaxMarginPercent` (Alapértelmezett: **70.0%**).
+    *   **Logika:** Ha a `Used Margin / Equity` arány eléri a 70%-ot, az EA **letiltja** az új Grid indítását (`Fire` parancsok blokkolva).
+    *   **Ok:** A tesztek során kiderült, hogy egyes brókerek (különösen HUF számlán vagy alacsony tőkeáttételnél) már 50% margin felhasználásnál ("No Money") tiltják a további pozíciókat. Ez a funkció segít elkerülni a "vakrepülést" és a függő megbízások bróker általi törlését.
 
-### 3. Fő Logika (`Merkava_v2_15.mq5`)
-*   **Total P/L Számítás:**
-    *   `CalculateTotalHistoryProfit()`: Lekérdezi a teljes számlatörténetet.
-    *   **Fontos Javítás:** Kiszűri a `DEAL_TYPE_BALANCE` (Befizetés/Kifizetés) és `DEAL_TYPE_CREDIT` tranzakciókat.
-    *   Csak a kereskedési ügyletek (Buy/Sell) `PROFIT + SWAP + COMMISSION` összegét adja vissza. Ez a "valódi" realizált P/L.
-*   **Session P/L:**
-    *   A `g_session_realized_pl` változó gyűjti az EA futása alatt lezárt ügyletek eredményét.
+### 3. Környezeti Stabilitás (`restore_env_TC.py`)
+*   **Javított Szinkronizáció:** A script kiegészült egy `force_git_sync` funkcióval, ami automatikusan érzékeli a sérült `.git` állapotot, és szükség esetén újra inicializálja a repót, biztosítva a tökéletes szinkronizációt a távoli szerverrel.
 
 ## 📦 Fájlok Állapota
-Az alábbi fájlok a `MQL5/Indicators/` könyvtárszerkezetben találhatók (a Sandbox-ban):
+Az alábbi fájlok a `MQL5/Indicators/` könyvtárszerkezetben találhatók:
 
 | Fájl | Leírás |
 | :--- | :--- |
-| `Jules/Merkava_v2_15.mq5` | Fő EA, v2.15 logika, Total P/L javítás. |
-| `Indicators/PanelControl_v2_15.mqh` | Új UI, Stats, Inputs, Close Profit Gomb. |
+| `Jules/Merkava_v2_15.mq5` | Fő EA (Final), Safety Margin (70%), Virtual TP/SL. |
+| `Indicators/PanelControl_v2_15.mqh` | UI, Stats, Close Profit, Inputs. |
 | `Indicators/ProfitManagement_v2_15.mqh` | Virtual TP/SL, Close All Profit logika. |
 | `Indicators/FireControl_v2_15.mqh` | v2.15 Verziókövetés. |
 | `Indicators/Types_v2_15.mqh` | v2.15 Verziókövetés. |
+| `ENVIRONMENT_SETUP/restore_env_TC.py` | Javított, robusztus restore script. |
 
-## 📝 Teendők a Következő Session-ben (Next Steps)
-1.  **Verifikáció:** Ellenőrizni, hogy a `Total P/L` valóban a tiszta kereskedési eredményt mutatja-e (egyezik-e az MT5 History "Total Profit" sorával, nem a Balance-szal).
-2.  **Margin Ellenőrzés:** Meggyőződni róla, hogy a `Mrg` (Used) és `Free` (Free Margin) értékek helyesek és jól láthatók.
-3.  **Tesztelés:**
-    *   Virtual TP/SL működése élesben.
-    *   Close Profit gomb sebessége és pontossága.
-4.  **Finomhangolás:** Ha szükséges, az elrendezés (koordináták) további csiszolása.
+## 📝 Teendők a Következő Session-ben (Next Steps - v2.16)
+A következő fejlesztési ciklus (v2.16) fókuszpontjai már tisztázva vannak:
+1.  **CSV Naplózás Bővítése:**
+    *   +2 oszlop: EMA értékek (Fast/Slow).
+    *   +6 oszlop: Pivot szintek (3 Pivot x Support/Resistance?).
+    *   Összesen 8 új oszlop a `BlackBox` adatsorban.
+2.  **Context Indikátor:**
+    *   Integráció a rendszerbe (részletek a következő sessionben).
 
-Köszönöm a bizalmat! Remek haladást értünk el. Pihenj jól! 🌙
+Köszönöm az együttműködést! A v2.15 stabil és használatra kész.
