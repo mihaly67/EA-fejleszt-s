@@ -4,7 +4,6 @@
 //|                                             For Project Merkava  |
 //|                                                   Version 2.16   |
 //|                    (Context Indicator Integration + CSV Expansion) |
-//|                    (ZigZag Param Fix Confirmed)                    |
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
 #property link      "https://github.com/MimicProject"
