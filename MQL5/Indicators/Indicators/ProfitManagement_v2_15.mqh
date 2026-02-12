@@ -15,8 +15,9 @@
 
 //+------------------------------------------------------------------+
 //| Class CProfitManager                                             |
-//| Handles "Invisible" (Virtual) Take Profit logic.                 |
-//| v2.15: Supports Per-Position Virtual TP in Currency.             |
+//| Handles "Invisible" (Virtual) Take Profit and Stop Loss.         |
+//| v2.15: Supports Per-Position Virtual TP/SL in Currency.          |
+//|        Added CloseAllProfit() for "Close Profit" button.         |
 //+------------------------------------------------------------------+
 class CProfitManager
 {
@@ -26,9 +27,10 @@ private:
    ulong          m_magic;
    string         m_symbol;
    double         m_virtual_tp_currency;
+   double         m_virtual_sl_currency;
 
 public:
-   CProfitManager() { m_trade = NULL; m_position = NULL; m_virtual_tp_currency = 0.0; }
+   CProfitManager() { m_trade = NULL; m_position = NULL; m_virtual_tp_currency = 0.0; m_virtual_sl_currency = 0.0; }
    ~CProfitManager() {}
 
    //+------------------------------------------------------------------+
@@ -53,14 +55,24 @@ public:
    }
 
    //+------------------------------------------------------------------+
+   //| SetVirtualSL                                                     |
+   //| Sets the max loss in currency (0.0 = Disabled).                  |
+   //| Input should be positive (e.g. 50 means stop at -50).            |
+   //+------------------------------------------------------------------+
+   void SetVirtualSL(double sl_currency)
+   {
+      m_virtual_sl_currency = sl_currency;
+   }
+
+   //+------------------------------------------------------------------+
    //| Check                                                            |
-   //| Iterates all positions and closes those hitting the target.      |
+   //| Iterates all positions and closes those hitting TP or SL.        |
    //| Returns: Number of positions closed in this check.               |
    //+------------------------------------------------------------------+
    int Check()
    {
-      if (m_virtual_tp_currency <= 0.001) return 0; // Disabled
       if (m_trade == NULL || m_position == NULL) return 0;
+      if (m_virtual_tp_currency <= 0.001 && m_virtual_sl_currency <= 0.001) return 0; // Both Disabled
 
       int closed_count = 0;
       int total = PositionsTotal();
@@ -68,32 +80,66 @@ public:
       // Iterate backwards to safely close
       for(int i = total - 1; i >= 0; i--)
       {
-         if(m_position.SelectByIndex(i)) // Dot syntax as per environment constraint
+         if(m_position.SelectByIndex(i))
          {
             // Filter by Magic and Symbol
             if(m_position.Magic() == m_magic && m_position.Symbol() == m_symbol)
             {
                double profit = m_position.Profit() + m_position.Swap() + m_position.Commission();
+               ulong ticket = m_position.Ticket();
+               string type = (m_position.PositionType() == POSITION_TYPE_BUY) ? "BUY" : "SELL";
 
-               // Check if Profit >= Target
-               if(profit >= m_virtual_tp_currency)
+               // Check TP
+               if(m_virtual_tp_currency > 0.001 && profit >= m_virtual_tp_currency)
                {
-                  ulong ticket = m_position.Ticket();
-                  string type = (m_position.PositionType() == POSITION_TYPE_BUY) ? "BUY" : "SELL";
-
                   PrintFormat("💰 Virtual TP Hit! Closing #%d (%s) Profit: %.2f >= Target: %.2f",
                               ticket, type, profit, m_virtual_tp_currency);
 
-                  // Close Position
-                  if(m_trade.PositionClose(ticket))
-                  {
-                     closed_count++;
-                     Print("✅ Closed #", ticket);
-                  }
-                  else
-                  {
-                     Print("❌ Failed to close #", ticket, " Error: ", GetLastError());
-                  }
+                  if(m_trade.PositionClose(ticket)) closed_count++;
+                  continue; // Next position
+               }
+
+               // Check SL (Loss is negative profit)
+               // e.g. Profit -60 <= -50 (SL) -> TRUE
+               if(m_virtual_sl_currency > 0.001 && profit <= -m_virtual_sl_currency)
+               {
+                  PrintFormat("🛑 Virtual SL Hit! Closing #%d (%s) Profit: %.2f <= Stop: -%.2f",
+                              ticket, type, profit, m_virtual_sl_currency);
+
+                  if(m_trade.PositionClose(ticket)) closed_count++;
+                  continue;
+               }
+            }
+         }
+      }
+      return closed_count;
+   }
+
+   //+------------------------------------------------------------------+
+   //| CloseAllProfit                                                   |
+   //| Closes ALL positions that are currently in net profit (>0).      |
+   //| Used by the "Close Profit" button.                               |
+   //+------------------------------------------------------------------+
+   int CloseAllProfit()
+   {
+      if (m_trade == NULL || m_position == NULL) return 0;
+
+      int closed_count = 0;
+      int total = PositionsTotal();
+
+      for(int i = total - 1; i >= 0; i--)
+      {
+         if(m_position.SelectByIndex(i))
+         {
+            if(m_position.Magic() == m_magic && m_position.Symbol() == m_symbol)
+            {
+               double profit = m_position.Profit() + m_position.Swap() + m_position.Commission();
+
+               if(profit > 0.0) // Strictly profitable
+               {
+                  ulong ticket = m_position.Ticket();
+                  PrintFormat("💸 Closing Profitable Position #%d Profit: %.2f", ticket, profit);
+                  if(m_trade.PositionClose(ticket)) closed_count++;
                }
             }
          }
