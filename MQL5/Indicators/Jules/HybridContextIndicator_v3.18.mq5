@@ -2,6 +2,7 @@
 //|                                    HybridContextIndicator_v3.18.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
 //|      Verzió: 3.18 (Self-Contained ZigZag Logic - No iCustom)      |
+//|                  (Visualization Fix: SOLID Lines, Hidden Buffers) |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
@@ -12,57 +13,63 @@
 #property indicator_buffers 11
 #property indicator_plots   11
 
-//--- 1. MICRO PIVOT (ZigZag Fast) - DOT
-#property indicator_label1  "Micro Pivot P (Hidden)"
+//--- 1. MICRO PIVOT (ZigZag Fast) - P (Hidden)
+#property indicator_label1  "Micro Pivot P"
 #property indicator_type1   DRAW_NONE
-#property indicator_style1  STYLE_DOT
+#property indicator_style1  STYLE_SOLID
 #property indicator_color1  clrNONE
 #property indicator_width1  1
 
+//--- 1. MICRO PIVOT (ZigZag Fast) - R1
 #property indicator_label2  "Micro Pivot R1"
 #property indicator_type2   DRAW_LINE
-#property indicator_style2  STYLE_DOT
+#property indicator_style2  STYLE_SOLID
 #property indicator_color2  clrRed
 #property indicator_width2  1
 
+//--- 1. MICRO PIVOT (ZigZag Fast) - S1
 #property indicator_label3  "Micro Pivot S1"
 #property indicator_type3   DRAW_LINE
-#property indicator_style3  STYLE_DOT
+#property indicator_style3  STYLE_SOLID
 #property indicator_color3  clrGreen
 #property indicator_width3  1
 
-//--- 2. SECONDARY PIVOT (ZigZag Slow) - DASHDOT
-#property indicator_label4  "Secondary Pivot P (Hidden)"
+//--- 2. SECONDARY PIVOT (ZigZag Slow) - P (Hidden)
+#property indicator_label4  "Secondary Pivot P"
 #property indicator_type4   DRAW_NONE
-#property indicator_style4  STYLE_DASHDOT
+#property indicator_style4  STYLE_SOLID
 #property indicator_color4  clrNONE
 #property indicator_width4  1
 
+//--- 2. SECONDARY PIVOT (ZigZag Slow) - R1
 #property indicator_label5  "Secondary Pivot R1"
 #property indicator_type5   DRAW_LINE
-#property indicator_style5  STYLE_DASHDOT
+#property indicator_style5  STYLE_SOLID
 #property indicator_color5  clrRed
 #property indicator_width5  1
 
+//--- 2. SECONDARY PIVOT (ZigZag Slow) - S1
 #property indicator_label6  "Secondary Pivot S1"
 #property indicator_type6   DRAW_LINE
-#property indicator_style6  STYLE_DASHDOT
+#property indicator_style6  STYLE_SOLID
 #property indicator_color6  clrGreen
 #property indicator_width6  1
 
-//--- 3. TERTIARY PIVOT (ZigZag Trend) - SOLID
-#property indicator_label7  "Tertiary Pivot P (Hidden)"
+//--- 3. TERTIARY PIVOT (ZigZag Trend) - P (Hidden)
+#property indicator_label7  "Tertiary Pivot P"
 #property indicator_type7   DRAW_NONE
 #property indicator_style7  STYLE_SOLID
 #property indicator_color7  clrNONE
 #property indicator_width7  1
 
+//--- 3. TERTIARY PIVOT (ZigZag Trend) - R1
 #property indicator_label8  "Tertiary Pivot R1"
 #property indicator_type8   DRAW_LINE
 #property indicator_style8  STYLE_SOLID
 #property indicator_color8  clrRed
 #property indicator_width8  1
 
+//--- 3. TERTIARY PIVOT (ZigZag Trend) - S1
 #property indicator_label9  "Tertiary Pivot S1"
 #property indicator_type9   DRAW_LINE
 #property indicator_style9  STYLE_SOLID
@@ -102,7 +109,7 @@ input bool               InpUseMicro           = true; // Toggle Micro Pivot
 input int                InpMicroDepth         = 3;    // Default: 3 (Very Sensitive)
 input int                InpMicroDeviation     = 5;    // Price Change Threshold
 input int                InpMicroBackstep      = 3;    // Min bars between peaks
-input ENUM_LINE_STYLE    InpMicroStyle         = STYLE_DOT;
+input ENUM_LINE_STYLE    InpMicroStyle         = STYLE_SOLID; // Changed to SOLID
 input int                InpMicroWidth         = 1;
 input color              InpMicroColorR1       = clrRed;
 input color              InpMicroColorS1       = clrGreen;
@@ -113,7 +120,7 @@ input int                InpSecDepth           = 10;   // Default: 10 (Medium Te
 input int                InpSecDeviation       = 10;   // Higher deviation = Larger swings
 input int                InpSecBackstep        = 5;
 input ENUM_LINE_STYLE    InpSecStyle           = STYLE_DASHDOT;
-input int                InpSecWidth           = 1; // Corrected: Must be 1 for non-solid styles in MT5
+input int                InpSecWidth           = 1;
 input color              InpSecColorR1         = clrRed;
 input color              InpSecColorS1         = clrGreen;
 
@@ -322,58 +329,58 @@ int OnInit()
    SetIndexBuffer(1, MicroR1, INDICATOR_DATA);
    SetIndexBuffer(2, MicroS1, INDICATOR_DATA);
 
-   // Apply Inputs
-   PlotIndexSetInteger(0, PLOT_LINE_STYLE, InpMicroStyle);
-   PlotIndexSetInteger(0, PLOT_LINE_WIDTH, InpMicroWidth);
-   PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, EMPTY_VALUE);
+   // Apply Inputs - Force DRAW_NONE for P buffers explicitly
+   PlotIndexSetInteger(0, PLOT_DRAW_TYPE, DRAW_NONE);
+   PlotIndexSetInteger(0, PLOT_SHOW_DATA, false); // Hide from Data Window too
+   PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, 0.0); // Reset Empty
 
    PlotIndexSetInteger(1, PLOT_LINE_STYLE, InpMicroStyle);
    PlotIndexSetInteger(1, PLOT_LINE_WIDTH, InpMicroWidth);
    PlotIndexSetInteger(1, PLOT_LINE_COLOR, InpMicroColorR1);
-   PlotIndexSetDouble(1, PLOT_EMPTY_VALUE, EMPTY_VALUE);
+   PlotIndexSetDouble(1, PLOT_EMPTY_VALUE, 0.0);
 
    PlotIndexSetInteger(2, PLOT_LINE_STYLE, InpMicroStyle);
    PlotIndexSetInteger(2, PLOT_LINE_WIDTH, InpMicroWidth);
    PlotIndexSetInteger(2, PLOT_LINE_COLOR, InpMicroColorS1);
-   PlotIndexSetDouble(2, PLOT_EMPTY_VALUE, EMPTY_VALUE);
+   PlotIndexSetDouble(2, PLOT_EMPTY_VALUE, 0.0);
 
    // 2. Secondary
    SetIndexBuffer(3, SecP, INDICATOR_DATA);
    SetIndexBuffer(4, SecR1, INDICATOR_DATA);
    SetIndexBuffer(5, SecS1, INDICATOR_DATA);
 
-   PlotIndexSetInteger(3, PLOT_LINE_STYLE, InpSecStyle);
-   PlotIndexSetInteger(3, PLOT_LINE_WIDTH, InpSecWidth);
-   PlotIndexSetDouble(3, PLOT_EMPTY_VALUE, EMPTY_VALUE);
+   PlotIndexSetInteger(3, PLOT_DRAW_TYPE, DRAW_NONE);
+   PlotIndexSetInteger(3, PLOT_SHOW_DATA, false);
+   PlotIndexSetDouble(3, PLOT_EMPTY_VALUE, 0.0);
 
    PlotIndexSetInteger(4, PLOT_LINE_STYLE, InpSecStyle);
    PlotIndexSetInteger(4, PLOT_LINE_WIDTH, InpSecWidth);
    PlotIndexSetInteger(4, PLOT_LINE_COLOR, InpSecColorR1);
-   PlotIndexSetDouble(4, PLOT_EMPTY_VALUE, EMPTY_VALUE);
+   PlotIndexSetDouble(4, PLOT_EMPTY_VALUE, 0.0);
 
    PlotIndexSetInteger(5, PLOT_LINE_STYLE, InpSecStyle);
    PlotIndexSetInteger(5, PLOT_LINE_WIDTH, InpSecWidth);
    PlotIndexSetInteger(5, PLOT_LINE_COLOR, InpSecColorS1);
-   PlotIndexSetDouble(5, PLOT_EMPTY_VALUE, EMPTY_VALUE);
+   PlotIndexSetDouble(5, PLOT_EMPTY_VALUE, 0.0);
 
    // 3. Tertiary
    SetIndexBuffer(6, TerP, INDICATOR_DATA);
    SetIndexBuffer(7, TerR1, INDICATOR_DATA);
    SetIndexBuffer(8, TerS1, INDICATOR_DATA);
 
-   PlotIndexSetInteger(6, PLOT_LINE_STYLE, InpTerStyle);
-   PlotIndexSetInteger(6, PLOT_LINE_WIDTH, InpTerWidth);
-   PlotIndexSetDouble(6, PLOT_EMPTY_VALUE, EMPTY_VALUE);
+   PlotIndexSetInteger(6, PLOT_DRAW_TYPE, DRAW_NONE);
+   PlotIndexSetInteger(6, PLOT_SHOW_DATA, false);
+   PlotIndexSetDouble(6, PLOT_EMPTY_VALUE, 0.0);
 
    PlotIndexSetInteger(7, PLOT_LINE_STYLE, InpTerStyle);
    PlotIndexSetInteger(7, PLOT_LINE_WIDTH, InpTerWidth);
    PlotIndexSetInteger(7, PLOT_LINE_COLOR, InpTerColorR1);
-   PlotIndexSetDouble(7, PLOT_EMPTY_VALUE, EMPTY_VALUE);
+   PlotIndexSetDouble(7, PLOT_EMPTY_VALUE, 0.0);
 
    PlotIndexSetInteger(8, PLOT_LINE_STYLE, InpTerStyle);
    PlotIndexSetInteger(8, PLOT_LINE_WIDTH, InpTerWidth);
    PlotIndexSetInteger(8, PLOT_LINE_COLOR, InpTerColorS1);
-   PlotIndexSetDouble(8, PLOT_EMPTY_VALUE, EMPTY_VALUE);
+   PlotIndexSetDouble(8, PLOT_EMPTY_VALUE, 0.0);
 
    // 4. Trends
    SetIndexBuffer(9, TrendFast, INDICATOR_DATA);
@@ -685,7 +692,7 @@ int OnCalculate(const int rates_total,
              limit_S = curr_s;
 
          } else {
-             MicroR1[i] = EMPTY_VALUE; MicroS1[i] = EMPTY_VALUE; MicroP[i] = EMPTY_VALUE;
+             MicroR1[i] = 0.0; MicroS1[i] = 0.0; MicroP[i] = 0.0;
          }
 
          // 2. SECONDARY
@@ -717,7 +724,7 @@ int OnCalculate(const int rates_total,
              limit_S = curr_s;
 
          } else {
-             SecR1[i] = EMPTY_VALUE; SecS1[i] = EMPTY_VALUE; SecP[i] = EMPTY_VALUE;
+             SecR1[i] = 0.0; SecS1[i] = 0.0; SecP[i] = 0.0;
          }
 
          // 3. TERTIARY
@@ -742,7 +749,7 @@ int OnCalculate(const int rates_total,
              TerR1[i] = curr_r; TerS1[i] = curr_s; TerP[i] = (curr_r + curr_s + close[i])/3.0;
 
          } else {
-             TerR1[i] = EMPTY_VALUE; TerS1[i] = EMPTY_VALUE; TerP[i] = EMPTY_VALUE;
+             TerR1[i] = 0.0; TerS1[i] = 0.0; TerP[i] = 0.0;
          }
       }
    }
