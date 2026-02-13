@@ -72,7 +72,7 @@ input int           Flow_NormLen         = 100;
 input double        Flow_Scale           = 50.0;
 
 // [Context Indicator Settings]
-input group         "=== Context Indicator Settings ==="
+// Removed 'input group' to prevent parameter shifts
 input string        InpContextPath       = "Jules\\HybridContextIndicator_v3.17";
 input bool          InpShowPivots        = true;
 input bool          InpShowTrends        = true;
