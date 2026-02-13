@@ -81,27 +81,27 @@ input bool          InpShowFibo          = false; // CSV Excluded
 input int           InpFiboMicroHistory  = 0;
 
 input bool          InpUseMicro          = true;
-input int           InpMicroDepth        = 3;
-input int           InpMicroDeviation    = 5;
-input int           InpMicroBackstep     = 3;
+input int           InpMicroDepth        = 3;    // Default: 3
+input int           InpMicroDeviation    = 5;    // Default: 5
+input int           InpMicroBackstep     = 3;    // Default: 3
 input ENUM_LINE_STYLE InpMicroStyle      = STYLE_DOT;
 input int           InpMicroWidth        = 1;
 input color         InpMicroColorR1      = clrRed;
 input color         InpMicroColorS1      = clrGreen;
 
 input bool          InpUseSecondary      = true;
-input int           InpSecDepth          = 10;
-input int           InpSecDeviation      = 10;
-input int           InpSecBackstep       = 5;
+input int           InpSecDepth          = 10;   // Default: 10
+input int           InpSecDeviation      = 10;   // Default: 10
+input int           InpSecBackstep       = 5;    // Default: 5
 input ENUM_LINE_STYLE InpSecStyle        = STYLE_DASHDOT;
 input int           InpSecWidth          = 1;
 input color         InpSecColorR1        = clrRed;
 input color         InpSecColorS1        = clrGreen;
 
 input bool          InpUseTertiary       = true;
-input int           InpTerDepth          = 20;
-input int           InpTerDeviation      = 10;
-input int           InpTerBackstep       = 5;
+input int           InpTerDepth          = 20;   // Default: 20
+input int           InpTerDeviation      = 10;   // Default: 10
+input int           InpTerBackstep       = 5;    // Default: 5
 input ENUM_LINE_STYLE InpTerStyle        = STYLE_SOLID;
 input int           InpTerWidth          = 1;
 input color         InpTerColorR1        = clrRed;

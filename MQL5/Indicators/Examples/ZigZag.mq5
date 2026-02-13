@@ -135,6 +135,7 @@ int OnCalculate(const int rates_total,
            {
             for(back=1; back<=InpBackstep; back++)
               {
+               if(shift-back < 0) continue; // Safety Check
                res=LowMapBuffer[shift-back];
                if((res!=0) && (res>val))
                   LowMapBuffer[shift-back]=0.0;
@@ -158,6 +159,7 @@ int OnCalculate(const int rates_total,
            {
             for(back=1; back<=InpBackstep; back++)
               {
+               if(shift-back < 0) continue; // Safety Check
                res=HighMapBuffer[shift-back];
                if((res!=0) && (res<val))
                   HighMapBuffer[shift-back]=0.0;
