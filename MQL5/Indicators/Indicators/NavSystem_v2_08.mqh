@@ -171,6 +171,15 @@ public:
        m_handle_flow = IndicatorCreate(symbol, period, IND_CUSTOM, 13, flow_params);
 
        // v2.16: Context Indicator (Unpacked from Struct)
+       // v2.16: DEBUG - Log Context Params
+       PrintFormat("NavSystem Debug: Launching Context Ind: %s", ctx.path);
+       PrintFormat("   Micro: Use=%s D=%d Dev=%d B=%d ColorR=%d ColorS=%d",
+           (string)ctx.m_use, ctx.m_depth, ctx.m_dev, ctx.m_back, (int)ctx.m_c1, (int)ctx.m_c2);
+       PrintFormat("   Sec:   Use=%s D=%d Dev=%d B=%d ColorR=%d ColorS=%d",
+           (string)ctx.s_use, ctx.s_depth, ctx.s_dev, ctx.s_back, (int)ctx.s_c1, (int)ctx.s_c2);
+       PrintFormat("   Ter:   Use=%s D=%d Dev=%d B=%d ColorR=%d ColorS=%d",
+           (string)ctx.t_use, ctx.t_depth, ctx.t_dev, ctx.t_back, (int)ctx.t_c1, (int)ctx.t_c2);
+
        m_handle_context = iCustom(symbol, period, ctx.path,
            ctx.show_pivots, ctx.show_trends, ctx.max_hist,
            ctx.show_fibo, ctx.fibo_hist,
@@ -179,6 +188,11 @@ public:
            ctx.t_use, ctx.t_depth, ctx.t_dev, ctx.t_back, ctx.t_style, ctx.t_width, ctx.t_c1, ctx.t_c2,
            ctx.tr_fast, ctx.tr_slow, ctx.tr_method
        );
+
+       if(m_handle_context == INVALID_HANDLE) {
+           Print("NavSystem Error: Failed to create Context Handle! Error: ", GetLastError());
+           return false;
+       }
 
        return true;
    }
