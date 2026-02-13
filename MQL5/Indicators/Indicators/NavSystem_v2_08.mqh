@@ -182,7 +182,7 @@ public:
 
        m_handle_context = iCustom(symbol, period, ctx.path,
            ctx.show_pivots, ctx.show_trends, ctx.max_hist,
-           ctx.show_fibo, ctx.fibo_hist,
+           false, 0, // Fibo Forced OFF
            ctx.m_use, ctx.m_depth, ctx.m_dev, ctx.m_back, ctx.m_style, ctx.m_width, ctx.m_c1, ctx.m_c2,
            ctx.s_use, ctx.s_depth, ctx.s_dev, ctx.s_back, ctx.s_style, ctx.s_width, ctx.s_c1, ctx.s_c2,
            ctx.t_use, ctx.t_depth, ctx.t_dev, ctx.t_back, ctx.t_style, ctx.t_width, ctx.t_c1, ctx.t_c2,
