@@ -2,92 +2,73 @@
 //|                                    HybridContextIndicator_v3.18.mq5 |
 //|                     Copyright 2024, Gemini & User Collaboration |
 //|      Verzió: 3.18 (Self-Contained ZigZag Logic - No iCustom)      |
-//|                  (Visualization Fix: SOLID Lines, Hidden Buffers) |
+//|                  (Vis Fix: P-Buffers are CALCULATIONS Only)       |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, Gemini & User Collaboration"
 #property link      "https://www.mql5.com"
 #property version   "3.18"
 
 #property indicator_chart_window
-// 3 Tiers * 3 Lines = 9 Buffers + 2 Trends = 11 Buffers
+// 11 Buffers Total: 0=P(Calc), 1=R, 2=S, 3=P(Calc), 4=R, 5=S, 6=P(Calc), 7=R, 8=S, 9=TrF, 10=TrS
 #property indicator_buffers 11
-#property indicator_plots   11
+// Only 8 Visible Plots (R, S for 3 tiers + 2 Trends). P buffers are hidden calculations.
+#property indicator_plots   8
 
-//--- 1. MICRO PIVOT (ZigZag Fast) - P (Hidden)
-#property indicator_label1  "Micro Pivot P"
-#property indicator_type1   DRAW_NONE
+//--- VISIBLE PLOT 1: Micro R1 (Buffer 1)
+#property indicator_label1  "Micro Pivot R1"
+#property indicator_type1   DRAW_LINE
 #property indicator_style1  STYLE_SOLID
-#property indicator_color1  clrNONE
+#property indicator_color1  clrRed
 #property indicator_width1  1
 
-//--- 1. MICRO PIVOT (ZigZag Fast) - R1
-#property indicator_label2  "Micro Pivot R1"
+//--- VISIBLE PLOT 2: Micro S1 (Buffer 2)
+#property indicator_label2  "Micro Pivot S1"
 #property indicator_type2   DRAW_LINE
 #property indicator_style2  STYLE_SOLID
-#property indicator_color2  clrRed
+#property indicator_color2  clrGreen
 #property indicator_width2  1
 
-//--- 1. MICRO PIVOT (ZigZag Fast) - S1
-#property indicator_label3  "Micro Pivot S1"
+//--- VISIBLE PLOT 3: Secondary R1 (Buffer 4)
+#property indicator_label3  "Secondary Pivot R1"
 #property indicator_type3   DRAW_LINE
 #property indicator_style3  STYLE_SOLID
-#property indicator_color3  clrGreen
+#property indicator_color3  clrRed
 #property indicator_width3  1
 
-//--- 2. SECONDARY PIVOT (ZigZag Slow) - P (Hidden)
-#property indicator_label4  "Secondary Pivot P"
-#property indicator_type4   DRAW_NONE
+//--- VISIBLE PLOT 4: Secondary S1 (Buffer 5)
+#property indicator_label4  "Secondary Pivot S1"
+#property indicator_type4   DRAW_LINE
 #property indicator_style4  STYLE_SOLID
-#property indicator_color4  clrNONE
+#property indicator_color4  clrGreen
 #property indicator_width4  1
 
-//--- 2. SECONDARY PIVOT (ZigZag Slow) - R1
-#property indicator_label5  "Secondary Pivot R1"
+//--- VISIBLE PLOT 5: Tertiary R1 (Buffer 7)
+#property indicator_label5  "Tertiary Pivot R1"
 #property indicator_type5   DRAW_LINE
 #property indicator_style5  STYLE_SOLID
 #property indicator_color5  clrRed
 #property indicator_width5  1
 
-//--- 2. SECONDARY PIVOT (ZigZag Slow) - S1
-#property indicator_label6  "Secondary Pivot S1"
+//--- VISIBLE PLOT 6: Tertiary S1 (Buffer 8)
+#property indicator_label6  "Tertiary Pivot S1"
 #property indicator_type6   DRAW_LINE
 #property indicator_style6  STYLE_SOLID
 #property indicator_color6  clrGreen
 #property indicator_width6  1
 
-//--- 3. TERTIARY PIVOT (ZigZag Trend) - P (Hidden)
-#property indicator_label7  "Tertiary Pivot P"
-#property indicator_type7   DRAW_NONE
+//--- VISIBLE PLOT 7: Trend EMA Fast (Buffer 9)
+#property indicator_label7  "Trend EMA Fast"
+#property indicator_type7   DRAW_LINE
 #property indicator_style7  STYLE_SOLID
-#property indicator_color7  clrNONE
+#property indicator_color7  clrOrange
 #property indicator_width7  1
 
-//--- 3. TERTIARY PIVOT (ZigZag Trend) - R1
-#property indicator_label8  "Tertiary Pivot R1"
+//--- VISIBLE PLOT 8: Trend EMA Slow (Buffer 10)
+#property indicator_label8  "Trend EMA Slow"
 #property indicator_type8   DRAW_LINE
 #property indicator_style8  STYLE_SOLID
-#property indicator_color8  clrRed
+#property indicator_color8  clrDarkTurquoise
 #property indicator_width8  1
-
-//--- 3. TERTIARY PIVOT (ZigZag Trend) - S1
-#property indicator_label9  "Tertiary Pivot S1"
-#property indicator_type9   DRAW_LINE
-#property indicator_style9  STYLE_SOLID
-#property indicator_color9  clrGreen
-#property indicator_width9  1
-
-//--- 4. TRENDS
-#property indicator_label10 "Trend EMA Fast"
-#property indicator_type10  DRAW_LINE
-#property indicator_style10 STYLE_SOLID
-#property indicator_color10 clrOrange
-#property indicator_width10 1
-
-#property indicator_label11 "Trend EMA Slow"
-#property indicator_type11  DRAW_LINE
-#property indicator_style11 STYLE_SOLID
-#property indicator_color11 clrDarkTurquoise
-#property indicator_width11 1
 
 //--- Input Parameters
 input group              "=== Global Switches ==="
@@ -99,17 +80,12 @@ input group              "=== Auto Fibo Settings ==="
 input bool               InpShowFibo           = false; // Master Fibo Switch (Micro Only)
 input int                InpFiboMicroHistory   = 0;     // History Steps (0=Current Swing, 1=Prev, etc.)
 
-// Explanation of ZigZag Parameters:
-// Depth: Sensitivity (Min bars to search). Lower = Faster/Noisier. Higher = Slower/Smoother.
-// Deviation: Noise Filter (Min points price change to form new leg). Crucial for vertical separation in cascading logic.
-// Backstep: Bar Filter (Min bars between High/Low). Prevents "cluster" pivots.
-
 input group              "=== Micro ZigZag (Fast) Settings ==="
 input bool               InpUseMicro           = true; // Toggle Micro Pivot
 input int                InpMicroDepth         = 3;    // Default: 3 (Very Sensitive)
 input int                InpMicroDeviation     = 5;    // Price Change Threshold
 input int                InpMicroBackstep      = 3;    // Min bars between peaks
-input ENUM_LINE_STYLE    InpMicroStyle         = STYLE_SOLID; // Changed to SOLID
+input ENUM_LINE_STYLE    InpMicroStyle         = STYLE_SOLID;
 input int                InpMicroWidth         = 1;
 input color              InpMicroColorR1       = clrRed;
 input color              InpMicroColorS1       = clrGreen;
@@ -155,7 +131,6 @@ double      MicroLine[], SecLine[], TerLine[];
 
 
 //--- Global Handles
-// ZigZag handles removed in v3.18
 int         ema_fast_handle = INVALID_HANDLE;
 int         ema_slow_handle = INVALID_HANDLE;
 
@@ -325,69 +300,73 @@ CZigZagEngine terZigZag;
 int OnInit()
 {
    // 1. Micro
-   SetIndexBuffer(0, MicroP, INDICATOR_DATA);
+   // Buffer 0 = P (Calculations Only - HIDDEN FROM CHART)
+   SetIndexBuffer(0, MicroP, INDICATOR_CALCULATIONS);
+
+   // Buffer 1 = R (Data - Visible)
    SetIndexBuffer(1, MicroR1, INDICATOR_DATA);
+   PlotIndexSetInteger(0, PLOT_LINE_STYLE, InpMicroStyle); // Plot Index 0 maps to Buffer 1 (First Data Buffer)
+   PlotIndexSetInteger(0, PLOT_LINE_WIDTH, InpMicroWidth);
+   PlotIndexSetInteger(0, PLOT_LINE_COLOR, InpMicroColorR1);
+   PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, 0.0);
+
+   // Buffer 2 = S (Data - Visible)
    SetIndexBuffer(2, MicroS1, INDICATOR_DATA);
-
-   // Apply Inputs - Force DRAW_NONE for P buffers explicitly
-   PlotIndexSetInteger(0, PLOT_DRAW_TYPE, DRAW_NONE);
-   PlotIndexSetInteger(0, PLOT_SHOW_DATA, false); // Hide from Data Window too
-   PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, 0.0); // Reset Empty
-
-   PlotIndexSetInteger(1, PLOT_LINE_STYLE, InpMicroStyle);
+   PlotIndexSetInteger(1, PLOT_LINE_STYLE, InpMicroStyle); // Plot Index 1 maps to Buffer 2
    PlotIndexSetInteger(1, PLOT_LINE_WIDTH, InpMicroWidth);
-   PlotIndexSetInteger(1, PLOT_LINE_COLOR, InpMicroColorR1);
+   PlotIndexSetInteger(1, PLOT_LINE_COLOR, InpMicroColorS1);
    PlotIndexSetDouble(1, PLOT_EMPTY_VALUE, 0.0);
 
-   PlotIndexSetInteger(2, PLOT_LINE_STYLE, InpMicroStyle);
-   PlotIndexSetInteger(2, PLOT_LINE_WIDTH, InpMicroWidth);
-   PlotIndexSetInteger(2, PLOT_LINE_COLOR, InpMicroColorS1);
+   // 2. Secondary
+   // Buffer 3 = P (Calc)
+   SetIndexBuffer(3, SecP, INDICATOR_CALCULATIONS);
+
+   // Buffer 4 = R
+   SetIndexBuffer(4, SecR1, INDICATOR_DATA);
+   PlotIndexSetInteger(2, PLOT_LINE_STYLE, InpSecStyle);
+   PlotIndexSetInteger(2, PLOT_LINE_WIDTH, InpSecWidth);
+   PlotIndexSetInteger(2, PLOT_LINE_COLOR, InpSecColorR1);
    PlotIndexSetDouble(2, PLOT_EMPTY_VALUE, 0.0);
 
-   // 2. Secondary
-   SetIndexBuffer(3, SecP, INDICATOR_DATA);
-   SetIndexBuffer(4, SecR1, INDICATOR_DATA);
+   // Buffer 5 = S
    SetIndexBuffer(5, SecS1, INDICATOR_DATA);
-
-   PlotIndexSetInteger(3, PLOT_DRAW_TYPE, DRAW_NONE);
-   PlotIndexSetInteger(3, PLOT_SHOW_DATA, false);
+   PlotIndexSetInteger(3, PLOT_LINE_STYLE, InpSecStyle);
+   PlotIndexSetInteger(3, PLOT_LINE_WIDTH, InpSecWidth);
+   PlotIndexSetInteger(3, PLOT_LINE_COLOR, InpSecColorS1);
    PlotIndexSetDouble(3, PLOT_EMPTY_VALUE, 0.0);
 
-   PlotIndexSetInteger(4, PLOT_LINE_STYLE, InpSecStyle);
-   PlotIndexSetInteger(4, PLOT_LINE_WIDTH, InpSecWidth);
-   PlotIndexSetInteger(4, PLOT_LINE_COLOR, InpSecColorR1);
+   // 3. Tertiary
+   // Buffer 6 = P (Calc)
+   SetIndexBuffer(6, TerP, INDICATOR_CALCULATIONS);
+
+   // Buffer 7 = R
+   SetIndexBuffer(7, TerR1, INDICATOR_DATA);
+   PlotIndexSetInteger(4, PLOT_LINE_STYLE, InpTerStyle);
+   PlotIndexSetInteger(4, PLOT_LINE_WIDTH, InpTerWidth);
+   PlotIndexSetInteger(4, PLOT_LINE_COLOR, InpTerColorR1);
    PlotIndexSetDouble(4, PLOT_EMPTY_VALUE, 0.0);
 
-   PlotIndexSetInteger(5, PLOT_LINE_STYLE, InpSecStyle);
-   PlotIndexSetInteger(5, PLOT_LINE_WIDTH, InpSecWidth);
-   PlotIndexSetInteger(5, PLOT_LINE_COLOR, InpSecColorS1);
+   // Buffer 8 = S
+   SetIndexBuffer(8, TerS1, INDICATOR_DATA);
+   PlotIndexSetInteger(5, PLOT_LINE_STYLE, InpTerStyle);
+   PlotIndexSetInteger(5, PLOT_LINE_WIDTH, InpTerWidth);
+   PlotIndexSetInteger(5, PLOT_LINE_COLOR, InpTerColorS1);
    PlotIndexSetDouble(5, PLOT_EMPTY_VALUE, 0.0);
 
-   // 3. Tertiary
-   SetIndexBuffer(6, TerP, INDICATOR_DATA);
-   SetIndexBuffer(7, TerR1, INDICATOR_DATA);
-   SetIndexBuffer(8, TerS1, INDICATOR_DATA);
-
-   PlotIndexSetInteger(6, PLOT_DRAW_TYPE, DRAW_NONE);
-   PlotIndexSetInteger(6, PLOT_SHOW_DATA, false);
-   PlotIndexSetDouble(6, PLOT_EMPTY_VALUE, 0.0);
-
-   PlotIndexSetInteger(7, PLOT_LINE_STYLE, InpTerStyle);
-   PlotIndexSetInteger(7, PLOT_LINE_WIDTH, InpTerWidth);
-   PlotIndexSetInteger(7, PLOT_LINE_COLOR, InpTerColorR1);
-   PlotIndexSetDouble(7, PLOT_EMPTY_VALUE, 0.0);
-
-   PlotIndexSetInteger(8, PLOT_LINE_STYLE, InpTerStyle);
-   PlotIndexSetInteger(8, PLOT_LINE_WIDTH, InpTerWidth);
-   PlotIndexSetInteger(8, PLOT_LINE_COLOR, InpTerColorS1);
-   PlotIndexSetDouble(8, PLOT_EMPTY_VALUE, 0.0);
-
    // 4. Trends
+   // Buffer 9 = Fast
    SetIndexBuffer(9, TrendFast, INDICATOR_DATA);
-   SetIndexBuffer(10, TrendSlow, INDICATOR_DATA);
+   PlotIndexSetInteger(6, PLOT_LINE_STYLE, STYLE_SOLID);
+   PlotIndexSetInteger(6, PLOT_LINE_WIDTH, 1);
+   PlotIndexSetInteger(6, PLOT_LINE_COLOR, clrOrange);
+   PlotIndexSetDouble(6, PLOT_EMPTY_VALUE, EMPTY_VALUE); // Trends might need EMPTY
 
-   PlotIndexSetDouble(9, PLOT_EMPTY_VALUE, EMPTY_VALUE);
-   PlotIndexSetDouble(10, PLOT_EMPTY_VALUE, EMPTY_VALUE);
+   // Buffer 10 = Slow
+   SetIndexBuffer(10, TrendSlow, INDICATOR_DATA);
+   PlotIndexSetInteger(7, PLOT_LINE_STYLE, STYLE_SOLID);
+   PlotIndexSetInteger(7, PLOT_LINE_WIDTH, 1);
+   PlotIndexSetInteger(7, PLOT_LINE_COLOR, clrDarkTurquoise);
+   PlotIndexSetDouble(7, PLOT_EMPTY_VALUE, EMPTY_VALUE);
 
    IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Context v3.18");
 
