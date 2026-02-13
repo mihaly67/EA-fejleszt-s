@@ -24,3 +24,4 @@ Mivel a verziókövető rendszer (git) szinkronizációja megszakadt, végrehajt
 A `HANDOVER/Merkava_v2_16_Source.zip` fájl tartalmazza a teljes, működő forráskódot. Ezt kicsomagolva és a terminálba másolva a rendszer azonnal használható.
 
 **Kérem, a következő indítás előtt törölje a felesleges git ágakat (cleanup), hogy elkerüljük az újabb szétcsúszást!**
+A zavar miatt a backupból nem sikerült a fájlokat az mql5 mappába áthelyezni. A tesztelés nem történt meg a fenti állitások hogy minden rendben nem állják meg helyüket . Első feladat a BACKUP_V2_16 mappából az MQL5 mappába másolni a fájlokat a megfelelő helyűkre, hogy a felhasználó ellenőrizni tudja zigzag megjelenését.. A githzb repoból minden ág törölve, mind beküldve mainbe.
