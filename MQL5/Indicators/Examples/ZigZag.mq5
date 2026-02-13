@@ -102,6 +102,8 @@ int OnCalculate(const int rates_total,
         }
      }
 //--- 1. searching for high and low
+   if (rates_total-limit-1 < 0) limit = rates_total - 1; // Safety Check
+
    for(i=rates_total-limit-1; i<rates_total; i++)
      {
       if(i<InpDepth)
@@ -110,6 +112,7 @@ int OnCalculate(const int rates_total,
          LowBuffer[i]=0.0;
          continue;
         }
+      if(i >= rates_total) break; // Safety Check
       //---
       double max_val=high[ArrayMaximum(high,i-InpDepth+1,InpDepth)];
       double min_val=low[ArrayMinimum(low,i-InpDepth+1,InpDepth)];
@@ -125,8 +128,11 @@ int OnCalculate(const int rates_total,
          LowBuffer[i]=0.0;
      }
 //--- 2. searching for main points
+   if (rates_total-limit < 0) limit = rates_total; // Safety Check
+
    for(i=rates_total-limit; i<rates_total; i++)
      {
+      if (i >= rates_total) break; // Safety Check
       //--- high
       if(HighBuffer[i]!=0.0)
         {
