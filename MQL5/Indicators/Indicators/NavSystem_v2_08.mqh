@@ -171,7 +171,6 @@ public:
        m_handle_flow = IndicatorCreate(symbol, period, IND_CUSTOM, 13, flow_params);
 
        // v2.16: Context Indicator (Unpacked from Struct)
-       ResetLastError();
        m_handle_context = iCustom(symbol, period, ctx.path,
            ctx.show_pivots, ctx.show_trends, ctx.max_hist,
            ctx.show_fibo, ctx.fibo_hist,
@@ -181,12 +180,6 @@ public:
            ctx.tr_fast, ctx.tr_slow, ctx.tr_method
        );
 
-       if(m_handle_context == INVALID_HANDLE) {
-           PrintFormat("❌ NavSystem: Failed to load Context Indicator '%s'. Error: %d", ctx.path, GetLastError());
-       } else {
-           PrintFormat("✅ NavSystem: Context Indicator Loaded Successfully (Handle: %d)", m_handle_context);
-       }
-
        return true;
    }
 
@@ -194,17 +187,7 @@ public:
    {
        if(m_handle_hybrid_macd != INVALID_HANDLE) ChartIndicatorAdd(chart_id, 1, m_handle_hybrid_macd);
        if(m_handle_flow != INVALID_HANDLE) ChartIndicatorAdd(chart_id, 2, m_handle_flow);
-
-       if(m_handle_context != INVALID_HANDLE) {
-           ResetLastError();
-           if(!ChartIndicatorAdd(chart_id, 0, m_handle_context)) { // Main Window
-               PrintFormat("❌ NavSystem: Failed to Attach Context Indicator to Chart %d. Error: %d", chart_id, GetLastError());
-           } else {
-               Print("✅ NavSystem: Context Indicator Attached to Chart.");
-           }
-       } else {
-           Print("⚠️ NavSystem: Cannot attach Context Indicator (Invalid Handle).");
-       }
+       if(m_handle_context != INVALID_HANDLE) ChartIndicatorAdd(chart_id, 0, m_handle_context); // Main Window
    }
 
    void Refresh(string symbol, MqlTick& latest_tick)
