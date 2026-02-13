@@ -77,8 +77,7 @@ input string        InpContextPath       = "Jules\\HybridContextIndicator_v3.17"
 input bool          InpShowPivots        = true;
 input bool          InpShowTrends        = true;
 input int           InpMaxHistoryBars    = 50000;
-input bool          InpShowFibo          = false; // CSV Excluded
-input int           InpFiboMicroHistory  = 0;
+// Fibo Removed as per request
 
 input bool          InpUseMicro          = true;
 input int           InpMicroDepth        = 3;    // Default: 3
@@ -204,7 +203,7 @@ int OnInit()
    ContextParams ctx_params;
    ctx_params.path = InpContextPath;
    ctx_params.show_pivots = InpShowPivots; ctx_params.show_trends = InpShowTrends; ctx_params.max_hist = InpMaxHistoryBars;
-   ctx_params.show_fibo = InpShowFibo; ctx_params.fibo_hist = InpFiboMicroHistory;
+   ctx_params.show_fibo = false; ctx_params.fibo_hist = 0; // Forced OFF
    // Micro
    ctx_params.m_use = InpUseMicro; ctx_params.m_depth = InpMicroDepth; ctx_params.m_dev = InpMicroDeviation; ctx_params.m_back = InpMicroBackstep;
    ctx_params.m_style = InpMicroStyle; ctx_params.m_width = InpMicroWidth; ctx_params.m_c1 = InpMicroColorR1; ctx_params.m_c2 = InpMicroColorS1;
