@@ -341,9 +341,9 @@ void OnTick()
        b_o = rates[0].open; b_h = rates[0].high; b_l = rates[0].low; b_c = rates[0].close;
    }
 
-   double total_lots = 0;
+   double total_lots = 0; // FIXED: Declared variable
    string lot_dir = GetNetLotDirection(total_lots);
-   string verdict = DetermineVerdict(p.velocity, float_pl);
+   string verdict = DetermineVerdict(p.velocity, float_pl); // FIXED: p.velocity
 
    if (g_transaction_buffer == "") g_transaction_buffer = "NONE";
    if (g_decision_log != "") g_transaction_buffer += "|" + g_decision_log;
