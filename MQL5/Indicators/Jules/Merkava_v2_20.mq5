@@ -385,10 +385,11 @@ void OnTick()
    m_nav_system.Refresh(_Symbol, tick);
 
    g_debug_counter++;
-   if(g_debug_counter % 20 == 0) {
-       PrintFormat("TEST TICK (v2.20): Hist=%.2f, MACD=%.2f, Sig=%.2f",
-                   m_nav_system.GetTestHist(), m_nav_system.GetTestMACD(), m_nav_system.GetTestSignal());
-   }
+   // Debug Log Disabled for Production
+   // if(g_debug_counter % 200 == 0) {
+   //    PrintFormat("TEST TICK (v2.20): Hist=%.2f, MACD=%.2f, Sig=%.2f",
+   //                m_nav_system.GetTestHist(), m_nav_system.GetTestMACD(), m_nav_system.GetTestSignal());
+   // }
 
    CheckForNewDeals();
 
