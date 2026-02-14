@@ -305,6 +305,76 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
    m_panel.UpdateUI(GetFloatingPL());
 }
 
+// --- Restored Helper Functions ---
+
+string GetNetLotDirection(double &total_lots) {
+    double net = 0.0; total_lots = 0.0;
+    for(int i=PositionsTotal()-1; i>=0; i--) {
+       if(m_position.SelectByIndex(i) && m_position.Magic()==InpMagicNumber) {
+           total_lots += m_position.Volume();
+           if(m_position.PositionType()==POSITION_TYPE_BUY) net+=m_position.Volume(); else net-=m_position.Volume();
+       }
+    }
+    if(net > 0.001) return "BUY";
+    if(net < -0.001) return "SELL";
+    if(PositionsTotal() > 0) return "NEUTRAL";
+    return "NONE";
+}
+
+string DetermineVerdict(double v, double pl) {
+    if(pl < -50.0 && v > 20.0) return "CRASH_RISK";
+    if(pl > 10.0) return "WINNING";
+    if(pl < -10.0) return "PRESSURE";
+    return "STABLE";
+}
+
+string GetSLTPSnapshot() {
+    string s = ""; int c = 0;
+    for(int i=PositionsTotal()-1; i>=0; i--) {
+       if(m_position.SelectByIndex(i) && m_position.Magic()==InpMagicNumber) {
+           if(c > 0) s += "|";
+           string t = (m_position.PositionType()==POSITION_TYPE_BUY) ? "B" : "S";
+           s += t + ":" + DoubleToString(m_position.StopLoss(),_Digits) + "/" + DoubleToString(m_position.TakeProfit(),_Digits);
+           c++; if(c>=3) { s+="|..."; break; }
+       }
+    }
+    return (s=="") ? "NONE" : s;
+}
+
+void CheckForNewDeals()
+{
+    if(!HistorySelect(TimeCurrent() - 600, TimeCurrent() + 10)) return;
+    int total = HistoryDealsTotal();
+
+    for(int i=0; i<total; i++) {
+        ulong ticket = HistoryDealGetTicket(i);
+        long deal_time = HistoryDealGetInteger(ticket, DEAL_TIME_MSC);
+
+        if (deal_time > g_last_deal_time_msc || (deal_time == g_last_deal_time_msc && ticket > g_last_deal_ticket)) {
+            g_last_deal_time_msc = deal_time;
+            g_last_deal_ticket = ticket;
+
+            long entry = HistoryDealGetInteger(ticket, DEAL_ENTRY);
+            long type = HistoryDealGetInteger(ticket, DEAL_TYPE);
+            double vol = HistoryDealGetDouble(ticket, DEAL_VOLUME);
+            double profit = HistoryDealGetDouble(ticket, DEAL_PROFIT);
+
+            string type_str = (type == DEAL_TYPE_BUY) ? "BUY" : "SELL";
+            string info = "T#" + IntegerToString(ticket);
+
+            if (entry == DEAL_ENTRY_IN) {
+                if(g_transaction_buffer!="") g_transaction_buffer+="|";
+                g_transaction_buffer += info + ":OPEN:" + type_str + ":" + DoubleToString(vol,2);
+            } else if (entry == DEAL_ENTRY_OUT || entry == DEAL_ENTRY_OUT_BY) {
+                if(g_transaction_buffer!="") g_transaction_buffer+="|";
+                g_transaction_buffer += info + ":CLOSE:" + type_str + ":PL=" + DoubleToString(profit,2);
+                g_last_realized_pl += profit;
+                g_session_realized_pl += profit;
+            }
+        }
+    }
+}
+
 void OnTick()
 {
    MqlTick tick;
@@ -341,9 +411,9 @@ void OnTick()
        b_o = rates[0].open; b_h = rates[0].high; b_l = rates[0].low; b_c = rates[0].close;
    }
 
-   double total_lots = 0; // FIXED: Declared variable
+   double total_lots = 0; // Fixed Declaration
    string lot_dir = GetNetLotDirection(total_lots);
-   string verdict = DetermineVerdict(p.velocity, float_pl); // FIXED: p.velocity
+   string verdict = DetermineVerdict(p.velocity, float_pl);
 
    if (g_transaction_buffer == "") g_transaction_buffer = "NONE";
    if (g_decision_log != "") g_transaction_buffer += "|" + g_decision_log;
