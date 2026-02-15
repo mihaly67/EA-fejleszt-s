@@ -46,7 +46,13 @@ class DeepResearcher:
     def _call_kutato_search(self, query, scope):
         """Invokes kutato.py via subprocess to ensure clean environment/imports."""
         try:
-            cmd = [sys.executable, "kutato.py", query, "--scope", scope, "--json"]
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            script_path = os.path.join(script_dir, "kutato.py")
+            if not os.path.exists(script_path):
+                 if os.path.exists("KUTATO_FEJLESZTES/kutato.py"): script_path = "KUTATO_FEJLESZTES/kutato.py"
+                 elif os.path.exists("kutato.py"): script_path = "kutato.py"
+
+            cmd = [sys.executable, script_path, query, "--scope", scope, "--json"]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
 
             if result.returncode != 0:
