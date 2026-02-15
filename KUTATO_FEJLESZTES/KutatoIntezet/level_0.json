@@ -84,71 +84,111 @@
   ],
   "next_jobs": [
     {
-      "query": "test",
+      "query": "settings.json",
       "origin_doc": "hummingbot-master/CURSOR_VSCODE_SETUP.md"
     },
     {
-      "query": "hummingbot",
+      "query": "PYTHONPATH",
       "origin_doc": "hummingbot-master/CURSOR_VSCODE_SETUP.md"
     },
     {
-      "query": "Hummingbot",
+      "query": "test_create_command.py",
       "origin_doc": "hummingbot-master/CURSOR_VSCODE_SETUP.md"
-    },
-    {
-      "query": "Decimal",
-      "origin_doc": "hummingbot-master/test/mock/mock_asset_price_delegate.py"
     },
     {
       "query": "mock_price",
       "origin_doc": "hummingbot-master/test/mock/mock_asset_price_delegate.py"
     },
     {
-      "query": "hummingbot",
+      "query": "ExchangeBase",
       "origin_doc": "hummingbot-master/test/mock/mock_asset_price_delegate.py"
     },
     {
-      "query": "component",
+      "query": "self._mock_price",
+      "origin_doc": "hummingbot-master/test/mock/mock_asset_price_delegate.py"
+    },
+    {
+      "query": "IsolatedAsyncioWrapperTestCase",
       "origin_doc": "hummingbot-master/test/hummingbot/strategy_v2/test_runnable_base.py"
     },
     {
-      "query": "RunnableStatus",
+      "query": "LoggerMixinForTest",
       "origin_doc": "hummingbot-master/test/hummingbot/strategy_v2/test_runnable_base.py"
     },
     {
-      "query": "async",
+      "query": "RunnableBase",
       "origin_doc": "hummingbot-master/test/hummingbot/strategy_v2/test_runnable_base.py"
     },
     {
-      "query": "component",
+      "query": "event_tag",
       "origin_doc": "hummingbot-master/test/hummingbot/strategy_v2/executors/test_executor_base.py"
     },
     {
-      "query": "Decimal",
+      "query": "MagicMock",
       "origin_doc": "hummingbot-master/test/hummingbot/strategy_v2/executors/test_executor_base.py"
     },
     {
-      "query": "market",
+      "query": "self.assertEqual",
       "origin_doc": "hummingbot-master/test/hummingbot/strategy_v2/executors/test_executor_base.py"
     },
     {
-      "query": "Decimal",
+      "query": "self.assertEqual",
       "origin_doc": "hummingbot-master/test/hummingbot/strategy_v2/executors/test_executor_orchestrator.py"
     },
     {
-      "query": "orchestrator",
+      "query": "MagicMock",
       "origin_doc": "hummingbot-master/test/hummingbot/strategy_v2/executors/test_executor_orchestrator.py"
     },
     {
-      "query": "assertEqual",
+      "query": "TradeType.BUY",
       "origin_doc": "hummingbot-master/test/hummingbot/strategy_v2/executors/test_executor_orchestrator.py"
     },
     {
-      "query": "000000",
+      "query": "cell_type",
       "origin_doc": "?"
     },
     {
-      "query": "metadata",
+      "query": "4898.000000",
+      "origin_doc": "?"
+    },
+    {
+      "query": "1599.000000",
+      "origin_doc": "?"
+    },
+    {
+      "query": "window_size",
+      "origin_doc": "?"
+    },
+    {
+      "query": "n_runs",
+      "origin_doc": "?"
+    },
+    {
+      "query": "n_white",
+      "origin_doc": "?"
+    },
+    {
+      "query": "X_ref",
+      "origin_doc": "?"
+    },
+    {
+      "query": "arxiv.org",
+      "origin_doc": "?"
+    },
+    {
+      "query": "X_test",
+      "origin_doc": "?"
+    },
+    {
+      "query": "window_size",
+      "origin_doc": "?"
+    },
+    {
+      "query": "n_runs",
+      "origin_doc": "?"
+    },
+    {
+      "query": "n_white",
       "origin_doc": "?"
     },
     {
@@ -156,51 +196,11 @@
       "origin_doc": "?"
     },
     {
-      "query": "drift",
+      "query": "4898.000000",
       "origin_doc": "?"
     },
     {
-      "query": "data",
-      "origin_doc": "?"
-    },
-    {
-      "query": "time",
-      "origin_doc": "?"
-    },
-    {
-      "query": "mathbf",
-      "origin_doc": "?"
-    },
-    {
-      "query": "drift",
-      "origin_doc": "?"
-    },
-    {
-      "query": "data",
-      "origin_doc": "?"
-    },
-    {
-      "query": "drift",
-      "origin_doc": "?"
-    },
-    {
-      "query": "data",
-      "origin_doc": "?"
-    },
-    {
-      "query": "time",
-      "origin_doc": "?"
-    },
-    {
-      "query": "000000",
-      "origin_doc": "?"
-    },
-    {
-      "query": "metadata",
-      "origin_doc": "?"
-    },
-    {
-      "query": "cell_type",
+      "query": "1599.000000",
       "origin_doc": "?"
     }
   ]
