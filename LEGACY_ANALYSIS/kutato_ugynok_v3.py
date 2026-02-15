@@ -1,23 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# Version: 2.3 (Cleaned Imports)
 import sys
 import json
 import argparse
 import re
 import os
-# Fix import error by not importing missing constants or defining them here if needed
-# But for now, just import the class
-from kutato import RAGSearcher
+import subprocess
 
 # --- CONFIGURATION ---
 DEFAULT_DEPTH = 3
 TOP_K_PER_QUERY = 5
-VALID_SCOPES = ['MQL5_DEV', 'THEORY', 'CODE']
+VALID_SCOPES = ['MQL5_DEV', 'THEORY', 'CODE', 'COLUMBO', 'THIEFS']
 
 class DeepResearcher:
     def __init__(self, depth=DEFAULT_DEPTH, allowed_scopes=None):
         self.depth = depth
-        self.searcher = RAGSearcher()
         self.knowledge_base = {} # Deduplicated by content hash
         self.visited_queries = set()
         self.allowed_scopes = allowed_scopes if allowed_scopes else VALID_SCOPES
@@ -29,11 +27,9 @@ class DeepResearcher:
         """Simple heuristic to find related technical terms for deeper search."""
         queries = []
 
-        # --- DOM / OrderBook Heuristics ---
         if "MarketBook" in text or "OrderBook" in text:
             queries.append("MQL5 MarketBookGet implementation")
             queries.append("MQL5 OnBookEvent handling")
-            queries.append("Depth of Market visualization MQL5")
 
         if "Level 2" in text or "L2" in text:
              queries.append("MQL5 Level 2 data handling")
@@ -41,15 +37,26 @@ class DeepResearcher:
         if "DoEasy" in text:
             queries.append("DoEasy library DOM implementation")
 
-        if "synthetic" in text or "simulation" in text:
-            queries.append("Generate synthetic ticks from DOM MQL5")
-
-        # --- GUI / PANEL Heuristics ---
         derived = re.findall(r'class\s+(\w+)\s*:\s*public\s+(CAppDialog|CWnd|CButton|CEdit|CLabel)', text)
         for d in derived:
              queries.append(f"MQL5 {d[0]} class implementation")
 
         return list(set(queries))
+
+    def _call_kutato_search(self, query, scope):
+        """Invokes kutato.py via subprocess to ensure clean environment/imports."""
+        try:
+            cmd = [sys.executable, "kutato.py", query, "--scope", scope, "--json"]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+
+            if result.returncode != 0:
+                print(f"   ❌ Error calling kutato.py ({scope}): {result.stderr}")
+                return []
+
+            return json.loads(result.stdout)
+        except Exception as e:
+            print(f"   ❌ Exception invoking kutato.py ({scope}): {e}")
+            return []
 
     def search_recursive(self, queries, current_depth):
         if current_depth > self.depth:
@@ -68,14 +75,13 @@ class DeepResearcher:
 
             for scope in self.allowed_scopes:
                 try:
-                    results = self.searcher.search(query, scope=scope)
+                    results = self._call_kutato_search(query, scope)
 
                     if results:
                         for res in results:
                             doc_hash = self._hash_doc(res)
                             if doc_hash not in self.knowledge_base:
                                 self.knowledge_base[doc_hash] = res
-                                # Tag the source scope for reporting
                                 res['source_scope'] = scope
 
                                 if current_depth < self.depth:
@@ -88,7 +94,6 @@ class DeepResearcher:
                     print(f"   ❌ Error searching '{query}' in {scope}: {e}")
 
         if next_level_queries:
-            # Filter and limit
             next_level_queries = list(set(next_level_queries))
             next_level_queries = next_level_queries[:5]
             self.search_recursive(next_level_queries, current_depth + 1)
@@ -103,7 +108,6 @@ class DeepResearcher:
         print(f"🔬 RESEARCH REPORT (Total Unique Documents: {len(self.knowledge_base)})")
         print("="*80)
 
-        # Sort by scope, then score
         sorted_docs = sorted(self.knowledge_base.values(), key=lambda x: (x.get('source_scope', ''), x.get('score', 0)), reverse=True)
 
         for i, doc in enumerate(sorted_docs):
@@ -121,10 +125,9 @@ def main():
     parser = argparse.ArgumentParser(description="Deep Recursive RAG Agent")
     parser.add_argument('queries', nargs='+', help='Initial search queries')
     parser.add_argument('--depth', type=int, default=DEFAULT_DEPTH, help='Recursion depth')
-    parser.add_argument('--scope', type=str, help='Limit search to specific scope (MQL5_DEV, THEORY, CODE)')
+    parser.add_argument('--scope', type=str, help='Limit search to specific scope')
     args = parser.parse_args()
 
-    # Split multi-query string
     queries = []
     for q in args.queries:
         if ';' in q:
