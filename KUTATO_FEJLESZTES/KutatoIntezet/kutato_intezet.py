@@ -14,28 +14,56 @@ import time
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 KUTATO_SCRIPT = os.path.abspath(os.path.join(BASE_DIR, "..", "kutato.py"))
 
-STOP_WORDS = {"the", "and", "is", "of", "to", "in", "a", "for", "with", "on", "as", "by", "at", "an", "be", "this", "that", "from", "or", "are", "it", "not", "but", "can", "if", "will", "has", "have", "which", "was", "were", "we", "you", "they", "he", "she", "import", "class", "def", "return", "self", "none", "true", "false", "var", "let", "const", "function"}
+STOP_WORDS = {
+    "the", "and", "is", "of", "to", "in", "a", "for", "with", "on", "as", "by", "at", "an", "be", "this", "that",
+    "from", "or", "are", "it", "not", "but", "can", "if", "will", "has", "have", "which", "was", "were", "we",
+    "you", "they", "he", "she", "import", "class", "def", "return", "self", "none", "true", "false", "var",
+    "let", "const", "function", "test", "data", "code", "file", "your", "branch", "repo", "git", "main", "master",
+    "http", "https", "com", "org", "net", "www", "html", "xml", "json", "yaml", "yml", "md", "txt", "value", "result"
+}
 
 def extract_keywords(text, limit=3):
     """Kinyeri a kulcsszavakat a szövegből (technikai kifejezések)."""
     candidates = []
-    words = re.findall(r'\b[a-zA-Z0-9_]+\b', text)
+    # Find words, allowing dots for filenames/objects
+    words = re.findall(r'\b[a-zA-Z0-9_.]+\b', text)
 
     for w in words:
-        w_lower = w.lower()
-        if w_lower in STOP_WORDS or len(w) < 4: continue
+        w_clean = w.strip(".,")
+        w_lower = w_clean.lower()
 
-        is_snake = '_' in w
-        is_camel = re.match(r'[A-Z][a-z]+[A-Z]', w)
-        is_caps = w.isupper() and len(w) > 2
+        # Strict filtering
+        if w_lower in STOP_WORDS or len(w_clean) < 5: continue
+        if w_clean.isdigit(): continue # Skip pure numbers
 
-        if is_snake or is_camel or is_caps:
-            candidates.append(w)
-        elif w_lower not in STOP_WORDS:
-            candidates.append(w)
+        # Heuristics for "Strong" technical terms
+        is_snake = '_' in w_clean
+        is_camel = re.match(r'^[A-Z][a-z]+[A-Z]', w_clean) or re.match(r'^[a-z]+[A-Z]', w_clean) # CamelCase or camelCase
+        is_caps = w_clean.isupper() and len(w_clean) > 3
+        is_dot_access = '.' in w_clean and not w_clean.startswith('.') # e.g. self.component
 
+        if is_snake or is_camel or is_caps or is_dot_access:
+            # Normalize to avoid duplicates like "Hummingbot" and "hummingbot" -> prefer original if Camel, else lower
+            candidates.append(w_clean)
+
+    # Deduplicate while preserving case preference (most frequent form wins)
     counts = Counter(candidates)
-    return [item[0] for item in counts.most_common(limit)]
+
+    # Post-process: Remove duplicates that differ only by case (e.g. "Token" vs "token")
+    # Keep the most frequent casing
+    final_candidates = {}
+    for word, count in counts.most_common():
+        lower = word.lower()
+        if lower not in final_candidates:
+            final_candidates[lower] = (word, count)
+        else:
+            # Add count to existing
+            existing_word, existing_count = final_candidates[lower]
+            final_candidates[lower] = (existing_word, existing_count + count)
+
+    # Sort by count descending
+    sorted_items = sorted(final_candidates.values(), key=lambda x: x[1], reverse=True)
+    return [item[0] for item in sorted_items[:limit]]
 
 def call_kutato(query, scope):
     """Hívja a kutato.py-t egy adott query-re és scope-ra."""
