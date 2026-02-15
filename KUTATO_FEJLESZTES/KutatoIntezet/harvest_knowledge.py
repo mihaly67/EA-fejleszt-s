@@ -10,14 +10,27 @@ def clean_text(text):
     return text.replace('\r', '')
 
 def extract_code_blocks(content):
-    """Extracts content between ``` markers."""
-    pattern = r"```(?:\w+)?\n(.*?)```"
-    matches = re.findall(pattern, content, re.DOTALL)
-    return [m.strip() for m in matches if len(m.strip()) > 20] # Filter tiny blocks
+    """Extracts content between ``` markers OR MQL5/C++ style blocks."""
+    # Markdown blocks
+    pattern_md = r"```(?:\w+)?\n(.*?)```"
+    matches = re.findall(pattern_md, content, re.DOTALL)
+
+    # RAG chunks might lack markdown but contain raw code.
+    # Look for { ... } blocks with typical C++/MQL syntax if no markdown found
+    if not matches and ("{" in content and "}" in content):
+        # Very naive block extractor for C-like languages
+        # Finds largest bracketed block? No, just treat whole chunk as potential code
+        # if it looks very code-heavy (lots of semicolons and braces)
+        semicolons = content.count(';')
+        braces = content.count('{')
+        if semicolons > 5 and braces > 2:
+            matches.append(content)
+
+    return [m.strip() for m in matches if len(m.strip()) > 20]
 
 def is_highly_technical(content):
     """Simple heuristic to detect if a text block is worth saving."""
-    keywords = ["class ", "def ", "function ", "import ", "struct ", "void ", "#include"]
+    keywords = ["class ", "def ", "function ", "import ", "struct ", "void ", "#include", "input ", "double ", "int ", "bool ", "string "]
     return any(k in content for k in keywords)
 
 def harvest(json_files, output_file):

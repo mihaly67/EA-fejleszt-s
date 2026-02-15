@@ -63,12 +63,6 @@ ENVIRONMENT_RESOURCES = {
         "extract_to": "rag_mql5_dev",
         "check_file": "MQL5_DEV_knowledgebase.db"
     },
-    "GITHUB_CODEBASE_OLD": {
-        "id": "1P_7FFJ2fIlAUJ45HofNJlFO5D1TaW908",
-        "file": "codebase.zip",
-        "extract_to": "github_codebase",
-        "check_file": "knowledge_base_github.jsonl"
-    },
     "THIEFS_LIBRARY": {
         "id": "1shtt-Q_O5nqg59jyHgRpg-Dc_8I7LxuU",
         "file": "knowledge_base_thiefs_library.zip",
@@ -82,10 +76,6 @@ ENVIRONMENT_RESOURCES = {
         "check_file": "knowledge_base_columbo.jsonl"
     }
 }
-
-# Helyi Zip a Beépített Könyvtárakhoz
-METATRADER_LIBS_ZIP = "Metatrader _beépitett_könyvtárak.zip"
-METATRADER_JSONL_OUT = os.path.join("Knowledge_Base", "knowledge_base_mt_libs.jsonl")
 
 def log(msg, color=Fore.GREEN):
     print(f"{color}{msg}{Style.RESET_ALL}")
@@ -204,42 +194,6 @@ def process_resource(key, config):
             if os.path.exists(zip_name):
                 os.remove(zip_name) # Zip törlése helytakarékosság miatt
 
-def process_mt_libs():
-    print(f"\n🔧 Feldolgozás: METATRADER_LIBS...")
-    if not os.path.exists(METATRADER_LIBS_ZIP):
-        log(f"   ⚠️ {METATRADER_LIBS_ZIP} hiányzik.", Fore.YELLOW)
-        return
-
-    if os.path.exists(METATRADER_JSONL_OUT):
-         log("   ✅ MT Libs JSONL létezik.", Fore.GREEN)
-         return
-
-    log("   🔨 MT Libs JSONL újraépítése...", Fore.CYAN)
-    temp_dir = "temp_mt"
-    os.makedirs(temp_dir, exist_ok=True)
-    try:
-        with zipfile.ZipFile(METATRADER_LIBS_ZIP, 'r') as z:
-            z.extractall(temp_dir)
-
-        os.makedirs(os.path.dirname(METATRADER_JSONL_OUT), exist_ok=True)
-        with open(METATRADER_JSONL_OUT, 'w', encoding='utf-8') as f:
-            for root, _, files in os.walk(temp_dir):
-                for name in files:
-                    if name.endswith(('.mq5', '.mqh')):
-                        path = os.path.join(root, name)
-                        try:
-                            with open(path, 'r', errors='ignore') as rf:
-                                content = rf.read()
-                            f.write(json.dumps({
-                                "filename": f"MT_LIB/{name}",
-                                "code": content,
-                                "source": "MT5_Standard"
-                            }) + "\n")
-                        except: pass
-        log("   ✅ MT Libs Újraépítve.", Fore.GREEN)
-    finally:
-        shutil.rmtree(temp_dir)
-
 def force_git_sync():
     """Erőltetett Git Szinkronizáció (Hard Reset)."""
     repo_url = "https://github.com/mihaly67/EA-fejleszt-s.git"
@@ -303,7 +257,7 @@ def run_kutato_test(scope, query):
         return False
 
 def main():
-    print(f"{Fore.CYAN}=== 🚀 RESTORE ENV TC 2 (101% HARCKÉSZÜLTSÉG - 2026.02.13) ==={Style.RESET_ALL}")
+    print(f"{Fore.CYAN}=== 🚀 RESTORE ENV TC 2 (101% HARCKÉSZÜLTSÉG - RAG UPGRADE) ==={Style.RESET_ALL}")
 
     # 1. Git Sync
     force_git_sync()
@@ -312,10 +266,7 @@ def main():
     for key, config in ENVIRONMENT_RESOURCES.items():
         process_resource(key, config)
 
-    # 3. MT Libs
-    process_mt_libs()
-
-    # 4. .gitignore frissítése
+    # 3. .gitignore frissítése
     print("\n📝 .gitignore frissítése...")
     ignores = set()
     if os.path.exists(".gitignore"):
@@ -324,7 +275,8 @@ def main():
 
     new_ignores = {
         "__pycache__/", "*.zip", "github_codebase/", "Knowledge_Base/*.jsonl",
-        "rag_theory/", "rag_code/", "rag_mql5_dev/", "temp_mt/"
+        "rag_theory/", "rag_code/", "rag_mql5_dev/", "temp_mt/", "KUTATO_FEJLESZTES/KutatoIntezet/*.json",
+        "ANALYSIS_INPUT/RAG_SAMPLE/"
     }
 
     if not new_ignores.issubset(ignores):
@@ -334,7 +286,7 @@ def main():
                 f.write(f"{i}\n")
         log("   ✅ .gitignore frissítve.")
 
-    # 5. Végső Tesztek (Kutató Modul)
+    # 4. Végső Tesztek (Kutató Modul)
     print(f"\n{Fore.CYAN}--- RENDSZER TESZTELÉSE (KUTATÓ MODUL) ---{Style.RESET_ALL}")
 
     tests_passed = True
@@ -347,9 +299,6 @@ def main():
 
     # CODE Teszt
     if not run_kutato_test("CODE", "OnCalculate"): tests_passed = False
-
-    # Indicator Layering (Kihagyva, ahogy kérted)
-    # if not run_kutato_test("LAYERING", "context"): tests_passed = False
 
     if tests_passed:
         print(f"\n{Fore.GREEN}✅ MINDEN RENDSZER ZÖLD. INDULHAT A BEVETÉS.{Style.RESET_ALL}")

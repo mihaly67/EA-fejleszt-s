@@ -14,6 +14,16 @@ import time
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 KUTATO_SCRIPT = os.path.abspath(os.path.join(BASE_DIR, "..", "kutato.py"))
 
+# Dynamically import RAG Adapter if available
+sys.path.append(BASE_DIR)
+try:
+    from rag_adapter import RAGAdapter
+    rag_engine = RAGAdapter()
+    RAG_AVAILABLE = True
+except Exception as e:
+    print(f"RAG Adapter not loaded: {e}")
+    RAG_AVAILABLE = False
+
 STOP_WORDS = {
     "the", "and", "is", "of", "to", "in", "a", "for", "with", "on", "as", "by", "at", "an", "be", "this", "that",
     "from", "or", "are", "it", "not", "but", "can", "if", "will", "has", "have", "which", "was", "were", "we",
@@ -66,7 +76,16 @@ def extract_keywords(text, limit=3):
     return [item[0] for item in sorted_items[:limit]]
 
 def call_kutato(query, scope):
-    """Hívja a kutato.py-t egy adott query-re és scope-ra."""
+    """Hívja a kutato.py-t (JSONL) vagy a rag_adapter-t (RAG) scope alapján."""
+
+    # RAG Handling
+    if scope in ['MQL5_DEV', 'THEORY', 'CODE']:
+        if RAG_AVAILABLE:
+            return rag_engine.search_full(query, scope, top_k=5)
+        else:
+            return []
+
+    # JSONL Handling (subprocess)
     try:
         cmd = [sys.executable, KUTATO_SCRIPT, query, "--scope", scope, "--json"]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -75,7 +94,7 @@ def call_kutato(query, scope):
     except: return []
 
 class ResearchLevel:
-    def __init__(self, level_id, input_jobs, output_file, scopes=['THIEFS', 'COLUMBO']):
+    def __init__(self, level_id, input_jobs, output_file, scopes=['THIEFS', 'COLUMBO', 'MQL5_DEV']):
         self.level_id = level_id
         self.input_jobs = input_jobs # List of {query, origin_doc}
         self.output_file = output_file
