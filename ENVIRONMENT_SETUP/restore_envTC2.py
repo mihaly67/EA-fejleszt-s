@@ -273,12 +273,18 @@ def force_git_sync():
 def run_kutato_test(scope, query):
     """Kutató modul tesztelése."""
     print(f"   🔍 Teszt Keresés: {scope} (Query: '{query}')")
-    if not os.path.exists("kutato.py"):
-        log("   ⚠️ kutato.py nem található! Teszt kihagyva.", Fore.YELLOW)
-        return True # Nem hiba, ha nincs meg a modul
+
+    script_path = "KUTATO_FEJLESZTES/kutato.py"
+    if not os.path.exists(script_path):
+        # Fallback if in root
+        if os.path.exists("kutato.py"):
+            script_path = "kutato.py"
+        else:
+            log(f"   ⚠️ {script_path} nem található! Teszt kihagyva.", Fore.YELLOW)
+            return True
 
     try:
-        cmd = [sys.executable, "kutato.py", query, "--scope", scope, "--json"]
+        cmd = [sys.executable, script_path, query, "--scope", scope, "--json"]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
 
         if result.returncode != 0:
