@@ -243,8 +243,8 @@ int OnInit()
 
    m_black_box.Initialize(_Symbol, "v2.30");
 
-   // --- DYNAMIC VERSION LABEL ---
-   string version_str = "MERKAVA v" + MQLInfoString(MQL_PROGRAM_VERSION);
+   // --- DYNAMIC VERSION LABEL (Fixed) ---
+   string version_str = "MERKAVA v2.30";
 
    m_panel.Init(Prefix, InpX, InpY, InpBgColor, InpTxtColor,
                 InpLotSize, InpSpreadMultStart, InpSpreadMultStep, InpLayers, InpMinSpreadPoints,
