@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Version: 1.0 (Kutatóintézet - Hierarchikus Kutatási Rendszer)
+# Version: 1.1 (Kutatóintézet - Expanded Scopes & Deduplication)
 import sys
 import json
 import argparse
@@ -99,9 +99,42 @@ class ResearchLevel:
         self.input_jobs = input_jobs # List of {query, origin_doc}
         self.output_file = output_file
         # Updated default scopes to include new RAG sources
-        self.scopes = scopes if scopes else ['THIEFS', 'COLUMBO', 'MQL5_DEV', 'THEORY', 'CODE']
+        self.scopes = scopes if scopes else [
+            'MQL5_DEV', 'THEORY', 'CODE',
+            'COLUMBO', 'THIEFS',
+            'DATA_ENG', 'SYS_INTEGR', 'MONITORING',
+            'EXT_THIEFS', 'EXT_COLUMBO'
+        ]
         self.results = []
         self.next_jobs = []
+
+    def deduplicate_results(self, raw_results):
+        """Merges duplicate files from different scopes."""
+        merged = {}
+        for r in raw_results:
+            key = r.get('filename', 'unknown')
+
+            if key in merged:
+                # Merge existing
+                existing = merged[key]
+                # Add source to found_in list
+                if 'found_in' not in existing:
+                    existing['found_in'] = [existing['source_type']]
+
+                if r['source_type'] not in existing['found_in']:
+                    existing['found_in'].append(r['source_type'])
+                    # Update display source to show multiple
+                    existing['source_type'] = ", ".join(existing['found_in'])
+
+                # Update max score
+                if r['score'] > existing['score']:
+                    existing['score'] = r['score']
+            else:
+                # New entry
+                r['found_in'] = [r['source_type']]
+                merged[key] = r
+
+        return list(merged.values())
 
     def run(self, max_jobs=None):
         print(f"\n--- LEVEL {self.level_id} START ---")
@@ -128,8 +161,11 @@ class ResearchLevel:
                     h['parent_query'] = query
                     job_results.append(h)
 
+            # Deduplicate results for this job
+            unique_results = self.deduplicate_results(job_results)
+
             # Process results for next level
-            for res in job_results:
+            for res in unique_results:
                 # Add to current level results
                 self.results.append(res)
 

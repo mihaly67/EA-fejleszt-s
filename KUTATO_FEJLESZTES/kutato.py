@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Version: 2.3 (Debug Paths)
+# Version: 2.4 (Expanded Knowledge Scopes)
 import sys
 import json
 import os
@@ -12,7 +12,12 @@ import faiss
 from sentence_transformers import SentenceTransformer
 
 # --- CONFIGURATION ---
-RAG_SCOPES = ['MQL5_DEV', 'THEORY', 'CODE', 'COLUMBO', 'THIEFS']
+RAG_SCOPES = [
+    'MQL5_DEV', 'THEORY', 'CODE',
+    'COLUMBO', 'THIEFS',
+    'DATA_ENG', 'SYS_INTEGR', 'MONITORING',
+    'EXT_THIEFS', 'EXT_COLUMBO'
+]
 
 # RAG Directory Configuration
 RAG_MQL5_DIR = 'rag_mql5_dev'
@@ -22,6 +27,13 @@ RAG_CODE_DIR = 'rag_code'
 # JSONL Reference Paths
 THIEFS_JSONL = os.path.join("Knowledge_Base", "knowledge_base_thiefs_library.jsonl")
 COLUMBO_JSONL = os.path.join("Knowledge_Base", "knowledge_base_columbo.jsonl")
+
+# New Knowledge Paths
+DATA_ENG_JSONL = os.path.join("Knowledge_Base", "data_eng", "github_data_engeneer.jsonl")
+SYS_INTEGR_JSONL = os.path.join("Knowledge_Base", "sys_integr", "Github System Integrity & Evolution Layer.jsonl")
+MONITORING_JSONL = os.path.join("Knowledge_Base", "monitoring", "github_monitoring_pack.jsonl")
+EXT_THIEFS_JSONL = os.path.join("Knowledge_Base", "extended_thiefs", "knowledge_base_thiefs_library.jsonl")
+EXT_COLUMBO_JSONL = os.path.join("Knowledge_Base", "extended_columbo", "knowledge_base_columbo.jsonl")
 
 MODEL_MINILM = 'all-MiniLM-L6-v2'  # For MQL5 Dev
 MODEL_MPNET = 'all-mpnet-base-v2'  # For Theory/Code
@@ -173,6 +185,16 @@ class RAGSearcher:
             return self._search_jsonl(query, COLUMBO_JSONL, 'COLUMBO')
         elif scope == 'THIEFS':
             return self._search_jsonl(query, THIEFS_JSONL, 'THIEFS')
+        elif scope == 'DATA_ENG':
+            return self._search_jsonl(query, DATA_ENG_JSONL, 'DATA_ENG')
+        elif scope == 'SYS_INTEGR':
+            return self._search_jsonl(query, SYS_INTEGR_JSONL, 'SYS_INTEGR')
+        elif scope == 'MONITORING':
+            return self._search_jsonl(query, MONITORING_JSONL, 'MONITORING')
+        elif scope == 'EXT_THIEFS':
+            return self._search_jsonl(query, EXT_THIEFS_JSONL, 'EXT_THIEFS')
+        elif scope == 'EXT_COLUMBO':
+            return self._search_jsonl(query, EXT_COLUMBO_JSONL, 'EXT_COLUMBO')
         else:
             return []
 

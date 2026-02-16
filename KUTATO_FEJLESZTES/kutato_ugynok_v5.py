@@ -13,7 +13,12 @@ from collections import Counter
 DEFAULT_DEPTH = 3
 DEFAULT_BRANCH = 3 # How many new queries to branch from each result
 TOP_K_PER_QUERY = 5
-VALID_SCOPES = ['MQL5_DEV', 'THEORY', 'CODE', 'COLUMBO', 'THIEFS']
+VALID_SCOPES = [
+    'MQL5_DEV', 'THEORY', 'CODE',
+    'COLUMBO', 'THIEFS',
+    'DATA_ENG', 'SYS_INTEGR', 'MONITORING',
+    'EXT_THIEFS', 'EXT_COLUMBO'
+]
 
 # Directories where raw files might be present for GREP
 RAW_FILE_DIRS = {
