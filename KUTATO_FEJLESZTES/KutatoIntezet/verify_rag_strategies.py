@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# Version: 1.1 (Verification Script for Multi-Strategy RAG)
 import sys
 import os
 import json
