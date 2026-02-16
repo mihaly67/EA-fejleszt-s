@@ -94,11 +94,12 @@ def call_kutato(query, scope):
     except: return []
 
 class ResearchLevel:
-    def __init__(self, level_id, input_jobs, output_file, scopes=['THIEFS', 'COLUMBO', 'MQL5_DEV']):
+    def __init__(self, level_id, input_jobs, output_file, scopes=None):
         self.level_id = level_id
         self.input_jobs = input_jobs # List of {query, origin_doc}
         self.output_file = output_file
-        self.scopes = scopes
+        # Updated default scopes to include new RAG sources
+        self.scopes = scopes if scopes else ['THIEFS', 'COLUMBO', 'MQL5_DEV', 'THEORY', 'CODE']
         self.results = []
         self.next_jobs = []
 
@@ -107,6 +108,10 @@ class ResearchLevel:
         print(f"Input Jobs: {len(self.input_jobs)}")
 
         jobs_to_run = self.input_jobs
+        # If input_jobs is actually a list of strings (simple queries from legacy format), normalize
+        if jobs_to_run and isinstance(jobs_to_run[0], str):
+            jobs_to_run = [{'query': q, 'origin_doc': 'UNKNOWN'} for q in jobs_to_run]
+
         if max_jobs and len(jobs_to_run) > max_jobs:
             print(f"Limiting jobs to {max_jobs} for safety.")
             jobs_to_run = jobs_to_run[:max_jobs]
@@ -162,6 +167,8 @@ def main():
 
     args = parser.parse_args()
 
+    level = None # Initialize level variable
+
     if args.role == 'director':
         if not args.query:
             print("Error: Director needs a --query")
@@ -170,7 +177,6 @@ def main():
         # Director starts level 0
         jobs = [{'query': args.query, 'origin_doc': 'DIRECTOR'}]
         level = ResearchLevel(0, jobs, args.output)
-        level.run(max_jobs=args.limit)
 
     elif args.role in ['manager', 'worker']:
         if not args.input:
@@ -185,11 +191,13 @@ def main():
 
             current_level_id = prev_level + 1
             level = ResearchLevel(current_level_id, input_jobs, args.output)
-            level.run(max_jobs=args.limit)
 
         except Exception as e:
             print(f"Error loading input: {e}")
             sys.exit(1)
+
+    if level:
+        level.run(max_jobs=args.limit)
 
 if __name__ == "__main__":
     main()
