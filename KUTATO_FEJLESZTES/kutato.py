@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Version: 2.1 (Expanded Scope: RAG + JSONL)
+# Version: 2.3 (Debug Paths)
 import sys
 import json
 import os
@@ -51,29 +51,34 @@ class RAGSearcher:
         text = re.sub(r'\s+', ' ', text).strip()
         return text
 
-    def _load_idx(self, key, directory, prefix):
-        idx_path = os.path.join(directory, f'{prefix}_compressed.index')
-        db_path = os.path.join(directory, f'{prefix}.db')
+    def _load_idx(self, key, directory, db_filename, index_filename):
+        idx_path = os.path.join(directory, index_filename)
+        db_path = os.path.join(directory, db_filename)
 
         if os.path.exists(idx_path) and os.path.exists(db_path):
             try:
                 self.indexes[key] = faiss.read_index(idx_path, faiss.IO_FLAG_MMAP)
                 self.conns[key] = sqlite3.connect(db_path, check_same_thread=False)
                 self.conns[key].row_factory = sqlite3.Row
+                # sys.stderr.write(f"[DEBUG] Loaded {key} from {idx_path}\n")
             except Exception as e:
                 sys.stderr.write(f"[ERROR] {key} load failed: {e}\n")
+        else:
+             sys.stderr.write(f"[WARN] Missing {idx_path} or {db_path} for {key}\n")
+             pass
 
     def _load_mql5(self):
-        self._load_idx('mql5', RAG_MQL5_DIR, 'MQL5_DEV_knowledgebase')
+        self._load_idx('mql5', RAG_MQL5_DIR, 'MQL5_DEV_knowledgebase.db', 'MQL5_DEV_knowledgebase_compressed.index')
 
     def _load_theory(self):
-        self._load_idx('theory', RAG_THEORY_DIR, 'theory_knowledgebase') # Fix: Filename was theory_knowledgebase.db
+        self._load_idx('theory', RAG_THEORY_DIR, 'theory_knowledgebase.db', 'theory_compressed.index')
 
     def _load_code(self):
-        self._load_idx('code', RAG_CODE_DIR, 'code_knowledgebase')
+        self._load_idx('code', RAG_CODE_DIR, 'code_knowledgebase.db', 'code_compressed.index')
 
     def _search_rag_generic(self, query, scope_key, model_name, source_type, top_k=TOP_K):
         if scope_key not in self.indexes or scope_key not in self.conns:
+            sys.stderr.write(f"[WARN] Scope {scope_key} not loaded, skipping search.\n")
             return []
 
         model = self._get_model(model_name)
