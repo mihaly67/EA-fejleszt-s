@@ -74,6 +74,25 @@ ENVIRONMENT_RESOURCES = {
         "file": "knowledge_base_columbo.zip",
         "extract_to": "Knowledge_Base",
         "check_file": "knowledge_base_columbo.jsonl"
+    },
+    # --- ÚJ BŐVÍTÉSEK ---
+    "COLUMBO_EXTENDED": {
+        "id": "172LJgyhItW49707n06Z6BAI2fz-SRA9z",
+        "file": "knowledge_base_columbo_extended.zip",
+        "extract_to": "Knowledge_Base/extended",
+        "check_file": "output.jsonl"
+    },
+    "THIEFS_EXTENDED": {
+        "id": "17Bgb4hvct9TWeAXRXVweMbJKjZpPO47z",
+        "file": "knowledge_base_thiefs_extended.zip",
+        "extract_to": "Knowledge_Base/extended_thiefs",
+        "check_file": "output.jsonl"
+    },
+    "KNOWLEDGE_EXTRA": {
+        "id": "155iKxgE7_iKct6r-6JvzEc-BMtCDob9L",
+        "file": "knowledge_base_extra.zip",
+        "extract_to": "Knowledge_Base/extra",
+        "check_file": "output.jsonl"
     }
 }
 
