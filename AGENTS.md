@@ -18,6 +18,7 @@
 ## 3. Execution
 *   **CLEAN SLATE:** Start every task without assumptions from previous failed attempts.
 *   **SUBMIT = DONE:** Only submit code that has been verified locally (syntax check, logic check).
+*   **FILE ORGANIZATION:** Maintain a clean workspace. **Future Rule:** All handover reports (e.g., `Session_Handover_Report_*.md`, `Handover_Report_*.md`) MUST be placed in the `HANDOVER/` directory. Exceptions are only allowed for special handovers that are intrinsically linked to a specific module's internal documentation.
 
 ## 4. User Interaction
 *   **RESPECT EXPERIENCE:** The user is technically proficient. Do not over-explain basics. Focus on the specific architectural or logical problem.
