@@ -1,0 +1,2 @@
+# Dependencies for Universal Knowledge Capsule Builder
+tqdm>=4.66.0
