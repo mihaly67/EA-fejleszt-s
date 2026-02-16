@@ -11,7 +11,12 @@ import subprocess
 # --- CONFIGURATION ---
 DEFAULT_DEPTH = 3
 TOP_K_PER_QUERY = 5
-VALID_SCOPES = ['MQL5_DEV', 'THEORY', 'CODE', 'COLUMBO', 'THIEFS']
+VALID_SCOPES = [
+    'MQL5_DEV', 'THEORY', 'CODE',
+    'COLUMBO', 'THIEFS',
+    'DATA_ENG', 'SYS_INTEGR', 'MONITORING',
+    'EXT_THIEFS', 'EXT_COLUMBO'
+]
 
 class DeepResearcher:
     def __init__(self, depth=DEFAULT_DEPTH, allowed_scopes=None):
