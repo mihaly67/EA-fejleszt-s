@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Version: 1.0 (RAG Adapter - Full Context Retrieval)
+# Version: 1.1 (RAG Adapter - Multi-Strategy Retrieval)
 import sys
 import json
 import sqlite3
 import os
 import faiss
 from sentence_transformers import SentenceTransformer
+import re
 
 # --- CONFIGURATION ---
-# Assumes we are in KUTATO_FEJLESZTES/KutatoIntezet, so go up two levels to root
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 RAG_DIRS = {
@@ -40,15 +40,21 @@ class RAGAdapter:
         for scope, directory in RAG_DIRS.items():
             if not os.path.exists(directory): continue
 
-            # Identify DB and Index files
-            # Naming convention varies: MQL5_DEV_knowledgebase.db vs theory_knowledgebase.db
-            prefix = ""
-            if scope == 'MQL5_DEV': prefix = "MQL5_DEV_knowledgebase"
-            elif scope == 'THEORY': prefix = "theory_knowledgebase"
-            elif scope == 'CODE': prefix = "code_knowledgebase"
+            db_filename = ""
+            idx_filename = ""
 
-            db_path = os.path.join(directory, f"{prefix}.db")
-            idx_path = os.path.join(directory, f"{prefix}_compressed.index")
+            if scope == 'MQL5_DEV':
+                db_filename = "MQL5_DEV_knowledgebase.db"
+                idx_filename = "MQL5_DEV_knowledgebase_compressed.index"
+            elif scope == 'THEORY':
+                db_filename = "theory_knowledgebase.db"
+                idx_filename = "theory_compressed.index"
+            elif scope == 'CODE':
+                db_filename = "code_knowledgebase.db"
+                idx_filename = "code_compressed.index"
+
+            db_path = os.path.join(directory, db_filename)
+            idx_path = os.path.join(directory, idx_filename)
 
             if os.path.exists(db_path) and os.path.exists(idx_path):
                 try:
@@ -59,7 +65,7 @@ class RAGAdapter:
                     print(f"Error loading {scope}: {e}")
 
     def search_full(self, query, scope, top_k=5):
-        """Searches RAG and reconstructs FULL context using embedded metadata."""
+        """Searches RAG and applies scope-specific reconstruction strategy."""
         if scope not in self.indexes or scope not in self.conns:
             return []
 
@@ -69,24 +75,113 @@ class RAGAdapter:
         vec = model.encode([query])
         D, I = self.indexes[scope].search(vec, top_k)
 
+        # Dispatch based on scope
+        if scope == 'THEORY':
+            return self._search_theory(scope, D[0], I[0])
+        elif scope == 'CODE':
+            return self._search_code(scope, D[0], I[0])
+        else:
+            return self._search_mql5_dev(scope, D[0], I[0])
+
+    def _search_theory(self, scope, distances, indices):
+        """Windowed Context Strategy (Hit +/- 2 chunks). Excludes TOC."""
         results = []
         cursor = self.conns[scope].cursor()
 
-        # Determine table name
-        table = 'articles'
-        try:
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            tables = cursor.fetchall()
-            if tables: table = tables[0]['name']
-        except: pass
-
-        seen_contexts = set()
-
-        for j, idx in enumerate(I[0]):
+        for j, idx in enumerate(indices):
             if idx == -1: continue
 
             try:
-                # 1. Get the Initial Chunk
+                # Get the hit to identify filename and ID
+                cursor.execute("SELECT * FROM articles WHERE id=?", (int(idx),))
+                row = cursor.fetchone()
+                if not row: continue
+
+                filename = row['filename']
+                # TOC Filter
+                if filename.endswith('_TOC.txt') or filename.endswith('_TOC.mq5'):
+                    continue
+
+                hit_id = int(row['id'])
+
+                # Window: Hit-2 to Hit+2
+                start_id = max(0, hit_id - 2)
+                end_id = hit_id + 2
+
+                # Fetch window
+                cursor.execute("SELECT content FROM articles WHERE filename=? AND id BETWEEN ? AND ? ORDER BY id ASC",
+                               (filename, start_id, end_id))
+                chunks = cursor.fetchall()
+
+                full_content = f"--- FILE: {filename} (Windowed Context: {start_id}-{end_id}) ---\n\n"
+                for c in chunks:
+                    full_content += (c['content'] or "") + "\n\n"
+
+                results.append({
+                    'source_type': scope,
+                    'filename': f"{filename} (Chunk {hit_id})",
+                    'content': full_content,
+                    'score': float(1/(1+distances[j]))
+                })
+
+            except Exception as e:
+                print(f"Error in Theory search: {e}")
+
+        return results
+
+    def _search_code(self, scope, distances, indices):
+        """Full File Reconstruction Strategy."""
+        results = []
+        cursor = self.conns[scope].cursor()
+        seen_filenames = set()
+
+        for j, idx in enumerate(indices):
+            if idx == -1: continue
+
+            try:
+                cursor.execute("SELECT filename FROM articles WHERE id=?", (int(idx),))
+                row = cursor.fetchone()
+                if not row: continue
+
+                filename = row['filename']
+                if filename in seen_filenames: continue
+                seen_filenames.add(filename)
+
+                # Reconstruct FULL file
+                cursor.execute("SELECT content, code FROM articles WHERE filename=? ORDER BY id ASC", (filename,))
+                all_chunks = cursor.fetchall()
+
+                full_content = f"--- FILE: {filename} ---\n"
+                for c in all_chunks:
+                    text = c['content'] or c['code'] or ""
+                    full_content += text
+
+                results.append({
+                    'source_type': scope,
+                    'filename': filename,
+                    'content': full_content,
+                    'score': float(1/(1+distances[j]))
+                })
+
+            except Exception as e:
+                print(f"Error in Code search: {e}")
+
+        return results
+
+    def _search_mql5_dev(self, scope, distances, indices):
+        """Context ID Strategy (Original)."""
+        results = []
+        cursor = self.conns[scope].cursor()
+
+        # Determine table name (usually 'articles')
+        table = 'articles'
+
+        seen_contexts = set()
+
+        for j, idx in enumerate(indices):
+            if idx == -1: continue
+
+            try:
                 cursor.execute(f"SELECT * FROM {table} WHERE id=?", (int(idx),))
                 row = cursor.fetchone()
                 if not row: continue
@@ -94,38 +189,20 @@ class RAGAdapter:
                 raw_text = row['content'] or row['code'] or ""
                 filename = row['filename'] if 'filename' in row.keys() else 'unknown'
 
-                # 2. Extract Context ID (The "Series: ... Title: ..." part)
-                # Look for "// CONTEXT: ... \n"
-                import re
+                # Extract Context ID
                 context_match = re.search(r'// CONTEXT: (.*?)\n', raw_text)
-
-                context_id = None
-                if context_match:
-                    context_id = context_match.group(1).strip()
-                else:
-                    # Fallback: Use filename if no context found
-                    context_id = filename
+                context_id = context_match.group(1).strip() if context_match else filename
 
                 if context_id in seen_contexts: continue
                 seen_contexts.add(context_id)
 
-                # 3. Retrieve ALL chunks sharing this Context
-                # If we have a robust context string, we use LIKE to find peers
                 full_content = ""
-
                 if context_match:
-                    # Escape special chars for SQL LIKE if needed, but simple string usually works
-                    # Note: This might be slow if DB is huge and not indexed by content.
-                    # Optimization: Limit to e.g. 50 chunks max to avoid hanging.
                     try:
-                        # Use parameterized query for safety.
-                        # We look for chunks containing the same context header.
-                        # Note: This assumes the context header is unique enough.
                         like_query = f"%// CONTEXT: {context_id}%"
                         cursor.execute(f"SELECT content, code, filename FROM {table} WHERE content LIKE ? OR code LIKE ? LIMIT 100", (like_query, like_query))
                         peer_chunks = cursor.fetchall()
 
-                        # Organize by file?
                         file_contents = {}
                         for pc in peer_chunks:
                             c_text = pc['content'] or pc['code'] or ""
@@ -133,39 +210,30 @@ class RAGAdapter:
                             if c_fname not in file_contents: file_contents[c_fname] = []
                             file_contents[c_fname].append(c_text)
 
-                        # Assemble
                         for fname, chunks in file_contents.items():
                             full_content += f"\n--- FILE: {fname} ---\n"
                             full_content += "\n".join(chunks)
-
-                    except Exception as e:
-                        print(f"Context retrieval failed: {e}")
-                        full_content = raw_text # Fallback
-                else:
-                    # Fallback: Fetch by filename
-                    if 'filename' in row.keys():
-                        cursor.execute(f"SELECT content, code FROM {table} WHERE filename=? LIMIT 50", (filename,))
-                        all_chunks = cursor.fetchall()
-                        for chunk in all_chunks:
-                            c_text = chunk['content'] or chunk['code'] or ""
-                            full_content += c_text + "\n\n"
-                    else:
+                    except:
                         full_content = raw_text
+                else:
+                     full_content = raw_text
 
                 results.append({
                     'source_type': scope,
-                    'filename': context_id, # Use context as the "Document Name"
+                    'filename': context_id,
                     'content': full_content,
-                    'score': float(1/(1+D[0][j]))
+                    'score': float(1/(1+distances[j]))
                 })
 
             except Exception as e:
-                print(f"Error retrieving {idx} in {scope}: {e}")
+                print(f"Error in MQL5_DEV search: {e}")
 
         return results
 
 if __name__ == "__main__":
     # Test
     adapter = RAGAdapter()
-    hits = adapter.search_full("indicator handle", "MQL5_DEV", top_k=3)
-    print(json.dumps(hits, indent=2))
+    print("Testing MQL5_DEV...")
+    hits = adapter.search_full("indicator handle", "MQL5_DEV", top_k=1)
+    print(f"Hits: {len(hits)}")
+    if hits: print(hits[0]['filename'])
