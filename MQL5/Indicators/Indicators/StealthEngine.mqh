@@ -28,6 +28,7 @@ public:
    void              ApplyHumanDelay(); // Emberi késleltetés alkalmazása
    double            GetFuzzyPrice(double price, double point); // Árfolyam zajosítása (Price Fuzzing)
    string            GetHumanComment(); // Emberi megjegyzés generálása
+   bool              IsEnabled() { return m_Enabled; } // Állapot lekérdezése
 
    // Haladó (Jövőbeli Helyőrző - Advanced Placeholder)
    bool              IsFatFinger(); // 'Fat Finger' hiba szimulálása alacsony valószínűséggel
