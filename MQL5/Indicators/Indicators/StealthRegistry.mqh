@@ -2,17 +2,14 @@
 //|                                             StealthRegistry.mqh |
 //|                                     Copyright 2026, Jules (Mimic)|
 //|                                     Part of Project Merkava      |
-//|                                          Version 1.01            |
-//|                    (Fix: Audit Log Headers & Magic Number)       |
+//|                                          Version 1.02            |
+//|                    (Fix: Audit Log Headers & Folder Creation)    |
 //+------------------------------------------------------------------+
 #ifndef STEALTH_REGISTRY_MQH
 #define STEALTH_REGISTRY_MQH
 
 #property copyright "Jules (Mimic)"
 #property strict
-
-// No explicit MQL5 include needed for basic File functions if using built-ins,
-// but FileTxt.mqh is good for object wrapper. Here we use raw functions for simplicity.
 
 //+------------------------------------------------------------------+
 //| CStealthRegistry                                                 |
@@ -21,8 +18,9 @@
 class CStealthRegistry
 {
 private:
+   string         m_root_path;      // Root folder
    string         m_registry_path;  // Path to ActiveTickets.csv
-   string         m_logs_path;      // Path to Audit Logs
+   string         m_logs_path;      // Path to Audit Logs folder
    ulong          m_active_tickets[]; // In-memory cache of active tickets
    int            m_ticket_count;
 
@@ -42,6 +40,9 @@ private:
    {
       m_ticket_count = 0;
       ArrayResize(m_active_tickets, 0);
+
+      // Ensure folders exist before trying to open
+      CreateFolders();
 
       int handle = FileOpen(m_registry_path, FILE_READ|FILE_CSV|FILE_ANSI, ",");
       if(handle == INVALID_HANDLE) {
@@ -80,33 +81,50 @@ private:
       FileClose(handle);
    }
 
+   // Helper: Create Folders
+   void CreateFolders()
+   {
+       // MQL5/Files/ is root
+       // Note: FolderCreate returns false if folder exists, so we ignore that specific error.
+       // Check if exists first? MQL5 FolderCreate handles it gracefully mostly but returns false if exists.
+       FolderCreate("Merkava_Stealth");
+       FolderCreate("Merkava_Stealth\\Registry");
+       FolderCreate("Merkava_Stealth\\Logs");
+   }
+
    // Helper: Append to Audit Log
    void LogAudit(string action, ulong ticket, ulong magic, string comment)
    {
        string filename = m_logs_path + "Stealth_Audit_" + TimeToString(TimeCurrent(), TIME_DATE) + ".csv";
-       // Replace ':' with nothing in date for filename safety (MT5 usually handles TIME_DATE fine as YYYY.MM.DD)
+       // Replace ':' with nothing just in case
        StringReplace(filename, ":", "");
 
-       // Check if file exists first (to add header)
-       bool file_exists = FileIsExist(filename);
-
+       // We use READ|WRITE to seek. If it doesn't exist, we must create it.
        int handle = FileOpen(filename, FILE_READ|FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
+
        if(handle == INVALID_HANDLE) {
-           // Try create
+           // Try to create it explicitly if open failed (e.g. didn't exist)
            handle = FileOpen(filename, FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
-           if(handle != INVALID_HANDLE) file_exists = false; // Brand new
+
+           if(handle != INVALID_HANDLE) {
+               // New file -> Write Header immediately
+               FileWrite(handle, "Time", "Action", "Ticket", "MagicNumber", "Comment");
+           } else {
+               Print("StealthRegistry: Failed to create log file: ", filename, " Error: ", GetLastError());
+               return;
+           }
+       } else {
+           // File Opened successfully (likely existed). Move to end.
+           FileSeek(handle, 0, SEEK_END);
+
+           // Double check if empty (created but empty?)
+           if(FileTell(handle) == 0) {
+                FileWrite(handle, "Time", "Action", "Ticket", "MagicNumber", "Comment");
+           }
        }
 
        if(handle != INVALID_HANDLE) {
-           FileSeek(handle, 0, SEEK_END);
-
-           // Add Header if new
-           if(!file_exists || FileSize(handle) == 0) {
-               FileWrite(handle, "Time", "Action", "Ticket", "MagicNumber", "Comment");
-           }
-
            // Write Log Entry
-           // Note: IntegerToString for ulong handles large numbers correctly
            FileWrite(handle,
                      TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS),
                      action,
@@ -114,6 +132,7 @@ private:
                      IntegerToString(magic),
                      comment);
 
+           FileFlush(handle); // Ensure data hits disk
            FileClose(handle);
        }
    }
@@ -121,6 +140,7 @@ private:
 public:
    CStealthRegistry()
    {
+       m_root_path = "Merkava_Stealth\\";
        m_registry_path = "Merkava_Stealth\\Registry\\ActiveTickets.csv";
        m_logs_path = "Merkava_Stealth\\Logs\\";
        m_ticket_count = 0;
@@ -130,8 +150,7 @@ public:
    // Initialize (Load existing tickets)
    void Init()
    {
-       // Check if directories exist (MT5 creates them automatically on FileOpen usually, but good practice)
-       // MT5 Sandbox handles paths relative to MQL5/Files/
+       CreateFolders(); // Explicitly create structure
        LoadRegistry();
        MathSrand(GetTickCount());
    }

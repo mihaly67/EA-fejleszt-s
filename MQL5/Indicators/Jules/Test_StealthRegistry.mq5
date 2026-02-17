@@ -2,7 +2,7 @@
 //|                                     Test_StealthRegistry.mq5    |
 //|                                     Copyright 2026, Jules (Mimic)|
 //|                                     Part of Project Merkava      |
-//|                                          Version 1.01            |
+//|                                          Version 1.02            |
 //|              (Unit Test for Stealth Registry Infrastructure)     |
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
@@ -16,7 +16,8 @@
 //+------------------------------------------------------------------+
 void OnStart()
 {
-   Print("=== StealthRegistry Test START ===");
+   Print("=== StealthRegistry Test START (v1.02) ===");
+   Print("Initializing Registry (creates folders if missing)...");
 
    CStealthRegistry registry;
    registry.Init();
@@ -56,4 +57,5 @@ void OnStart()
    Print("Check for:");
    Print("  - Header Row: Time,Action,Ticket,MagicNumber,Comment");
    Print("  - Correct Magic Number recorded (not 0)");
+   Print("  - Directory Structure: Merkava_Stealth/Registry and Merkava_Stealth/Logs exist.");
 }
