@@ -2,8 +2,8 @@
 //|                                             StealthRegistry.mqh |
 //|                                     Copyright 2026, Jules (Mimic)|
 //|                                     Part of Project Merkava      |
-//|                                          Version 1.0             |
-//|              (Ticket Registry & Audit Logging Infrastructure)    |
+//|                                          Version 1.01            |
+//|                    (Fix: Audit Log Headers & Magic Number)       |
 //+------------------------------------------------------------------+
 #ifndef STEALTH_REGISTRY_MQH
 #define STEALTH_REGISTRY_MQH
@@ -87,15 +87,33 @@ private:
        // Replace ':' with nothing in date for filename safety (MT5 usually handles TIME_DATE fine as YYYY.MM.DD)
        StringReplace(filename, ":", "");
 
+       // Check if file exists first (to add header)
+       bool file_exists = FileIsExist(filename);
+
        int handle = FileOpen(filename, FILE_READ|FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
        if(handle == INVALID_HANDLE) {
            // Try create
            handle = FileOpen(filename, FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
+           if(handle != INVALID_HANDLE) file_exists = false; // Brand new
        }
 
        if(handle != INVALID_HANDLE) {
            FileSeek(handle, 0, SEEK_END);
-           FileWrite(handle, TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS), action, IntegerToString(ticket), IntegerToString(magic), comment);
+
+           // Add Header if new
+           if(!file_exists || FileSize(handle) == 0) {
+               FileWrite(handle, "Time", "Action", "Ticket", "MagicNumber", "Comment");
+           }
+
+           // Write Log Entry
+           // Note: IntegerToString for ulong handles large numbers correctly
+           FileWrite(handle,
+                     TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS),
+                     action,
+                     IntegerToString(ticket),
+                     IntegerToString(magic),
+                     comment);
+
            FileClose(handle);
        }
    }
@@ -156,7 +174,7 @@ public:
            // Save to File
            SaveRegistry();
 
-           // Audit Log
+           // Audit Log - Magic is 0 on unregister as we don't track it here (could fetch from history if needed)
            LogAudit("UNREGISTER", ticket, 0, "Closed/Removed");
            PrintFormat("StealthRegistry: Unregistered Ticket #%I64u", ticket);
        }

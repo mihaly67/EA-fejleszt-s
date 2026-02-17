@@ -2,7 +2,7 @@
 //|                                     Test_StealthRegistry.mq5    |
 //|                                     Copyright 2026, Jules (Mimic)|
 //|                                     Part of Project Merkava      |
-//|                                          Version 1.0             |
+//|                                          Version 1.01            |
 //|              (Unit Test for Stealth Registry Infrastructure)     |
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
@@ -24,8 +24,8 @@ void OnStart()
    Print("1. Registry Initialized. Checking random generation...");
    ulong rnd1 = registry.GetRandomMagic();
    ulong rnd2 = registry.GetRandomMagic();
-   PrintFormat("Random Magic 1: %llu", rnd1);
-   PrintFormat("Random Magic 2: %llu", rnd2);
+   PrintFormat("Random Magic 1: %I64u", rnd1);
+   PrintFormat("Random Magic 2: %I64u", rnd2);
 
    if(rnd1 != rnd2) Print("PASS: Random Magic differs.");
    else Print("FAIL: Random Magic collision (highly unlikely).");
@@ -36,7 +36,7 @@ void OnStart()
    string fake_comment = registry.GetRandomComment();
 
    registry.RegisterTicket(fake_ticket, fake_magic, fake_comment);
-   PrintFormat("Registered Fake Ticket #%d", fake_ticket);
+   PrintFormat("Registered Fake Ticket #%d with Magic %I64u and Comment '%s'", fake_ticket, fake_magic, fake_comment);
 
    Print("3. Testing IsMyTicket...");
    if(registry.IsMyTicket(fake_ticket)) Print("PASS: IsMyTicket(12345) returns TRUE.");
@@ -52,5 +52,8 @@ void OnStart()
    else Print("FAIL: IsMyTicket(12345) still returns TRUE after Unregister.");
 
    Print("=== StealthRegistry Test END ===");
-   Print("Check MQL5/Files/Merkava_Stealth/Registry/ActiveTickets.csv and Logs/ for output.");
+   Print("PLEASE VERIFY: MQL5/Files/Merkava_Stealth/Logs/Stealth_Audit_YYYY.MM.DD.csv");
+   Print("Check for:");
+   Print("  - Header Row: Time,Action,Ticket,MagicNumber,Comment");
+   Print("  - Correct Magic Number recorded (not 0)");
 }
