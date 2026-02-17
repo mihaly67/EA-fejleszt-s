@@ -8,7 +8,7 @@
 #property version   "1.0"
 
 //+------------------------------------------------------------------+
-//| CStealthEngine: Human-like behavior simulation for EAs           |
+//| CStealthEngine: Emberi viselkedés szimulációja EA-k számára      |
 //+------------------------------------------------------------------+
 class CStealthEngine
   {
@@ -24,17 +24,17 @@ public:
 
    void              Init(bool enabled, int base_delay_ms, int jitter_ms);
 
-   // Core Stealth Methods
-   void              ApplyHumanDelay();
-   double            GetFuzzyPrice(double price, double point);
-   string            GetHumanComment();
+   // Fő Stealth Módszerek (Core Stealth Methods)
+   void              ApplyHumanDelay(); // Emberi késleltetés alkalmazása
+   double            GetFuzzyPrice(double price, double point); // Árfolyam zajosítása (Price Fuzzing)
+   string            GetHumanComment(); // Emberi megjegyzés generálása
 
-   // Advanced (Future Placeholder)
-   bool              IsFatFinger(); // Returns true with low probability
+   // Haladó (Jövőbeli Helyőrző - Advanced Placeholder)
+   bool              IsFatFinger(); // 'Fat Finger' hiba szimulálása alacsony valószínűséggel
   };
 
 //+------------------------------------------------------------------+
-//| Constructor                                                      |
+//| Konstruktor                                                      |
 //+------------------------------------------------------------------+
 CStealthEngine::CStealthEngine()
   {
@@ -50,14 +50,14 @@ CStealthEngine::CStealthEngine()
   }
 
 //+------------------------------------------------------------------+
-//| Destructor                                                       |
+//| Destruktor                                                       |
 //+------------------------------------------------------------------+
 CStealthEngine::~CStealthEngine()
   {
   }
 
 //+------------------------------------------------------------------+
-//| Initialization                                                   |
+//| Inicializálás                                                    |
 //+------------------------------------------------------------------+
 void CStealthEngine::Init(bool enabled, int base_delay_ms, int jitter_ms)
   {
@@ -65,18 +65,18 @@ void CStealthEngine::Init(bool enabled, int base_delay_ms, int jitter_ms)
    m_BaseDelay = base_delay_ms;
    m_Jitter = jitter_ms;
 
-   // Seed the random generator
+   // Véletlenszám-generátor inicializálása (Seed)
    MathSrand(GetTickCount());
   }
 
 //+------------------------------------------------------------------+
-//| ApplyHumanDelay: Sleeps for a random duration                    |
+//| ApplyHumanDelay: Véletlenszerű várakozás (Sleep)                 |
 //+------------------------------------------------------------------+
 void CStealthEngine::ApplyHumanDelay()
   {
    if(!m_Enabled) return;
 
-   // Simple randomization: Base + Random(-Jitter to +Jitter)
+   // Egyszerű randomizáció: Alap (Base) + Véletlen(-Jitter-től +Jitter-ig)
    int random_jitter = (MathRand() % (m_Jitter * 2 + 1)) - m_Jitter;
    int sleep_time = m_BaseDelay + random_jitter;
 
@@ -86,36 +86,36 @@ void CStealthEngine::ApplyHumanDelay()
   }
 
 //+------------------------------------------------------------------+
-//| GetFuzzyPrice: Adds micro-pip noise to price                     |
+//| GetFuzzyPrice: Mikro-pip zaj hozzáadása az árhoz                 |
 //+------------------------------------------------------------------+
 double CStealthEngine::GetFuzzyPrice(double price, double point)
   {
    if(!m_Enabled) return price;
 
-   // Add +/- 0 to 2 points of fuzz
-   int fuzz_points = (MathRand() % 5) - 2; // Range: -2 to +2
+   // +/- 0-tól 2 pontig terjedő zaj hozzáadása
+   int fuzz_points = (MathRand() % 5) - 2; // Tartomány: -2-től +2-ig
 
    return price + (fuzz_points * point);
   }
 
 //+------------------------------------------------------------------+
-//| GetHumanComment: Returns a random "human" string                 |
+//| GetHumanComment: Véletlenszerű "emberi" string visszaadása       |
 //+------------------------------------------------------------------+
 string CStealthEngine::GetHumanComment()
   {
-   if(!m_Enabled) return "Merkava_Algo"; // Default if disabled
+   if(!m_Enabled) return "Merkava_Algo"; // Alapértelmezett, ha ki van kapcsolva
 
    int idx = MathRand() % ArraySize(m_HumanComments);
    return m_HumanComments[idx];
   }
 
 //+------------------------------------------------------------------+
-//| IsFatFinger: Returns true with very low probability (e.g. 0.1%)  |
+//| IsFatFinger: Igaz érték nagyon alacsony valószínűséggel (pl. 0.1%)|
 //+------------------------------------------------------------------+
 bool CStealthEngine::IsFatFinger()
   {
    if(!m_Enabled) return false;
 
-   // 1 in 1000 chance
+   // 1 az 1000-hez esély
    return (MathRand() % 1000) == 0;
   }
