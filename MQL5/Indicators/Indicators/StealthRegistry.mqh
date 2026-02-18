@@ -2,8 +2,8 @@
 //|                                             StealthRegistry.mqh |
 //|                                     Copyright 2026, Jules (Mimic)|
 //|                                     Part of Project Merkava      |
-//|                                          Version 1.04            |
-//|                    (Fix: Deep Randomization & Seeding)           |
+//|                                          Version 1.05            |
+//|                    (Fix: Custom PRNG, Entropy & CSV Encoding)    |
 //+------------------------------------------------------------------+
 #ifndef STEALTH_REGISTRY_MQH
 #define STEALTH_REGISTRY_MQH
@@ -24,15 +24,42 @@ private:
    ulong          m_active_tickets[]; // In-memory cache of active tickets
    int            m_ticket_count;
 
+   // PRNG State (Custom Generator)
+   ulong          m_prng_state;
+
    // Helper: Generate Random String
    string GetRandomString(int len)
    {
       string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
       string res = "";
       for(int i=0; i<len; i++) {
-         res += StringSubstr(chars, MathRand() % StringLen(chars), 1);
+         res += StringSubstr(chars, (int)(NextRandom() % StringLen(chars)), 1);
       }
       return res;
+   }
+
+   // --- CUSTOM PRNG (Linear Congruential Generator) ---
+   // Replaces MathRand() entirely to avoid MT5 environment issues.
+   void SeedPRNG()
+   {
+       // High Entropy Mix: Microseconds + Time + Ticks + Account Login + Ticket Count
+       ulong t_micro = GetMicrosecondCount();
+       ulong t_time  = (ulong)TimeCurrent();
+       ulong t_tick  = GetTickCount();
+       ulong t_login = (ulong)AccountInfoInteger(ACCOUNT_LOGIN);
+
+       // Simple mixing function
+       m_prng_state = t_micro ^ (t_time << 10) ^ (t_tick << 20) ^ t_login ^ (ulong)m_ticket_count;
+
+       // Warm up
+       for(int i=0; i<10; i++) NextRandom();
+   }
+
+   ulong NextRandom()
+   {
+       // LCG Parameters (Numerical Recipes)
+       m_prng_state = m_prng_state * 1664525 + 1013904223;
+       return m_prng_state;
    }
 
    // Helper: Load Registry from File
@@ -44,6 +71,7 @@ private:
       // Ensure folders exist before trying to open
       CreateFolders();
 
+      // Use FILE_COMMON logic implicitly via standard open
       int handle = FileOpen(m_registry_path, FILE_READ|FILE_CSV|FILE_ANSI, ",");
       if(handle == INVALID_HANDLE) {
           // If file doesn't exist, create it (empty)
@@ -84,56 +112,45 @@ private:
    // Helper: Create Folders
    void CreateFolders()
    {
-       // MQL5/Files/ is root
-       // Note: FolderCreate returns false if folder exists, so we ignore that specific error.
-       // Check if exists first? MQL5 FolderCreate handles it gracefully mostly but returns false if exists.
        FolderCreate("Merkava_Stealth");
        FolderCreate("Merkava_Stealth\\Registry");
        FolderCreate("Merkava_Stealth\\Logs");
    }
 
-   // Helper: Append to Audit Log
+   // Helper: Append to Audit Log (Safe Encoding)
    void LogAudit(string action, ulong ticket, ulong magic, string comment)
    {
        string filename = m_logs_path + "Stealth_Audit_" + TimeToString(TimeCurrent(), TIME_DATE) + ".csv";
-       // Replace ':' with nothing just in case
        StringReplace(filename, ":", "");
 
-       // We use READ|WRITE to seek. If it doesn't exist, we must create it.
+       // Explicitly use FILE_ANSI (Default) but ensure clean write.
+       // Note: To fix "unknown characters", ensure we write simple ASCII strings.
        int handle = FileOpen(filename, FILE_READ|FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
 
        if(handle == INVALID_HANDLE) {
-           // Try to create it explicitly if open failed (e.g. didn't exist)
            handle = FileOpen(filename, FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
-
            if(handle != INVALID_HANDLE) {
-               // New file -> Write Header immediately
                FileWrite(handle, "Time", "Action", "Ticket", "MagicNumber", "Comment");
            } else {
                Print("StealthRegistry: Failed to create log file: ", filename, " Error: ", GetLastError());
                return;
            }
        } else {
-           // File Opened successfully (likely existed). Move to end.
            FileSeek(handle, 0, SEEK_END);
-
-           // Double check if empty (created but empty?)
            if(FileTell(handle) == 0) {
                 FileWrite(handle, "Time", "Action", "Ticket", "MagicNumber", "Comment");
            }
        }
 
        if(handle != INVALID_HANDLE) {
-           // Write Log Entry
-           // Use IntegerToString explicitly to avoid scientific notation
            FileWrite(handle,
                      TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS),
                      action,
                      IntegerToString(ticket),
                      IntegerToString(magic),
-                     comment);
+                     comment); // Comment might have special chars, but GetRandomComment is pure ASCII
 
-           FileFlush(handle); // Ensure data hits disk
+           FileFlush(handle);
            FileClose(handle);
        }
    }
@@ -145,31 +162,26 @@ public:
        m_registry_path = "Merkava_Stealth\\Registry\\ActiveTickets.csv";
        m_logs_path = "Merkava_Stealth\\Logs\\";
        m_ticket_count = 0;
+       m_prng_state = 123456789; // Default safety seed
    }
    ~CStealthRegistry() {}
 
-   // Initialize (Load existing tickets)
+   // Initialize
    void Init()
    {
-       CreateFolders(); // Explicitly create structure
+       CreateFolders();
        LoadRegistry();
-
-       // Initial seed
-       MathSrand(GetTickCount());
+       SeedPRNG(); // Initialize Custom PRNG
    }
 
    // Core: Register a new Ticket
    void RegisterTicket(ulong ticket, ulong magic, string comment)
    {
-       // Add to memory
        m_ticket_count++;
        ArrayResize(m_active_tickets, m_ticket_count);
        m_active_tickets[m_ticket_count-1] = ticket;
 
-       // Save to File
        SaveRegistry();
-
-       // Audit Log
        LogAudit("REGISTER", ticket, magic, comment);
        PrintFormat("StealthRegistry: Registered Ticket #%I64u (Magic: %I64u)", ticket, magic);
    }
@@ -186,17 +198,13 @@ public:
        }
 
        if(index != -1) {
-           // Remove from array (shift left)
            for(int j=index; j<m_ticket_count-1; j++) {
                m_active_tickets[j] = m_active_tickets[j+1];
            }
            m_ticket_count--;
            ArrayResize(m_active_tickets, m_ticket_count);
 
-           // Save to File
            SaveRegistry();
-
-           // Audit Log - Magic is 0 on unregister as we don't track it here (could fetch from history if needed)
            LogAudit("UNREGISTER", ticket, 0, "Closed/Removed");
            PrintFormat("StealthRegistry: Unregistered Ticket #%I64u", ticket);
        }
@@ -211,37 +219,30 @@ public:
        return false;
    }
 
-   // Helper: Get Random Magic (Humanized Range: 10,000 - 999,999) with Deep Randomization
+   // Helper: Get Random Magic (Humanized: 10k-999k) using CUSTOM PRNG
    ulong GetRandomMagic()
    {
-       // FIX: Re-seed with high-precision timer to break linear patterns
-       // GetMicrosecondCount() changes rapidly, preventing similar seeds in quick succession
-       MathSrand((int)GetMicrosecondCount());
+       // Always re-mix state slightly before generation to ensure divergence even if called fast
+       SeedPRNG();
+
+       ulong rnd = NextRandom(); // Get 64-bit random
 
        // Range: 10,000 to 999,999
        int min_val = 10000;
        int max_val = 999999;
        int range = max_val - min_val + 1;
 
-       // Use multiple calls to further shuffle
-       int discard = MathRand(); // Burn one
-
-       ulong r1 = (ulong)MathRand();
-       ulong r2 = (ulong)MathRand();
-       ulong combined = (r1 << 15) ^ r2; // XOR mix
-
-       ulong result = min_val + (combined % range);
+       ulong result = min_val + (rnd % range);
        return result;
    }
 
-   // Helper: Get Random Comment
+   // Helper: Get Random Comment (ASCII Only)
    string GetRandomComment()
    {
        string comments[] = {"manual", "t1", "test", "news", "", "scalp", "intraday", "swing", "buy", "sell"};
-       int idx = MathRand() % ArraySize(comments);
+       int idx = (int)(NextRandom() % ArraySize(comments));
 
-       // 30% chance of random garbage string
-       if(MathRand() % 10 < 3) return GetRandomString(4 + (MathRand()%4));
+       if((NextRandom() % 10) < 3) return GetRandomString(4 + (int)(NextRandom()%4));
 
        return comments[idx];
    }
