@@ -15,7 +15,7 @@
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
 #include "Types_v2_16.mqh" // For Enums v2.16
-#include "StealthEngine.mqh" // v1.0
+#include "StealthEngine_v1_0.mqh" // v1.0
 #include "StealthRegistry_v1_06.mqh" // v1.06 (Extra Tag Column)
 
 //+------------------------------------------------------------------+
