@@ -2,8 +2,8 @@
 //|                                             StealthRegistry.mqh |
 //|                                     Copyright 2026, Jules (Mimic)|
 //|                                     Part of Project Merkava      |
-//|                                          Version 1.02            |
-//|                    (Fix: Audit Log Headers & Folder Creation)    |
+//|                                          Version 1.03            |
+//|                    (Fix: Humanized Magic Numbers 10k-999k)       |
 //+------------------------------------------------------------------+
 #ifndef STEALTH_REGISTRY_MQH
 #define STEALTH_REGISTRY_MQH
@@ -125,6 +125,7 @@ private:
 
        if(handle != INVALID_HANDLE) {
            // Write Log Entry
+           // Use IntegerToString explicitly to avoid scientific notation for large numbers (though now smaller)
            FileWrite(handle,
                      TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS),
                      action,
@@ -208,16 +209,23 @@ public:
        return false;
    }
 
-   // Helper: Get Random Magic (Full Range ulong)
+   // Helper: Get Random Magic (Humanized Range: 10,000 - 999,999)
    ulong GetRandomMagic()
    {
-       // Combine multiple rands to cover ulong range partially
-       // Note: MathRand is 0..32767 usually.
+       // Generate a random number between 10000 and 999999
+       // MathRand() returns 0..32767. We need bigger range.
+       // r1 * 32768 + r2 gives range approx 0..10^9
+
+       int min_val = 10000;
+       int max_val = 999999;
+       int range = max_val - min_val + 1;
+
        ulong r1 = (ulong)MathRand();
        ulong r2 = (ulong)MathRand();
-       ulong r3 = (ulong)MathRand();
-       ulong r4 = (ulong)MathRand();
-       return (r1 << 48) | (r2 << 32) | (r3 << 16) | r4;
+       ulong combined = (r1 << 15) | r2; // Combine to get approx 30 bits
+
+       ulong result = min_val + (combined % range);
+       return result;
    }
 
    // Helper: Get Random Comment
