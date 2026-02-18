@@ -17,10 +17,10 @@
 #include <AccountInfo.mqh>
 
 #include "../Indicators/FireControl_v2_24.mqh" // Deep Stealth v2.24 (Log Fix)
-#include "../Indicators/StealthEngine.mqh"     // Stealth Engine v1.0
+#include "../Indicators/StealthEngine_v1_0.mqh"     // Stealth Engine v1.0
 #include "../Indicators/StealthRegistry_v1_06.mqh"   // Deep Stealth Registry v1.06 (StrategyTag Column)
 #include "../Indicators/PanelControl_v2_21.mqh" // Dynamic Version Support
-#include "../Indicators/PhysicsEngine.mqh"
+#include "../Indicators/PhysicsEngine_v1_0.mqh" // v1.0
 #include "../Indicators/NavSystem_v2_20.mqh" // Context v3.27 Support
 #include "../Indicators/BlackBox_v2_09.mqh" // Full Logging
 #include "../Indicators/ProfitManagement_v2_17.mqh" // Deep Stealth v2.17
