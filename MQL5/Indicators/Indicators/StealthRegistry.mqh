@@ -2,8 +2,8 @@
 //|                                             StealthRegistry.mqh |
 //|                                     Copyright 2026, Jules (Mimic)|
 //|                                     Part of Project Merkava      |
-//|                                          Version 1.03            |
-//|                    (Fix: Humanized Magic Numbers 10k-999k)       |
+//|                                          Version 1.04            |
+//|                    (Fix: Deep Randomization & Seeding)           |
 //+------------------------------------------------------------------+
 #ifndef STEALTH_REGISTRY_MQH
 #define STEALTH_REGISTRY_MQH
@@ -125,7 +125,7 @@ private:
 
        if(handle != INVALID_HANDLE) {
            // Write Log Entry
-           // Use IntegerToString explicitly to avoid scientific notation for large numbers (though now smaller)
+           // Use IntegerToString explicitly to avoid scientific notation
            FileWrite(handle,
                      TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS),
                      action,
@@ -153,6 +153,8 @@ public:
    {
        CreateFolders(); // Explicitly create structure
        LoadRegistry();
+
+       // Initial seed
        MathSrand(GetTickCount());
    }
 
@@ -209,20 +211,24 @@ public:
        return false;
    }
 
-   // Helper: Get Random Magic (Humanized Range: 10,000 - 999,999)
+   // Helper: Get Random Magic (Humanized Range: 10,000 - 999,999) with Deep Randomization
    ulong GetRandomMagic()
    {
-       // Generate a random number between 10000 and 999999
-       // MathRand() returns 0..32767. We need bigger range.
-       // r1 * 32768 + r2 gives range approx 0..10^9
+       // FIX: Re-seed with high-precision timer to break linear patterns
+       // GetMicrosecondCount() changes rapidly, preventing similar seeds in quick succession
+       MathSrand((int)GetMicrosecondCount());
 
+       // Range: 10,000 to 999,999
        int min_val = 10000;
        int max_val = 999999;
        int range = max_val - min_val + 1;
 
+       // Use multiple calls to further shuffle
+       int discard = MathRand(); // Burn one
+
        ulong r1 = (ulong)MathRand();
        ulong r2 = (ulong)MathRand();
-       ulong combined = (r1 << 15) | r2; // Combine to get approx 30 bits
+       ulong combined = (r1 << 15) ^ r2; // XOR mix
 
        ulong result = min_val + (combined % range);
        return result;

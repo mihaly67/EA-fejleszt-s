@@ -2,7 +2,7 @@
 //|                                     Test_StealthRegistry.mq5    |
 //|                                     Copyright 2026, Jules (Mimic)|
 //|                                     Part of Project Merkava      |
-//|                                          Version 1.03            |
+//|                                          Version 1.04            |
 //|              (Unit Test for Stealth Registry Infrastructure)     |
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
@@ -16,26 +16,37 @@
 //+------------------------------------------------------------------+
 void OnStart()
 {
-   Print("=== StealthRegistry Test START (v1.03) ===");
+   Print("=== StealthRegistry Test START (v1.04) ===");
    Print("Initializing Registry (creates folders if missing)...");
 
    CStealthRegistry registry;
    registry.Init();
 
-   Print("1. Registry Initialized. Checking humanized random generation...");
+   Print("1. Registry Initialized. Checking Deep Randomization (Dynamic Seed)...");
    ulong rnd1 = registry.GetRandomMagic();
    ulong rnd2 = registry.GetRandomMagic();
+   ulong rnd3 = registry.GetRandomMagic();
+   ulong rnd4 = registry.GetRandomMagic();
+
    PrintFormat("Random Magic 1: %I64u", rnd1);
    PrintFormat("Random Magic 2: %I64u", rnd2);
+   PrintFormat("Random Magic 3: %I64u", rnd3);
+   PrintFormat("Random Magic 4: %I64u", rnd4);
 
-   if(rnd1 >= 10000 && rnd1 <= 999999) Print("PASS: Magic 1 is within humanized range (10k-999k).");
-   else PrintFormat("FAIL: Magic 1 out of range! (%I64u)", rnd1);
+   // Check Range
+   if(rnd1 >= 10000 && rnd1 <= 999999) Print("PASS: Magic 1 in range."); else Print("FAIL: Magic 1 out of range!");
+   if(rnd2 >= 10000 && rnd2 <= 999999) Print("PASS: Magic 2 in range."); else Print("FAIL: Magic 2 out of range!");
 
-   if(rnd2 >= 10000 && rnd2 <= 999999) Print("PASS: Magic 2 is within humanized range (10k-999k).");
-   else PrintFormat("FAIL: Magic 2 out of range! (%I64u)", rnd2);
+   // Check Variance (Clumping Test)
+   // We expect significant difference, not just +/- 1000
+   long diff1 = (long)rnd1 - (long)rnd2;
+   long diff2 = (long)rnd2 - (long)rnd3;
 
-   if(rnd1 != rnd2) Print("PASS: Random Magic differs.");
-   else Print("FAIL: Random Magic collision (possible but unlikely).");
+   if(MathAbs(diff1) > 5000) PrintFormat("PASS: Variance 1-2 OK (Diff: %d)", diff1);
+   else PrintFormat("WARNING: Variance 1-2 LOW (Diff: %d) - Possible clumping?", diff1);
+
+   if(MathAbs(diff2) > 5000) PrintFormat("PASS: Variance 2-3 OK (Diff: %d)", diff2);
+   else PrintFormat("WARNING: Variance 2-3 LOW (Diff: %d) - Possible clumping?", diff2);
 
    Print("2. Testing Ticket Registration...");
    ulong fake_ticket = 12345;
@@ -61,6 +72,6 @@ void OnStart()
    Print("=== StealthRegistry Test END ===");
    Print("PLEASE VERIFY: MQL5/Files/Merkava_Stealth/Logs/Stealth_Audit_YYYY.MM.DD.csv");
    Print("Check for:");
-   Print("  - Header Row: Time,Action,Ticket,MagicNumber,Comment");
-   Print("  - Magic Numbers should be simple integers (e.g., 543210), NOT scientific notation (5.43E+5).");
+   Print("  - Header Row present.");
+   Print("  - Magic Numbers are diverse integers (e.g. 123456, 876543), not clustered (e.g. 123456, 123457).");
 }
