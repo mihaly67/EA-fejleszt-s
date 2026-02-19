@@ -65,18 +65,9 @@ ENVIRONMENT_RESOURCES = {
         "extract_to": "rag_mql5_dev",
         "check_file": "MQL5_DEV_knowledgebase.db"
     },
-    "THIEFS_LIBRARY": {
-        "id": "1shtt-Q_O5nqg59jyHgRpg-Dc_8I7LxuU",
-        "file": "knowledge_base_thiefs_library.zip",
-        "extract_to": "Knowledge_Base",
-        "check_file": "knowledge_base_thiefs_library.jsonl"
-    },
-    "COLUMBO_LIBRARY": {
-        "id": "1jHcM_LpsLYaWc5Uo6869Cskpo0NK5tyR",
-        "file": "knowledge_base_columbo.zip",
-        "extract_to": "Knowledge_Base",
-        "check_file": "knowledge_base_columbo.jsonl"
-    },
+    # --- THIEFS_LIBRARY removed (replaced by THIEFS_EXTND_LIBRARY) ---
+    # --- COLUMBO_LIBRARY removed (replaced by COLUMBO_EXTND_LIBRARY) ---
+
     # --- ÚJ BŐVÍTÉSEK (TC3 - ÚJ LINKEK) ---
     "DATA_ENG": {
         "id": "1byXybnbCK-Yj2eoYJ4hrV5kwrYiw2bpa",
