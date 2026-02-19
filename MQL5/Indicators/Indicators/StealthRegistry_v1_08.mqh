@@ -56,9 +56,9 @@ public:
 class CStealthRegistry
 {
 private:
-   string         m_root_path;      // Root folder: Merkava_Stealth\
-   string         m_registry_path;  // File: Merkava_Stealth\Registry\ActiveTickets.csv
-   string         m_logs_folder;    // Folder: Merkava_Stealth\Logs\
+   string         m_root_path;      // Root folder: Merkava_Stealth/
+   string         m_registry_path;  // File: Merkava_Stealth/Registry/ActiveTickets.csv
+   string         m_logs_folder;    // Folder: Merkava_Stealth/Logs/
    ulong          m_active_tickets[]; // In-memory cache of active tickets
    int            m_ticket_count;
    CStealthPRNG   m_prng;           // Custom PRNG instance
@@ -124,7 +124,7 @@ private:
       FileClose(handle);
    }
 
-   // Helper: Create Folders (Robust)
+   // Helper: Create Folders (Robust, Forward Slashes)
    bool CreateFolders()
    {
        // MQL5/Files/ is root
@@ -140,7 +140,7 @@ private:
        }
 
        // 2. Registry Folder
-       if(!FolderCreate("Merkava_Stealth\\Registry")) {
+       if(!FolderCreate("Merkava_Stealth/Registry")) {
            if(GetLastError() != 4119 && GetLastError() != 0) {
                Print("StealthRegistry: FolderCreate Registry failed. Error=", GetLastError());
                res = false;
@@ -148,7 +148,7 @@ private:
        }
 
        // 3. Logs Folder
-       if(!FolderCreate("Merkava_Stealth\\Logs")) {
+       if(!FolderCreate("Merkava_Stealth/Logs")) {
            if(GetLastError() != 4119 && GetLastError() != 0) {
                Print("StealthRegistry: FolderCreate Logs failed. Error=", GetLastError());
                res = false;
@@ -161,32 +161,34 @@ private:
 public:
    // Helper: Append to Audit Log (Public for Test Script access)
    // v1.08 Fix: Ensures file is created properly even if previous attempts failed.
+   //            Uses Forward Slashes for cross-platform compatibility (Sandbox).
    void LogAudit(string action, ulong ticket, ulong magic, string comment)
    {
-       // Ensure folder exists
+       // Ensure folder exists (critical)
        CreateFolders();
 
        string date_str = TimeToString(TimeCurrent(), TIME_DATE);
        StringReplace(date_str, ".", ""); // YYYYMMDD format
 
        // Construct filename: MQL5/Files/Merkava_Stealth/Logs/Stealth_Audit_YYYYMMDD.csv
+       // USE FORWARD SLASHES
        string filename = m_logs_folder + "Stealth_Audit_" + date_str + ".csv";
 
        int handle = INVALID_HANDLE;
 
        // Try to open for READ|WRITE (Append mode requires seeking)
-       // Note: FILE_READ|FILE_WRITE requires the file to exist in some implementations,
-       // but in MQL5 usually creates it if missing IF FILE_WRITE is present.
-       // To be safe, we check existence or handle error.
+       // Note: MQL5 `FILE_READ|FILE_WRITE` creates if missing in some environments, but safest pattern is check.
 
        if(FileIsExist(filename)) {
            handle = FileOpen(filename, FILE_READ|FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
        } else {
-           // Create new file
+           // Force Create new file
            handle = FileOpen(filename, FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
            if(handle != INVALID_HANDLE) {
                // Write Header for new file
                FileWrite(handle, "Time", "Action", "Ticket", "MagicNumber", "Comment");
+               // Close and re-open in Append mode? Or just keep writing.
+               // We can just write and close. Next time it will exist.
            }
        }
 
@@ -194,7 +196,7 @@ public:
            Print("StealthRegistry ERROR: Failed to open log file: ", filename, " Error: ", GetLastError());
 
            // FALLBACK: Write to root if folder path is broken
-           string fallback = "Merkava_Fallback_Log_" + date_str + ".csv";
+           string fallback = "Merkava_Stealth/Fallback_Log_" + date_str + ".csv"; // Try inside Stealth root first
            int h2 = FileOpen(fallback, FILE_READ|FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
            if(h2 == INVALID_HANDLE) h2 = FileOpen(fallback, FILE_WRITE|FILE_CSV|FILE_ANSI, ","); // Create if missing
 
@@ -209,7 +211,15 @@ public:
            return;
        }
 
-       // File Opened successfully. Move to end.
+       // File Opened successfully.
+       // Only Seek End if we opened in READ|WRITE mode (append)
+       // If we just created (WRITE only), we are at 0 (or after header).
+       // However, to be uniform, we should handle both.
+
+       // If opened with READ|WRITE, we can seek.
+       // If opened with WRITE only (creation), we are at end anyway.
+       // BUT `FileSeek` works on handle regardless of mode mostly (unless strictly append).
+
        FileSeek(handle, 0, SEEK_END);
 
        // Double check if empty (created but header missing?)
@@ -231,10 +241,10 @@ public:
 
    CStealthRegistry()
    {
-       // Use double backslashes for safe path construction
-       m_root_path = "Merkava_Stealth\\";
-       m_registry_path = "Merkava_Stealth\\Registry\\ActiveTickets.csv";
-       m_logs_folder = "Merkava_Stealth\\Logs\\";
+       // Use FORWARD SLASHES for safe path construction
+       m_root_path = "Merkava_Stealth/";
+       m_registry_path = "Merkava_Stealth/Registry/ActiveTickets.csv";
+       m_logs_folder = "Merkava_Stealth/Logs/";
        m_ticket_count = 0;
    }
    ~CStealthRegistry() {}
