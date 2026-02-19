@@ -4,7 +4,7 @@
 //|                                       Part of Merkava Tank Logic |
 //|                                                    Version 2.24  |
 //|                    (Stealth Engine & Registry v1.08 Integration) |
-//|                    (Strict Stealth: No EA Traces in Comments)    |
+//|                    (Strict Stealth: Total Silence - Empty Comments)|
 //+------------------------------------------------------------------+
 #ifndef FIRECONTROL_V2_24_MQH
 #define FIRECONTROL_V2_24_MQH
@@ -22,6 +22,7 @@
 //| Class CFireControl                                               |
 //| Handles the "Trap" logic for placing Breakout (Stop) orders.     |
 //| v2.24: Strict Stealth - Sanitizes ALL comments (Broker & CSV).   |
+//|        Now enforces TOTAL SILENCE ("") for broker.               |
 //+------------------------------------------------------------------+
 class CFireControl
 {
@@ -181,14 +182,13 @@ public:
        ulong magic = m_magic;
        string final_comment = ""; // Default empty
 
-       // If Deep Stealth, override with Randoms/Empty
+       // If Deep Stealth, override with Random Magic & TOTAL SILENCE
        if(deep_stealth && m_registry != NULL) {
            magic = m_registry.GetRandomMagic();
-           final_comment = m_registry.GetRandomComment(); // "manual", "t1", etc.
+           final_comment = ""; // TOTAL SILENCE - No "manual", no "test", just empty.
            m_trade.SetExpertMagicNumber(magic); // Override global magic for this trade
        } else {
-           // If Stealth OFF, use prefix (BUT user requested "No EA Traces" even here usually)
-           // Keeping prefix only if Stealth OFF allows debugging, but better to be safe.
+           // If Stealth OFF, use prefix (Legacy mode)
            final_comment = m_comment_prefix;
        }
 
@@ -204,7 +204,7 @@ public:
            if(m_trade.ResultRetcode() == TRADE_RETCODE_DONE || m_trade.ResultRetcode() == TRADE_RETCODE_PLACED) {
                ulong ticket = m_trade.ResultOrder();
                if(deep_stealth && m_registry != NULL && ticket > 0) {
-                   // Register using SAME comment as Broker (Sanitized)
+                   // Register with SILENCE (or "Silent" internally if preferred, but keeping consistent)
                    m_registry.RegisterTicket(ticket, magic, final_comment);
                }
            }
