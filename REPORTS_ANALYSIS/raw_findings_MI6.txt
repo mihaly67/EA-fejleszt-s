@@ -1,0 +1,204 @@
+Searching for keywords: ['telemetry', 'fingerprinting', 'packet', 'heartbeat', 'mouse tracking', 'cursor', 'focus', 'anti-debug']
+
+--- Searching in: Knowledge_Base/MI6/MI6.jsonl ---
+
+[MATCH #1] Line 15
+Keywords found: ['cursor', 'focus']
+Source/File: amiunique-master/website/public/javascripts/highcharts.js
+Snippet: ...top,M={enabled:!0,x:0,y:15,style:{color:"#606060",cursor:"default",fontSize:"11px"}};E={colors:"#7cb5ec,#434348,#90ed7d,#f7a35c,#8085e9,#f15c80,#e4d354,#8085e8,#8d4653,#91e8e1".split(","),
+symbols:["circle","diamond","square","triangle","triangle-down"],lang:{loading:"Loading...",months:"January,February,March,April,May,June,July,August,September,O...
+----------------------------------------
+
+[MATCH #2] Line 20
+Keywords found: ['cursor']
+Source/File: amiunique-master/website/public/javascripts/highcharts-drilldown.js
+Snippet: ...eries.name}"});o.drilldown={activeAxisLabelStyle:{cursor:"pointer",color:"#0d233a",fontWeight:"bold",
+textDecoration:"underline"},activeDataLabelStyle:{cursor:"pointer",color:"#0d233a",fontWeight:"bold",textDecoration:"underline"},animation:{duration:500},drillUpButton:{position:{align:"right",x:-10,y:10}}};g.SVGRenderer.prototype.Element.prototype...
+----------------------------------------
+
+[MATCH #3] Line 27
+Keywords found: ['focus']
+Source/File: amiunique-master/website/public/javascripts/modernizr.js
+Snippet: ...eateElement("input"),inputattrs="autocomplete autofocus list placeholder max min multiple pattern required step".split(" "),attrs={};Modernizr.input=function(e){for(var t=0,r=e.length;r>t;t++)attrs[e[t]]=!!(e[t]in inputElem);return attrs.list&&(attrs.list=!(!createElement("datalist")||!window.HTMLDataListElement)),attrs}(inputattrs),Modernizr.addTe...
+----------------------------------------
+
+[MATCH #4] Line 28
+Keywords found: ['focus']
+Source/File: amiunique-master/website/public/javascripts/jquery.min.js
+Snippet: ...)return c;return-1},K="checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|ismap|loop|multiple|open|readonly|required|scoped",L="[\\x20\\t\\r\\n\\f]",M="(?:\\\\.|[\\w-]|[^\\x00-\\xa0])+",N=M.replace("w","w#"),O="\\["+L+"*("+M+")(?:"+L+"*([*^$|!~]?=)"+L+"*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|("+N+"))|)"+L+"*\\]"...
+----------------------------------------
+
+[MATCH #5] Line 30
+Keywords found: ['fingerprinting']
+Source/File: amiunique-master/website/public/javascripts/webGL.js
+Snippet: ...//WebGL fingerprinting
+//Code from https://github.com/Valve/fingerprintjs2
+try {
+    var fa2s = function(fa) {
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        return "[" + fa[0]...
+----------------------------------------
+
+[MATCH #6] Line 32
+Keywords found: ['cursor']
+Source/File: amiunique-master/website/public/javascripts/fpMore.js
+Snippet: ... Italique', 'Kohinoor Devanagari', 'Times Gras', 'cursor', 'Latin Modern Sans Demi Cond', 'Courier Gras', 'MSung B5HK', 'Police système Intense', 'Police système Gras', 'Courier New Gras Italique', 'Apple Emoji couleur', 'SAPDings', 'Coronet', 'Latin Modern Mono Prop', 'Georgia Gras Italique', 'Times Gras italique', 'Klee', 'Orange LET', 'TAMu', 'U...
+----------------------------------------
+
+[MATCH #7] Line 34
+Keywords found: ['cursor', 'focus']
+Source/File: amiunique-master/website/public/javascripts/jquery-ui.min.js
+Snippet: ...rent",axis:!1,connectToSortable:!1,containment:!1,cursor:"auto",cursorAt:!1,grid:!1,handle:!1,helper:"original",iframeFix:!1,opacity:!1,refreshPositions:!1,revert:!1,revertDuration:500,scope:"default",scroll:!0,scrollSensitivity:20,scrollSpeed:20,snap:!1,snapMode:"both",snapTolerance:20,stack:!1,zIndex:!1,drag:null,start:null,stop:null},_create:fun...
+----------------------------------------
+
+[MATCH #8] Line 36
+Keywords found: ['focus']
+Source/File: amiunique-master/website/public/javascripts/bootstrap.min.js
+Snippet: ...tn")),b.call(d,"toggle"),c.preventDefault()}).on("focus.bs.button.data-api blur.bs.button.data-api",'[data-toggle^="button"]',function(b){a(b.target).closest(".btn").toggleClass("focus",/^focus(in)?$/.test(b.type))})}(jQuery),+function(a){"use strict";function b(b){return this.each(function(){var d=a(this),e=d.data("bs.carousel"),f=a.extend({},c.DE...
+----------------------------------------
+
+[MATCH #9] Line 41
+Keywords found: ['heartbeat', 'cursor']
+Source/File: amiunique-master/website/public/font-awesome/css/font-awesome.min.css
+Snippet: ...\f21c"}.fa-street-view:before{content:"\f21d"}.fa-heartbeat:before{content:"\f21e"}.fa-venus:before{content:"\f221"}.fa-mars:before{content:"\f222"}.fa-mercury:before{content:"\f223"}.fa-intersex:before,.fa-transgender:before{content:"\f224"}.fa-transgender-alt:before{content:"\f225"}.fa-venus-double:before{content:"\f226"}.fa-mars-double:before{co...
+----------------------------------------
+
+[MATCH #10] Line 42
+Keywords found: ['cursor', 'focus']
+Source/File: amiunique-master/website/public/stylesheets/bootstrap.min.css
+Snippet: ..."],input[type="submit"]{-webkit-appearance:button;cursor:pointer}button[disabled],html input[disabled]{cursor:default}button::-moz-focus-inner,input::-moz-focus-inner{border:0;padding:0}input{line-height:normal}input[type="checkbox"],input[type="radio"]{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;padding:0}input[t...
+----------------------------------------
+
+[MATCH #11] Line 43
+Keywords found: ['cursor', 'focus']
+Source/File: amiunique-master/website/public/stylesheets/jquery-ui.min.css
+Snippet: ...acity=0)}.ui-front{z-index:100}.ui-state-disabled{cursor:default!important}.ui-icon{display:block;text-indent:-99999px;overflow:hidden;background-repeat:no-repeat}.ui-widget-overlay{position:fixed;top:0;left:0;width:100%;height:100%}.ui-draggable-handle{-ms-touch-action:none;touch-action:none}.ui-resizable{position:relative}.ui-resizable-handle{pos...
+----------------------------------------
+
+[MATCH #12] Line 44
+Keywords found: ['focus']
+Source/File: amiunique-master/website/public/stylesheets/bootstrap-theme.min.css
+Snippet: ...rder-color:#dbdbdb;border-color:#ccc}.btn-default:focus,.btn-default:hover{background-color:#e0e0e0;background-position:0 -15px}.btn-default.active,.btn-default:active{background-color:#e0e0e0;border-color:#dbdbdb}.btn-default.disabled,.btn-default:disabled,.btn-default[disabled]{background-color:#e0e0e0;background-image:none}.btn-primary{backgroun...
+----------------------------------------
+
+[MATCH #13] Line 46
+Keywords found: ['focus']
+Source/File: amiunique-master/website/public/stylesheets/sb-admin.css
+Snippet: ...olor: #999;
+}
+
+.top-nav>li>a:hover,
+.top-nav>li>a:focus,
+.top-nav>.open>a,
+.top-nav>.open>a:hover,
+.top-nav>.open>a:focus {
+    color: #fff;
+    background-color: #000;
+}
+
+.top-nav>.open>.dropdown-menu {
+    float: left;
+    position: absolute;
+    margin-top: 0;
+    border: 1px solid rgba(0,0,0,.15);
+    border-top-left-radius: 0;
+    border-top-r...
+----------------------------------------
+
+[MATCH #14] Line 48
+Keywords found: ['cursor', 'focus']
+Source/File: amiunique-master/website/public/timelinejs/css/timeline.css
+Snippet: ...t[type="reset"],.vco-storyjs input[type="submit"]{cursor:pointer;-webkit-appearance:button}.vco-storyjs input[type="search"]{-webkit-appearance:textfield;-webkit-box-sizing:content-box;-moz-box-sizing:content-box;box-sizing:content-box}.vco-storyjs input[type="search"]::-webkit-search-decoration{-webkit-appearance:none}.vco-storyjs textarea{overflo...
+----------------------------------------
+
+[MATCH #15] Line 49
+Keywords found: ['cursor', 'focus']
+Source/File: amiunique-master/website/public/timelinejs/css/themes/dark.css
+Snippet: ...t[type="reset"],.vco-storyjs input[type="submit"]{cursor:pointer;-webkit-appearance:button}.vco-storyjs input[type="search"]{-webkit-appearance:textfield;-webkit-box-sizing:content-box;-moz-box-sizing:content-box;box-sizing:content-box}.vco-storyjs input[type="search"]::-webkit-search-decoration{-webkit-appearance:none}.vco-storyjs textarea{overflo...
+----------------------------------------
+
+[MATCH #16] Line 69
+Keywords found: ['focus']
+Source/File: amiunique-master/website/public/timelinejs/js/timeline.js
+Snippet: ...this.options.trigger == 'hover' ? 'mouseenter' : 'focus'
+        eventOut = this.options.trigger == 'hover' ? 'mouseleave' : 'blur'
+        this.$element.on(eventIn, this.options.selector, $.proxy(this.enter, this))
+        this.$element.on(eventOut, this.options.selector, $.proxy(this.leave, this))
+      }
+
+      this.options.selector ?
+        (t...
+----------------------------------------
+
+[MATCH #17] Line 70
+Keywords found: ['focus']
+Source/File: amiunique-master/website/public/timelinejs/js/timeline-min.js
+Snippet: ...entIn=this.options.trigger=="hover"?"mouseenter":"focus";eventOut=this.options.trigger=="hover"?"mouseleave":"blur";this.$element.on(eventIn,this.options.selector,$.proxy(this.enter,this));this.$element.on(eventOut,this.options.selector,$.proxy(this.leave,this))}this.options.selector?this._options=$.extend({},this.options,{trigger:"manual",selector...
+----------------------------------------
+
+[MATCH #18] Line 162
+Keywords found: ['fingerprinting']
+Source/File: amiunique-master/website/app/views/links.scala.html
+Snippet: ...r, "/links") {
+        <h2>General definitions of fingerprinting</h2>
+        <ul>
+            <li><a href="https://sites.google.com/a/chromium.org/dev/Home/chromium-security/client-identification-mechanisms#TOC-Machine-specific-characteristics">
+                Technical analysis of client identification mechanisms (Chromium project)
+            <...
+----------------------------------------
+
+[MATCH #19] Line 163
+Keywords found: ['cursor']
+Source/File: amiunique-master/website/app/views/history.scala.html
+Snippet: ...script>
+
+    <style>
+    [rel="popover"]{
+        cursor: pointer;
+        display:inline-block; /* chrome-fix */
+    }
+
+    td:nth-child(2), td:nth-child(3), td:nth-child(4){
+        word-break:break-all;
+    }
+
+    .history{
+        display:none;
+    }
+
+    .checkbox{
+        margin-right:15px;
+    }
+
+    #resultComparaison td:nth-child(2), #resu...
+----------------------------------------
+
+[MATCH #20] Line 166
+Keywords found: ['cursor']
+Source/File: amiunique-master/website/app/views/timelineTable.scala.html
+Snippet: ...umn)</td>
+}
+
+<style>
+    [rel="popover"]{
+        cursor: pointer;
+        display:inline-block; /* chrome-fix */
+    }
+
+    td:nth-child(2){
+        word-break:break-all;
+    }
+
+</style>
+
+<div class="table-responsive">
+      <table class="table table-striped table-hover">
+          <thead>
+              <tr>
+                  <th>@Messages("fp.det...
+----------------------------------------
+... Limit of 20 matches reached.
+ERROR: Knowledge base not found: Knowledge_Base/Black_Ops/Black_Ops.jsonl
