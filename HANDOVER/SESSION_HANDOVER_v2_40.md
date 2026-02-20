@@ -1,50 +1,44 @@
-# Session Handover: Merkava v2.40 (Strict Silence)
+# Session Handover: Merkava v2.40 (Phase 3: Counter-Intelligence)
 
 **Date:** 2026.02.18
 **Status:** GOLDEN MASTER CANDIDATE (Pending Broker Audit)
-**Version:** v2.40
+**Phase:** 3 (Reconnaissance & Client Sovereignty)
+**Version:** v2.40 (TC4 Environment Active)
 
 ## 1. System State Overview
-This session focused on repairing the CSV logging mechanism and enforcing a "Strict Silence" protocol to eliminate all EA-identifiable fingerprints from broker-visible metadata.
+This session successfully transitioned the environment to **TC4** (Phase 3), integrating advanced Counter-Intelligence capabilities.
 
-### Active Configuration
-*   **Main EA:** `MQL5/Indicators/Jules/Merkava_v2_40.mq5`
-    *   *Default Comment:* `""` (Empty String)
-    *   *Init Log:* Removed "Merkava Started" message.
-*   **Fire Control:** `MQL5/Indicators/Indicators/FireControl_v2_25.mqh`
-    *   *Logic:* When `DeepStealth_Enabled` is TRUE, the comment sent to the broker (`m_trade`) is forcibly set to `""` (Empty String).
-    *   *Fingerprint Removal:* No `_L1`, `_L2`, or "Merkava" prefixes are sent to the broker.
-*   **Stealth Registry:** `MQL5/Indicators/Indicators/StealthRegistry_v1_08.mqh`
-    *   *Fix:* Implemented robust `LogAudit` logic with explicit file creation (`FILE_WRITE`) before appending (`FILE_READ|FILE_WRITE`) to solve the "Missing CSV in Logs Folder" issue.
-    *   *Pathing:* Uses forward slashes (`/`) for maximum compatibility.
-    *   *Fallback:* Writes to root `Merkava_Stealth/` if `Logs/` subdirectory is inaccessible.
-*   **Profit Management:** `MQL5/Indicators/Indicators/ProfitManagement_v2_18.mqh`
-    *   *Update:* Linked to Registry v1.08.
+### Environment Status (TC4)
+*   **Script:** `ENVIRONMENT_SETUP/restore_envTC4.py` is fully operational.
+    *   **New Libraries:** Successfully integrated `MI6` (SIGINT/Network Analysis).
+    *   **Pending:** `Black_Ops` library download failed due to temporary Google Drive quota limits (link is valid, just needs retry).
+    *   **Cleanup:** Deprecated `THIEFS` and `COLUMBO` libraries removed (superseded by `_EXTND` versions).
+    *   **Constraint Adherence:** Strictly NO vectorization (`sentence-transformers`, `faiss` removed) to respect hardware limits.
+*   **DevOps:** `.gitignore` updated to exclude new large knowledge bases.
 
-## 2. Stealth Protocol (Strict Silence)
-The system now operates under a "Total Silence" doctrine to mimic a manual scalper using One-Click Trading.
+## 2. Research Findings (MI6 Initial Assessment)
+The initial passive analysis of the `MI6` knowledge base, combined with expert insights (Gemini), has revealed a critical vulnerability in the broker's surveillance strategy:
 
-| Data Point | Local CSV (Audit) | Broker Server (Metadata) |
-| :--- | :--- | :--- |
-| **Magic Number** | Random (10k-999k) | Random (10k-999k) |
-| **Order Comment** | `""` (Empty) | **`""` (Empty)** |
-| **Audit Log** | Full Details (Timestamp, Ticket, Magic) | N/A |
+*   **The "Hybrid Monster" Theory:** MT5 is not just a native C++ app; it embeds web technologies (WebView2/IE) for key functions (Market, News, Signals).
+*   **Web-Based Fingerprinting:** The broker likely uses standard web tracking techniques (`fingerprintjs2`, `amiunique`) within these embedded views to profile the client (Canvas fingerprinting, AudioContext, Font enumeration).
+*   **Input Monitoring:** References to `cursor: pointer`, `focus`, and `mouseenter` events suggest that "nervous" broker behavior (price flickering on hover) is triggered by JavaScript event listeners in these embedded panels, which send telemetry *before* a click occurs.
 
-*Note:* The local CSV may contain technical tags like "Closed/Removed" or "INIT", but these are **strictly local** and never transmitted.
+## 3. Gemini Insights (Critical for Next Steps)
+The following mechanisms were identified as key targets for "Network Filtering":
+1.  **Startup Ping:** MT5 sends HWID/OS version to MetaQuotes immediately upon launch (License Check).
+2.  **LiveUpdate:** Continuous background HTTP/HTTPS requests for updates.
+3.  **Silent Crash Reports:** WINE/Memory errors are silently uploaded, revealing system anatomy.
+4.  **Telemetry Channel:** Standard HTTPS traffic is used for these "Trojan" functions, making them susceptible to `mitmproxy` interception (unlike the encrypted trade protocol).
 
-## 3. Pending Verification
-*   **IC Markets Report:** The final validation depends on the broker's daily/monthly statement. It must confirm that trade comments are blank or contain no recognizable patterns.
-*   **Hunter Algo:** User observes "nervous" broker algo behavior. This indicates the broker is analyzing client-side inputs (mouse, focus), which leads to Phase 3.
+## 4. Pending Tasks & Next Steps
 
-## 4. Next Steps (Phase 3)
-The next session will focus on **Counter-Intelligence and Client Sovereignty**.
-
-1.  **Environment Setup:**
-    *   Verify/Restore **MI6 (SIS)** Knowledge Base (Network Traffic Analysis).
-    *   Verify/Restore **Black Ops** Knowledge Base (Input Spoofing, Anti-Forensics).
-    *   Create `restore_envTC4.py` to include these missing libraries.
-2.  **Objective:**
-    *   Detect "Heartbeat" or telemetry packets sent by the MT5 terminal.
-    *   Implement "Black Ops" countermeasures to simulate human hardware input (mouse jitter, focus events).
+### Immediate Actions (Next Session)
+1.  **Black Ops Library:** Retry downloading `Knowledge_Base/Black_Ops` via `restore_envTC4.py` (quota should reset).
+2.  **Dedicated Research Machine:**
+    *   **Status:** User is building a dedicated MX Linux machine with MT5 snapshot for deep packet inspection.
+    *   **Goal:** Use this machine to run `mitmproxy` and validate the "Hybrid Monster" theory by intercepting `crash-reports.metaquotes.net` and similar traffic.
+3.  **Network Hardening:**
+    *   Based on the `MI6` findings, begin creating a `hosts` file blocklist for known telemetry domains.
+    *   Investigate disabling "WebRequest" and embedded browser features in MT5 config.
 
 **Signed:** Jules (AI Engineer)
