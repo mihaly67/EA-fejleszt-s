@@ -7,6 +7,9 @@ import json
 
 # 1. Telemetry Domains (Blocklist)
 BLOCKED_DOMAINS = [
+    "fonts.googleapis.com",
+    "code.google.com",
+    "sites.google.com",
     "crash-reports.metaquotes.net",
     "telemetry.metaquotes.net",
     "analytics.google.com",
