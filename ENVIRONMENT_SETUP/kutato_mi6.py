@@ -4,7 +4,7 @@ import sys
 
 # Konfiguráció
 JSONL_PATH = "Knowledge_Base/MI6/MI6.jsonl"
-OUTPUT_PATH = "Knowledge_Base/MI6/mi6_findings.json"
+OUTPUT_PATH = "Knowledge_Base/MI6/Research_Results/mi6_findings.json"  # Output path updated
 BATCH_SIZE = 500  # Ennyi sort olvasunk be egyszerre a memóriába
 
 # Kulcsszavak, amikre vadászunk (Browser Fingerprinting & Telemetry)
@@ -34,6 +34,9 @@ def analyze_mi6():
         print(f"❌ Hiba: Nem található a fájl: {JSONL_PATH}")
         return
 
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+
     findings = []
     line_count = 0
     match_count = 0
@@ -43,14 +46,19 @@ def analyze_mi6():
             batch = []
             for line in f:
                 line_count += 1
-                batch.append(line)
+                try:
+                    entry = json.loads(line)
+                    batch.append(entry)
+                except json.JSONDecodeError:
+                    continue
 
                 # Ha elértük a batch méretet, feldolgozzuk
                 if len(batch) >= BATCH_SIZE:
                     matches = process_batch(batch)
                     findings.extend(matches)
                     match_count += len(matches)
-                    print(f"   Processed {line_count} lines... Found {match_count} matches so far.")
+                    if line_count % 5000 == 0:
+                        print(f"   Processed {line_count} lines... Found {match_count} matches so far.")
                     batch = []  # Memória ürítése
 
             # Maradék feldolgozása
@@ -68,27 +76,23 @@ def analyze_mi6():
         json.dump(findings, out, indent=2)
     print(f"📄 Jelentés mentve: {OUTPUT_PATH}")
 
-def process_batch(lines):
+def process_batch(entries):
     """Egy batch feldolgozása és a kulcsszavak keresése."""
     batch_matches = []
-    for line_str in lines:
-        try:
-            entry = json.loads(line_str)
-            code = entry.get("code", "").lower()
-            filename = entry.get("filename", "")
+    for entry in entries:
+        code = entry.get("code", "").lower()
+        filename = entry.get("filename", "")
 
-            # Keresés
-            found_keywords = [kw for kw in TARGET_KEYWORDS if kw in code or kw in filename.lower()]
+        # Keresés - check if ANY keyword is in the code OR filename
+        found_keywords = [kw for kw in TARGET_KEYWORDS if kw in code or kw in filename.lower()]
 
-            if found_keywords:
-                # Csak a releváns adatokat mentjük el, hogy spóroljunk a hellyel
-                batch_matches.append({
-                    "file": filename,
-                    "keywords": found_keywords,
-                    "snippet": code[:200] + "..." if len(code) > 200 else code # Csak az elejét mentjük
-                })
-        except json.JSONDecodeError:
-            continue
+        if found_keywords:
+            # Csak a releváns adatokat mentjük el, hogy spóroljunk a hellyel
+            batch_matches.append({
+                "file": filename,
+                "keywords": found_keywords,
+                "snippet": code[:200] + "..." if len(code) > 200 else code # Csak az elejét mentjük
+            })
     return batch_matches
 
 if __name__ == "__main__":
