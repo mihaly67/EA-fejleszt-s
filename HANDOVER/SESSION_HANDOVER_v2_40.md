@@ -31,16 +31,16 @@ The following mechanisms were identified as key targets for "Network Filtering":
 
 ## 4. Pending Tasks & Next Steps (REVISED STRATEGY)
 
-### Immediate Actions (Next Session - SANDBOX ENVIRONMENT)
+### Immediate Actions (Next Session - SANDBOX EXECUTION)
 1.  **MI6 Focus (SIGINT First):**
-    *   **Target:** Analyze `Knowledge_Base/MI6` (Network Analysis/Fingerprinting).
-    *   **Method:** Process JSONL files in small batches to respect memory limits.
-    *   **Goal:** Identify telemetry domains and fingerprinting scripts used by MT5's embedded browser.
+    *   **Research Folder:** `Knowledge_Base/MI6/Research_Results/`
+    *   **Raw Findings:** `mi6_findings.json` (889 matches) is already present.
+    *   **Tooling:** `ENVIRONMENT_SETUP/mitm_filter.py` has been created for the Sandbox.
 2.  **Black Ops (DEPRIORITIZED):**
     *   Do NOT process `Knowledge_Base/Black_Ops` (Frida/Input Spoofing) yet. Save resources.
 3.  **Sandbox Execution (MX Linux):**
     *   The user has set up an isolated MX Linux environment with MT5 in a WINE container (`~/.wine_mi6`).
-    *   **Task:** Deploy `mitmproxy` scripts generated from `MI6` analysis to this machine.
+    *   **Task:** Deploy `mitmproxy` scripts (`mitm_filter.py`) generated from `MI6` analysis to this machine.
     *   **Objective:** Validate the "Hybrid Monster" theory by intercepting `crash-reports.metaquotes.net` and similar traffic.
 
 **Signed:** Jules (AI Engineer)
