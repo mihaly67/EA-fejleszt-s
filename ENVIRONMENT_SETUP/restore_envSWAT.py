@@ -14,7 +14,7 @@ def install_dependencies():
     print("🔧 Függőségek ellenőrzése és telepítése...")
     required = [
         "gdown",
-        "chromadb",
+        "faiss-cpu",
         "sentence-transformers",
         "numpy",
         "pandas",
@@ -26,8 +26,8 @@ def install_dependencies():
             module_name = pkg
             if pkg == "sentence-transformers":
                 module_name = "sentence_transformers"
-            elif pkg == "chromadb":
-                module_name = "chromadb"
+            elif pkg == "faiss-cpu":
+                module_name = "faiss"
 
             __import__(module_name.replace("-", "_"))
         except ImportError:
@@ -71,12 +71,12 @@ ENVIRONMENT_RESOURCES = {
         "check_file": "MQL5_DEV_knowledgebase.db"
     },
 
-    # --- ÚJ SWAT RAG (HELYETTESÍTI A NYERS JSONL FÁJLOKAT) ---
+    # --- ÚJ SWAT RAG (FAISS + SQLITE) ---
     "SWAT_RAG": {
-        "id": "1s5zzS7P3nkCUlX5SH7TSEh79d1r4z7hb",
-        "file": "SWAT_RAG.zip",
+        "id": "1LAaZKAK_VFLbe5qlrb4kKAxV3WIPYkXi",
+        "file": "SWAT_RAG_FAISS.zip",
         "extract_to": "Knowledge_Base/SWAT_DB",
-        "check_file": "chroma.sqlite3"
+        "check_file": "swat_unified_compressed.index"
     }
 }
 
@@ -112,17 +112,17 @@ def hoist_files(target_dir, check_file):
     return True
 
 def find_verification_file(directory):
-    """Megkeresi az első ellenőrző fájlt (.jsonl, .db, .sqlite3)."""
-    # Check for DB files first
-    db_files = glob.glob(os.path.join(directory, "**/*.sqlite3"), recursive=True)
+    """Megkeresi az első ellenőrző fájlt (.index, .db, .sqlite)."""
+    # Check for FAISS index first
+    index_files = glob.glob(os.path.join(directory, "**/*.index"), recursive=True)
+    if index_files: return os.path.basename(index_files[0])
+
+    # Check for DB/SQLite files
+    db_files = glob.glob(os.path.join(directory, "**/*.sqlite"), recursive=True)
     if db_files: return os.path.basename(db_files[0])
 
     db_files = glob.glob(os.path.join(directory, "**/*.db"), recursive=True)
     if db_files: return os.path.basename(db_files[0])
-
-    # Check for JSONL
-    jsonl_files = glob.glob(os.path.join(directory, "**/*.jsonl"), recursive=True)
-    if jsonl_files: return os.path.basename(jsonl_files[0])
 
     return None
 
@@ -171,7 +171,7 @@ def process_resource(key, config):
     # 1. Ellenőrzés: Létezik és ép?
     is_valid = False
     if check_path and os.path.exists(check_path):
-        if check_path.endswith(".db") or check_path.endswith(".sqlite3"):
+        if check_path.endswith(".db") or check_path.endswith(".sqlite"):
             is_valid = check_sqlite_integrity(check_path)
         elif check_path.endswith(".jsonl"):
             is_valid = check_jsonl_integrity(check_path)
@@ -250,7 +250,7 @@ def update_gitignore():
 
         if ignore_entry not in content:
             with open(".gitignore", "a") as f:
-                f.write(f"\n# SWAT RAG Database\n{ignore_entry}\n")
+                f.write(f"\n# SWAT RAG Database (FAISS)\n{ignore_entry}\n")
             log(f"   ✅ Hozzáadva: {ignore_entry}", Fore.GREEN)
         else:
             log(f"   ℹ️ Már tartalmazza: {ignore_entry}", Fore.CYAN)
@@ -260,7 +260,7 @@ def update_gitignore():
         log(f"   ✅ Létrehozva és hozzáadva: {ignore_entry}", Fore.GREEN)
 
 def main():
-    print(f"{Fore.CYAN}=== 🚀 RESTORE ENV SWAT (VECTOR RAG DEPLOYMENT) ==={Style.RESET_ALL}")
+    print(f"{Fore.CYAN}=== 🚀 RESTORE ENV SWAT (FAISS + SQLITE RAG DEPLOYMENT) ==={Style.RESET_ALL}")
 
     # 1. Git Sync
     force_git_sync()
@@ -273,7 +273,7 @@ def main():
     update_gitignore()
 
     # 4. Végső Üzenet
-    print(f"\n{Fore.GREEN}✅ SWAT KÖRNYEZET KÉSZ. RAG RENDSZER AKTÍV.{Style.RESET_ALL}")
+    print(f"\n{Fore.GREEN}✅ SWAT KÖRNYEZET KÉSZ. RAG RENDSZER (FAISS) AKTÍV.{Style.RESET_ALL}")
 
 if __name__ == "__main__":
     main()
