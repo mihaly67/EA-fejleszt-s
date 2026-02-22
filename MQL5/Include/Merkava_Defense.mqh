@@ -40,8 +40,9 @@ public:
    bool SecureBoot() {
       Print("[MDAS] Initiating Secure Boot Sequence...");
 
-      // Fix: Use -> operator for pointer access
-      if(!m_monitor->IsStable()) {
+      // MQL5 Syntax Fix: Using dot operator for pointers is standard/supported.
+      // The arrow -> caused compiler errors.
+      if(!m_monitor.IsStable()) {
          Print("[MDAS] CRITICAL: Environment Unstable/Compromised. Abort.");
          m_is_compromised = true;
          return false;
@@ -55,8 +56,8 @@ public:
    void Defend() {
       if(m_is_compromised) return;
 
-      // 1. Generate Noise
-      m_mimic->Update();
+      // 1. Generate Noise (Scrolling, Timeframe, Crosshair)
+      m_mimic.Update();
 
       // 2. Periodic Re-Check (Random interval logic needed here)
    }
@@ -66,8 +67,8 @@ public:
       if(m_is_compromised) return false;
 
       // 0 = BUY, 1 = SELL
-      if(type == 0) return m_ux->ExecuteAction_Primary();
-      if(type == 1) return m_ux->ExecuteAction_Secondary();
+      if(type == 0) return m_ux.ExecuteAction_Primary();
+      if(type == 1) return m_ux.ExecuteAction_Secondary();
 
       return false;
    }
