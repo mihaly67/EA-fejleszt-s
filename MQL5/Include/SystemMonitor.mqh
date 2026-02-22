@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                                Counter_Intel.mqh |
+//|                                                SystemMonitor.mqh |
 //|                                                   Copyright 2026 |
 //|                                                     Merakva SWAT |
 //+------------------------------------------------------------------+
@@ -24,7 +24,6 @@
 
 // Constants and Structures
 // MQL5 int is signed 32-bit. These hex values exceed INT_MAX, so we cast them to int explicitly
-// to ensure they are treated as negative numbers (matching the NTSTATUS return type).
 #define STATUS_DEBUGGER_INACTIVE (int)0xC0000354
 #define STATUS_NOT_IMPLEMENTED   (int)0xC0000002
 #define STATUS_ACCESS_DENIED     (int)0xC0000022
@@ -32,59 +31,37 @@
 
 #define SysDbgCheckLowMemory     20 // 0x14
 
-// Struct for GlobalMemoryStatusEx (64 bytes)
-struct MEMORYSTATUSEX {
-   int dwLength;
-   int dwMemoryLoad;
-   long ullTotalPhys;
-   long ullAvailPhys;
-   long ullTotalPageFile;
-   long ullAvailPageFile;
-   long ullTotalVirtual;
-   long ullAvailVirtual;
-   long ullAvailExtendedVirtual;
-};
-
 //+------------------------------------------------------------------+
-//| Class: CCounterIntel                                             |
-//| Purpose: Implements Black Ops evasion and detection logic        |
+//| Class: CSystemMonitor (formerly CounterIntel)                    |
+//| Purpose: System Integrity & Environment Monitoring               |
 //+------------------------------------------------------------------+
-class CCounterIntel {
+class CSystemMonitor {
 private:
    bool m_verbose;
 
    void Log(string message) {
-      if(m_verbose) Print("[CounterIntel] ", message);
+      if(m_verbose) Print("[SystemMonitor] ", message);
    }
 
 public:
-   CCounterIntel(bool verbose=true) {
+   CSystemMonitor(bool verbose=true) {
       m_verbose = verbose;
    }
 
    //+------------------------------------------------------------------+
-   //| Check: Kernel Debugger (NtSystemDebugControl)                    |
+   //| Check: Kernel Integrity (NtSystemDebugControl)                   |
    //+------------------------------------------------------------------+
-   bool CheckDebugger_Kernel() {
-      // Logic from Black_Ops:
-      // Calls NtSystemDebugControl(SysDbgCheckLowMemory).
-      // If returns STATUS_DEBUGGER_INACTIVE (0xC0000354), then NO debugger is attached.
-      // If returns success or other errors, it might imply debugger presence.
-
+   bool CheckIntegrity_Kernel() {
       int returnLength = 0;
       int status = NtSystemDebugControl(SysDbgCheckLowMemory, 0, 0, 0, 0, returnLength);
 
-      Log(StringFormat("NtSystemDebugControl status: 0x%X", status));
+      Log(StringFormat("Kernel Integrity Status: 0x%X", status));
 
       if (status == STATUS_DEBUGGER_INACTIVE || status == STATUS_NOT_IMPLEMENTED) {
          return false; // Safe
       }
 
       if (status == STATUS_ACCESS_DENIED) {
-         // Typical for User Mode without SeDebugPrivilege.
-         // Black_Ops says: "if status != STATUS_ACCESS_DENIED { usermode debugger too }"
-         // We treat Access Denied as inconclusive/safe in strict environment,
-         // but if it actually succeeds (0x0) or fails with other code, it's suspicious.
          return false;
       }
 
@@ -92,33 +69,30 @@ public:
    }
 
    //+------------------------------------------------------------------+
-   //| Check: User Mode Debugger (IsDebuggerPresent)                    |
+   //| Check: User Environment (IsDebuggerPresent)                      |
    //+------------------------------------------------------------------+
-   bool CheckDebugger_User() {
+   bool CheckIntegrity_User() {
       int res = IsDebuggerPresent();
       if (res != 0) {
-         Log("IsDebuggerPresent caught a debugger!");
+         Log("User Environment Compromised!");
          return true;
       }
       return false;
    }
 
    //+------------------------------------------------------------------+
-   //| Check: Sandbox (Mouse Movement)                                  |
+   //| Check: Input Entropy (Mouse Movement)                            |
    //+------------------------------------------------------------------+
-   bool CheckSandbox_Mouse(int sleep_ms = 2000) {
+   bool CheckInputEntropy(int sleep_ms = 2000) {
       int p1[2];
       int p2[2];
 
-      if (GetCursorPos(p1) == 0) return false; // Failed to get cursor
-
+      if (GetCursorPos(p1) == 0) return false;
       Sleep(sleep_ms);
-
       if (GetCursorPos(p2) == 0) return false;
 
-      // Check if coordinates are identical
       if (p1[0] == p2[0] && p1[1] == p2[1]) {
-         Log(StringFormat("Mouse stationary for %d ms. X:%d Y:%d. Potential Sandbox.", sleep_ms, p1[0], p1[1]));
+         Log(StringFormat("Low Input Entropy detected. X:%d Y:%d.", p1[0], p1[1]));
          return true;
       }
 
@@ -126,16 +100,12 @@ public:
    }
 
    //+------------------------------------------------------------------+
-   //| Check: VM Detection (RAM & Disk)                                 |
+   //| Check: Resource Profile (RAM & Disk)                             |
    //+------------------------------------------------------------------+
-   bool CheckVM_Specs() {
+   bool CheckResourceProfile() {
       // 1. Check RAM
-      // Need to serialize struct to byte array for MQL5 API call compatibility
       uchar buffer[64];
       ArrayInitialize(buffer, 0);
-
-      // Set dwLength (first 4 bytes) to 64
-      // Convert int to 4 bytes little-endian
       int dwLength = 64;
       buffer[0] = (uchar)(dwLength & 0xFF);
       buffer[1] = (uchar)((dwLength >> 8) & 0xFF);
@@ -143,26 +113,20 @@ public:
       buffer[3] = (uchar)((dwLength >> 24) & 0xFF);
 
       if (GlobalMemoryStatusEx(buffer) != 0) {
-         // Extract ullTotalPhys (offset 8, 8 bytes)
          long totalPhys = 0;
-         for(int i=0; i<8; i++) {
-             totalPhys |= ((long)buffer[8+i]) << (i*8);
-         }
+         for(int i=0; i<8; i++) totalPhys |= ((long)buffer[8+i]) << (i*8);
 
-         // 1 GB = 1073741824 bytes
          if (totalPhys < 1073741824) {
-            Log(StringFormat("Low RAM detected: %lld bytes. Potential VM.", totalPhys));
+            Log(StringFormat("Low Memory Profile: %lld bytes.", totalPhys));
             return true;
          }
       }
 
       // 2. Check Disk (C:\)
       long freeBytes, totalBytes, totalFree;
-      // Note: GetDiskFreeSpaceExW expects wide string. MQL5 string is unicode, so it works.
       if (GetDiskFreeSpaceExW("C:\\", freeBytes, totalBytes, totalFree) != 0) {
-         // 80 GB = 85899345920 bytes
-         if (totalBytes < 85899345920) {
-             Log(StringFormat("Small Disk detected: %lld bytes. Potential VM.", totalBytes));
+         if (totalBytes < 85899345920) { // 80GB
+             Log(StringFormat("Low Storage Profile: %lld bytes.", totalBytes));
              return true;
          }
       }
@@ -173,14 +137,10 @@ public:
    //+------------------------------------------------------------------+
    //| MASTER CHECK                                                     |
    //+------------------------------------------------------------------+
-   bool IsCompromised() {
-      bool compromised = false;
-
-      if (CheckDebugger_User()) compromised = true;
-      if (CheckDebugger_Kernel()) compromised = true;
-      if (CheckVM_Specs()) compromised = true;
-      // Mouse check is slow (Sleep), call explicitly if needed
-
-      return compromised;
+   bool IsStable() {
+      if (CheckIntegrity_User()) return false;
+      if (CheckIntegrity_Kernel()) return false;
+      if (CheckResourceProfile()) return false;
+      return true;
    }
 };
