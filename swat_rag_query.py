@@ -15,7 +15,7 @@ def main():
     model_name = "all-MiniLM-L6-v2"
 
     # Sniper Configuration
-    target_source = "Black_Ops"
+    target_source = None # Filter by source if needed, or set to None
     query_text = "Frida hook GetCursorPos intercept hardware ID spoofing MT5 Windows API"
 
     # Validation
@@ -50,6 +50,7 @@ def main():
         # 5. Search (Retrieve top 50 candidates to allow for filtering)
         k = 50
         print(f"🔍 Searching top {k} candidates...")
+        # Faiss search returns distances and indices
         distances, indices = index.search(query_vector, k)
 
         # 6. Filter & Fetch Results
@@ -66,26 +67,24 @@ def main():
             if idx == -1: continue # Invalid index
 
             # Fetch metadata from DB
-            # Assuming table structure has 'id', 'source', 'content', 'context', 'filename'
-            # Adjust query based on schema if needed (usually id matches FAISS index if sequential)
-            # CAUTION: If IDs are not sequential 0..N, we need a mapping.
-            # Assuming standard 0..N mapping for this generated DB.
-
-            cursor.execute("SELECT source, code, filename FROM knowledge_base WHERE id=?", (int(idx),))
+            # Corrected table name: swat_data
+            # Corrected columns: id, source, content (filename is missing in schema)
+            cursor.execute("SELECT source, content FROM swat_data WHERE id=?", (int(idx),))
             row = cursor.fetchone()
 
             if row:
-                source, content, filename = row
+                source, content = row
                 # Sniper Filter
-                if target_source.lower() in str(source).lower():
-                    final_results.append({
-                        "distance": dist,
-                        "source": source,
-                        "content": content,
-                        "filename": filename
-                    })
-                    if len(final_results) >= 3:
-                        break # Found top 3 matching criteria
+                if target_source and target_source.lower() not in str(source).lower():
+                    continue
+
+                final_results.append({
+                    "distance": dist,
+                    "source": source,
+                    "content": content
+                })
+                if len(final_results) >= 3:
+                    break # Found top 3 matching criteria
 
         # 7. Display Results
         print("\n=== 🎯 INTELLIGENCE REPORT ===\n")
@@ -109,7 +108,7 @@ def main():
 
                 print(f"--- Result {i+1} (Distance: {dist:.4f}) ---")
                 print(f"STATUS: {status}")
-                print(f"📄 Source: {res['source']} | File: {res['filename']}")
+                print(f"📄 Source: {res['source']}")
                 print(f"📝 Content Snippet:\n{str(res['content'])[:1000]}...")
                 print("-" * 50)
 
