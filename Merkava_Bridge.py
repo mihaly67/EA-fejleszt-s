@@ -1,70 +1,76 @@
 """
-Merkava Bridge (Python Side)
-Connects MQL5 (ArcticDB) -> FinRL Agent -> Signal
+Merkava Bridge (Co-Pilot Edition)
+Connects MQL5 (ArcticDB) -> FinRL Agent -> Visual Signal
 """
 
 import time
 import os
 import json
 import random
-# from arcticdb import Arctic # Uncomment when installed
-# from stable_baselines3 import PPO # Uncomment when installed
 
 # Configuration
 SIGNAL_FILE = "MQL5/Files/Merkava_Signal.json"
 STATE_FILE = "MQL5/Files/Merkava_State.json"
 
-class ThiefBridge:
+class ThiefCoPilot:
     def __init__(self):
-        print("[ThiefBridge] Initializing...")
+        print("[ThiefCoPilot] Initializing Advisor Mode...")
         self.last_tick_time = 0
-        # self.db = Arctic('lmdb://merkava_data')
-        # self.lib = self.db['tick_data']
-        # self.model = PPO.load("thief_agent_v1")
 
     def read_state(self):
-        """Reads the latest market state exported by MQL5"""
-        if not os.path.exists(STATE_FILE):
-            return None
-
+        if not os.path.exists(STATE_FILE): return None
         try:
-            with open(STATE_FILE, 'r') as f:
-                return json.load(f)
-        except:
-            return None
+            with open(STATE_FILE, 'r') as f: return json.load(f)
+        except: return None
 
-    def write_signal(self, action, reason="Thief Logic"):
-        """Writes the decision back to MQL5"""
-        signal = {
-            "action": action, # 0=HOLD, 1=BUY, 2=SELL
+    def analyze_risk(self, state):
+        """
+        Thief Logic: Analyzes if the trade is 'Too Good' (Trap) or Safe.
+        Returns: Signal, Confidence, RiskLevel
+        """
+        # Placeholder for FinRL Inference
+        # In real implementation, this calls self.model.predict(state)
+
+        # Example Logic:
+        # If volatility is suspicious (Broker Trap), advise HOLD.
+
+        signal = "HOLD"
+        confidence = 0.0
+
+        # Simulation
+        rand = random.random()
+        if rand > 0.8:
+            signal = "BUY"
+            confidence = 0.75
+        elif rand < 0.2:
+            signal = "SELL"
+            confidence = 0.60
+
+        return signal, confidence
+
+    def write_advice(self, signal, confidence):
+        advice = {
+            "signal": signal,
+            "confidence": confidence,
             "timestamp": time.time(),
-            "reason": reason,
-            "magic": random.randint(100000, 999999) # Random Magic for Stealth
+            "message": "Market Safe. Go ahead." if signal != "HOLD" else "High Risk. Broker Trap likely."
         }
         with open(SIGNAL_FILE, 'w') as f:
-            json.dump(signal, f)
-        print(f"[ThiefBridge] Sent Signal: {action}")
+            json.dump(advice, f)
+        print(f"[Co-Pilot] Advised: {signal} ({confidence:.2f})")
 
     def run(self):
-        print("[ThiefBridge] Listening for ticks...")
+        print("[Co-Pilot] Watching Market...")
         while True:
             state = self.read_state()
             if state and state.get('timestamp', 0) > self.last_tick_time:
                 self.last_tick_time = state['timestamp']
 
-                # TODO: Feed state to FinRL Model
-                # action, _ = self.model.predict(state)
+                sig, conf = self.analyze_risk(state)
+                self.write_advice(sig, conf)
 
-                # Dummy Logic for Prototype
-                action = 0
-                if random.random() < 0.01: action = 1 # Random Buy
-                elif random.random() < 0.01: action = 2 # Random Sell
-
-                if action != 0:
-                    self.write_signal(action)
-
-            time.sleep(0.1)
+            time.sleep(0.5) # Update frequency
 
 if __name__ == "__main__":
-    bridge = ThiefBridge()
-    bridge.run()
+    copilot = ThiefCoPilot()
+    copilot.run()

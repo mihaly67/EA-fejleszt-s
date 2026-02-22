@@ -22,12 +22,29 @@ private:
    CBehavioralMimic  *m_mimic;
    bool              m_is_compromised;
 
+   // Co-Pilot Variables
+   string            m_ai_signal_file;
+   datetime          m_last_signal_time;
+
+   void DrawCoPilotOverlay(string signal, double confidence) {
+      // Visual Feedback for the Human Trader
+      // Green = Safe/Recommended, Red = Risky/Trap
+      color signalColor = (signal == "BUY") ? clrLime : (signal == "SELL" ? clrRed : clrGray);
+
+      ObjectCreate(0, "MDAS_Signal", OBJ_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, "MDAS_Signal", OBJPROP_XDISTANCE, 20);
+      ObjectSetInteger(0, "MDAS_Signal", OBJPROP_YDISTANCE, 150);
+      ObjectSetInteger(0, "MDAS_Signal", OBJPROP_COLOR, signalColor);
+      ObjectSetString(0, "MDAS_Signal", OBJPROP_TEXT, "AI COPILOT: " + signal + " (" + DoubleToString(confidence*100, 1) + "%)");
+   }
+
 public:
    CMerkavaDefense() {
-      m_monitor = new CSystemMonitor(false); // Silent mode by default
+      m_monitor = new CSystemMonitor(false);
       m_ux      = new CUX_Controller(false);
       m_mimic   = new CBehavioralMimic();
       m_is_compromised = false;
+      m_ai_signal_file = "Merkava_Signal.json";
    }
 
    ~CMerkavaDefense() {
@@ -36,39 +53,38 @@ public:
       if(CheckPointer(m_mimic) == POINTER_DYNAMIC) delete m_mimic;
    }
 
-   // Initialization Check
    bool SecureBoot() {
-      Print("[MDAS] Initiating Secure Boot Sequence...");
-
-      // MQL5 Syntax Fix: Using dot operator for pointers is standard/supported.
-      // The arrow -> caused compiler errors.
       if(!m_monitor.IsStable()) {
-         Print("[MDAS] CRITICAL: Environment Unstable/Compromised. Abort.");
+         Print("[MDAS] CRITICAL: Environment Unstable. AI Copilot Disabled.");
          m_is_compromised = true;
          return false;
       }
-
-      Print("[MDAS] Environment Secure.");
       return true;
    }
 
-   // Main Loop (Call in OnTick)
+   // Main Loop
    void Defend() {
       if(m_is_compromised) return;
 
-      // 1. Generate Noise (Scrolling, Timeframe, Crosshair)
+      // 1. Generate Noise
       m_mimic.Update();
 
-      // 2. Periodic Re-Check (Random interval logic needed here)
+      // 2. Check AI Signal (Co-Pilot Mode)
+      // Implementation of JSON reading would go here
+      // For now, we simulate the interface
    }
 
-   // Execution Wrapper
-   bool ExecuteStealthTrade(int type) {
-      if(m_is_compromised) return false;
+   // Human Triggered Action (Safe Execution)
+   // Call this when YOU press a button on your custom panel
+   bool HumanExecute(int type) {
+      if(m_is_compromised) {
+         Alert("MDAS BLOCKED: Environment Unsafe!");
+         return false;
+      }
 
-      // 0 = BUY, 1 = SELL
-      if(type == 0) return m_ux.ExecuteAction_Primary();
-      if(type == 1) return m_ux.ExecuteAction_Secondary();
+      // 1. UX Controller executes the click (Spoofing)
+      if(type == 0) return m_ux.ExecuteAction_Primary(); // BUY
+      if(type == 1) return m_ux.ExecuteAction_Secondary(); // SELL
 
       return false;
    }
