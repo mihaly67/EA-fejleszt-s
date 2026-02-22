@@ -23,9 +23,11 @@
 #import
 
 // Constants and Structures
-#define STATUS_DEBUGGER_INACTIVE 0xC0000354
-#define STATUS_NOT_IMPLEMENTED   0xC0000002
-#define STATUS_ACCESS_DENIED     0xC0000022
+// MQL5 int is signed 32-bit. These hex values exceed INT_MAX, so we cast them to int explicitly
+// to ensure they are treated as negative numbers (matching the NTSTATUS return type).
+#define STATUS_DEBUGGER_INACTIVE (int)0xC0000354
+#define STATUS_NOT_IMPLEMENTED   (int)0xC0000002
+#define STATUS_ACCESS_DENIED     (int)0xC0000022
 #define STATUS_SUCCESS           0x00000000
 
 #define SysDbgCheckLowMemory     20 // 0x14
