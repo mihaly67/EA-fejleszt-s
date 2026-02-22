@@ -15,7 +15,8 @@ def main():
     model_name = "all-MiniLM-L6-v2"
 
     # Sniper Configuration
-    target_source = None # Filter by source if needed, or set to None
+    target_source = None # Filter disabled as only 'knowledge_base_columbo' is available in current DB.
+    # Original target was 'Black_Ops' but it is missing from the provided ZIP.
     query_text = "Frida hook GetCursorPos intercept hardware ID spoofing MT5 Windows API"
 
     # Validation
