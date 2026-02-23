@@ -22,11 +22,53 @@
 class CBehavioralMimic {
 private:
    bool m_active;
+   bool m_visual_debug;
+
+   // Helper for Visual Debugging
+   void DrawDebugMarker(int x, int y) {
+      if(!m_visual_debug) return;
+
+      string name = "MDAS_GhostMouse";
+      if(ObjectFind(0, name) < 0) {
+         ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
+         ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+         ObjectSetInteger(0, name, OBJPROP_COLOR, clrRed);
+         ObjectSetString(0, name, OBJPROP_TEXT, "●"); // Visual Marker
+         ObjectSetString(0, name, OBJPROP_FONT, "Arial");
+         ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 14);
+         ObjectSetInteger(0, name, OBJPROP_BACK, false);
+         ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+         ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+      }
+      ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
+      ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
+      ChartRedraw(0);
+   }
+
+   void ShowActionDebug(string text) {
+      if(!m_visual_debug) return;
+
+      string name = "MDAS_Action";
+      if(ObjectFind(0, name) < 0) {
+         ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
+         ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+         ObjectSetInteger(0, name, OBJPROP_XDISTANCE, 20);
+         ObjectSetInteger(0, name, OBJPROP_YDISTANCE, 120);
+         ObjectSetInteger(0, name, OBJPROP_COLOR, clrOrange);
+         ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 10);
+         ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+      }
+      ObjectSetString(0, name, OBJPROP_TEXT, "MIMIC: " + text);
+      ChartRedraw(0);
+   }
 
    // Helper for Mouse Move
    void MoveMouseToChartXY(int x, int y) {
       long hwnd = ChartGetInteger(0, CHART_WINDOW_HANDLE);
       if(hwnd == 0) return;
+
+      if(m_visual_debug) DrawDebugMarker(x, y);
+
       int lParam = (y << 16) | (x & 0xFFFF);
       PostMessageW(hwnd, WM_MOUSEMOVE, 0, lParam);
    }
@@ -34,12 +76,23 @@ private:
 public:
    CBehavioralMimic() {
       m_active = true;
+      m_visual_debug = false;
       MathSrand(GetTickCount());
+   }
+
+   void SetDebugMode(bool enable) {
+      m_visual_debug = enable;
+      if(!m_visual_debug) {
+         ObjectDelete(0, "MDAS_GhostMouse");
+         ObjectDelete(0, "MDAS_Action");
+      }
    }
 
    // 1. Chart Scrolling (Fidgeting)
    void ScrollFidget() {
       if(!m_active) return;
+
+      if(m_visual_debug) ShowActionDebug("Scrolling (Fidgeting)");
 
       int shift = MathRand() % 10 - 5; // -5 to +5 bars
       if(shift == 0) shift = 1;
@@ -51,6 +104,8 @@ public:
    // 2. Timeframe Switching (Analysis Simulation)
    void TimeframeCheck() {
       if(!m_active) return;
+
+      if(m_visual_debug) ShowActionDebug("Analyzing Timeframes");
 
       ENUM_TIMEFRAMES current = Period();
       ENUM_TIMEFRAMES target = current;
@@ -70,6 +125,8 @@ public:
    // 3. Crosshair Exploration (New: Feb 2026)
    void CrosshairExploration() {
       if(!m_active) return;
+
+      if(m_visual_debug) ShowActionDebug("Crosshair Exploration");
 
       // Enable Crosshair
       ChartSetInteger(0, CHART_CROSSHAIR_TOOL, true);
@@ -92,6 +149,9 @@ public:
       if(MathRand() % 2 == 0) {
          ChartSetInteger(0, CHART_CROSSHAIR_TOOL, false);
       }
+
+      // Clear action text after activity
+      if(m_visual_debug) ShowActionDebug("Idle");
    }
 
    // 4. Random Noise Loop

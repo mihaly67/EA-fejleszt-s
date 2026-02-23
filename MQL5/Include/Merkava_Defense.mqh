@@ -21,6 +21,7 @@ private:
    CUX_Controller    *m_ux;
    CBehavioralMimic  *m_mimic;
    bool              m_is_compromised;
+   bool              m_visual_debug;
 
    // Co-Pilot Variables
    string            m_ai_signal_file;
@@ -39,12 +40,21 @@ private:
    }
 
 public:
-   CMerkavaDefense() {
+   CMerkavaDefense(bool debug_mode = true) {
       m_monitor = new CSystemMonitor(false);
       m_ux      = new CUX_Controller(false);
       m_mimic   = new CBehavioralMimic();
       m_is_compromised = false;
       m_ai_signal_file = "Merkava_Signal.json";
+
+      SetVisualMode(debug_mode);
+   }
+
+   void SetVisualMode(bool enable) {
+      m_visual_debug = enable;
+      if(CheckPointer(m_mimic) == POINTER_DYNAMIC) {
+         m_mimic.SetDebugMode(m_visual_debug);
+      }
    }
 
    ~CMerkavaDefense() {
