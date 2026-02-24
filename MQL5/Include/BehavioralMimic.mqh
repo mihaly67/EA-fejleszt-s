@@ -32,13 +32,14 @@ private:
       if(ObjectFind(0, name) < 0) {
          ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
          ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-         ObjectSetInteger(0, name, OBJPROP_COLOR, clrRed);
+         ObjectSetInteger(0, name, OBJPROP_COLOR, clrLime); // Changed to Lime for contrast on black
          ObjectSetString(0, name, OBJPROP_TEXT, "●"); // Visual Marker
          ObjectSetString(0, name, OBJPROP_FONT, "Arial");
-         ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 14);
+         ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 20); // Increased size
          ObjectSetInteger(0, name, OBJPROP_BACK, false);
          ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
          ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+         ObjectSetInteger(0, name, OBJPROP_ZORDER, 100); // Ensure on top
       }
       ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
       ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
@@ -54,9 +55,10 @@ private:
          ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
          ObjectSetInteger(0, name, OBJPROP_XDISTANCE, 20);
          ObjectSetInteger(0, name, OBJPROP_YDISTANCE, 120);
-         ObjectSetInteger(0, name, OBJPROP_COLOR, clrOrange);
-         ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 10);
+         ObjectSetInteger(0, name, OBJPROP_COLOR, clrYellow); // Yellow text
+         ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 12); // Larger text
          ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+         ObjectSetInteger(0, name, OBJPROP_ZORDER, 100);
       }
       ObjectSetString(0, name, OBJPROP_TEXT, "MIMIC: " + text);
       ChartRedraw(0);
@@ -85,6 +87,19 @@ public:
       if(!m_visual_debug) {
          ObjectDelete(0, "MDAS_GhostMouse");
          ObjectDelete(0, "MDAS_Action");
+         ObjectDelete(0, "MDAS_DEBUG_ACTIVE");
+      } else {
+         // Show a static label to confirm debug mode is ON
+         string name = "MDAS_DEBUG_ACTIVE";
+         ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
+         ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+         ObjectSetInteger(0, name, OBJPROP_XDISTANCE, 20);
+         ObjectSetInteger(0, name, OBJPROP_YDISTANCE, 100);
+         ObjectSetInteger(0, name, OBJPROP_COLOR, clrRed);
+         ObjectSetString(0, name, OBJPROP_TEXT, "[ DEBUG MODE: GHOST MOUSE ]");
+         ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 10);
+         ObjectSetInteger(0, name, OBJPROP_ZORDER, 100);
+         ChartRedraw(0);
       }
    }
 
