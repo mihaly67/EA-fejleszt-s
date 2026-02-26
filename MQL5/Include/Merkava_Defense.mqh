@@ -48,12 +48,22 @@ public:
       m_ai_signal_file = "Merkava_Signal.json";
 
       SetVisualMode(debug_mode);
+
+      // Auto-Verify on Startup if in debug mode
+      if(m_visual_debug) {
+         Print("[MDAS] Mirror Phase Active. Visual Debug Enabled.");
+      }
    }
 
    void SetVisualMode(bool enable) {
       m_visual_debug = enable;
+
       if(CheckPointer(m_mimic) == POINTER_DYNAMIC) {
          m_mimic.SetDebugMode(m_visual_debug);
+      }
+
+      if(CheckPointer(m_ux) == POINTER_DYNAMIC) {
+         m_ux.SetVisualMode(m_visual_debug);
       }
    }
 
