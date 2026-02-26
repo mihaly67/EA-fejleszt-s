@@ -102,12 +102,25 @@ private:
    // Helper for Mouse Move
    void MoveMouseToChartXY(int x, int y) {
       long hwnd = ChartGetInteger(0, CHART_WINDOW_HANDLE);
-      if(hwnd == 0) return;
 
+      // DIAGNOSTIC 1: Handle Check
+      if(hwnd == 0) {
+         Print("[BehavioralMimic] CRITICAL ERROR: Chart Window Handle (HWND) is 0! Cannot send mouse events.");
+         return;
+      }
+
+      // DIAGNOSTIC 2: Forced Visualization (Even if PostMessage fails)
+      // We draw BEFORE trying to send the message, to prove intent.
       if(m_visual_debug) DrawDebugMarker(x, y);
 
       int lParam = (y << 16) | (x & 0xFFFF);
-      PostMessageW(hwnd, WM_MOUSEMOVE, 0, lParam);
+      int result = PostMessageW(hwnd, WM_MOUSEMOVE, 0, lParam);
+
+      // DIAGNOSTIC 3: PostMessage Check
+      if(result == 0) {
+          int err = GetLastError();
+          Print("[BehavioralMimic] ERROR: PostMessageW Failed! ErrCode: ", err, " Target HWND: ", hwnd);
+      }
    }
 
 public:
