@@ -55,6 +55,9 @@ public:
       if(CheckPointer(m_mimic) == POINTER_DYNAMIC) {
          m_mimic.SetDebugMode(m_visual_debug);
       }
+      if(CheckPointer(m_ux) == POINTER_DYNAMIC) {
+         m_ux.SetVisualMode(m_visual_debug);
+      }
    }
 
    ~CMerkavaDefense() {
