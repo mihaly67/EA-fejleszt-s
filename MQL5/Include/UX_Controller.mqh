@@ -1,5 +1,3 @@
-MQL5/Include/UX_Controller.mqh
-
 //+------------------------------------------------------------------+
 //|                                                UX_Controller.mqh |
 //|                                                   Copyright 2026 |
