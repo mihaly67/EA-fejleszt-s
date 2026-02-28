@@ -38,7 +38,7 @@ private:
          ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 20); // Increased size
          ObjectSetInteger(0, name, OBJPROP_BACK, false);
          ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
-         ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+         ObjectSetInteger(0, name, OBJPROP_HIDDEN, false); // Must be false for visibility
          ObjectSetInteger(0, name, OBJPROP_ZORDER, 100); // Ensure on top
       }
       ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
@@ -57,7 +57,7 @@ private:
          ObjectSetInteger(0, name, OBJPROP_YDISTANCE, 120);
          ObjectSetInteger(0, name, OBJPROP_COLOR, clrYellow); // Yellow text
          ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 12); // Larger text
-         ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+         ObjectSetInteger(0, name, OBJPROP_HIDDEN, false); // Must be false for visibility
          ObjectSetInteger(0, name, OBJPROP_ZORDER, 100);
       }
       ObjectSetString(0, name, OBJPROP_TEXT, "MIMIC: " + text);
