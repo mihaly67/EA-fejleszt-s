@@ -40,6 +40,37 @@ private:
       if(m_verbose) Print("[UX_Controller] ", msg);
    }
 
+   void VisualizeClick(int x, int y, bool is_buy) {
+      // Diagnostic Strategy (Visual Verification): Draw BEFORE the API call
+      string name = "MDAS_ClickFlash_" + IntegerToString(GetTickCount());
+      color col = is_buy ? clrDeepSkyBlue : clrCrimson;
+
+      ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+      ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
+      ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
+      ObjectSetInteger(0, name, OBJPROP_COLOR, col);
+      ObjectSetString(0, name, OBJPROP_TEXT, "◎"); // Circle Wingding
+      ObjectSetString(0, name, OBJPROP_FONT, "Arial");
+      ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 30); // Large circle
+      ObjectSetInteger(0, name, OBJPROP_BACK, false);
+      ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, name, OBJPROP_HIDDEN, false); // Explicitly visible
+      ObjectSetInteger(0, name, OBJPROP_ZORDER, 101); // On top of Ghost Mouse
+      ChartRedraw(0);
+
+      // Simulate expanding circle and deletion via sleep
+      Sleep(50);
+      ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 40);
+      ChartRedraw(0);
+      Sleep(50);
+      ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 50);
+      ChartRedraw(0);
+      Sleep(50);
+      ObjectDelete(0, name);
+      ChartRedraw(0);
+   }
+
 public:
    CUX_Controller(bool verbose=true) {
       m_verbose = verbose;
@@ -68,6 +99,9 @@ public:
       long hwnd = ChartGetInteger(0, CHART_WINDOW_HANDLE);
       if(hwnd == 0) return false;
 
+      // Visual Verification BEFORE API call
+      VisualizeClick(m_buy_x, m_buy_y, true);
+
       int lParam = MakeLParam(m_buy_x, m_buy_y);
       PostMessageW(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, lParam);
       Sleep(10);
@@ -81,6 +115,9 @@ public:
       EnsurePanelVisible();
       long hwnd = ChartGetInteger(0, CHART_WINDOW_HANDLE);
       if(hwnd == 0) return false;
+
+      // Visual Verification BEFORE API call
+      VisualizeClick(m_sell_x, m_sell_y, false);
 
       int lParam = MakeLParam(m_sell_x, m_sell_y);
       PostMessageW(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, lParam);
