@@ -106,3 +106,25 @@ The RAG highlighted the core philosophy of BCC: "user-defined instrumentation on
 
 **Strategic Conclusion:**
 By utilizing BCC and eBPF, we can build a highly stealthy, out-of-band "Radar" on the MX Linux host. This radar operates entirely outside the WINE sandbox, making it mathematically impossible for MT5's internal anti-cheat mechanisms (which scan Windows APIs and PE headers) to detect the observation. We can now proceed to build the Python eBPF Radar script based on these architectural findings.
+
+---
+
+## Part 4: Empirical Radar Data Analysis (Post-Deployment)
+*Objective: Analyze the first real-world capture from the deployed `ebpf_radar_v2.py` script.*
+
+**Field Data Results:**
+Upon running the radar against a live MT5 terminal under WINE and actively opening/closing positions and exploring the UI, the following critical intelligence was gathered:
+
+1. **No Real-Time Cursor Streaming:** The radar proved that simple mouse movements and passive UI clicks *do not* generate immediate, continuous outgoing TCP packets. The threat model of "constant real-time cursor tracking" is thus disproven for the current MT5 build.
+2. **Event-Driven Telemetry:** Network bursts (packets typically in the `~704-709 byte` range from the `controller` thread) are strictly correlated with lifecycle events and major state changes:
+   * MT5 Startup and Shutdown.
+   * Attaching or detaching an Expert Advisor (EA) to/from a chart.
+   * Executing a trade (opening/closing positions).
+3. **Internal MT5 Thread Architecture:** The eBPF radar successfully bypassed WINE's abstraction to reveal the internal Linux threads handling network traffic:
+   * `controller`: Sends the ~700 byte payload bursts (likely telemetry / environment snapshots).
+   * `ioport dispatch`: Sends continuous `9 byte` packets (likely TCP Keep-Alive / Ping).
+   * `MQL5.community`: Handles Market/Signal data (variable sizes, e.g., 255, 706, 1274 bytes).
+   * `calendar dispat`: Sends massive payloads (e.g., `2323 bytes`) for the economic calendar.
+
+**Revised Defense Strategy (The "Snapshot" Counter-Measure):**
+Since MT5 relies on *event-driven snapshots* (especially upon EA load) rather than continuous streaming, the MDAS defense must prioritize its **SystemMonitor (Counter-Intel) Module**. Spoofing the kernel environment and hiding debugging tools (ScyllaHide, registry cloaking) at the precise moment the EA initializes (`OnInit`) is significantly more critical than continuous visual spoofing ("Ghost Mouse").
