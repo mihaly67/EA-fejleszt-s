@@ -73,7 +73,7 @@ ENVIRONMENT_RESOURCES = {
 
     # --- ÚJ SWAT RAG (FAISS + SQLITE) ---
     "SWAT_RAG": {
-        "id": "1Sls9oMWSm-g2iox-WnKJTuaESVz4zkby",
+        "id": "1lgdfuSBC_ea4zG-n7IUr1a3CPYQVnuey",
         "file": "SWAT_RAG_FAISS.zip",
         "extract_to": "Knowledge_Base/SWAT_DB",
         "check_file": "swat_unified_compressed.index"
