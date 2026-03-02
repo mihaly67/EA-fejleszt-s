@@ -4,12 +4,11 @@ Black Ops Sniffer (Red Team) - eBPF TCP Payload Interceptor (Syscall Hook)
 Cél: Az MT5 (terminal64.exe) telemetria, kereskedési események és UI hálózati csomagok
 tényleges tartalmának (payload) elfogása a Linux kerneltől és azok kategorizált mentése.
 
-[JAVÍTÁS - eBPF Verifier Bypass]:
-A tcp_sendmsg (struct msghdr) túlzottan mély pointer dereferálást igényelt, amit
-az eBPF biztonsági Verifier-e (Permission denied) blokkolt nyitott Lockdown mellett is.
-A Taktikai Rövidítés: TRACEPOINT_PROBE (syscall szint) alkalmazása a sendto-ra és write-ra,
-ahol a payload (buffer) egy tiszta, lineáris `char __user *` pointer, amiből a
-bpf_probe_read_user() biztonságosan olvas.
+[JAVÍTÁS 2 - MX Linux Kompatibilitás]:
+A TRACEPOINT_PROBE syscalls tracepointjai 'incomplete definition' hibát dobtak a helyi
+kernel headerek hiányosságai miatt. Ezért áttértünk a stabil kprobe-ra, dinamikusan
+feloldva a sendto és write syscallok nevét (pl. __x64_sys_sendto). Itt a paraméterek egy
+struct pt_regs *ctx mutatóban érkeznek, ahonnan a syscall argumentumok kinyerhetők.
 """
 from bcc import BPF
 import psutil
@@ -38,17 +37,12 @@ LOG_FILES = {
 
 def init_logs():
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    header = f"--- BLACK OPS SNIFFER (SYSCALL HOOK) STARTED AT {timestamp} ---\n"
+    header = f"--- BLACK OPS SNIFFER (SYSCALL HOOK V2) STARTED AT {timestamp} ---\n"
     for path in LOG_FILES.values():
         with open(path, "a") as f:
             f.write(header)
 
 def categorize_packet(comm, size):
-    """
-    Az előzetes RADAR napló alapján csoportosítja a csomagokat a Thread (COMM) név alapján.
-    Mivel a socket szinten (syscalls) a cél IP (daddr) nem mindig van jelen (csak fd-t látunk),
-    elsősorban a COMM mezőre támaszkodunk.
-    """
     comm_lower = comm.lower()
     if "controller" in comm_lower:
         return "TELEMETRY"
@@ -61,7 +55,6 @@ def categorize_packet(comm, size):
     return "UNKNOWN"
 
 def hexdump(src, length=16):
-    """Visszaadja a byte tömb HexDump/ASCII reprezentációját."""
     FILTER = ''.join([(len(repr(chr(x))) == 3) and chr(x) or '.' for x in range(256)])
     lines = []
     for c in range(0, len(src), length):
@@ -72,8 +65,8 @@ def hexdump(src, length=16):
     return '\n'.join(lines)
 
 
-# --- BPF KÓD (C) - SYSCALL TRACEPOINTS ---
-# A Verifier biztonsági elvárásai miatt TRACEPOINT-ot használunk, ami beépítve megadja az argumentumokat (args->...)
+# --- BPF KÓD (C) - KPROBE ---
+# A modern kerneleken a syscallokat a pt_regs ctx struktúrán keresztül kapjuk meg
 bpf_text = """
 #include <uapi/linux/ptrace.h>
 #include <linux/sched.h>
@@ -90,54 +83,63 @@ struct data_t {
 
 BPF_PERF_OUTPUT(events);
 
-// Hookoljuk a 'sendto' syscall-t, ami a hálózati küldés fő motorja
-TRACEPOINT_PROBE(syscalls, sys_enter_sendto) {
+// kprobe a sendto syscallra. Az argumentumok elérése a PT_REGS_PARMx makrókkal történik.
+// sendto(int fd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen)
+int kprobe__sys_sendto(struct pt_regs *ctx) {
     u32 pid = bpf_get_current_pid_tgid() >> 32;
 
     u32 *is_target = target_pids.lookup(&pid);
     if (is_target == 0) {
-        return 0; // Nem target process
+        return 0;
     }
 
     struct data_t data = {};
     data.pid = pid;
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
 
-    data.fd = args->fd;
-    data.size = args->len;
+    // PT_REGS_PARM1: fd, PT_REGS_PARM2: buf, PT_REGS_PARM3: len
+    data.fd = (u32)PT_REGS_PARM1(ctx);
+    data.size = (u32)PT_REGS_PARM3(ctx);
 
-    // Payload olvasása biztonságosan a User Space-ből az egyszerű pointeren keresztül
-    void *user_ptr = (void *)args->buff;
+    // Ha len nagyon pici, vagy 0, felesleges
+    if (data.size == 0) return 0;
+
+    void *user_ptr = (void *)PT_REGS_PARM2(ctx);
 
     u32 copy_size = data.size;
     if (copy_size > 256) {
         copy_size = 256;
     }
 
-    // Tiszta és engedélyezett másolás
+    // Payload másolása usermode memóriából
     bpf_probe_read_user(&data.payload, copy_size, user_ptr);
 
-    events.perf_submit(args, &data, sizeof(data));
+    events.perf_submit(ctx, &data, sizeof(data));
     return 0;
 }
 
-// Hookoljuk a sima 'write' syscall-t is, ha a WINE ezen keresztül (is) írna socketre
-TRACEPOINT_PROBE(syscalls, sys_enter_write) {
+// kprobe a write syscallra (ha valamiért azon menne ki a hálózati adat, a WINE néha wrapeli)
+// write(int fd, const void *buf, size_t count)
+int kprobe__sys_write(struct pt_regs *ctx) {
     u32 pid = bpf_get_current_pid_tgid() >> 32;
 
     u32 *is_target = target_pids.lookup(&pid);
     if (is_target == 0) {
-        return 0; // Nem target process
+        return 0;
     }
 
     struct data_t data = {};
     data.pid = pid;
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
 
-    data.fd = args->fd;
-    data.size = args->count;
+    data.fd = (u32)PT_REGS_PARM1(ctx);
+    data.size = (u32)PT_REGS_PARM3(ctx);
 
-    void *user_ptr = (void *)args->buf;
+    // Kiszűrjük a stdout/stderr/stdin fd-ket (0,1,2), minket csak socket/file érdekel
+    if (data.fd <= 2) return 0;
+    if (data.size == 0) return 0;
+
+    void *user_ptr = (void *)PT_REGS_PARM2(ctx);
 
     u32 copy_size = data.size;
     if (copy_size > 256) {
@@ -146,13 +148,30 @@ TRACEPOINT_PROBE(syscalls, sys_enter_write) {
 
     bpf_probe_read_user(&data.payload, copy_size, user_ptr);
 
-    events.perf_submit(args, &data, sizeof(data));
+    events.perf_submit(ctx, &data, sizeof(data));
     return 0;
 }
 """
 
 print("⚙️ eBPF (BCC) Verifier-barát Syscall kód fordítása és betöltése (Kérlek várj)...")
 b = BPF(text=bpf_text)
+
+# Ha a modern kerneleken __x64_sys_sendto hívás van, attach-olunk ahhoz is.
+# A get_syscall_fnname visszaadja az OS-specifikus nevet (pl. __x64_sys_sendto)
+fnname_sendto = b.get_syscall_fnname("sendto")
+fnname_write = b.get_syscall_fnname("write")
+
+try:
+    b.attach_kprobe(event=fnname_sendto, fn_name="kprobe__sys_sendto")
+    print(f"✅ Sikeres kprobe attach: {fnname_sendto}")
+except Exception as e:
+    print(f"⚠️ Nem sikerült attach-olni a {fnname_sendto}-re: {e}")
+
+try:
+    b.attach_kprobe(event=fnname_write, fn_name="kprobe__sys_write")
+    print(f"✅ Sikeres kprobe attach: {fnname_write}")
+except Exception as e:
+    print(f"⚠️ Nem sikerült attach-olni a {fnname_write}-re: {e}")
 
 # --- PYTHON FELDOLGOZÓ (USERSPACE) ---
 def print_event(cpu, data, size):
@@ -164,14 +183,11 @@ def print_event(cpu, data, size):
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
-    # Payload kivágása a megfelelő méretre (max 256)
     payload_size = min(event.size, MAX_PAYLOAD_SIZE)
     payload_bytes = bytes(event.payload[:payload_size])
 
-    # Konzolos kiírás (rövid)
     print(f"[{category}] {comm} (FD: {event.fd}) | Size: {event.size} bytes")
 
-    # Fájlba mentés (részletes + hexdump)
     with open(log_file, "a") as f:
         f.write(f"\n[{timestamp}] PID: {event.pid} | Thread: {comm}\n")
         f.write(f"Direction: SEND (FD: {event.fd}) | Total Size: {event.size} bytes\n")
