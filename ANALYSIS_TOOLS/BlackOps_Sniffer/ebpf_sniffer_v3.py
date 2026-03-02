@@ -1,9 +1,15 @@
 #!/usr/bin/python3
 """
-Black Ops Sniffer (Red Team) - eBPF TCP Payload Interceptor
+Black Ops Sniffer (Red Team) - eBPF TCP Payload Interceptor (Syscall Hook)
 Cél: Az MT5 (terminal64.exe) telemetria, kereskedési események és UI hálózati csomagok
-tényleges tartalmának (payload) elfogása a Linux kerneltől (tcp_sendmsg) és azok kategorizált mentése.
-Figyelem: A payload valószínűleg TLS titkosított, ezért HexDump/ASCII formátumban mentjük az első 256 byte-ot.
+tényleges tartalmának (payload) elfogása a Linux kerneltől és azok kategorizált mentése.
+
+[JAVÍTÁS - eBPF Verifier Bypass]:
+A tcp_sendmsg (struct msghdr) túlzottan mély pointer dereferálást igényelt, amit
+az eBPF biztonsági Verifier-e (Permission denied) blokkolt nyitott Lockdown mellett is.
+A Taktikai Rövidítés: TRACEPOINT_PROBE (syscall szint) alkalmazása a sendto-ra és write-ra,
+ahol a payload (buffer) egy tiszta, lineáris `char __user *` pointer, amiből a
+bpf_probe_read_user() biztonságosan olvas.
 """
 from bcc import BPF
 import psutil
@@ -32,14 +38,16 @@ LOG_FILES = {
 
 def init_logs():
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    header = f"--- BLACK OPS SNIFFER STARTED AT {timestamp} ---\n"
+    header = f"--- BLACK OPS SNIFFER (SYSCALL HOOK) STARTED AT {timestamp} ---\n"
     for path in LOG_FILES.values():
         with open(path, "a") as f:
             f.write(header)
 
-def categorize_packet(comm, daddr_str, size):
+def categorize_packet(comm, size):
     """
-    Az előzetes RADAR napló alapján csoportosítja a csomagokat.
+    Az előzetes RADAR napló alapján csoportosítja a csomagokat a Thread (COMM) név alapján.
+    Mivel a socket szinten (syscalls) a cél IP (daddr) nem mindig van jelen (csak fd-t látunk),
+    elsősorban a COMM mezőre támaszkodunk.
     """
     comm_lower = comm.lower()
     if "controller" in comm_lower:
@@ -64,11 +72,10 @@ def hexdump(src, length=16):
     return '\n'.join(lines)
 
 
-# --- BPF KÓD (C) ---
+# --- BPF KÓD (C) - SYSCALL TRACEPOINTS ---
+# A Verifier biztonsági elvárásai miatt TRACEPOINT-ot használunk, ami beépítve megadja az argumentumokat (args->...)
 bpf_text = """
 #include <uapi/linux/ptrace.h>
-#include <net/sock.h>
-#include <bcc/proto.h>
 #include <linux/sched.h>
 
 BPF_HASH(target_pids, u32, u32); // [pid -> 1]
@@ -76,15 +83,15 @@ BPF_HASH(target_pids, u32, u32); // [pid -> 1]
 struct data_t {
     u32 pid;
     char comm[TASK_COMM_LEN];
-    u32 daddr;
-    u16 dport;
+    u32 fd;
     u32 size;
-    u8 payload[256]; // Első 256 byte mentése
+    u8 payload[256];
 };
 
 BPF_PERF_OUTPUT(events);
 
-int kprobe__tcp_sendmsg(struct pt_regs *ctx, struct sock *sk, struct msghdr *msg, size_t size) {
+// Hookoljuk a 'sendto' syscall-t, ami a hálózati küldés fő motorja
+TRACEPOINT_PROBE(syscalls, sys_enter_sendto) {
     u32 pid = bpf_get_current_pid_tgid() >> 32;
 
     u32 *is_target = target_pids.lookup(&pid);
@@ -96,49 +103,63 @@ int kprobe__tcp_sendmsg(struct pt_regs *ctx, struct sock *sk, struct msghdr *msg
     data.pid = pid;
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
 
-    // IPv4 csak
-    u16 family = sk->__sk_common.skc_family;
-    if (family != AF_INET) {
-        return 0;
+    data.fd = args->fd;
+    data.size = args->len;
+
+    // Payload olvasása biztonságosan a User Space-ből az egyszerű pointeren keresztül
+    void *user_ptr = (void *)args->buff;
+
+    u32 copy_size = data.size;
+    if (copy_size > 256) {
+        copy_size = 256;
     }
 
-    data.daddr = sk->__sk_common.skc_daddr;
-    data.dport = sk->__sk_common.skc_dport;
-    data.size = size;
+    // Tiszta és engedélyezett másolás
+    bpf_probe_read_user(&data.payload, copy_size, user_ptr);
 
-    // Payload olvasása az iter-ből
-    struct iov_iter *iter = &msg->msg_iter;
-    if (iter->iov_offset < iter->count) {
-        // bcc bpf_probe_read memóriakorlátai miatt manuálisan csak egy részét másoljuk
-        // A msg_iter.iov báziscíme (usermode ptr)
-        void *user_ptr = iter->iov->iov_base + iter->iov_offset;
+    events.perf_submit(args, &data, sizeof(data));
+    return 0;
+}
 
-        // Biztonságos olvasás usermode-ból
-        u32 copy_size = size;
-        if (copy_size > 256) {
-            copy_size = 256;
-        }
-        bpf_probe_read_user(&data.payload, copy_size, user_ptr);
+// Hookoljuk a sima 'write' syscall-t is, ha a WINE ezen keresztül (is) írna socketre
+TRACEPOINT_PROBE(syscalls, sys_enter_write) {
+    u32 pid = bpf_get_current_pid_tgid() >> 32;
+
+    u32 *is_target = target_pids.lookup(&pid);
+    if (is_target == 0) {
+        return 0; // Nem target process
     }
 
-    events.perf_submit(ctx, &data, sizeof(data));
+    struct data_t data = {};
+    data.pid = pid;
+    bpf_get_current_comm(&data.comm, sizeof(data.comm));
+
+    data.fd = args->fd;
+    data.size = args->count;
+
+    void *user_ptr = (void *)args->buf;
+
+    u32 copy_size = data.size;
+    if (copy_size > 256) {
+        copy_size = 256;
+    }
+
+    bpf_probe_read_user(&data.payload, copy_size, user_ptr);
+
+    events.perf_submit(args, &data, sizeof(data));
     return 0;
 }
 """
 
-print("⚙️ eBPF kód fordítása és betöltése (Kérlek várj)...")
+print("⚙️ eBPF (BCC) Verifier-barát Syscall kód fordítása és betöltése (Kérlek várj)...")
 b = BPF(text=bpf_text)
 
 # --- PYTHON FELDOLGOZÓ (USERSPACE) ---
 def print_event(cpu, data, size):
     event = b["events"].event(data)
 
-    # Destination IP és Port
-    daddr = socket.inet_ntoa(struct.pack("<I", event.daddr))
-    dport = socket.ntohs(event.dport)
-
     comm = event.comm.decode('utf-8', 'replace').strip()
-    category = categorize_packet(comm, daddr, event.size)
+    category = categorize_packet(comm, event.size)
     log_file = LOG_FILES.get(category, LOG_FILES["UNKNOWN"])
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
@@ -148,12 +169,12 @@ def print_event(cpu, data, size):
     payload_bytes = bytes(event.payload[:payload_size])
 
     # Konzolos kiírás (rövid)
-    print(f"[{category}] {comm} -> {daddr}:{dport} | Size: {event.size} bytes")
+    print(f"[{category}] {comm} (FD: {event.fd}) | Size: {event.size} bytes")
 
     # Fájlba mentés (részletes + hexdump)
     with open(log_file, "a") as f:
         f.write(f"\n[{timestamp}] PID: {event.pid} | Thread: {comm}\n")
-        f.write(f"Direction: SEND -> {daddr}:{dport} | Total Size: {event.size} bytes\n")
+        f.write(f"Direction: SEND (FD: {event.fd}) | Total Size: {event.size} bytes\n")
         f.write("Payload (First 256 bytes):\n")
         f.write(hexdump(payload_bytes))
         f.write("\n--------------------------------------------------\n")
