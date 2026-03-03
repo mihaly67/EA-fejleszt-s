@@ -107,9 +107,10 @@ int kprobe__sys_sendto(struct pt_regs *ctx) {
     void *user_ptr = (void *)PT_REGS_PARM2(ctx);
 
     u32 copy_size = data.size;
-    if (copy_size > 256) {
-        copy_size = 256;
-    }
+
+    // Biztosítjuk a Verifier számára, hogy a méret maximum 255 byte (pozitív egész)
+    copy_size &= 0xFF;
+    if (copy_size == 0) copy_size = 255; // Elkerüljük a 0 méretű másolást, ha a maszk 0-t adna, bár korábban már szűrtük a 0 méretet
 
     // Payload másolása usermode memóriából
     bpf_probe_read_user(&data.payload, copy_size, user_ptr);
@@ -142,9 +143,10 @@ int kprobe__sys_write(struct pt_regs *ctx) {
     void *user_ptr = (void *)PT_REGS_PARM2(ctx);
 
     u32 copy_size = data.size;
-    if (copy_size > 256) {
-        copy_size = 256;
-    }
+
+    // Biztosítjuk a Verifier számára, hogy a méret maximum 255 byte (pozitív egész)
+    copy_size &= 0xFF;
+    if (copy_size == 0) copy_size = 255;
 
     bpf_probe_read_user(&data.payload, copy_size, user_ptr);
 
