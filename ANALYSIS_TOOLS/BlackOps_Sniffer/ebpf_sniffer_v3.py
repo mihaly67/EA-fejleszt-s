@@ -119,15 +119,10 @@ int kprobe__sys_sendmsg(struct pt_regs *ctx) {
         data.size = (u32)iov.iov_len;
         if (data.size == 0 || data.size > 65535) return 0;
 
-        // Biztonságos Capping a Verifier számára: bitenkénti AND helyett fix felső korlát
-        u32 copy_size = data.size;
-        if (copy_size > 255) {
-            copy_size = 255;
-        }
-
-        // Utolsó trükk a verifiernek: AND maszkolás, hogy TUDJA biztosan
-        copy_size &= 0xFF;
-        if (copy_size == 0) copy_size = 255;
+        // A Verifier számára a LEGEGYSZERŰBB ÉS LEGBIZTOSABB módszer: bitwise AND + nincs if ág.
+        // Ezzel garantáljuk, hogy R2 sosem lesz negatív vagy túl nagy.
+        u32 copy_size = data.size & 0xFF;
+        if (copy_size == 0) return 0; // Ha 0 vagy a maszkolás után 0 lett, eldobjuk, ne másoljon 0 byteot
 
         bpf_probe_read_user(&data.payload, copy_size, iov.iov_base);
         events.perf_submit(ctx, &data, sizeof(data));
@@ -174,15 +169,8 @@ int kprobe__sys_sendto(struct pt_regs *ctx) {
 
     void *user_ptr = (void *)buf_ptr;
 
-    u32 copy_size = data.size;
-
-        if (copy_size > 255) {
-            copy_size = 255;
-        }
-
-        // Biztosítjuk a Verifier számára matematikai egyértelműséggel a határt
-    copy_size &= 0xFF;
-        if (copy_size == 0) copy_size = 255;
+    u32 copy_size = data.size & 0xFF;
+    if (copy_size == 0) return 0;
 
     // Payload másolása usermode memóriából
     bpf_probe_read_user(&data.payload, copy_size, user_ptr);
@@ -224,15 +212,8 @@ int kprobe__sys_write(struct pt_regs *ctx) {
 
     void *user_ptr = (void *)buf_ptr;
 
-    u32 copy_size = data.size;
-
-        if (copy_size > 255) {
-            copy_size = 255;
-        }
-
-        // Biztosítjuk a Verifier számára matematikai egyértelműséggel a határt
-    copy_size &= 0xFF;
-    if (copy_size == 0) copy_size = 255;
+    u32 copy_size = data.size & 0xFF;
+    if (copy_size == 0) return 0;
 
     bpf_probe_read_user(&data.payload, copy_size, user_ptr);
 
