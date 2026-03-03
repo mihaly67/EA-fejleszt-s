@@ -41,8 +41,8 @@ Mivel az ügynök (MiniLM / LLM alapú rendszer) a nyers kód szintaxisánál so
 *   **RESET VÉGREHAJTÁSA:** Ha a felhasználó visszaállítást/tisztítást kér, hajtsd végre azonnal és alaposan, vita nélkül.
 
 ## 5. Munkamenet Egészségének Figyelése (KÖTELEZŐ)
-*   **PROAKTÍV FIGYELMEZTETÉS:** Az ügynöknek figyelnie kell a beszélgetés hosszát. Ha a munkamenet meghaladja a ~20-25 fordulót, vagy ha a RAG kimenetek kivételesen nagyok, az ügynöknek proaktívan figyelmeztetnie kell a felhasználót, hogy a kontextus határai közelednek.
-*   **ÁLLAPOTJELENTÉS:** Kérésre (vagy automatikusan magas használat esetén) jelentsd a munkamenet becsült "Egészségi Állapotát" (Zöld/Sárga/Piros) és javasolj újraindítást ("Handover"), ha a komplexitás növekszik.
+*   **KÖZELEZŐ PROAKTÍV FIGYELMEZTETÉS A KONTEXTUS VESZTÉS ELVESZTÉSÉNEK ELKERÜLÉSE:** Az ügynöknek KÖTELEZŐEN figyelnie kell a beszélgetés hosszát. Ha a munkamenet meghaladja a ~20-25 fordulót, vagy ha a RAG kimenetek kivételesen nagyok, az ügynöknek proaktívan KÖTELEZŐEN figyelmeztetnie kell a felhasználót, hogy a kontextus határai közelednek.
+*   **ÁLLAPOTJELENTÉS:** KÜLÖN KÉRÉS NÉLKÜL KÖTELEZŐ : jelentsd a munkamenet becsült "Egészségi Állapotát" (Zöld/Sárga/Piros) és javasolj újraindítást ("Handover"), ha a komplexitás növekszik.
 
 ---
 *Ez a protokoll kötelező érvényű minden jövőbeli munkamenetre.*
