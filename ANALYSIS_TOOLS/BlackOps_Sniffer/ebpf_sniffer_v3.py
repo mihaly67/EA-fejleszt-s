@@ -97,14 +97,29 @@ int kprobe__sys_sendto(struct pt_regs *ctx) {
     data.pid = pid;
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
 
-    // PT_REGS_PARM1: fd, PT_REGS_PARM2: buf, PT_REGS_PARM3: len
-    data.fd = (u32)PT_REGS_PARM1(ctx);
-    data.size = (u32)PT_REGS_PARM3(ctx);
+    // KPROBE a sys_sendto-ra modern Linuxokon (x86_64, pt_regs Wrapper):
+    // Mivel a syscall paraméterei a __x64_sys_sendto estében a pt_regs ctx->di (ami egy masik pt_regs pointer)
+    // mutatójából érkeznek, a sima PT_REGS_PARM1(ctx) hibás!
+    // Helyette ki kell bontanunk a "valódi" regisztereket.
+    // BCC-ben egy trükk, hogy magát a hívás paramétereit közvetlenül olvassuk.
+
+    struct pt_regs *real_regs = (struct pt_regs *)PT_REGS_PARM1(ctx);
+
+    u64 fd = 0;
+    u64 buf_ptr = 0;
+    u64 len = 0;
+
+    bpf_probe_read_kernel(&fd, sizeof(fd), &real_regs->di);
+    bpf_probe_read_kernel(&buf_ptr, sizeof(buf_ptr), &real_regs->si);
+    bpf_probe_read_kernel(&len, sizeof(len), &real_regs->dx);
+
+    data.fd = (u32)fd;
+    data.size = (u32)len;
 
     // Ha len nagyon pici, vagy 0, felesleges
-    if (data.size == 0) return 0;
+    if (data.size == 0 || data.size > 65535) return 0; // Túl nagy méret is gyanús (hibás kiolvasás)
 
-    void *user_ptr = (void *)PT_REGS_PARM2(ctx);
+    void *user_ptr = (void *)buf_ptr;
 
     u32 copy_size = data.size;
 
@@ -133,14 +148,24 @@ int kprobe__sys_write(struct pt_regs *ctx) {
     data.pid = pid;
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
 
-    data.fd = (u32)PT_REGS_PARM1(ctx);
-    data.size = (u32)PT_REGS_PARM3(ctx);
+    struct pt_regs *real_regs = (struct pt_regs *)PT_REGS_PARM1(ctx);
+
+    u64 fd = 0;
+    u64 buf_ptr = 0;
+    u64 count = 0;
+
+    bpf_probe_read_kernel(&fd, sizeof(fd), &real_regs->di);
+    bpf_probe_read_kernel(&buf_ptr, sizeof(buf_ptr), &real_regs->si);
+    bpf_probe_read_kernel(&count, sizeof(count), &real_regs->dx);
+
+    data.fd = (u32)fd;
+    data.size = (u32)count;
 
     // Kiszűrjük a stdout/stderr/stdin fd-ket (0,1,2), minket csak socket/file érdekel
     if (data.fd <= 2) return 0;
-    if (data.size == 0) return 0;
+    if (data.size == 0 || data.size > 65535) return 0;
 
-    void *user_ptr = (void *)PT_REGS_PARM2(ctx);
+    void *user_ptr = (void *)buf_ptr;
 
     u32 copy_size = data.size;
 
