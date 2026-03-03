@@ -70,6 +70,8 @@ def hexdump(src, length=16):
 bpf_text = """
 #include <uapi/linux/ptrace.h>
 #include <linux/sched.h>
+#include <linux/socket.h>
+#include <linux/uio.h>
 
 BPF_HASH(target_pids, u32, u32); // [pid -> 1]
 
