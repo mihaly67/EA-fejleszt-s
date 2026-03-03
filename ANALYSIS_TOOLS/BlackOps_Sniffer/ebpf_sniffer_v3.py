@@ -22,7 +22,8 @@ import sys
 import datetime
 
 # --- BEÁLLÍTÁSOK ---
-PROCESS_NAME = "terminal64.exe"
+# WINE alatt a hálózati kéréseket gyakran a háttérfolyamatok intézik, ezért a wineserver-t is figyeljük
+TARGET_PROCESSES = ["terminal64.exe", "wineserver", "winedevice.exe"]
 MAX_PAYLOAD_SIZE = 256  # Hány byte-ot mentsünk le a csomagból elemzésre
 LOG_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -280,12 +281,18 @@ running = True
 def update_pids():
     global active_pids
     target_map = b["target_pids"]
+    # Szótár a processz nevek nyomon követéséhez (PID -> Név)
+    pid_names = {}
+
     while running:
         current_pids = set()
         for proc in psutil.process_iter(['pid', 'name']):
             try:
-                if proc.info['name'] == PROCESS_NAME:
-                    current_pids.add(proc.info['pid'])
+                name = proc.info['name']
+                if name in TARGET_PROCESSES:
+                    pid = proc.info['pid']
+                    current_pids.add(pid)
+                    pid_names[pid] = name
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
@@ -294,14 +301,16 @@ def update_pids():
 
         for pid in new_pids:
             target_map[target_map.Key(pid)] = target_map.Leaf(1)
-            print(f"[+] 🔄 RADAR TRACKING NEW PID: {pid} ({PROCESS_NAME})")
+            name = pid_names.get(pid, "Unknown")
+            print(f"[+] 🔄 RADAR TRACKING NEW PID: {pid} ({name})")
 
         for pid in dead_pids:
             try:
                 del target_map[target_map.Key(pid)]
             except KeyError:
                 pass
-            print(f"[-] 🛑 RADAR DROPPED DEAD PID: {pid} ({PROCESS_NAME})")
+            name = pid_names.pop(pid, "Unknown")
+            print(f"[-] 🛑 RADAR DROPPED DEAD PID: {pid} ({name})")
 
         active_pids = current_pids
         time.sleep(2)
