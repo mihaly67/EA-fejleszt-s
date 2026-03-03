@@ -83,6 +83,57 @@ struct data_t {
 
 BPF_PERF_OUTPUT(events);
 
+// kprobe a sendmsg syscallra. A WINE gyakran a sys_sendmsg-et használja a Windowsos WSASend hívásokhoz.
+// sys_sendmsg(int fd, struct user_msghdr *msg, unsigned int flags)
+int kprobe__sys_sendmsg(struct pt_regs *ctx) {
+    u32 pid = bpf_get_current_pid_tgid() >> 32;
+
+    u32 *is_target = target_pids.lookup(&pid);
+    if (is_target == 0) return 0;
+
+    struct data_t data = {};
+    data.pid = pid;
+    bpf_get_current_comm(&data.comm, sizeof(data.comm));
+
+    struct pt_regs *real_regs = (struct pt_regs *)PT_REGS_PARM1(ctx);
+    u64 fd = 0;
+    u64 msg_ptr = 0; // A struct msghdr mutatója az 'si'-ben
+
+    bpf_probe_read_kernel(&fd, sizeof(fd), &real_regs->di);
+    bpf_probe_read_kernel(&msg_ptr, sizeof(msg_ptr), &real_regs->si);
+
+    data.fd = (u32)fd;
+    if (data.fd <= 2) return 0; // Stdout/stderr
+
+    // user_msghdr olvasása usermode memóriából a biztonságos dereferáláshoz (A modern kernelben a sima msghdr más szerkezetű!)
+    struct user_msghdr msg = {};
+    bpf_probe_read_user(&msg, sizeof(msg), (void *)msg_ptr);
+
+    // Az első iovec olvasása
+    struct iovec iov = {};
+    if (msg.msg_iovlen > 0) {
+        bpf_probe_read_user(&iov, sizeof(iov), msg.msg_iov);
+
+        data.size = (u32)iov.iov_len;
+        if (data.size == 0 || data.size > 65535) return 0;
+
+        // Biztonságos Capping a Verifier számára: bitenkénti AND helyett fix felső korlát
+        u32 copy_size = data.size;
+        if (copy_size > 255) {
+            copy_size = 255;
+        }
+
+        // Utolsó trükk a verifiernek: AND maszkolás, hogy TUDJA biztosan
+        copy_size &= 0xFF;
+        if (copy_size == 0) copy_size = 255;
+
+        bpf_probe_read_user(&data.payload, copy_size, iov.iov_base);
+        events.perf_submit(ctx, &data, sizeof(data));
+    }
+
+    return 0;
+}
+
 // kprobe a sendto syscallra. Az argumentumok elérése a PT_REGS_PARMx makrókkal történik.
 // sendto(int fd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen)
 int kprobe__sys_sendto(struct pt_regs *ctx) {
@@ -123,9 +174,13 @@ int kprobe__sys_sendto(struct pt_regs *ctx) {
 
     u32 copy_size = data.size;
 
-    // Biztosítjuk a Verifier számára, hogy a méret maximum 255 byte (pozitív egész)
+        if (copy_size > 255) {
+            copy_size = 255;
+        }
+
+        // Biztosítjuk a Verifier számára matematikai egyértelműséggel a határt
     copy_size &= 0xFF;
-    if (copy_size == 0) copy_size = 255; // Elkerüljük a 0 méretű másolást, ha a maszk 0-t adna, bár korábban már szűrtük a 0 méretet
+        if (copy_size == 0) copy_size = 255;
 
     // Payload másolása usermode memóriából
     bpf_probe_read_user(&data.payload, copy_size, user_ptr);
@@ -169,7 +224,11 @@ int kprobe__sys_write(struct pt_regs *ctx) {
 
     u32 copy_size = data.size;
 
-    // Biztosítjuk a Verifier számára, hogy a méret maximum 255 byte (pozitív egész)
+        if (copy_size > 255) {
+            copy_size = 255;
+        }
+
+        // Biztosítjuk a Verifier számára matematikai egyértelműséggel a határt
     copy_size &= 0xFF;
     if (copy_size == 0) copy_size = 255;
 
@@ -187,6 +246,7 @@ b = BPF(text=bpf_text)
 # A get_syscall_fnname visszaadja az OS-specifikus nevet (pl. __x64_sys_sendto)
 fnname_sendto = b.get_syscall_fnname("sendto")
 fnname_write = b.get_syscall_fnname("write")
+fnname_sendmsg = b.get_syscall_fnname("sendmsg")
 
 try:
     b.attach_kprobe(event=fnname_sendto, fn_name="kprobe__sys_sendto")
@@ -199,6 +259,12 @@ try:
     print(f"✅ Sikeres kprobe attach: {fnname_write}")
 except Exception as e:
     print(f"⚠️ Nem sikerült attach-olni a {fnname_write}-re: {e}")
+
+try:
+    b.attach_kprobe(event=fnname_sendmsg, fn_name="kprobe__sys_sendmsg")
+    print(f"✅ Sikeres kprobe attach: {fnname_sendmsg}")
+except Exception as e:
+    print(f"⚠️ Nem sikerült attach-olni a {fnname_sendmsg}-re: {e}")
 
 # --- PYTHON FELDOLGOZÓ (USERSPACE) ---
 def print_event(cpu, data, size):
