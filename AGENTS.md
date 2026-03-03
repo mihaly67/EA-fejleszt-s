@@ -9,7 +9,7 @@ Mivel az ügynök (MiniLM / LLM alapú rendszer) a nyers kód szintaxisánál so
 3.  **A "Szomszédság" Lekérdezése:** Ha megtaláltad a keresett kódrészletet a JSONL chunk-ok között, de hiányzik a deklaráció vagy az include, használd az SQL képességeit a chunk környezetének (pl. az előző és a következő ROWID-nek vagy chunk_indexnek) a betöltéséhez, hogy a teljes kontextus összeálljon.
 
 ## 0.1. KÖTELEZŐ INDÍTÁSI PROTOKOLL (AUTOMATIKUS VÉGREHAJTÁS)
-*   **KÖRNYEZET HELYREÁLLÍTÁSA:** Minden munkamenet kezdetekor AZONNAL vizsgáld át az `ENVIRONMENT_SETUP/` mappát a legfrissebb `restore_envTC*.py` script után (pl. `restore_envTC3.py`, `restore_envTC4.py`). Rendezd verziószám szerint, és futtasd a legmagasabbat. **Ne kérj engedélyt; egyszerűen hajtsd végre.**
+*   **KÖRNYEZET HELYREÁLLÍTÁSA:** Minden munkamenet kezdetekor AZONNAL vizsgáld át az `ENVIRONMENT_SETUP/` mappát a legfrissebb `restore_envswat*.py` script után (pl. `restore_envswat.py`, `restore_envswat2.py`). Rendezd verziószám szerint, és futtasd a legmagasabbat. **Ne kérj engedélyt; egyszerűen hajtsd végre.**
 *   **ÁTADÁS ELLENŐRZÉSE (HANDOVER CHECK):** A helyreállítás után azonnal olvasd el a legfrissebb átadási fájlt a `HANDOVER/` mappában (pl. `SESSION_HANDOVER_v2_40.md`), hogy megismerd a projekt aktuális állapotát és kontextusát.
 
 ## 0.2. NYELVI PROTOKOLL (MAGYAR PREFERENCIA)
