@@ -106,15 +106,19 @@ int kprobe__tcp_transmit_skb(struct pt_regs *ctx, struct sock *sk, struct sk_buf
     u32 len = skb->len;
     data.size = len;
 
-    // Biztonsági korlát (Bitwise AND a Verifier miatt)
-    u32 copy_size = len & 0xFF; // max 255 bytes payload (limitáltuk MAX_PAYLOAD=256)
-    if (copy_size == 0) return 0;
+    if (len == 0) return 0;
+
+    // Biztonsági korlát (Clamp a Verifier miatt)
+    u32 copy_size = len;
+    if (copy_size > MAX_PAYLOAD - 1) {
+        copy_size = MAX_PAYLOAD - 1;
+    }
 
     // Az skb->data mutat a csomag elejére (TCP header + Payload)
     char *data_ptr;
     bpf_probe_read_kernel(&data_ptr, sizeof(data_ptr), &skb->data);
 
-    // Kiolvassuk a nyers bitfolyamot! Nincs több üres nullázás WINE userspace miatt.
+    // Kiolvassuk a nyers bitfolyamot állandó/biztonságos mérettel! Nincs több üres nullázás WINE userspace miatt.
     bpf_probe_read_kernel(&data.payload, copy_size, data_ptr);
 
     events.perf_submit(ctx, &data, sizeof(data));
