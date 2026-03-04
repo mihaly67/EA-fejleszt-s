@@ -87,6 +87,14 @@ int trace_tcp_sendmsg(struct pt_regs *ctx, struct sock *sk) {
     u64 sk_ptr = (u64)sk;
     mt5_socks.update(&sk_ptr, &pid);
 
+    // DIAGNOSZTIKA: Küldünk egy értesítést magáról a sendmsg eseményről,
+    // hogy tudjuk, eljut-e ide a WINE/MT5 egyáltalán (Payload nélkül, csak a tény)
+    struct data_t data = {};
+    data.pid = pid;
+    bpf_get_current_comm(&data.comm, sizeof(data.comm));
+    data.size = 0xFFFFFFFF; // Egyedi jelző a Python kódnak, hogy ez csak egy "Lépcső 1 Ping"
+    events.perf_submit(ctx, &data, sizeof(data));
+
     return 0;
 }
 
@@ -169,15 +177,21 @@ def print_event(cpu, data, size):
     event = b["events"].event(data)
 
     comm = event.comm.decode('utf-8', 'replace').strip()
-    category = categorize_packet(comm, event.size)
-    log_file = LOG_FILES.get(category, LOG_FILES["UNKNOWN"])
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+
+    # Diagnosztikai ellenőrzés (Lépcső 1 Ping)
+    if event.size == 0xFFFFFFFF:
+        print(f"[DEBUG - 1. Lépcső (tcp_sendmsg)] 🛡️ WINE Hálózat érzékelve! (PID: {event.pid}, Thread: {comm})")
+        return
+
+    category = categorize_packet(comm, event.size)
+    log_file = LOG_FILES.get(category, LOG_FILES["UNKNOWN"])
 
     payload_size = min(event.size, MAX_PAYLOAD_SIZE)
     payload_bytes = bytes(event.payload[:payload_size])
 
-    print(f"[{category}] {comm} | Size: {event.size} bytes (Includes TCP Header)")
+    print(f"[{category} - 2. Lépcső (xmit)] {comm} | Size: {event.size} bytes (Includes TCP Header)")
 
     with open(log_file, "a") as f:
         f.write(f"\n[{timestamp}] PID: {event.pid} | Thread: {comm}\n")
