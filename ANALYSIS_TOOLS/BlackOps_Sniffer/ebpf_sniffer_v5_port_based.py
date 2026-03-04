@@ -12,6 +12,9 @@ MAX_PAYLOAD_SIZE = 256
 # MT5 gyakori portjai: 443 (HTTPS/TLS), egyéb TCP portok.
 TARGET_PORT = 443
 
+# Feketelista a folyamat/szál nevekhez, amiket ignorálni akarunk a logból
+BLACKLIST_COMMS = ["chrome", "vivaldi", "conky", "firefox", "swapper"]
+
 def init_logs():
     if not os.path.exists(LOG_DIR):
         os.makedirs(LOG_DIR)
@@ -129,6 +132,12 @@ def print_event(cpu, data, size):
     event = b["events"].event(data)
 
     comm = event.comm.decode('utf-8', 'replace').strip()
+    comm_lower = comm.lower()
+
+    # 1. Szűrés: Feketelista alkalmazása a szál/folyamat nevekre
+    for bl in BLACKLIST_COMMS:
+        if bl in comm_lower:
+            return
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
@@ -137,6 +146,10 @@ def print_event(cpu, data, size):
 
     src_ip = socket.inet_ntoa(ct.c_uint32(event.saddr).value.to_bytes(4, 'little'))
     dst_ip = socket.inet_ntoa(ct.c_uint32(event.daddr).value.to_bytes(4, 'little'))
+
+    # 2. Opcionális: Ha az adat csak 52 byte, az sokszor csak egy üres TCP ACK csomag (header only),
+    # A logok csökkentése érdekében ezt is szűrhetjük, ha a méret túl kicsi (csak TCP fejléc),
+    # de egyelőre mindent kiírunk a feketelistán kívül.
 
     print(f"[TCP OUT] {comm} (PID: {event.pid}) | {src_ip} -> {dst_ip}:{event.dport} | Size: {event.size} bytes")
 
