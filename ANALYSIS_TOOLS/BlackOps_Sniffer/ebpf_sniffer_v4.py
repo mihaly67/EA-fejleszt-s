@@ -90,8 +90,14 @@ int kprobe__tcp_sendmsg(struct pt_regs *ctx, struct sock *sk) {
 }
 
 // 2. Lépés: Elkapjuk a kész csomagot, mielőtt a hálózati kártyára menne
-// Itt az skb már tartalmazza a fizikai network payloadot
-int kprobe__tcp_transmit_skb(struct pt_regs *ctx, struct sock *sk, struct sk_buff *skb) {
+// A tcp_transmit_skb gyakran inlined, így dev_queue_xmit vagy ip_local_out-ot használunk, amik nyíltak.
+// Itt a dev_queue_xmit a skb-t kapja első argumentumként (PT_REGS_PARM1).
+int kprobe__dev_queue_xmit(struct pt_regs *ctx, struct sk_buff *skb) {
+    if (!skb) return 0;
+
+    struct sock *sk = skb->sk;
+    if (!sk) return 0;
+
     u64 sk_ptr = (u64)sk;
 
     // Csak a mi általunk felcímkézett socketeket dolgozzuk fel
@@ -102,7 +108,6 @@ int kprobe__tcp_transmit_skb(struct pt_regs *ctx, struct sock *sk, struct sk_buf
     data.pid = *pid_ptr;
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
 
-    // skb->len tartalmazza a teljes méretet, próbáljuk kinyerni az iov_len-ből (ami header + adat is lehet)
     u32 len = skb->len;
     data.size = len;
 
@@ -114,11 +119,11 @@ int kprobe__tcp_transmit_skb(struct pt_regs *ctx, struct sock *sk, struct sk_buf
         copy_size = MAX_PAYLOAD - 1;
     }
 
-    // Az skb->data mutat a csomag elejére (TCP header + Payload)
+    // Az skb->data mutat a csomag elejére
     char *data_ptr;
     bpf_probe_read_kernel(&data_ptr, sizeof(data_ptr), &skb->data);
 
-    // Kiolvassuk a nyers bitfolyamot állandó/biztonságos mérettel! Nincs több üres nullázás WINE userspace miatt.
+    // Kiolvassuk a nyers bitfolyamot
     bpf_probe_read_kernel(&data.payload, copy_size, data_ptr);
 
     events.perf_submit(ctx, &data, sizeof(data));
@@ -136,10 +141,11 @@ except Exception as e:
     print(f"⚠️ Nem sikerült attach-olni a tcp_sendmsg-re: {e}")
 
 try:
-    b.attach_kprobe(event="tcp_transmit_skb", fn_name="kprobe__tcp_transmit_skb")
-    print(f"✅ Sikeres kprobe attach: tcp_transmit_skb")
+    # Elkerüljük az inlined tcp_transmit_skb hibát, helyette a hálózati réteg alját használjuk
+    b.attach_kprobe(event="dev_queue_xmit", fn_name="kprobe__dev_queue_xmit")
+    print(f"✅ Sikeres kprobe attach: dev_queue_xmit")
 except Exception as e:
-    print(f"⚠️ Nem sikerült attach-olni a tcp_transmit_skb-re: {e}")
+    print(f"⚠️ Nem sikerült attach-olni a dev_queue_xmit-re: {e}")
 
 
 # --- PYTHON FELDOLGOZÓ (USERSPACE) ---
