@@ -96,7 +96,10 @@ int trace_ip_local_out(struct pt_regs *ctx, struct net *net, struct sock *sk, st
     bpf_probe_read_kernel(&len, sizeof(len), &skb->len);
     data.size = len;
 
-    if (len == 0) return 0;
+    // SZŰRÉS: TCP/IP fejléc együttesen általában 52-60 byte.
+    // Ha a csomag mérete ennél kisebb vagy egyenlő, akkor ez csak egy üres ACK/SYN/FIN csomag payload nélkül.
+    // Ignoráljuk ezeket, hogy drasztikusan csökkentsük a log méretét és a zajt.
+    if (len <= 64) return 0;
 
     u32 copy_size = len;
     if (copy_size > MAX_PAYLOAD - 1) {
@@ -147,9 +150,9 @@ def print_event(cpu, data, size):
     src_ip = socket.inet_ntoa(ct.c_uint32(event.saddr).value.to_bytes(4, 'little'))
     dst_ip = socket.inet_ntoa(ct.c_uint32(event.daddr).value.to_bytes(4, 'little'))
 
-    # 2. Opcionális: Ha az adat csak 52 byte, az sokszor csak egy üres TCP ACK csomag (header only),
-    # A logok csökkentése érdekében ezt is szűrhetjük, ha a méret túl kicsi (csak TCP fejléc),
-    # de egyelőre mindent kiírunk a feketelistán kívül.
+    # 2. Üres csomag szűrő (Biztonsági háló, bár a BPF kód most már eleve eldobja a <= 64 byteos csomagokat)
+    if event.size <= 64:
+        return
 
     print(f"[TCP OUT] {comm} (PID: {event.pid}) | {src_ip} -> {dst_ip}:{event.dport} | Size: {event.size} bytes")
 
