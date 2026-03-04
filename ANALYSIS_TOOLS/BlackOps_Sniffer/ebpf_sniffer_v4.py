@@ -77,7 +77,8 @@ BPF_PERF_OUTPUT(events);
 
 // 1. Lépés: Megjelöljük az MT5/Wineserver socketeket
 // kprobe a tcp_sendmsg kernel belső hívására, itt még megvan a PID kontextus!
-int kprobe__tcp_sendmsg(struct pt_regs *ctx, struct sock *sk) {
+// (Átnevezve 'trace_'-re, hogy elkerüljük a bcc autoload összeomlását)
+int trace_tcp_sendmsg(struct pt_regs *ctx, struct sock *sk) {
     u32 pid = bpf_get_current_pid_tgid() >> 32;
 
     u32 *is_target = target_pids.lookup(&pid);
@@ -90,12 +91,14 @@ int kprobe__tcp_sendmsg(struct pt_regs *ctx, struct sock *sk) {
 }
 
 // 2. Lépés: Elkapjuk a kész csomagot, mielőtt a hálózati kártyára menne
-// A tcp_transmit_skb gyakran inlined, így dev_queue_xmit vagy ip_local_out-ot használunk, amik nyíltak.
-// Itt a dev_queue_xmit a skb-t kapja első argumentumként (PT_REGS_PARM1).
-int kprobe__dev_queue_xmit(struct pt_regs *ctx, struct sk_buff *skb) {
+// A tcp_transmit_skb gyakran inlined, így ip_local_out vagy __dev_queue_xmit-ot próbálunk manuálisan.
+// (Átnevezve 'trace_'-re az autoload elkerülése miatt)
+int trace_xmit(struct pt_regs *ctx, struct sk_buff *skb) {
     if (!skb) return 0;
 
-    struct sock *sk = skb->sk;
+    // A modern kernel verziók miatt biztonságosan olvassuk az sk pointert
+    struct sock *sk = NULL;
+    bpf_probe_read_kernel(&sk, sizeof(sk), &skb->sk);
     if (!sk) return 0;
 
     u64 sk_ptr = (u64)sk;
@@ -108,7 +111,8 @@ int kprobe__dev_queue_xmit(struct pt_regs *ctx, struct sk_buff *skb) {
     data.pid = *pid_ptr;
     bpf_get_current_comm(&data.comm, sizeof(data.comm));
 
-    u32 len = skb->len;
+    u32 len = 0;
+    bpf_probe_read_kernel(&len, sizeof(len), &skb->len);
     data.size = len;
 
     if (len == 0) return 0;
@@ -120,13 +124,15 @@ int kprobe__dev_queue_xmit(struct pt_regs *ctx, struct sk_buff *skb) {
     }
 
     // Az skb->data mutat a csomag elejére
-    char *data_ptr;
+    char *data_ptr = NULL;
     bpf_probe_read_kernel(&data_ptr, sizeof(data_ptr), &skb->data);
 
-    // Kiolvassuk a nyers bitfolyamot
-    bpf_probe_read_kernel(&data.payload, copy_size, data_ptr);
+    if (data_ptr) {
+        // Kiolvassuk a nyers bitfolyamot
+        bpf_probe_read_kernel(&data.payload, copy_size, data_ptr);
+        events.perf_submit(ctx, &data, sizeof(data));
+    }
 
-    events.perf_submit(ctx, &data, sizeof(data));
     return 0;
 }
 """
@@ -134,18 +140,28 @@ int kprobe__dev_queue_xmit(struct pt_regs *ctx, struct sk_buff *skb) {
 print("⚙️ eBPF (BCC) 'Two-Stage Anchor' Syscall kód fordítása és betöltése (Kérlek várj)...")
 b = BPF(text=bpf_text)
 
+print("🔗 Horgonyok telepítése a Kernelbe...")
 try:
-    b.attach_kprobe(event="tcp_sendmsg", fn_name="kprobe__tcp_sendmsg")
-    print(f"✅ Sikeres kprobe attach: tcp_sendmsg")
+    b.attach_kprobe(event="tcp_sendmsg", fn_name="trace_tcp_sendmsg")
+    print(f"✅ Sikeres kprobe attach: tcp_sendmsg (1. Lépcső)")
 except Exception as e:
     print(f"⚠️ Nem sikerült attach-olni a tcp_sendmsg-re: {e}")
 
-try:
-    # Elkerüljük az inlined tcp_transmit_skb hibát, helyette a hálózati réteg alját használjuk
-    b.attach_kprobe(event="dev_queue_xmit", fn_name="kprobe__dev_queue_xmit")
-    print(f"✅ Sikeres kprobe attach: dev_queue_xmit")
-except Exception as e:
-    print(f"⚠️ Nem sikerült attach-olni a dev_queue_xmit-re: {e}")
+# Megpróbáljuk a lehetséges 2. Lépcső horgonyokat sorban, amíg egy sikeres nem lesz
+xmit_functions = ["ip_local_out", "__dev_queue_xmit", "dev_queue_xmit"]
+attached_xmit = False
+
+for func in xmit_functions:
+    if not attached_xmit:
+        try:
+            b.attach_kprobe(event=func, fn_name="trace_xmit")
+            print(f"✅ Sikeres kprobe attach: {func} (2. Lépcső)")
+            attached_xmit = True
+        except Exception as e:
+            print(f"   ℹ️ Kprobe '{func}' nem elérhető/inlined ezen a kernelen: {e}")
+
+if not attached_xmit:
+    print("❌ Végzetes hiba: Egyetlen 2. lépcsős hálóvetés (xmit) hook sem sikerült. A kernel túl új vagy nem támogatott.")
 
 
 # --- PYTHON FELDOLGOZÓ (USERSPACE) ---
