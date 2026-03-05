@@ -1,6 +1,7 @@
 import frida
 import sys
 import time
+import datetime
 
 print("=== 🕵️ FRIDA WIN/WINE SNIFFER (WSASend & EncryptMessage) ===")
 print("Bizonyosodj meg róla, hogy a frida-server.exe fut a WINE prefixben!\n")
@@ -116,15 +117,27 @@ def hexdump(src, length=16):
         lines.append(f"{c:04x}  {hex_str:<{length*3}}  |{printable}|")
     return '\n'.join(lines)
 
+
 def on_message(message, data):
     if message['type'] == 'send':
-        payload = message['payload']
-        print(f"\\n[+] ELKAPVA: {payload['type']} | Hossz: {payload['len']} bytes")
+        payload = message.get('payload', {})
+        msg_type = payload.get('type', 'Ismeretlen')
+        msg_len = payload.get('len', 0)
+
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        log_entry = f"\n[{timestamp}] [+] ELKAPVA: {msg_type} | Hossz: {msg_len} bytes\n"
+        print(log_entry, end="")
+
         if data:
-            print(hexdump(data))
+            hex_data = hexdump(data)
+            print(hex_data)
             print("-" * 50)
+            with open("frida_plaintext.log", "a") as f:
+                f.write(log_entry)
+                f.write(hex_data + "\n")
+                f.write("-" * 50 + "\n")
     else:
-        print(message)
+        print(f"[*] FRIDA MSG: {message}")
 
 def main():
     try:
