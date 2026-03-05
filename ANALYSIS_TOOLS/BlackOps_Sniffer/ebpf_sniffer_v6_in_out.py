@@ -131,11 +131,15 @@ int trace_ip_local_deliver(struct pt_regs *ctx, struct sk_buff *skb) {
     // De az IP fejléc után azonnal a TCP fejléc jön (opcióktól függően 20 byte).
     struct iphdr *ip = (struct iphdr *)(head + network_header);
     u8 protocol = 0;
-    u8 ihl = 0;
     bpf_probe_read_kernel(&protocol, sizeof(protocol), &ip->protocol);
     if (protocol != IPPROTO_TCP) return 0;
 
-    bpf_probe_read_kernel(&ihl, sizeof(ihl), &ip->ihl);
+    // Az ip->ihl egy bitmező, nem kérhetjük le a címét a memóriából (&ip->ihl).
+    // Helyette a struct iphdr első bájtját olvassuk be, ami a version + ihl mezőket tartalmazza,
+    // majd egy bitmaszkkal (0x0F) kinyerjük belőle az ihl értékét.
+    u8 ihl_version = 0;
+    bpf_probe_read_kernel(&ihl_version, sizeof(ihl_version), (void *)ip);
+    u8 ihl = ihl_version & 0x0F;
 
     // IP header hossza = ihl * 4
     struct tcphdr *tcp = (struct tcphdr *)(head + network_header + (ihl * 4));
