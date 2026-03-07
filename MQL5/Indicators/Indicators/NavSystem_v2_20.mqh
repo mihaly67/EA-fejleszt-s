@@ -352,20 +352,35 @@ private:
 
    void CalcHybridFlow(int total)
    {
-       double pos_mf = 0, neg_mf = 0;
-       for(int i=0; i<f_mfi_period; i++) {
-           int idx = total - 1 - i;
-           if(idx < 1) break;
-           double tp_curr = (m_rates[idx].high + m_rates[idx].low + m_rates[idx].close) / 3.0;
-           double tp_prev = (m_rates[idx-1].high + m_rates[idx-1].low + m_rates[idx-1].close) / 3.0;
-           double vol = (double)m_rates[idx].tick_volume;
-           if(vol <= 0) vol = (double)m_rates[idx].real_volume;
-           double mf = tp_curr * vol;
-           if(tp_curr > tp_prev) pos_mf += mf; else if(tp_curr < tp_prev) neg_mf += mf;
+       // MFI (Money Flow Index) fix: MQL5 beépített indikátora sokkal pontosabb a zero tick / azonos árak kezelésében
+       if(m_handle_flow != INVALID_HANDLE) {
+           double mfi_buf[1];
+           // A hibrid flow indikátor MFI puffere feltételezhetően a 0-ás vagy iMFI hívással nyerhető
+           // Mivel nem tudjuk biztosan a custom indikátor puffer kiosztását, bevetünk egy natív iMFI számítást is fallbackként:
+           static int s_mfi_handle = INVALID_HANDLE;
+           if(s_mfi_handle == INVALID_HANDLE) s_mfi_handle = iMFI(_Symbol, PERIOD_CURRENT, f_mfi_period, VOLUME_TICK);
+
+           if(s_mfi_handle != INVALID_HANDLE && CopyBuffer(s_mfi_handle, 0, 0, 1, mfi_buf) > 0) {
+               m_val_flow_mfi = mfi_buf[0];
+           } else {
+               m_val_flow_mfi = 50.0; // Default error fallback
+           }
+       } else {
+           double pos_mf = 0, neg_mf = 0;
+           for(int i=0; i<f_mfi_period; i++) {
+               int idx = total - 1 - i;
+               if(idx < 1) break;
+               double tp_curr = (m_rates[idx].high + m_rates[idx].low + m_rates[idx].close) / 3.0;
+               double tp_prev = (m_rates[idx-1].high + m_rates[idx-1].low + m_rates[idx-1].close) / 3.0;
+               double vol = (double)m_rates[idx].tick_volume;
+               if(vol <= 0) vol = (double)m_rates[idx].real_volume;
+               double mf = tp_curr * vol;
+               if(tp_curr > tp_prev) pos_mf += mf; else if(tp_curr < tp_prev) neg_mf += mf;
+           }
+           if(neg_mf != 0) m_val_flow_mfi = 100.0 - (100.0 / (1.0 + (pos_mf / neg_mf)));
+           else if(pos_mf > 0) m_val_flow_mfi = 100.0;
+           else m_val_flow_mfi = 50.0;
        }
-       if(neg_mf != 0) m_val_flow_mfi = 100.0 - (100.0 / (1.0 + (pos_mf / neg_mf)));
-       else if(pos_mf > 0) m_val_flow_mfi = 100.0;
-       else m_val_flow_mfi = 50.0;
 
        double net_delta_accum = 0;
        int delta_lookback = f_mfi_period;
