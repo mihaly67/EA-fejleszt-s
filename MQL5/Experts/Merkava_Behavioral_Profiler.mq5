@@ -16,14 +16,12 @@
 #include <Trade\PositionInfo.mqh>
 #include <AccountInfo.mqh>
 
-#include "../Indicators/FireControl_v2_25.mqh" // Deep Stealth v2.25 (Total Silence)
-#include "../Indicators/StealthEngine.mqh"     // Stealth Engine v1.0
-#include "../Indicators/StealthRegistry_v1_08.mqh"   // Deep Stealth Registry v1.08 (Log Fix)
-#include "../Indicators/PanelControl_v2_21.mqh" // Dynamic Version Support
+#include "../Indicators/FireControl_v2_25.mqh"
+#include "../Indicators/PanelControl_v2_21.mqh"
 #include "../Indicators/PhysicsEngine.mqh"
-#include "../Indicators/NavSystem_v2_20.mqh" // Context v3.27 Support
-#include "../Indicators/BlackBox_v2_09.mqh" // Full Logging
-#include "../Indicators/ProfitManagement_v2_18.mqh" // Deep Stealth v2.18 (Log Fix)
+#include "../Indicators/NavSystem_v2_20.mqh"
+#include "../Indicators/BlackBox_v2_09.mqh"
+#include "../Indicators/ProfitManagement_v2_18.mqh"
 
 CTrade        m_trade;
 CSymbolInfo   m_symbol;
@@ -32,8 +30,6 @@ CAccountInfo  m_account;
 
 PhysicsEngine m_physics(50);
 CFireControl  m_fire_control;
-CStealthEngine m_stealth; // Stealth Engine Instance
-CStealthRegistry m_registry; // Deep Stealth Registry Instance (v1.08)
 CPanelControl m_panel;
 CNavSystem    m_nav_system;
 CBlackBox     m_black_box;
@@ -54,12 +50,6 @@ input double        InpVirtualTPCurrency = 0.0;
 input double        InpVirtualSLCurrency = 0.0;
 input double        InpMaxMarginPercent  = 70.0;
 input string        InpComment           = ""; // DEFAULT EMPTY (Total Silence)
-
-// [Deep Stealth Engine (Humanizer)] - KIKAPCSOLVA A "NÉMA SZÍNHÁZ" ADATGYŰJTÉSHEZ
-input bool          Stealth_Enabled      = false;
-input int           Stealth_BaseDelay    = 0; // ms
-input int           Stealth_Jitter       = 0; // ms +/-
-input bool          DeepStealth_Enabled  = false; // Use Registry & Random Magic
 
 // [Hybrid & Flow Settings]
 input int           Hybrid_FastEMA       = 3;
@@ -159,12 +149,7 @@ double GetFloatingPL() {
     double pl = 0.0;
     for(int i=PositionsTotal()-1; i>=0; i--) {
        if(m_position.SelectByIndex(i)) {
-           // Deep Stealth Check
-           bool is_mine = false;
-           if(DeepStealth_Enabled) is_mine = m_registry.IsMyTicket(m_position.Ticket());
-           else is_mine = (m_position.Magic() == InpMagicNumber);
-
-           if(is_mine)
+           if(m_position.Magic() == InpMagicNumber)
                pl += m_position.Profit() + m_position.Swap() + m_position.Commission();
        }
     }
@@ -209,26 +194,8 @@ int OnInit()
    if(MarketBookAdd(_Symbol)) g_book_subscribed = true;
 
    // --- INITIALIZE STEALTH ENGINE ---
-   m_stealth.Init(Stealth_Enabled, Stealth_BaseDelay, Stealth_Jitter);
-   PrintFormat("🥷 Stealth Engine Initialized: %s (Base=%dms, Jitter=%dms)",
-               Stealth_Enabled ? "ON" : "OFF", Stealth_BaseDelay, Stealth_Jitter);
-
-   // --- INITIALIZE DEEP STEALTH REGISTRY ---
-   CStealthRegistry *reg_ptr = NULL;
-   if(DeepStealth_Enabled) {
-       m_registry.Init(); // Important: This creates MQL5/Files/Merkava_Stealth/Logs/
-       reg_ptr = &m_registry;
-       Print("🕵️ Deep Stealth Registry ACTIVATED. Random Magic Numbers Enabled (v1.08 LCG).");
-
-       // Explicit CSV Test on Init (SILENCE)
-       Print("🔬 Registry Test: Trying to write to log now...");
-       // This will force creation if missing or log an error if permission denied
-       m_registry.LogAudit("", 0, 0, ""); // SILENT LOG
-   }
-
-   // --- PASS STEALTH & REGISTRY TO MODULES ---
-   m_fire_control.Init(&m_trade, &m_symbol, InpComment, InpMagicNumber, &m_stealth, reg_ptr);
-   m_profit_manager.Init(&m_trade, &m_position, InpMagicNumber, _Symbol, reg_ptr);
+   m_fire_control.Init(&m_trade, &m_symbol, InpComment, InpMagicNumber, NULL, NULL);
+   m_profit_manager.Init(&m_trade, &m_position, InpMagicNumber, _Symbol, NULL);
 
    m_profit_manager.SetVirtualTP(InpVirtualTPCurrency);
    m_profit_manager.SetVirtualSL(InpVirtualSLCurrency);
@@ -413,11 +380,7 @@ string GetNetLotDirection(double &total_lots) {
     double net = 0.0; total_lots = 0.0;
     for(int i=PositionsTotal()-1; i>=0; i--) {
        if(m_position.SelectByIndex(i)) {
-           bool is_mine = false;
-           if(DeepStealth_Enabled) is_mine = m_registry.IsMyTicket(m_position.Ticket());
-           else is_mine = (m_position.Magic() == InpMagicNumber);
-
-           if(is_mine) {
+           if(m_position.Magic() == InpMagicNumber) {
                total_lots += m_position.Volume();
                if(m_position.PositionType()==POSITION_TYPE_BUY) net+=m_position.Volume(); else net-=m_position.Volume();
            }
@@ -440,11 +403,7 @@ string GetSLTPSnapshot() {
     string s = ""; int c = 0;
     for(int i=PositionsTotal()-1; i>=0; i--) {
        if(m_position.SelectByIndex(i)) {
-           bool is_mine = false;
-           if(DeepStealth_Enabled) is_mine = m_registry.IsMyTicket(m_position.Ticket());
-           else is_mine = (m_position.Magic() == InpMagicNumber);
-
-           if(is_mine) {
+           if(m_position.Magic() == InpMagicNumber) {
                if(c > 0) s += "|";
                string t = (m_position.PositionType()==POSITION_TYPE_BUY) ? "B" : "S";
                s += t + ":" + DoubleToString(m_position.StopLoss(),_Digits) + "/" + DoubleToString(m_position.TakeProfit(),_Digits);
@@ -523,8 +482,8 @@ void OnTick()
        }
    } else {
        // Fallback to basic tick volume if DOM is not available
-       bid_vol = tick.volume;
-       ask_vol = tick.volume;
+       bid_vol = (long)tick.volume;
+       ask_vol = (long)tick.volume;
    }
 
    MqlRates rates[];
