@@ -35,6 +35,11 @@ CNavSystem    m_nav_system;
 CBlackBox     m_black_box;
 CProfitManager m_profit_manager;
 
+//--- EMA Handles
+int h_ema25 = INVALID_HANDLE;
+int h_ema50 = INVALID_HANDLE;
+int h_ema150 = INVALID_HANDLE;
+
 //--- Inputs
 input double        InpSpreadMultStart   = 1.5;
 input double        InpSpreadMultStep    = 1.0;
@@ -106,23 +111,6 @@ input int           Ctx_Tr_FastP         = 50;
 input int           Ctx_Tr_SlowP         = 150;
 input ENUM_MA_METHOD Ctx_Tr_Method       = MODE_EMA;
 
-
-// [Hybrid Momentum v2.82 Inputs]
-input string        InpTestPath          = "Jules\\HybridMomentumIndicator_v2.82";
-input ENUM_COLOR_LOGIC InpTestColorLogic = COLOR_SLOPE;
-input int           InpTestFastP         = 3;
-input int           InpTestSlowP         = 6;
-input int           InpTestSigP          = 13;
-input ENUM_APPLIED_PRICE InpTestPrice    = PRICE_CLOSE;
-input double        InpTestKalman        = 1.0;
-input double        InpTestPhase         = 0.5;
-input bool          InpTestBoost         = true;
-input double        InpTestMixW          = 0.2;
-input int           InpTestStochK        = 5;
-input int           InpTestStochD        = 3;
-input int           InpTestStochS        = 3;
-input int           InpTestNormP         = 100;
-input double        InpTestNormS         = 1.0;
 
 // [Panel UI]
 input int           InpX                 = 10;
@@ -220,16 +208,9 @@ int OnInit()
    // Trends
    ctx.tr_fast = Ctx_Tr_FastP; ctx.tr_slow = Ctx_Tr_SlowP; ctx.tr_method = Ctx_Tr_Method;
 
-   // Prepare Momentum Params (v2.82)
+   // Prepare Dummy Momentum Params (since it's removed but struct might still be required by NavSystem signature)
    HybridMomentumParams mom;
-   mom.path = InpTestPath;
-   mom.color_logic = InpTestColorLogic;
-   mom.fast_p = InpTestFastP; mom.slow_p = InpTestSlowP; mom.sig_p = InpTestSigP;
-   mom.price = InpTestPrice;
-   mom.kalman = InpTestKalman; mom.phase = InpTestPhase;
-   mom.boost = InpTestBoost; mom.stoch_w = InpTestMixW;
-   mom.stoch_k = InpTestStochK; mom.stoch_d = InpTestStochD; mom.stoch_s = InpTestStochS;
-   mom.norm_p = InpTestNormP; mom.norm_sens = InpTestNormS;
+   ZeroMemory(mom);
 
    bool init_ok = m_nav_system.Initialize(
        _Symbol, _Period,
@@ -250,6 +231,16 @@ int OnInit()
 
    m_black_box.Initialize(_Symbol, "v2.40");
 
+   // Initialize EMAs
+   h_ema25 = iMA(_Symbol, PERIOD_M1, 25, 0, MODE_EMA, PRICE_CLOSE);
+   h_ema50 = iMA(_Symbol, PERIOD_M1, 50, 0, MODE_EMA, PRICE_CLOSE);
+   h_ema150 = iMA(_Symbol, PERIOD_M1, 150, 0, MODE_EMA, PRICE_CLOSE);
+
+   if(h_ema25 == INVALID_HANDLE || h_ema50 == INVALID_HANDLE || h_ema150 == INVALID_HANDLE) {
+       Print("Error creating EMA handles!");
+       return INIT_FAILED;
+   }
+
    // --- DYNAMIC VERSION LABEL (Fixed) ---
    string version_str = "MERKAVA v2.40 (Strict Silence)";
 
@@ -265,6 +256,9 @@ int OnInit()
 
 void OnDeinit(const int reason)
 {
+   IndicatorRelease(h_ema25);
+   IndicatorRelease(h_ema50);
+   IndicatorRelease(h_ema150);
    m_panel.Destroy();
    ObjectsDeleteAll(0, Prefix);
    ChartRedraw();
@@ -492,6 +486,12 @@ void OnTick()
        b_o = rates[0].open; b_h = rates[0].high; b_l = rates[0].low; b_c = rates[0].close;
    }
 
+   double ema_buf[1];
+   double ema25 = 0, ema50 = 0, ema150 = 0;
+   if(CopyBuffer(h_ema25, 0, 0, 1, ema_buf) > 0) ema25 = ema_buf[0];
+   if(CopyBuffer(h_ema50, 0, 0, 1, ema_buf) > 0) ema50 = ema_buf[0];
+   if(CopyBuffer(h_ema150, 0, 0, 1, ema_buf) > 0) ema150 = ema_buf[0];
+
    double total_lots = 0; // Fixed Declaration
    string lot_dir = GetNetLotDirection(total_lots);
    string verdict = DetermineVerdict(p.velocity, float_pl);
@@ -511,8 +511,8 @@ void OnTick()
        m_nav_system.GetSecP(), m_nav_system.GetSecR(), m_nav_system.GetSecS(),
        m_nav_system.GetTerP(), m_nav_system.GetTerR(), m_nav_system.GetTerS(),
        m_nav_system.GetTrendFast(), m_nav_system.GetTrendSlow(),
-       // Momentum
-       m_nav_system.GetTestHist(), m_nav_system.GetTestMACD(), m_nav_system.GetTestSignal(),
+       // Moving Averages
+       ema25, ema50, ema150,
        TerminalInfoInteger(TERMINAL_PING_LAST), // Ping for Anomaly Detection
        // Stats
        AccountInfoDouble(ACCOUNT_BALANCE), AccountInfoDouble(ACCOUNT_MARGIN), AccountInfoDouble(ACCOUNT_MARGIN_LEVEL),
