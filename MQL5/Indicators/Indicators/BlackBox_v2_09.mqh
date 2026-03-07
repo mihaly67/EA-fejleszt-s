@@ -35,6 +35,7 @@ public:
                   "Flow_MFI,Flow_ROC,Flow_Delta," +
                   "Mic_P,Mic_R,Mic_S,Sec_P,Sec_R,Sec_S,Ter_P,Ter_R,Ter_S,Trend_Fast,Trend_Slow," + // Context v3.18
                   "Test_Hist,Test_MACD,Test_Signal," + // Momentum v2.82
+                  "Ping_MS," + // Lag/Latency Tracking
                   "Balance,Margin,MarginPercent,Floating_PL,Realized_PL,Session_PL," +
                   "PosCount,LotDir,TotalLots,SLTP_Levels,ActionDetails,LastEvent";
    }
@@ -96,6 +97,7 @@ public:
       double tr_f, double tr_s,
       // Momentum Inputs (3 Fields)
       double t_hist, double t_macd, double t_sig,
+      long ping_ms, // Ping for Anomaly Detection
       // Account Stats
       double balance, double margin, double margin_pct,
       double floating_pl, double realized_pl, double session_pl,
@@ -117,6 +119,7 @@ public:
          "%.5f,%.5f,%.5f," +
          "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f," + // Context
          "%.5f,%.5f,%.5f," + // Momentum
+         "%I64d," + // Ping_MS
          "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f," +
          "%d,%s,%.2f,%s,%s,%s",
 
@@ -126,6 +129,7 @@ public:
          f_mfi, f_roc, f_delta,
          mic_p, mic_r, mic_s, sec_p, sec_r, sec_s, ter_p, ter_r, ter_s, tr_f, tr_s,
          t_hist, t_macd, t_sig,
+         ping_ms,
          balance, margin, margin_pct, floating_pl, realized_pl, session_pl,
          pos_count, lot_dir, total_lots, sltp_levels, action_details, last_event
       );

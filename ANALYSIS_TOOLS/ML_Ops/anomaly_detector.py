@@ -19,11 +19,36 @@ def load_data(filepath):
         # Az MQL5 CSV-je vesszővel elválasztott.
         df = pd.read_csv(filepath)
 
-        # Oszlopnevek ellenőrzése
-        expected_cols = ['TimeMsc', 'Bid', 'Ask', 'Spread', 'TickVolume', 'Ping']
-        if not all(col in df.columns for col in expected_cols):
-            print("[-] Hiba: A CSV nem tartalmazza a várt oszlopokat!")
+        # Oszlopnevek rugalmas ellenőrzése (BlackBox és Naked Sensor támogatás)
+        # Ha a BlackBox formátumot találja:
+        if 'TickMSC' in df.columns and 'Ping_MS' in df.columns:
+            time_col = 'TickMSC'
+            bid_vol_col = 'BidVol'
+            ask_vol_col = 'AskVol'
+            ping_col = 'Ping_MS'
+        # Ha a Naked_Sensor formátumot találja:
+        elif 'TimeMsc' in df.columns and 'Ping' in df.columns:
+            time_col = 'TimeMsc'
+            bid_vol_col = 'TickVolume' # Naked EA-ban összevont
+            ask_vol_col = 'TickVolume'
+            ping_col = 'Ping'
+        else:
+            print("[-] Hiba: A CSV nem tartalmaz felismerhető idő vagy ping oszlopot! (TickMSC/TimeMsc vagy Ping_MS/Ping)")
             return None
+
+        # Egységesítés a belső DataFrame-hez
+        df.rename(columns={time_col: 'TimeMsc', ping_col: 'Ping'}, inplace=True)
+        if bid_vol_col not in df.columns: df[bid_vol_col] = 0
+        if ask_vol_col not in df.columns: df[ask_vol_col] = 0
+
+        expected_cols = ['TimeMsc', 'Bid', 'Ask', 'Spread', bid_vol_col, ask_vol_col, 'Ping']
+        missing_cols = [col for col in expected_cols if col not in df.columns]
+        if missing_cols:
+            print(f"[-] Hiba: Hiányzó kritikus oszlopok: {missing_cols}")
+            return None
+
+        # Belső hivatkozásokhoz lementjük a volume neveket
+        df['TotalVol'] = df[bid_vol_col] + df[ask_vol_col] if bid_vol_col != ask_vol_col else df[bid_vol_col]
 
         # Üres vagy hibás sorok dobása
         df.dropna(inplace=True)
@@ -48,7 +73,7 @@ def feature_engineering(df):
     df['Ping_Diff'] = df['Ping'].diff().fillna(0)
 
     # A modell számára releváns feature-ök kiválasztása
-    features = ['Bid_Diff', 'Spread', 'Spread_Diff', 'TickVolume', 'Ping', 'Ping_Diff', 'TimeDeltaMsc']
+    features = ['Bid_Diff', 'Spread', 'Spread_Diff', 'TotalVol', 'Ping', 'Ping_Diff', 'TimeDeltaMsc']
     return df, features
 
 def train_isolation_forest(df, features):
