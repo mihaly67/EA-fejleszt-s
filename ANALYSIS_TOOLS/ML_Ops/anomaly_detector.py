@@ -19,32 +19,48 @@ def load_data(filepath):
         # Az MQL5 CSV-je vesszővel elválasztott.
         df = pd.read_csv(filepath)
 
-        # Oszlopnevek rugalmas ellenőrzése (BlackBox és Naked Sensor támogatás)
-        # Ha a BlackBox formátumot találja:
-        if 'TickMSC' in df.columns and 'Ping_MS' in df.columns:
-            time_col = 'TickMSC'
-            bid_vol_col = 'BidVol'
-            ask_vol_col = 'AskVol'
-            ping_col = 'Ping_MS'
-        # Ha a Naked_Sensor formátumot találja:
-        elif 'TimeMsc' in df.columns and 'Ping' in df.columns:
-            time_col = 'TimeMsc'
-            bid_vol_col = 'TickVolume' # Naked EA-ban összevont
-            ask_vol_col = 'TickVolume'
-            ping_col = 'Ping'
-        else:
-            print("[-] Hiba: A CSV nem tartalmaz felismerhető idő vagy ping oszlopot! (TickMSC/TimeMsc vagy Ping_MS/Ping)")
+        # Inteligensebb oszlopkeresés a kis/nagybetűs és alulvonásos elírások (TimeMsc vs TickMSC) kivédésére
+        col_lower = {c.lower().replace("_", ""): c for c in df.columns}
+
+        time_col = col_lower.get('tickmsc') or col_lower.get('timemsc') or col_lower.get('time')
+        ping_col = col_lower.get('pingms') or col_lower.get('ping')
+
+        if not time_col or not ping_col:
+            print(f"[-] Hiba: A CSV nem tartalmaz felismerhető idő vagy ping oszlopot!\nElérhető oszlopok: {list(df.columns)}")
             return None
+
+        # Volume oszlopok dinamikus feloldása
+        if 'bidvol' in col_lower and 'askvol' in col_lower:
+            bid_vol_col = col_lower['bidvol']
+            ask_vol_col = col_lower['askvol']
+        elif 'tickvolume' in col_lower:
+            bid_vol_col = col_lower['tickvolume']
+            ask_vol_col = col_lower['tickvolume']
+        else:
+            bid_vol_col = ask_vol_col = None # Később feltöltjük 0-val
 
         # Egységesítés a belső DataFrame-hez
         df.rename(columns={time_col: 'TimeMsc', ping_col: 'Ping'}, inplace=True)
-        if bid_vol_col not in df.columns: df[bid_vol_col] = 0
-        if ask_vol_col not in df.columns: df[ask_vol_col] = 0
+
+        # Default volume értékek ha nincs oszlop (pl. ha Naked Sensorban nem lett megadva rendesen)
+        if not bid_vol_col:
+            df['BidVol'] = 0
+            bid_vol_col = 'BidVol'
+        if not ask_vol_col:
+            df['AskVol'] = 0
+            ask_vol_col = 'AskVol'
+
+        # Általános kapitalizációs hibák javítása a fő oszlopokra
+        for col in df.columns:
+            lower = col.lower()
+            if lower == 'bid' and col != 'Bid': df.rename(columns={col: 'Bid'}, inplace=True)
+            if lower == 'ask' and col != 'Ask': df.rename(columns={col: 'Ask'}, inplace=True)
+            if lower == 'spread' and col != 'Spread': df.rename(columns={col: 'Spread'}, inplace=True)
 
         expected_cols = ['TimeMsc', 'Bid', 'Ask', 'Spread', bid_vol_col, ask_vol_col, 'Ping']
         missing_cols = [col for col in expected_cols if col not in df.columns]
         if missing_cols:
-            print(f"[-] Hiba: Hiányzó kritikus oszlopok: {missing_cols}")
+            print(f"[-] Hiba: Hiányzó kritikus oszlopok: {missing_cols}\nJelenlegi oszlopok: {list(df.columns)}")
             return None
 
         # Belső hivatkozásokhoz lementjük a volume neveket
