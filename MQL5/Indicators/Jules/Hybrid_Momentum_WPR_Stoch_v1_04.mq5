@@ -1,9 +1,10 @@
 //+------------------------------------------------------------------+
-//|                                     Hybrid_Momentum_WPR_Stoch.mq5|
+//|                              Hybrid_Momentum_WPR_Stoch_v1_04.mq5 |
 //|                                  Copyright 2026, BlackOps System |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2026, BlackOps System"
-#property description "Hybrid Momentum Indicator: Combines WPR (Line) and Stochastic (Histogram)"
+#property description "Hybrid Momentum Indicator v1.04: Combines WPR (Line) and Stochastic (Histogram)"
+#property version   "1.04"
 
 //--- indicator settings
 #property indicator_separate_window
@@ -35,9 +36,9 @@
 
 //--- input parameters
 input int InpWPRPeriod   = 5;  // WPR Period
-input int InpKPeriod     = 5;  // Stochastic %K Period
-input int InpSlowing     = 3;  // Stochastic Slowing
-input int InpDPeriod     = 3;  // Stochastic %D Period (Not displayed, but needed for algorithm)
+input int InpKPeriod     = 3;  // Stochastic %K Period
+input int InpSlowing     = 2;  // Stochastic Slowing
+input int InpDPeriod     = 2;  // Stochastic %D Period (Not displayed, but needed for algorithm)
 
 //--- indicator buffers
 double    ExtStochBaseBuffer[];
