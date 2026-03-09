@@ -1,290 +1,149 @@
 //+------------------------------------------------------------------+
-//|                                            NavSystem_v2_06.mqh |
-//|                                    Copyright 2026, Jules (Mimic) |
-//|                                             For Project Merkava  |
-//|                                                   Version 2.06   |
+//|                                           PhysicsEngine.mqh |
+//|                                                      Jules Agent |
+//|                                     Market Physics Calculation Class |
 //+------------------------------------------------------------------+
-#property copyright "Jules (Mimic)"
-#property link      "https://github.com/MimicProject"
-#property strict
+#property copyright "Jules Agent"
+#property link      "https://mql5.com"
 
-class CNavSystem
-{
+struct PhysicsState {
+   double velocity;      // Pips/sec
+   double acceleration;  // Pips/sec^2
+   double volatility;    // StdDev of last N ticks
+   double spread_avg;    // Average spread
+   long time_ms;         // Timestamp of last update
+};
+
+class PhysicsEngine {
 private:
-   int      m_handle_rsi;
-   int      m_handle_hybrid_macd;
-   int      m_handle_flow;
+   struct TickNode {
+      long time_msc;
+      double price;
+      double ask;
+      double bid;
+   };
 
-   MqlRates m_rates[];
-   int      m_lookback;
+   TickNode m_buffer[];
+   int m_head;
+   int m_size;
+   int m_capacity;
 
-   double   m_val_rsi;
-   double   m_val_macd;
-   double   m_val_dfcurve;
-   double   m_val_flow_mfi;
-   double   m_val_flow_delta;
-   double   m_val_flow_roc;
-
-   int      p_macd_fast;
-   int      p_macd_slow;
-   double   p_macd_scale;
-   double   p_df_scale;
-   bool     p_df_auto;
-   double   p_divisor;
-
-   int      f_mfi_period;
-   int      f_vroc_period;
-   int      f_smooth;
-   int      f_norm_len;
-   double   f_scale;
-   double   f_vis_gain;
-   bool     f_approx;
-
-   string   m_symbol;
+   double m_current_velocity;
+   double m_current_acceleration;
+   double m_prev_velocity;
 
 public:
-   CNavSystem()
-   {
-      m_handle_rsi = INVALID_HANDLE;
-      m_handle_hybrid_macd = INVALID_HANDLE;
-      m_handle_flow = INVALID_HANDLE;
-
-      m_lookback = 300;
-      ArrayResize(m_rates, m_lookback);
-
-      m_val_rsi = 50.0;
-      m_val_macd = 0.0;
-      m_val_dfcurve = 0.0;
-      m_val_flow_mfi = 50.0;
-      m_val_flow_delta = 0.0;
-      m_val_flow_roc = 0.0;
+   PhysicsEngine(int history_size = 50) {
+      m_capacity = history_size;
+      ArrayResize(m_buffer, m_capacity);
+      Reset();
    }
 
-   ~CNavSystem() { Release(); }
-
-   void Release()
-   {
-      int windows = (int)ChartGetInteger(0, CHART_WINDOWS_TOTAL);
-      for(int w=windows-1; w>=0; w--) {
-          int total = ChartIndicatorsTotal(0, w);
-          for(int i=total-1; i>=0; i--) {
-              string name = ChartIndicatorName(0, w, i);
-              string nlow = name; StringToLower(nlow);
-              if(StringFind(nlow, "hybrid") >= 0 || StringFind(nlow, "pulse") >= 0 || StringFind(nlow, "flow") >= 0)
-                  ChartIndicatorDelete(0, w, name);
-          }
-      }
-      if(m_handle_rsi != INVALID_HANDLE) { IndicatorRelease(m_handle_rsi); m_handle_rsi = INVALID_HANDLE; }
-      if(m_handle_hybrid_macd != INVALID_HANDLE) { IndicatorRelease(m_handle_hybrid_macd); m_handle_hybrid_macd = INVALID_HANDLE; }
-      if(m_handle_flow != INVALID_HANDLE) { IndicatorRelease(m_handle_flow); m_handle_flow = INVALID_HANDLE; }
+   void Reset() {
+      m_head = 0;
+      m_size = 0;
+      m_current_velocity = 0;
+      m_current_acceleration = 0;
+      m_prev_velocity = 0;
    }
 
-   bool Initialize(
-       string symbol, ENUM_TIMEFRAMES period,
-       string path_hybrid,
-       int h_fast, int h_slow, int h_bb_per, double h_bb_dev, ENUM_MA_METHOD h_bb_meth,
-       int h_kelt_per, double h_kelt_dev, int h_kelt_atr, ENUM_MA_METHOD h_kelt_meth,
-       double h_macd_scale, int h_shift, double h_scale, bool h_auto, int h_lookback,
-       double h_divisor, // New Divisor Parameter
-       string path_flow,
-       bool _f_fixed, double _f_min, double _f_max, int _f_mfi, bool _f_vroc, int _f_vroc_p,
-       double _f_thresh, bool _f_approx, int _f_smooth, int _f_norm, double _f_scale_f, double _f_vis
-   )
-   {
-       Release();
-       m_symbol = symbol;
+   void Update(const MqlTick &tick) {
+      // 1. Add to Circular Buffer
+      m_buffer[m_head].time_msc = tick.time_msc;
+      m_buffer[m_head].price = tick.last;
+      if(m_buffer[m_head].price == 0) m_buffer[m_head].price = (tick.bid + tick.ask) / 2.0;
+      m_buffer[m_head].ask = tick.ask;
+      m_buffer[m_head].bid = tick.bid;
 
-       p_macd_fast = h_fast;
-       p_macd_slow = h_slow;
-       p_macd_scale = h_macd_scale;
-       p_df_scale = h_scale;
-       p_df_auto = h_auto;
-       p_divisor = h_divisor;
+      m_head = (m_head + 1) % m_capacity;
+      if(m_size < m_capacity) m_size++;
 
-       f_mfi_period = _f_mfi;
-       f_vroc_period = _f_vroc_p;
-       f_smooth = _f_smooth;
-       f_norm_len = _f_norm;
-       f_scale = _f_scale_f;
-       f_vis_gain = _f_vis;
-       f_approx = _f_approx;
-
-       m_handle_rsi = iRSI(symbol, period, 5, PRICE_CLOSE);
-
-       // Updated iCustom call for v1.05 signature
-       m_handle_hybrid_macd = iCustom(symbol, period, path_hybrid,
-           h_fast, h_slow, h_bb_per, h_bb_dev, h_bb_meth,
-           h_kelt_per, h_kelt_dev, h_kelt_atr, h_kelt_meth,
-           h_macd_scale, h_shift, h_scale, h_auto, h_lookback, h_divisor
-       );
-
-       MqlParam flow_params[13];
-       flow_params[0].type = TYPE_STRING; flow_params[0].string_value = path_flow;
-       flow_params[1].type = TYPE_BOOL;   flow_params[1].integer_value = _f_fixed;
-       flow_params[2].type = TYPE_DOUBLE; flow_params[2].double_value = _f_min;
-       flow_params[3].type = TYPE_DOUBLE; flow_params[3].double_value = _f_max;
-       flow_params[4].type = TYPE_INT;    flow_params[4].integer_value = _f_mfi;
-       flow_params[5].type = TYPE_BOOL;   flow_params[5].integer_value = _f_vroc;
-       flow_params[6].type = TYPE_INT;    flow_params[6].integer_value = _f_vroc_p;
-       flow_params[7].type = TYPE_DOUBLE; flow_params[7].double_value = _f_thresh;
-       flow_params[8].type = TYPE_BOOL;   flow_params[8].integer_value = _f_approx;
-       flow_params[9].type = TYPE_INT;    flow_params[9].integer_value = _f_smooth;
-       flow_params[10].type = TYPE_INT;   flow_params[10].integer_value = _f_norm;
-       flow_params[11].type = TYPE_DOUBLE; flow_params[11].double_value = _f_scale_f;
-       flow_params[12].type = TYPE_DOUBLE; flow_params[12].double_value = _f_vis;
-
-       m_handle_flow = IndicatorCreate(symbol, period, IND_CUSTOM, 13, flow_params);
-
-       return true;
+      // 2. Calculate Metrics (if enough data)
+      if(m_size > 5) CalculateMetrics();
    }
 
-   void AttachToChart(long chart_id)
-   {
-       if(m_handle_hybrid_macd != INVALID_HANDLE) ChartIndicatorAdd(chart_id, 1, m_handle_hybrid_macd);
-       if(m_handle_flow != INVALID_HANDLE) ChartIndicatorAdd(chart_id, 2, m_handle_flow);
+   PhysicsState GetState() {
+      PhysicsState s;
+      s.velocity = m_current_velocity;
+      s.acceleration = m_current_acceleration;
+      s.volatility = CalculateVolatility();
+      s.spread_avg = CalculateAvgSpread();
+      s.time_ms = GetTickCount();
+      return s;
    }
-
-   void Refresh(string symbol, MqlTick& latest_tick)
-   {
-      // 1. Data Prep (Still needed for RSI/Flow internal calc)
-      int copied = CopyRates(symbol, PERIOD_CURRENT, 0, m_lookback, m_rates);
-      if(copied < 100) return;
-
-      m_rates[copied-1].close = latest_tick.bid;
-      if(latest_tick.bid > m_rates[copied-1].high) m_rates[copied-1].high = latest_tick.bid;
-      if(latest_tick.bid < m_rates[copied-1].low && latest_tick.bid > 0) m_rates[copied-1].low = latest_tick.bid;
-      if((long)latest_tick.volume_real > m_rates[copied-1].real_volume) m_rates[copied-1].real_volume = (long)latest_tick.volume_real;
-      if((long)latest_tick.volume > m_rates[copied-1].tick_volume) m_rates[copied-1].tick_volume = (long)latest_tick.volume;
-
-      // 2. Indicators
-      m_val_rsi = CalcRSI(copied, 5);
-
-      // v2.06: Fetch Hybrid Pulse directly from Indicator Handle to get exact chart visual values
-      if(m_handle_hybrid_macd != INVALID_HANDLE) {
-          double buf_macd[1];
-          double buf_df[1];
-          // Buffer 0 = MACD Hist
-          if(CopyBuffer(m_handle_hybrid_macd, 0, 0, 1, buf_macd) > 0) m_val_macd = buf_macd[0];
-          // Buffer 2 = DF Curve
-          if(CopyBuffer(m_handle_hybrid_macd, 2, 0, 1, buf_df) > 0) m_val_dfcurve = buf_df[0];
-      } else {
-          // Fallback if handle invalid
-          CalcHybridPulseInternal(copied);
-      }
-
-      CalcHybridFlow(copied);
-   }
-
-   double GetRSI() { return m_val_rsi; }
-   double GetPulse() { return m_val_dfcurve; }
-   double GetHybridMACD() { return m_val_macd; }
-   double GetFlowMFI() { return m_val_flow_mfi; }
-   double GetFlowDelta() { return m_val_flow_delta; }
-   double GetFlowROC() { return m_val_flow_roc; }
 
 private:
-   double CalcRSI(int total, int period)
-   {
-       if(total <= period) return 50.0;
-       double avg_gain = 0, avg_loss = 0;
-       int start_i = 1;
-       for(int i=start_i; i<start_i+period; i++) {
-           double change = m_rates[i].close - m_rates[i-1].close;
-           if(change > 0) avg_gain += change; else avg_loss -= change;
-       }
-       avg_gain /= period; avg_loss /= period;
-       for(int i=start_i+period; i<total; i++) {
-           double change = m_rates[i].close - m_rates[i-1].close;
-           double gain = (change > 0) ? change : 0.0;
-           double loss = (change < 0) ? -change : 0.0;
-           avg_gain = (avg_gain * (period - 1) + gain) / period;
-           avg_loss = (avg_loss * (period - 1) + loss) / period;
-       }
-       if(avg_loss == 0) return 100.0;
-       double rs = avg_gain / avg_loss;
-       return 100.0 - (100.0 / (1.0 + rs));
+   void CalculateMetrics() {
+      // Simple Linear Regression for Velocity (Slope of Price vs Time)
+      // or simpler: Delta Price / Delta Time over last N ticks (e.g. 1 sec window)
+
+      long now = m_buffer[(m_head - 1 + m_capacity) % m_capacity].time_msc;
+      long window_start = now - 1000; // 1 second window
+
+      double price_now = m_buffer[(m_head - 1 + m_capacity) % m_capacity].price;
+      double price_old = price_now;
+      long time_old = now;
+
+      // Find the tick ~1 sec ago
+      for(int i=0; i<m_size; i++) {
+         int idx = (m_head - 1 - i + m_capacity) % m_capacity;
+         if(m_buffer[idx].time_msc <= window_start) {
+            price_old = m_buffer[idx].price;
+            time_old = m_buffer[idx].time_msc;
+            break;
+         }
+         // If we reached the end of buffer but didn't reach 1 sec, take the oldest
+         if(i == m_size - 1) {
+            price_old = m_buffer[idx].price;
+            time_old = m_buffer[idx].time_msc;
+         }
+      }
+
+      long dt = now - time_old;
+      if(dt < 10) dt = 10; // Avoid div by zero
+
+      double dp = MathAbs(price_now - price_old);
+
+      // Velocity in Points per Second
+      double raw_velocity = (dp / _Point) / (dt / 1000.0);
+
+      // Smoothing (EMA)
+      double alpha = 0.2;
+      m_current_velocity = alpha * raw_velocity + (1.0 - alpha) * m_current_velocity;
+
+      // Acceleration
+      double dv = m_current_velocity - m_prev_velocity;
+      m_current_acceleration = dv;
+
+      m_prev_velocity = m_current_velocity;
    }
 
-   // Fallback only
-   void CalcHybridPulseInternal(int total)
-   {
-       double ema_fast = CalcEMA(total, p_macd_fast);
-       double ema_slow = CalcEMA(total, p_macd_slow);
-       double raw_macd = (ema_fast - ema_slow);
-       double div = (p_divisor != 0) ? p_divisor : 1.0;
-       m_val_macd = (raw_macd * p_macd_scale) / div;
+   double CalculateVolatility() {
+      // Standard Deviation of Price in buffer
+      if(m_size < 2) return 0;
 
-       double curr_h = 0, curr_l = 0;
-       int start = MathMax(1, total - 100);
-       double pt = SymbolInfoDouble(m_symbol, SYMBOL_POINT);
-       if(pt <= 0.0) pt = 0.00001;
+      double sum = 0;
+      double sum_sq = 0;
 
-       for(int i=start; i<total; i++) {
-           double diff_price = m_rates[i].close - m_rates[i-1].close;
-           double diff_points = diff_price / pt;
-           if(diff_points > 0) { curr_h += diff_points; curr_l = 0; }
-           else if(diff_points < 0) { curr_l += diff_points; curr_h = 0; }
-       }
-       double df_raw = (curr_h != 0) ? curr_h : curr_l;
-       double scale = p_df_auto ? pt : p_df_scale;
-       m_val_dfcurve = (double)((df_raw * scale) / div);
+      for(int i=0; i<m_size; i++) {
+         int idx = (m_head - 1 - i + m_capacity) % m_capacity;
+         double p = m_buffer[idx].price;
+         sum += p;
+         sum_sq += p * p;
+      }
+
+      double mean = sum / m_size;
+      double variance = (sum_sq / m_size) - (mean * mean);
+      return MathSqrt(variance) / _Point; // In points
    }
 
-   double CalcEMA(int total, int period)
-   {
-       double k = 2.0 / (period + 1.0);
-       double ema = m_rates[0].close;
-       int start = 1;
-       if(total > 200) { start = total - 200; ema = m_rates[start-1].close; }
-       for(int i=start; i<total; i++) {
-           ema = (m_rates[i].close * k) + (ema * (1.0 - k));
-       }
-       return ema;
-   }
-
-   void CalcHybridFlow(int total)
-   {
-       double pos_mf = 0, neg_mf = 0;
-       for(int i=0; i<f_mfi_period; i++) {
-           int idx = total - 1 - i;
-           if(idx < 1) break;
-           double tp_curr = (m_rates[idx].high + m_rates[idx].low + m_rates[idx].close) / 3.0;
-           double tp_prev = (m_rates[idx-1].high + m_rates[idx-1].low + m_rates[idx-1].close) / 3.0;
-           double vol = (double)m_rates[idx].tick_volume;
-           if(vol <= 0) vol = (double)m_rates[idx].real_volume;
-           double mf = tp_curr * vol;
-           if(tp_curr > tp_prev) pos_mf += mf; else if(tp_curr < tp_prev) neg_mf += mf;
-       }
-       if(neg_mf != 0) m_val_flow_mfi = 100.0 - (100.0 / (1.0 + (pos_mf / neg_mf)));
-       else if(pos_mf > 0) m_val_flow_mfi = 100.0;
-       else m_val_flow_mfi = 50.0;
-
-       double net_delta_accum = 0;
-       int delta_lookback = f_mfi_period;
-       for(int i=0; i<delta_lookback; i++) {
-           int idx = total - 1 - i;
-           if(idx < 0) break;
-           double range = m_rates[idx].high - m_rates[idx].low;
-           double delta = 0;
-           if(range > 0) {
-               double pos = (m_rates[idx].close - m_rates[idx].low) / range;
-               double power = (pos - 0.5) * 2.0;
-               double vol = (double)m_rates[idx].tick_volume;
-               if(vol <= 0) vol = (double)m_rates[idx].real_volume;
-               delta = vol * power;
-           }
-           net_delta_accum += delta;
-       }
-       m_val_flow_delta = net_delta_accum / (double)(delta_lookback * 10.0);
-
-       if(total > f_vroc_period) {
-           int vp = f_vroc_period;
-           double v_curr = (double)m_rates[total-1].tick_volume;
-           if(v_curr <= 0) v_curr = (double)m_rates[total-1].real_volume;
-           double v_prev = (double)m_rates[total-1-vp].tick_volume;
-           if(v_prev <= 0) v_prev = (double)m_rates[total-1-vp].real_volume;
-           if (v_prev > 0) m_val_flow_roc = ((v_curr - v_prev) / v_prev) * 100.0;
-           else m_val_flow_roc = 0.0;
-       }
+   double CalculateAvgSpread() {
+      if(m_size < 1) return 0;
+      double sum = 0;
+      for(int i=0; i<m_size; i++) {
+         int idx = (m_head - 1 - i + m_capacity) % m_capacity;
+         sum += (m_buffer[idx].ask - m_buffer[idx].bid);
+      }
+      return (sum / m_size) / _Point;
    }
 };
