@@ -37,7 +37,8 @@
 #property indicator_width1  2
 
 //--- Plot 2: Delta Histogram (DRAWN SECOND - FOREGROUND)
-#property indicator_label2  "Delta"
+// Using ";" in the label hides the first buffer (base 50) and names the second buffer (Delta)
+#property indicator_label2  ";Delta"
 #property indicator_type2   DRAW_COLOR_HISTOGRAM2
 #property indicator_color2  clrForestGreen,clrFireBrick // 0=Up, 1=Down
 #property indicator_style2  STYLE_SOLID
@@ -67,7 +68,6 @@ input int                InpMFIPeriod          = 5;              // [MFI] Period
 // VROC Settings
 input bool               InpShowVROC           = true;           // [VROC] Show VROC?
 input int                InpVROCPeriod         = 5;              // [VROC] Period
-input double             InpVROCThreshold      = 20.0;           // [VROC] Alert Threshold %
 
 // Delta Settings
 input bool               InpUseApproxDelta     = true;           // [DELTA] Use Approx Delta
@@ -134,7 +134,7 @@ int OnInit()
    SetIndexBuffer(6, HybridMFIBuffer, INDICATOR_CALCULATIONS);
 
    IndicatorSetString(INDICATOR_SHORTNAME, "Hybrid Flow v1.126");
-   IndicatorSetInteger(INDICATOR_DIGITS, 1);
+   IndicatorSetInteger(INDICATOR_DIGITS, 3);
 
    // Visual Settings
    PlotIndexSetDouble(1, PLOT_EMPTY_VALUE, 0.0); // Histogram2 base
