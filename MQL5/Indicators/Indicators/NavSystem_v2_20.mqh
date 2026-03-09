@@ -50,7 +50,7 @@ class CNavSystem
 private:
    int      m_handle_rsi;
    int      m_handle_hybrid_macd; // Pulse
-   int      m_handle_flow;
+   int      m_handle_flow;        // Flow v1.126
    int      m_handle_context;     // Context v3.27
    int      m_handle_test_mom;    // Momentum v2.82
    int      m_handle_hybrid_wpr;  // Hybrid Momentum WPR Stoch v1.04
