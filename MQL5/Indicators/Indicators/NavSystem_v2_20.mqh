@@ -53,6 +53,7 @@ private:
    int      m_handle_flow;
    int      m_handle_context;     // Context v3.27
    int      m_handle_test_mom;    // Momentum v2.82
+   int      m_handle_hybrid_wpr;  // Hybrid Momentum WPR Stoch v1.04
 
    MqlRates m_rates[];
    int      m_lookback;
@@ -75,6 +76,10 @@ private:
    double   m_val_test_hist;
    double   m_val_test_macd;
    double   m_val_test_signal;
+
+   // Hybrid Momentum WPR Stoch Values
+   double   m_val_mom_stoch;
+   double   m_val_mom_wpr;
 
    // Legacy params for Pulse/Flow
    int      p_macd_fast;
@@ -102,6 +107,7 @@ public:
       m_handle_flow = INVALID_HANDLE;
       m_handle_context = INVALID_HANDLE;
       m_handle_test_mom = INVALID_HANDLE;
+      m_handle_hybrid_wpr = INVALID_HANDLE;
 
       m_lookback = 300;
       ArrayResize(m_rates, m_lookback);
@@ -122,6 +128,9 @@ public:
       m_val_test_hist = 0.0;
       m_val_test_macd = 0.0;
       m_val_test_signal = 0.0;
+
+      m_val_mom_stoch = 50.0;
+      m_val_mom_wpr = 50.0;
    }
 
    ~CNavSystem() { Release(); }
@@ -145,6 +154,7 @@ public:
       if(m_handle_flow != INVALID_HANDLE) { IndicatorRelease(m_handle_flow); m_handle_flow = INVALID_HANDLE; }
       if(m_handle_context != INVALID_HANDLE) { IndicatorRelease(m_handle_context); m_handle_context = INVALID_HANDLE; }
       if(m_handle_test_mom != INVALID_HANDLE) { IndicatorRelease(m_handle_test_mom); m_handle_test_mom = INVALID_HANDLE; }
+      if(m_handle_hybrid_wpr != INVALID_HANDLE) { IndicatorRelease(m_handle_hybrid_wpr); m_handle_hybrid_wpr = INVALID_HANDLE; }
    }
 
    bool Initialize(
@@ -184,9 +194,10 @@ public:
            h_macd_scale, h_shift, h_scale, h_auto, h_lookback, h_divisor
        );
 
-       // 3. Flow (Standard)
+       // 3. Flow (Standard v1.126)
+       string safe_path_flow = "Jules\\HybridFlowIndicator_v1.126";
        MqlParam flow_params[13];
-       flow_params[0].type = TYPE_STRING; flow_params[0].string_value = path_flow;
+       flow_params[0].type = TYPE_STRING; flow_params[0].string_value = safe_path_flow;
        flow_params[1].type = TYPE_BOOL;   flow_params[1].integer_value = _f_fixed;
        flow_params[2].type = TYPE_DOUBLE; flow_params[2].double_value = _f_min;
        flow_params[3].type = TYPE_DOUBLE; flow_params[3].double_value = _f_max;
@@ -221,6 +232,9 @@ public:
            mom.norm_p, mom.norm_sens
        );
 
+       // 6. Hybrid Momentum WPR Stoch v1.04
+       m_handle_hybrid_wpr = iCustom(symbol, period, "Jules\\Hybrid_Momentum_WPR_Stoch_v1_04", 5, 3, 2, 2);
+
        return true;
    }
 
@@ -241,6 +255,9 @@ public:
 
        // Sub Window 3 - Momentum
        if(m_handle_test_mom != INVALID_HANDLE) ChartIndicatorAdd(chart_id, 3, m_handle_test_mom);
+
+       // Sub Window 4 - Hybrid Mom WPR Stoch
+       if(m_handle_hybrid_wpr != INVALID_HANDLE) ChartIndicatorAdd(chart_id, 4, m_handle_hybrid_wpr);
 
        ChartRedraw(chart_id);
    }
@@ -327,6 +344,9 @@ public:
    double GetTestMACD() { return m_val_test_macd; }
    double GetTestSignal() { return m_val_test_signal; }
 
+   double GetMomStoch() { return m_val_mom_stoch; }
+   double GetMomWPR()   { return m_val_mom_wpr; }
+
 private:
    double CalcRSI(int total, int period)
    {
@@ -352,47 +372,28 @@ private:
 
    void CalcHybridFlow(int total)
    {
-       double pos_mf = 0, neg_mf = 0;
-       for(int i=0; i<f_mfi_period; i++) {
-           int idx = total - 1 - i;
-           if(idx < 1) break;
-           double tp_curr = (m_rates[idx].high + m_rates[idx].low + m_rates[idx].close) / 3.0;
-           double tp_prev = (m_rates[idx-1].high + m_rates[idx-1].low + m_rates[idx-1].close) / 3.0;
-           double vol = (double)m_rates[idx].tick_volume;
-           if(vol <= 0) vol = (double)m_rates[idx].real_volume;
-           double mf = tp_curr * vol;
-           if(tp_curr > tp_prev) pos_mf += mf; else if(tp_curr < tp_prev) neg_mf += mf;
+       if(m_handle_flow != INVALID_HANDLE) {
+           double b[1];
+           // HybridFlowIndicator_v1.126 Mapping:
+           // 0: MFI
+           // 2: Delta (Histogram End)
+           // 4: ROC
+           if(CopyBuffer(m_handle_flow, 0, 0, 1, b) > 0) m_val_flow_mfi = b[0];
+           if(CopyBuffer(m_handle_flow, 2, 0, 1, b) > 0) m_val_flow_delta = b[0];
+           if(CopyBuffer(m_handle_flow, 4, 0, 1, b) > 0) m_val_flow_roc = b[0];
+       } else {
+           m_val_flow_mfi = 50.0;
+           m_val_flow_delta = 0.0;
+           m_val_flow_roc = 0.0;
        }
-       if(neg_mf != 0) m_val_flow_mfi = 100.0 - (100.0 / (1.0 + (pos_mf / neg_mf)));
-       else if(pos_mf > 0) m_val_flow_mfi = 100.0;
-       else m_val_flow_mfi = 50.0;
 
-       double net_delta_accum = 0;
-       int delta_lookback = f_mfi_period;
-       for(int i=0; i<delta_lookback; i++) {
-           int idx = total - 1 - i;
-           if(idx < 0) break;
-           double range = m_rates[idx].high - m_rates[idx].low;
-           double delta = 0;
-           if(range > 0) {
-               double pos = (m_rates[idx].close - m_rates[idx].low) / range;
-               double power = (pos - 0.5) * 2.0;
-               double vol = (double)m_rates[idx].tick_volume;
-               if(vol <= 0) vol = (double)m_rates[idx].real_volume;
-               delta = vol * power;
-           }
-           net_delta_accum += delta;
-       }
-       m_val_flow_delta = net_delta_accum / (double)(delta_lookback * 10.0);
-
-       if(total > f_vroc_period) {
-           int vp = f_vroc_period;
-           double v_curr = (double)m_rates[total-1].tick_volume;
-           if(v_curr <= 0) v_curr = (double)m_rates[total-1].real_volume;
-           double v_prev = (double)m_rates[total-1-vp].tick_volume;
-           if(v_prev <= 0) v_prev = (double)m_rates[total-1-vp].real_volume;
-           if (v_prev > 0) m_val_flow_roc = ((v_curr - v_prev) / v_prev) * 100.0;
-           else m_val_flow_roc = 0.0;
+       // Hybrid Momentum WPR Stoch extraction
+       if(m_handle_hybrid_wpr != INVALID_HANDLE) {
+           double b[1];
+           // Buffer 1: Stoch K (Histogram End value since it's DRAW_COLOR_HISTOGRAM2)
+           if(CopyBuffer(m_handle_hybrid_wpr, 1, 0, 1, b) > 0) m_val_mom_stoch = b[0];
+           // Buffer 3: WPR
+           if(CopyBuffer(m_handle_hybrid_wpr, 3, 0, 1, b) > 0) m_val_mom_wpr = b[0];
        }
    }
 };

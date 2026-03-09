@@ -16,14 +16,12 @@
 #include <Trade\PositionInfo.mqh>
 #include <AccountInfo.mqh>
 
-#include "../Indicators/FireControl_v2_25.mqh" // Deep Stealth v2.25 (Total Silence)
-#include "../Indicators/StealthEngine.mqh"     // Stealth Engine v1.0
-#include "../Indicators/StealthRegistry_v1_08.mqh"   // Deep Stealth Registry v1.08 (Log Fix)
-#include "../Indicators/PanelControl_v2_21.mqh" // Dynamic Version Support
+#include "../Indicators/FireControl_v2_25.mqh"
+#include "../Indicators/PanelControl_v2_21.mqh"
 #include "../Indicators/PhysicsEngine.mqh"
-#include "../Indicators/NavSystem_v2_20.mqh" // Context v3.27 Support
-#include "../Indicators/BlackBox_v2_09.mqh" // Full Logging
-#include "../Indicators/ProfitManagement_v2_18.mqh" // Deep Stealth v2.18 (Log Fix)
+#include "../Indicators/NavSystem_v2_20.mqh"
+#include "../Indicators/BlackBox_v2_09.mqh"
+#include "../Indicators/ProfitManagement_v2_18.mqh"
 
 CTrade        m_trade;
 CSymbolInfo   m_symbol;
@@ -32,12 +30,15 @@ CAccountInfo  m_account;
 
 PhysicsEngine m_physics(50);
 CFireControl  m_fire_control;
-CStealthEngine m_stealth; // Stealth Engine Instance
-CStealthRegistry m_registry; // Deep Stealth Registry Instance (v1.08)
 CPanelControl m_panel;
 CNavSystem    m_nav_system;
 CBlackBox     m_black_box;
 CProfitManager m_profit_manager;
+
+//--- EMA Handles
+int h_ema25 = INVALID_HANDLE;
+int h_ema50 = INVALID_HANDLE;
+int h_ema150 = INVALID_HANDLE;
 
 //--- Inputs
 input double        InpSpreadMultStart   = 1.5;
@@ -54,12 +55,6 @@ input double        InpVirtualTPCurrency = 0.0;
 input double        InpVirtualSLCurrency = 0.0;
 input double        InpMaxMarginPercent  = 70.0;
 input string        InpComment           = ""; // DEFAULT EMPTY (Total Silence)
-
-// [Deep Stealth Engine (Humanizer)]
-input bool          Stealth_Enabled      = true;
-input int           Stealth_BaseDelay    = 400; // ms
-input int           Stealth_Jitter       = 150; // ms +/-
-input bool          DeepStealth_Enabled  = true; // Use Registry & Random Magic
 
 // [Hybrid & Flow Settings]
 input int           Hybrid_FastEMA       = 3;
@@ -117,23 +112,6 @@ input int           Ctx_Tr_SlowP         = 150;
 input ENUM_MA_METHOD Ctx_Tr_Method       = MODE_EMA;
 
 
-// [Hybrid Momentum v2.82 Inputs]
-input string        InpTestPath          = "Jules\\HybridMomentumIndicator_v2.82";
-input ENUM_COLOR_LOGIC InpTestColorLogic = COLOR_SLOPE;
-input int           InpTestFastP         = 3;
-input int           InpTestSlowP         = 6;
-input int           InpTestSigP          = 13;
-input ENUM_APPLIED_PRICE InpTestPrice    = PRICE_CLOSE;
-input double        InpTestKalman        = 1.0;
-input double        InpTestPhase         = 0.5;
-input bool          InpTestBoost         = true;
-input double        InpTestMixW          = 0.2;
-input int           InpTestStochK        = 5;
-input int           InpTestStochD        = 3;
-input int           InpTestStochS        = 3;
-input int           InpTestNormP         = 100;
-input double        InpTestNormS         = 1.0;
-
 // [Panel UI]
 input int           InpX                 = 10;
 input int           InpY                 = 20;
@@ -159,12 +137,7 @@ double GetFloatingPL() {
     double pl = 0.0;
     for(int i=PositionsTotal()-1; i>=0; i--) {
        if(m_position.SelectByIndex(i)) {
-           // Deep Stealth Check
-           bool is_mine = false;
-           if(DeepStealth_Enabled) is_mine = m_registry.IsMyTicket(m_position.Ticket());
-           else is_mine = (m_position.Magic() == InpMagicNumber);
-
-           if(is_mine)
+           if(m_position.Magic() == InpMagicNumber)
                pl += m_position.Profit() + m_position.Swap() + m_position.Commission();
        }
     }
@@ -209,26 +182,8 @@ int OnInit()
    if(MarketBookAdd(_Symbol)) g_book_subscribed = true;
 
    // --- INITIALIZE STEALTH ENGINE ---
-   m_stealth.Init(Stealth_Enabled, Stealth_BaseDelay, Stealth_Jitter);
-   PrintFormat("🥷 Stealth Engine Initialized: %s (Base=%dms, Jitter=%dms)",
-               Stealth_Enabled ? "ON" : "OFF", Stealth_BaseDelay, Stealth_Jitter);
-
-   // --- INITIALIZE DEEP STEALTH REGISTRY ---
-   CStealthRegistry *reg_ptr = NULL;
-   if(DeepStealth_Enabled) {
-       m_registry.Init(); // Important: This creates MQL5/Files/Merkava_Stealth/Logs/
-       reg_ptr = &m_registry;
-       Print("🕵️ Deep Stealth Registry ACTIVATED. Random Magic Numbers Enabled (v1.08 LCG).");
-
-       // Explicit CSV Test on Init (SILENCE)
-       Print("🔬 Registry Test: Trying to write to log now...");
-       // This will force creation if missing or log an error if permission denied
-       m_registry.LogAudit("", 0, 0, ""); // SILENT LOG
-   }
-
-   // --- PASS STEALTH & REGISTRY TO MODULES ---
-   m_fire_control.Init(&m_trade, &m_symbol, InpComment, InpMagicNumber, &m_stealth, reg_ptr);
-   m_profit_manager.Init(&m_trade, &m_position, InpMagicNumber, _Symbol, reg_ptr);
+   m_fire_control.Init(&m_trade, &m_symbol, InpComment, InpMagicNumber, NULL, NULL);
+   m_profit_manager.Init(&m_trade, &m_position, InpMagicNumber, _Symbol, NULL);
 
    m_profit_manager.SetVirtualTP(InpVirtualTPCurrency);
    m_profit_manager.SetVirtualSL(InpVirtualSLCurrency);
@@ -253,16 +208,9 @@ int OnInit()
    // Trends
    ctx.tr_fast = Ctx_Tr_FastP; ctx.tr_slow = Ctx_Tr_SlowP; ctx.tr_method = Ctx_Tr_Method;
 
-   // Prepare Momentum Params (v2.82)
+   // Prepare Dummy Momentum Params (since it's removed but struct might still be required by NavSystem signature)
    HybridMomentumParams mom;
-   mom.path = InpTestPath;
-   mom.color_logic = InpTestColorLogic;
-   mom.fast_p = InpTestFastP; mom.slow_p = InpTestSlowP; mom.sig_p = InpTestSigP;
-   mom.price = InpTestPrice;
-   mom.kalman = InpTestKalman; mom.phase = InpTestPhase;
-   mom.boost = InpTestBoost; mom.stoch_w = InpTestMixW;
-   mom.stoch_k = InpTestStochK; mom.stoch_d = InpTestStochD; mom.stoch_s = InpTestStochS;
-   mom.norm_p = InpTestNormP; mom.norm_sens = InpTestNormS;
+   ZeroMemory(mom);
 
    bool init_ok = m_nav_system.Initialize(
        _Symbol, _Period,
@@ -283,6 +231,16 @@ int OnInit()
 
    m_black_box.Initialize(_Symbol, "v2.40");
 
+   // Initialize EMAs
+   h_ema25 = iMA(_Symbol, PERIOD_M1, 25, 0, MODE_EMA, PRICE_CLOSE);
+   h_ema50 = iMA(_Symbol, PERIOD_M1, 50, 0, MODE_EMA, PRICE_CLOSE);
+   h_ema150 = iMA(_Symbol, PERIOD_M1, 150, 0, MODE_EMA, PRICE_CLOSE);
+
+   if(h_ema25 == INVALID_HANDLE || h_ema50 == INVALID_HANDLE || h_ema150 == INVALID_HANDLE) {
+       Print("Error creating EMA handles!");
+       return INIT_FAILED;
+   }
+
    // --- DYNAMIC VERSION LABEL (Fixed) ---
    string version_str = "MERKAVA v2.40 (Strict Silence)";
 
@@ -298,6 +256,9 @@ int OnInit()
 
 void OnDeinit(const int reason)
 {
+   IndicatorRelease(h_ema25);
+   IndicatorRelease(h_ema50);
+   IndicatorRelease(h_ema150);
    m_panel.Destroy();
    ObjectsDeleteAll(0, Prefix);
    ChartRedraw();
@@ -413,11 +374,7 @@ string GetNetLotDirection(double &total_lots) {
     double net = 0.0; total_lots = 0.0;
     for(int i=PositionsTotal()-1; i>=0; i--) {
        if(m_position.SelectByIndex(i)) {
-           bool is_mine = false;
-           if(DeepStealth_Enabled) is_mine = m_registry.IsMyTicket(m_position.Ticket());
-           else is_mine = (m_position.Magic() == InpMagicNumber);
-
-           if(is_mine) {
+           if(m_position.Magic() == InpMagicNumber) {
                total_lots += m_position.Volume();
                if(m_position.PositionType()==POSITION_TYPE_BUY) net+=m_position.Volume(); else net-=m_position.Volume();
            }
@@ -440,11 +397,7 @@ string GetSLTPSnapshot() {
     string s = ""; int c = 0;
     for(int i=PositionsTotal()-1; i>=0; i--) {
        if(m_position.SelectByIndex(i)) {
-           bool is_mine = false;
-           if(DeepStealth_Enabled) is_mine = m_registry.IsMyTicket(m_position.Ticket());
-           else is_mine = (m_position.Magic() == InpMagicNumber);
-
-           if(is_mine) {
+           if(m_position.Magic() == InpMagicNumber) {
                if(c > 0) s += "|";
                string t = (m_position.PositionType()==POSITION_TYPE_BUY) ? "B" : "S";
                s += t + ":" + DoubleToString(m_position.StopLoss(),_Digits) + "/" + DoubleToString(m_position.TakeProfit(),_Digits);
@@ -513,13 +466,31 @@ void OnTick()
    m_panel.UpdateAccountStats(AccountInfoDouble(ACCOUNT_BALANCE), AccountInfoDouble(ACCOUNT_EQUITY), AccountInfoDouble(ACCOUNT_MARGIN), AccountInfoDouble(ACCOUNT_MARGIN_FREE), AccountInfoDouble(ACCOUNT_MARGIN_LEVEL), CalculateTotalHistoryProfit(), g_session_realized_pl);
 
    MqlBookInfo book[];
-   if (g_book_subscribed && MarketBookGet(_Symbol, book)) {}
+   long bid_vol = 0;
+   long ask_vol = 0;
+   if (g_book_subscribed && MarketBookGet(_Symbol, book)) {
+       int size = ArraySize(book);
+       for(int i=0; i<size; i++) {
+           if((book[i].type == BOOK_TYPE_SELL) && (book[i].price == m_symbol.Ask())) ask_vol += book[i].volume;
+           if((book[i].type == BOOK_TYPE_BUY) && (book[i].price == m_symbol.Bid())) bid_vol += book[i].volume;
+       }
+   } else {
+       // Fallback to basic tick volume if DOM is not available
+       bid_vol = (long)tick.volume;
+       ask_vol = (long)tick.volume;
+   }
 
    MqlRates rates[];
    double b_o=0, b_h=0, b_l=0, b_c=0;
    if(CopyRates(_Symbol, PERIOD_M1, 0, 1, rates) > 0) {
        b_o = rates[0].open; b_h = rates[0].high; b_l = rates[0].low; b_c = rates[0].close;
    }
+
+   double ema_buf[1];
+   double ema25 = 0, ema50 = 0, ema150 = 0;
+   if(CopyBuffer(h_ema25, 0, 0, 1, ema_buf) > 0) ema25 = ema_buf[0];
+   if(CopyBuffer(h_ema50, 0, 0, 1, ema_buf) > 0) ema50 = ema_buf[0];
+   if(CopyBuffer(h_ema150, 0, 0, 1, ema_buf) > 0) ema150 = ema_buf[0];
 
    double total_lots = 0; // Fixed Declaration
    string lot_dir = GetNetLotDirection(total_lots);
@@ -530,7 +501,7 @@ void OnTick()
 
    m_black_box.RecordTick(
        tick.time_msc, g_last_action, 0, verdict,
-       tick.bid, tick.ask, p.spread_avg, 0, 0,
+       tick.bid, tick.ask, p.spread_avg, bid_vol, ask_vol,
        b_o, b_h, b_l, b_c,
        m_nav_system.GetRSI(), p.velocity, p.acceleration,
        m_nav_system.GetHybridMACD(), m_nav_system.GetPulse(),
@@ -540,8 +511,9 @@ void OnTick()
        m_nav_system.GetSecP(), m_nav_system.GetSecR(), m_nav_system.GetSecS(),
        m_nav_system.GetTerP(), m_nav_system.GetTerR(), m_nav_system.GetTerS(),
        m_nav_system.GetTrendFast(), m_nav_system.GetTrendSlow(),
-       // Hybrid Momentum WPR Stoch
-       m_nav_system.GetMomWPR(), m_nav_system.GetMomStoch(),
+       // Moving Averages
+       ema25, ema50, ema150,
+       TerminalInfoInteger(TERMINAL_PING_LAST), // Ping for Anomaly Detection
        // Stats
        AccountInfoDouble(ACCOUNT_BALANCE), AccountInfoDouble(ACCOUNT_MARGIN), AccountInfoDouble(ACCOUNT_MARGIN_LEVEL),
        float_pl, g_last_realized_pl, g_session_realized_pl,

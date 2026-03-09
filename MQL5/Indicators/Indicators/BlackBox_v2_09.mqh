@@ -28,13 +28,14 @@ public:
       m_is_active = false;
 
       // Unified Headers:
-      // Standard -> Physics -> Pulse -> Flow -> Context (11) -> Momentum (3) -> Account
+      // Standard -> Physics -> Pulse -> Flow -> Context (11) -> Momentum (2) -> Account
       m_headers = "Time,TickMSC,Phase,MimicMode,Verdict,Bid,Ask,Spread,BidVol,AskVol," +
                   "Bar_Open,Bar_High,Bar_Low,Bar_Close,RSI,Velocity,Acceleration," +
                   "Hybrid_MACD,Hybrid_DFCurve," +
                   "Flow_MFI,Flow_ROC,Flow_Delta," +
                   "Mic_P,Mic_R,Mic_S,Sec_P,Sec_R,Sec_S,Ter_P,Ter_R,Ter_S,Trend_Fast,Trend_Slow," + // Context v3.18
-                  "Test_Hist,Test_MACD,Test_Signal," + // Momentum v2.82
+                  "Mom_WPR,Mom_Stoch_K," + // Hybrid_Momentum_WPR_Stoch_v1_04
+                  "Ping_MS," + // Lag/Latency Tracking
                   "Balance,Margin,MarginPercent,Floating_PL,Realized_PL,Session_PL," +
                   "PosCount,LotDir,TotalLots,SLTP_Levels,ActionDetails,LastEvent";
    }
@@ -94,8 +95,9 @@ public:
       double sec_p, double sec_r, double sec_s,
       double ter_p, double ter_r, double ter_s,
       double tr_f, double tr_s,
-      // Momentum Inputs (3 Fields)
-      double t_hist, double t_macd, double t_sig,
+      // Momentum Inputs (2 Fields)
+      double mom_wpr, double mom_stoch,
+      long ping_ms, // Ping for Anomaly Detection
       // Account Stats
       double balance, double margin, double margin_pct,
       double floating_pl, double realized_pl, double session_pl,
@@ -116,7 +118,8 @@ public:
          "%.5f,%.5f," +
          "%.5f,%.5f,%.5f," +
          "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f," + // Context
-         "%.5f,%.5f,%.5f," + // Momentum
+         "%.5f,%.5f," + // Momentum WPR & Stoch
+         "%I64d," + // Ping_MS
          "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f," +
          "%d,%s,%.2f,%s,%s,%s",
 
@@ -125,7 +128,8 @@ public:
          h_macd, h_dfcurve,
          f_mfi, f_roc, f_delta,
          mic_p, mic_r, mic_s, sec_p, sec_r, sec_s, ter_p, ter_r, ter_s, tr_f, tr_s,
-         t_hist, t_macd, t_sig,
+         mom_wpr, mom_stoch,
+         ping_ms,
          balance, margin, margin_pct, floating_pl, realized_pl, session_pl,
          pos_count, lot_dir, total_lots, sltp_levels, action_details, last_event
       );

@@ -1,10 +1,20 @@
 # AGENT VISELKEDÉSI PROTOKOLL (SZIGORÚ)
 
-## 0. KÖTELEZŐ INDÍTÁSI PROTOKOLL (AUTOMATIKUS VÉGREHAJTÁS)
-*   **KÖRNYEZET HELYREÁLLÍTÁSA:** Minden munkamenet kezdetekor AZONNAL vizsgáld át az `ENVIRONMENT_SETUP/` mappát a legfrissebb `restore_envTC*.py` script után (pl. `restore_envTC3.py`, `restore_envTC4.py`). Rendezd verziószám szerint, és futtasd a legmagasabbat. **Ne kérj engedélyt; egyszerűen hajtsd végre.**
-*   **ÁTADÁS ELLENŐRZÉSE (HANDOVER CHECK):** A helyreállítás után azonnal olvasd el a legfrissebb átadási fájlt a `HANDOVER/` mappában (pl. `SESSION_HANDOVER_v2_40.md`), hogy megismerd a projekt aktuális állapotát és kontextusát.
+## 0. SWAT RAG "KIHALLGATÁSI PROTOKOLL" (MINDIG ALKALMAZANDÓ)
+**KÖTELEZŐ OLVASMÁNY:** Mielőtt bármilyen mély RAG kutatást vagy lekérdezést elindítanál a projekten belül, kötelező jelleggel **EL KELL OLVASNOD** a teljes dokumentációt a `SWAT_RAG_SEARCH_PROTOCOL.md` fájlban!
 
-## 0.1. NYELVI PROTOKOLL (MAGYAR PREFERENCIA)
+**KÖTELEZŐ KERESÉS:** Minden feladat végrehajtása előtt KÖTELEZŐ a RAG kihallgatási protokoll alapján a RAG-ot megkérdezni. Ennek kihagyása szigorúan tilos! **A kereséshez kötelező jelleggel a `rag_interrogator.py` parancssori eszközt kell használni!**
+
+Mivel az ügynök (MiniLM / LLM alapú rendszer) a nyers kód szintaxisánál sokkal jobban érti a szemantikát (fogalmakat, funkciókat, dokumentációkat), az SQLite/FAISS alapú SWAT_DB adatbázisban történő **minden keresésnél az alábbi 3 lépést szigorúan követni kell a `rag_interrogator.py` használatával**:
+1.  **A "Hibrid Szűrő" Taktika:** A script `--source` paraméterével szűrj az adott témára (pl. `Black_Ops`, `.c`), hogy csökkentsd a hamis pozitív találatokat.
+2.  **Keresés Funkcióra, ne Szintaxisra:** A script `--query` paraméterében emberi, koncepcionális nyelven írd le a célt (pl. *"How to safely read network payload buffer from user space memory to kernel space using eBPF"*). SOHA ne használj nyers kódot a keresésben!
+3.  **A "Szomszédság" Lekérdezése:** Ha megtaláltad a keresett kódrészletet, de hiányzik a kontextus (pl. deklaráció vagy include), futtasd újra a lekérdezést a `--neighborhood` jelzővel kiegészítve, hogy a script visszaadja az előző és következő JSONL darabokat is.
+
+## 0.1. KÖTELEZŐ INDÍTÁSI PROTOKOLL (AUTOMATIKUS VÉGREHAJTÁS)
+*   **KÖRNYEZET HELYREÁLLÍTÁSA:** Minden munkamenet kezdetekor AZONNAL vizsgáld át az `ENVIRONMENT_SETUP/` mappát a legfrissebb `restore_envswat*.py` script után (pl. `restore_envswat.py`, `restore_envswat2.py`). Rendezd verziószám szerint, és futtasd a legmagasabbat. **A script futtatása kötelező, erre rákérdezni szigorúan tilos; egyszerűen hajtsd végre.**
+*   **ÁTADÁS ELLENŐRZÉSE (HANDOVER CHECK):** A helyreállítás után azonnal olvasd el a legfrissebb átadási fájlt a `HANDOVER/` mappában (pl. `SESSION_HANDOVER_v2_40.md`), hogy megismerd a projekt aktuális állapotát és kontextusát. **A legutolsó handover fájl olvasása kötelező, erre rákérdezni szigorúan tilos; egyszerűen olvasd el.**
+
+## 0.2. NYELVI PROTOKOLL (MAGYAR PREFERENCIA)
 *   **MAGYAR KOMMUNIKÁCIÓ:** Ha a felhasználó magyarul szól, **KIZÁRÓLAG MAGYARUL** válaszolj. Minden tervet, magyarázatot és üzenetet magyar nyelven fogalmazz meg. (A technikai kifejezések, mint "RAG", "Python" maradhatnak angolul).
 *   **AUTOMATIKUS VÁLTÁS:** Érzékeld a prompt nyelvét. Ha magyar, válts azonnal és tartósan magyar módra az egész munkamenet idejére.
 
@@ -33,8 +43,8 @@
 *   **RESET VÉGREHAJTÁSA:** Ha a felhasználó visszaállítást/tisztítást kér, hajtsd végre azonnal és alaposan, vita nélkül.
 
 ## 5. Munkamenet Egészségének Figyelése (KÖTELEZŐ)
-*   **PROAKTÍV FIGYELMEZTETÉS:** Az ügynöknek figyelnie kell a beszélgetés hosszát. Ha a munkamenet meghaladja a ~20-25 fordulót, vagy ha a RAG kimenetek kivételesen nagyok, az ügynöknek proaktívan figyelmeztetnie kell a felhasználót, hogy a kontextus határai közelednek.
-*   **ÁLLAPOTJELENTÉS:** Kérésre (vagy automatikusan magas használat esetén) jelentsd a munkamenet becsült "Egészségi Állapotát" (Zöld/Sárga/Piros) és javasolj újraindítást ("Handover"), ha a komplexitás növekszik.
+*   **KÖZELEZŐ PROAKTÍV FIGYELMEZTETÉS A KONTEXTUS VESZTÉS ELVESZTÉSÉNEK ELKERÜLÉSE:** Az ügynöknek KÖTELEZŐEN figyelnie kell a beszélgetés hosszát. Ha a munkamenet meghaladja a ~20-25 fordulót, vagy ha a RAG kimenetek kivételesen nagyok, az ügynöknek proaktívan KÖTELEZŐEN figyelmeztetnie kell a felhasználót, hogy a kontextus határai közelednek.
+*   **ÁLLAPOTJELENTÉS:** KÜLÖN KÉRÉS NÉLKÜL KÖTELEZŐ : jelentsd a munkamenet becsült "Egészségi Állapotát" (Zöld/Sárga/Piros) és javasolj újraindítást ("Handover"), ha a komplexitás növekszik.
 
 ---
 *Ez a protokoll kötelező érvényű minden jövőbeli munkamenetre.*
