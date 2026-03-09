@@ -7,15 +7,15 @@
 
 //--- indicator settings
 #property indicator_separate_window
-#property indicator_buffers 4
+#property indicator_buffers 5
 #property indicator_plots   2
 
 //--- plot 1: Stochastic Histogram (K-line)
-#property indicator_label1  "Stoch Histogram"
-#property indicator_type1   DRAW_COLOR_HISTOGRAM
+#property indicator_label1  "Stoch Base;Stoch Histogram"
+#property indicator_type1   DRAW_COLOR_HISTOGRAM2
 #property indicator_color1  clrForestGreen, clrFireBrick
 #property indicator_style1  STYLE_SOLID
-#property indicator_width1  3
+#property indicator_width1  4
 
 //--- plot 2: WPR Line
 #property indicator_label2  "WPR Adjusted"
@@ -40,6 +40,7 @@ input int InpSlowing     = 3;  // Stochastic Slowing
 input int InpDPeriod     = 3;  // Stochastic %D Period (Not displayed, but needed for algorithm)
 
 //--- indicator buffers
+double    ExtStochBaseBuffer[];
 double    ExtStochBuffer[];
 double    ExtStochColors[];
 double    ExtWPRBuffer[];
@@ -54,16 +55,19 @@ double    ExtLowestBuffer[];
 int OnInit()
   {
 //--- indicator buffers mapping
-   SetIndexBuffer(0, ExtStochBuffer, INDICATOR_DATA);
-   SetIndexBuffer(1, ExtStochColors, INDICATOR_COLOR_INDEX);
-   SetIndexBuffer(2, ExtWPRBuffer,   INDICATOR_DATA);
-   SetIndexBuffer(3, ExtHighestBuffer, INDICATOR_CALCULATIONS);
+// For DRAW_COLOR_HISTOGRAM2 we need Base, Value, and Color buffers in sequence
+   SetIndexBuffer(0, ExtStochBaseBuffer, INDICATOR_DATA);
+   SetIndexBuffer(1, ExtStochBuffer,     INDICATOR_DATA);
+   SetIndexBuffer(2, ExtStochColors,     INDICATOR_COLOR_INDEX);
+
+   SetIndexBuffer(3, ExtWPRBuffer,       INDICATOR_DATA);
+   SetIndexBuffer(4, ExtHighestBuffer,   INDICATOR_CALCULATIONS);
 
    // We dynamically allocate the lowest buffer to save buffer count
    ArrayResize(ExtLowestBuffer, 1);
    ArraySetAsSeries(ExtLowestBuffer, false);
 
-   IndicatorSetInteger(INDICATOR_DIGITS, 2);
+   IndicatorSetInteger(INDICATOR_DIGITS, 3);
 
    string short_name = StringFormat("Hybrid Mom(W:%d, S:%d,%d)", InpWPRPeriod, InpKPeriod, InpSlowing);
    IndicatorSetString(INDICATOR_SHORTNAME, short_name);
@@ -137,8 +141,12 @@ int OnCalculate(const int rates_total,
       else
          ExtStochBuffer[i] = sum_low / sum_high * 100.0;
 
+      // Set the base to 50 for the bi-directional histogram
+      ExtStochBaseBuffer[i] = 50.0;
+
       // Determine Color (ForestGreen=0, FireBrick=1)
-      // Level based: >= 50 is Bullish (Green), < 50 is Bearish (Red)
+      // Level based: >= 50 is Bullish (Green, going UP from 50)
+      //              < 50 is Bearish (Red, going DOWN from 50)
       if(ExtStochBuffer[i] >= 50.0)
          ExtStochColors[i] = 0; // Bullish -> Green
       else
