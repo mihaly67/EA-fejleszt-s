@@ -15,14 +15,14 @@
 #property indicator_type1   DRAW_COLOR_HISTOGRAM
 #property indicator_color1  clrForestGreen, clrFireBrick
 #property indicator_style1  STYLE_SOLID
-#property indicator_width1  2
+#property indicator_width1  3
 
 //--- plot 2: WPR Line
 #property indicator_label2  "WPR Adjusted"
 #property indicator_type2   DRAW_LINE
 #property indicator_color2  clrDodgerBlue // Hibrid Flow görbe színe
 #property indicator_style2  STYLE_SOLID
-#property indicator_width2  1
+#property indicator_width2  2
 
 //--- Levels
 #property indicator_level1  20.0
@@ -34,7 +34,7 @@
 #property indicator_minimum 0.0
 
 //--- input parameters
-input int InpWPRPeriod   = 14; // WPR Period
+input int InpWPRPeriod   = 5;  // WPR Period
 input int InpKPeriod     = 5;  // Stochastic %K Period
 input int InpSlowing     = 3;  // Stochastic Slowing
 input int InpDPeriod     = 3;  // Stochastic %D Period (Not displayed, but needed for algorithm)
@@ -138,19 +138,11 @@ int OnCalculate(const int rates_total,
          ExtStochBuffer[i] = sum_low / sum_high * 100.0;
 
       // Determine Color (ForestGreen=0, FireBrick=1)
-      if(i > 0)
-        {
-         if(ExtStochBuffer[i] > ExtStochBuffer[i-1])
-            ExtStochColors[i] = 0; // Rising -> Green
-         else if(ExtStochBuffer[i] < ExtStochBuffer[i-1])
-            ExtStochColors[i] = 1; // Falling -> Red
-         else
-            ExtStochColors[i] = ExtStochColors[i-1]; // Same as previous
-        }
+      // Level based: >= 50 is Bullish (Green), < 50 is Bearish (Red)
+      if(ExtStochBuffer[i] >= 50.0)
+         ExtStochColors[i] = 0; // Bullish -> Green
       else
-        {
-         ExtStochColors[i] = 0;
-        }
+         ExtStochColors[i] = 1; // Bearish -> Red
      }
 
    //------------------------------------------------------------------
