@@ -34,7 +34,8 @@ public:
                   "Hybrid_MACD,Hybrid_DFCurve," +
                   "Flow_MFI,Flow_ROC,Flow_Delta," +
                   "Mic_P,Mic_R,Mic_S,Sec_P,Sec_R,Sec_S,Ter_P,Ter_R,Ter_S,Trend_Fast,Trend_Slow," + // Context v3.18
-                  "EMA_25,EMA_50,EMA_150," + // Replacement for Momentum
+                  "EMA_25,EMA_50,EMA_150," + // EMAs
+                  "WPR,Stoch_K," + // Momentum v1.04
                   "Ping_MS," + // Lag/Latency Tracking
                   "Balance,Margin,MarginPercent,Floating_PL,Realized_PL,Session_PL," +
                   "PosCount,LotDir,TotalLots,SLTP_Levels,ActionDetails,LastEvent";
@@ -97,6 +98,7 @@ public:
       double tr_f, double tr_s,
       // Moving Averages (3 Fields)
       double ema_25, double ema_50, double ema_150,
+      double wpr, double stoch_k,
       long ping_ms, // Ping for Anomaly Detection
       // Account Stats
       double balance, double margin, double margin_pct,
@@ -116,9 +118,10 @@ public:
          "%s,%I64d,%s,%d,%s,%.5f,%.5f,%.1f,%d,%d," +
          "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f," +
          "%.5f,%.5f," +
-         "%.5f,%.5f,%.5f," +
+         "%.3f,%.3f,%.3f," +
          "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f," + // Context
          "%.5f,%.5f,%.5f," + // EMAs
+         "%.3f,%.3f," + // Momentum
          "%I64d," + // Ping_MS
          "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f," +
          "%d,%s,%.2f,%s,%s,%s",
@@ -129,6 +132,7 @@ public:
          f_mfi, f_roc, f_delta,
          mic_p, mic_r, mic_s, sec_p, sec_r, sec_s, ter_p, ter_r, ter_s, tr_f, tr_s,
          ema_25, ema_50, ema_150,
+         wpr, stoch_k,
          ping_ms,
          balance, margin, margin_pct, floating_pl, realized_pl, session_pl,
          pos_count, lot_dir, total_lots, sltp_levels, action_details, last_event
