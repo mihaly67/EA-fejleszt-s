@@ -211,6 +211,11 @@ int OnInit()
    // Prepare Dummy Momentum Params (since it's removed but struct might still be required by NavSystem signature)
    HybridMomentumParams mom;
    ZeroMemory(mom);
+   mom.path = InpIndPath + "Hybrid_Momentum_WPR_Stoch_v1_04";
+   mom.wpr_period = 5;
+   mom.stoch_k = 3;
+   mom.stoch_slow = 2;
+   mom.stoch_d = 2;
 
    bool init_ok = m_nav_system.Initialize(
        _Symbol, _Period,
@@ -219,7 +224,7 @@ int OnInit()
        20, 1.5, 10, MODE_EMA,
        Hybrid_MACDScale, 0, Hybrid_DFScale, Hybrid_AutoScaling, 100,
        Hybrid_Divisor,
-       InpIndPath + "HybridFlowIndicator_v1.125",
+       InpIndPath + "HybridFlowIndicator_v1.126",
        false, -100, 200, Flow_MFIPeriod, true, Flow_VROCPeriod, 20.0, true,
        Flow_Smooth, Flow_NormLen, Flow_Scale, 3.0,
        ctx, mom
@@ -513,6 +518,7 @@ void OnTick()
        m_nav_system.GetTrendFast(), m_nav_system.GetTrendSlow(),
        // Moving Averages
        ema25, ema50, ema150,
+       m_nav_system.GetWPR(), m_nav_system.GetStochK(),
        TerminalInfoInteger(TERMINAL_PING_LAST), // Ping for Anomaly Detection
        // Stats
        AccountInfoDouble(ACCOUNT_BALANCE), AccountInfoDouble(ACCOUNT_MARGIN), AccountInfoDouble(ACCOUNT_MARGIN_LEVEL),
