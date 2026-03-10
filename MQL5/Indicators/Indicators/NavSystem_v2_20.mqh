@@ -18,12 +18,10 @@ enum ENUM_COLOR_LOGIC {
 
 struct HybridMomentumParams {
     string path;
-    ENUM_COLOR_LOGIC color_logic;
-    int fast_p; int slow_p; int sig_p;
-    ENUM_APPLIED_PRICE price;
-    double kalman; double phase;
-    bool boost; double stoch_w; int stoch_k; int stoch_d; int stoch_s;
-    int norm_p; double norm_sens;
+    int wpr_period;
+    int stoch_k;
+    int stoch_slow;
+    int stoch_d;
 };
 
 // --- Definitions from v2.09 (Context) ---
@@ -52,7 +50,7 @@ private:
    int      m_handle_hybrid_macd; // Pulse
    int      m_handle_flow;
    int      m_handle_context;     // Context v3.27
-   int      m_handle_test_mom;    // Momentum v2.82
+   int      m_handle_test_mom;    // Momentum v1.04
 
    MqlRates m_rates[];
    int      m_lookback;
@@ -71,10 +69,9 @@ private:
    double   m_val_ter_p, m_val_ter_r, m_val_ter_s;
    double   m_val_tr_fast, m_val_tr_slow;
 
-   // Momentum Values (3 Fields)
-   double   m_val_test_hist;
-   double   m_val_test_macd;
-   double   m_val_test_signal;
+   // Momentum Values (2 Fields)
+   double   m_val_wpr;
+   double   m_val_stoch_k;
 
    // Legacy params for Pulse/Flow
    int      p_macd_fast;
@@ -119,9 +116,8 @@ public:
       m_val_ter_p = 0; m_val_ter_r = 0; m_val_ter_s = 0;
       m_val_tr_fast = 0; m_val_tr_slow = 0;
 
-      m_val_test_hist = 0.0;
-      m_val_test_macd = 0.0;
-      m_val_test_signal = 0.0;
+      m_val_wpr = 0.0;
+      m_val_stoch_k = 0.0;
    }
 
    ~CNavSystem() { Release(); }
@@ -213,12 +209,9 @@ public:
        );
 
        // 5. Momentum Indicator (Test/Reference)
-       PrintFormat("NavSystem: Loading Momentum (v2.82) from %s", mom.path);
+       PrintFormat("NavSystem: Loading Momentum (v1.04) from %s", mom.path);
        m_handle_test_mom = iCustom(symbol, period, mom.path,
-           mom.color_logic,
-           mom.fast_p, mom.slow_p, mom.sig_p, mom.price, mom.kalman, mom.phase,
-           mom.boost, mom.stoch_w, mom.stoch_k, mom.stoch_d, mom.stoch_s,
-           mom.norm_p, mom.norm_sens
+           mom.wpr_period, mom.stoch_k, mom.stoch_slow, mom.stoch_d
        );
 
        return true;
@@ -263,10 +256,15 @@ public:
           if(CopyBuffer(m_handle_hybrid_macd, 2, 0, 1, buf_df) > 0) m_val_dfcurve = buf_df[0];
       }
 
-      // Flow (Internal Calc fallback if handle fails, but usually we rely on handle if valid,
-      // however v2.09 kept internal calc. We will keep internal calc for consistency if handles fail or for "raw" verification)
-      // For this implementation, we will stick to v2.09 pattern: Calc internally for safety/speed.
-      CalcHybridFlow(copied);
+      // Flow (using HybridFlowIndicator_v1.126 buffers: 0=MFI, 2=Delta End, 4=VROC)
+      if(m_handle_flow != INVALID_HANDLE) {
+          double b[1];
+          if(CopyBuffer(m_handle_flow, 0, 0, 1, b)>0) m_val_flow_mfi = (b[0]==EMPTY_VALUE)?0:b[0];
+          if(CopyBuffer(m_handle_flow, 2, 0, 1, b)>0) m_val_flow_delta = (b[0]==EMPTY_VALUE)?0:b[0];
+          if(CopyBuffer(m_handle_flow, 4, 0, 1, b)>0) m_val_flow_roc = (b[0]==EMPTY_VALUE)?0:b[0];
+      } else {
+          CalcHybridFlow(copied);
+      }
 
       // Context - MAPPING FOR v3.27 (Reordered logic)
       if(m_handle_context != INVALID_HANDLE) {
@@ -300,13 +298,11 @@ public:
           if(CopyBuffer(m_handle_context, 7, 0, 1, b)>0) m_val_tr_slow = (b[0]==EMPTY_VALUE)?0:b[0];
       }
 
-      // Momentum
+      // Momentum (using Hybrid_Momentum_WPR_Stoch_v1_04 buffers: 1=Stoch_K, 3=WPR)
       if(m_handle_test_mom != INVALID_HANDLE) {
           double b[1];
-          // 0=Hist, 2=MACD, 3=Signal (v2.82)
-          if(CopyBuffer(m_handle_test_mom, 0, 0, 1, b)>0) m_val_test_hist = (b[0]==EMPTY_VALUE)?0:b[0];
-          if(CopyBuffer(m_handle_test_mom, 2, 0, 1, b)>0) m_val_test_macd = (b[0]==EMPTY_VALUE)?0:b[0];
-          if(CopyBuffer(m_handle_test_mom, 3, 0, 1, b)>0) m_val_test_signal = (b[0]==EMPTY_VALUE)?0:b[0];
+          if(CopyBuffer(m_handle_test_mom, 1, 0, 1, b)>0) m_val_stoch_k = (b[0]==EMPTY_VALUE)?0:b[0];
+          if(CopyBuffer(m_handle_test_mom, 3, 0, 1, b)>0) m_val_wpr = (b[0]==EMPTY_VALUE)?0:b[0];
       }
    }
 
@@ -323,9 +319,8 @@ public:
    double GetTerP() { return m_val_ter_p; } double GetTerR() { return m_val_ter_r; } double GetTerS() { return m_val_ter_s; }
    double GetTrendFast() { return m_val_tr_fast; } double GetTrendSlow() { return m_val_tr_slow; }
 
-   double GetTestHist() { return m_val_test_hist; }
-   double GetTestMACD() { return m_val_test_macd; }
-   double GetTestSignal() { return m_val_test_signal; }
+   double GetWPR() { return m_val_wpr; }
+   double GetStochK() { return m_val_stoch_k; }
 
 private:
    double CalcRSI(int total, int period)
