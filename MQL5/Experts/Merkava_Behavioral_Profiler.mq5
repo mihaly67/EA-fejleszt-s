@@ -225,7 +225,7 @@ int OnInit()
        Hybrid_MACDScale, 0, Hybrid_DFScale, Hybrid_AutoScaling, 100,
        Hybrid_Divisor,
        InpIndPath + "HybridFlowIndicator_v1.126",
-       false, -100, 200, Flow_MFIPeriod, true, Flow_VROCPeriod, 20.0, true,
+       false, -100, 200, Flow_MFIPeriod, true, Flow_VROCPeriod, true,
        Flow_Smooth, Flow_NormLen, Flow_Scale, 3.0,
        ctx, mom
    );

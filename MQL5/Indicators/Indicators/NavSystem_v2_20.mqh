@@ -154,7 +154,7 @@ public:
        // Flow Inputs
        string path_flow,
        bool _f_fixed, double _f_min, double _f_max, int _f_mfi, bool _f_vroc, int _f_vroc_p,
-       double _f_thresh, bool _f_approx, int _f_smooth, int _f_norm, double _f_scale_f, double _f_vis,
+       bool _f_approx, int _f_smooth, int _f_norm, double _f_scale_f, double _f_vis,
        // Context Inputs
        ContextParams &ctx,
        // Momentum Inputs
@@ -181,7 +181,7 @@ public:
        );
 
        // 3. Flow (Standard)
-       MqlParam flow_params[13];
+       MqlParam flow_params[12];
        flow_params[0].type = TYPE_STRING; flow_params[0].string_value = path_flow;
        flow_params[1].type = TYPE_BOOL;   flow_params[1].integer_value = _f_fixed;
        flow_params[2].type = TYPE_DOUBLE; flow_params[2].double_value = _f_min;
@@ -189,13 +189,12 @@ public:
        flow_params[4].type = TYPE_INT;    flow_params[4].integer_value = _f_mfi;
        flow_params[5].type = TYPE_BOOL;   flow_params[5].integer_value = _f_vroc;
        flow_params[6].type = TYPE_INT;    flow_params[6].integer_value = _f_vroc_p;
-       flow_params[7].type = TYPE_DOUBLE; flow_params[7].double_value = _f_thresh;
-       flow_params[8].type = TYPE_BOOL;   flow_params[8].integer_value = _f_approx;
-       flow_params[9].type = TYPE_INT;    flow_params[9].integer_value = _f_smooth;
-       flow_params[10].type = TYPE_INT;   flow_params[10].integer_value = _f_norm;
-       flow_params[11].type = TYPE_DOUBLE; flow_params[11].double_value = _f_scale_f;
-       flow_params[12].type = TYPE_DOUBLE; flow_params[12].double_value = _f_vis;
-       m_handle_flow = IndicatorCreate(symbol, period, IND_CUSTOM, 13, flow_params);
+       flow_params[7].type = TYPE_BOOL;   flow_params[7].integer_value = _f_approx;
+       flow_params[8].type = TYPE_INT;    flow_params[8].integer_value = _f_smooth;
+       flow_params[9].type = TYPE_INT;   flow_params[9].integer_value = _f_norm;
+       flow_params[10].type = TYPE_DOUBLE; flow_params[10].double_value = _f_scale_f;
+       flow_params[11].type = TYPE_DOUBLE; flow_params[11].double_value = _f_vis;
+       m_handle_flow = IndicatorCreate(symbol, period, IND_CUSTOM, 12, flow_params);
 
        // 4. Context Indicator (v3.27 Style Fix + Reorder)
        PrintFormat("NavSystem: Loading Context (v3.27 StyleFix) from %s", ctx.path);
