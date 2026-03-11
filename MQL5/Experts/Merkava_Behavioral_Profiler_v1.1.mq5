@@ -182,6 +182,7 @@ int OnInit()
    m_fire_control.Init(&m_trade, &m_symbol, InpComment, InpMagicNumber, NULL, NULL);
    m_profit_manager.Init(&m_trade, &m_position, InpMagicNumber, _Symbol, NULL);
 
+   m_profit_manager.SetSlippage((ulong)InpSlippage);
    m_profit_manager.SetVirtualTP(InpVirtualTPCurrency);
    m_profit_manager.SetVirtualSL(InpVirtualSLCurrency);
 
