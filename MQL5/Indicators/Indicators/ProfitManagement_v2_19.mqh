@@ -30,11 +30,12 @@ private:
    CStealthRegistry *m_registry; // Registry Pointer
    ulong          m_magic;
    string         m_symbol;
+   ulong          m_slippage;
    double         m_virtual_tp;
    double         m_virtual_sl;
 
 public:
-   CProfitManager() { m_trade=NULL; m_position=NULL; m_registry=NULL; m_virtual_tp=0.0; m_virtual_sl=0.0; }
+   CProfitManager() { m_trade=NULL; m_position=NULL; m_registry=NULL; m_slippage=10; m_virtual_tp=0.0; m_virtual_sl=0.0; }
    ~CProfitManager() {}
 
    void Init(CTrade *trade_ptr, CPositionInfo *pos_ptr, ulong magic, string symbol, CStealthRegistry *registry_ptr = NULL)
@@ -46,6 +47,7 @@ public:
       m_registry = registry_ptr;
    }
 
+   void SetSlippage(ulong slp)  { m_slippage = slp; }
    void SetVirtualTP(double tp) { m_virtual_tp = tp; }
    void SetVirtualSL(double sl) { m_virtual_sl = sl; }
 
@@ -90,7 +92,7 @@ public:
                      request.position = ticket;
                      request.symbol = m_symbol;
                      request.volume = m_position.Volume();
-                     request.deviation = m_trade.DeviationInPoints();
+                     request.deviation = m_slippage;
                      request.magic = m_magic;
 
                      if(m_position.PositionType() == POSITION_TYPE_BUY) {
@@ -145,7 +147,7 @@ public:
                      request.position = ticket;
                      request.symbol = m_symbol;
                      request.volume = m_position.Volume();
-                     request.deviation = m_trade.DeviationInPoints();
+                     request.deviation = m_slippage;
                      request.magic = m_magic;
 
                      if(m_position.PositionType() == POSITION_TYPE_BUY) {
