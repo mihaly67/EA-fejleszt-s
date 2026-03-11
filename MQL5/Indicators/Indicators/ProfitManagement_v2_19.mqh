@@ -55,6 +55,11 @@ public:
    int Check()
    {
       int closed_count = 0;
+
+      // Temporary enable Async mode for Group Close Performance
+      bool original_async = m_trade.IsAsyncMode();
+      m_trade.SetAsyncMode(true);
+
       for(int i=PositionsTotal()-1; i>=0; i--)
       {
          if(m_position.SelectByIndex(i))
@@ -78,32 +83,11 @@ public:
                  if(m_virtual_tp > 0 && profit >= m_virtual_tp) close = true;
 
                  // Virtual SL (Input is usually positive, so check if profit <= -SL)
-                 // Or if user input negative, handle accordingly. Assuming positive input for "Loss Amount".
                  if(m_virtual_sl > 0 && profit <= -m_virtual_sl) close = true;
 
                  if(close)
                  {
-                     MqlTradeRequest request;
-                     MqlTradeResult  result;
-                     ZeroMemory(request);
-                     ZeroMemory(result);
-
-                     request.action = TRADE_ACTION_DEAL;
-                     request.position = ticket;
-                     request.symbol = m_symbol;
-                     request.volume = m_position.Volume();
-                     request.deviation = m_slippage;
-                     request.magic = m_magic;
-
-                     if(m_position.PositionType() == POSITION_TYPE_BUY) {
-                         request.type = ORDER_TYPE_SELL;
-                         request.price = SymbolInfoDouble(m_symbol, SYMBOL_BID);
-                     } else {
-                         request.type = ORDER_TYPE_BUY;
-                         request.price = SymbolInfoDouble(m_symbol, SYMBOL_ASK);
-                     }
-
-                     if(OrderSendAsync(request, result)) {
+                     if(m_trade.PositionClose(ticket)) {
                          closed_count++;
                          // Unregister from Stealth Registry if successful
                          if(m_registry != NULL) m_registry.UnregisterTicket(ticket);
@@ -112,6 +96,9 @@ public:
              }
          }
       }
+
+      // Restore standard execution mode
+      m_trade.SetAsyncMode(original_async);
       return closed_count;
    }
 
@@ -119,6 +106,11 @@ public:
    int CloseAllProfit()
    {
       int closed_count = 0;
+
+      // Temporary enable Async mode for Group Close Performance
+      bool original_async = m_trade.IsAsyncMode();
+      m_trade.SetAsyncMode(true);
+
       for(int i=PositionsTotal()-1; i>=0; i--)
       {
          if(m_position.SelectByIndex(i))
@@ -138,27 +130,7 @@ public:
                  double profit = m_position.Profit() + m_position.Swap() + m_position.Commission();
                  if(profit > 0)
                  {
-                     MqlTradeRequest request;
-                     MqlTradeResult  result;
-                     ZeroMemory(request);
-                     ZeroMemory(result);
-
-                     request.action = TRADE_ACTION_DEAL;
-                     request.position = ticket;
-                     request.symbol = m_symbol;
-                     request.volume = m_position.Volume();
-                     request.deviation = m_slippage;
-                     request.magic = m_magic;
-
-                     if(m_position.PositionType() == POSITION_TYPE_BUY) {
-                         request.type = ORDER_TYPE_SELL;
-                         request.price = SymbolInfoDouble(m_symbol, SYMBOL_BID);
-                     } else {
-                         request.type = ORDER_TYPE_BUY;
-                         request.price = SymbolInfoDouble(m_symbol, SYMBOL_ASK);
-                     }
-
-                     if(OrderSendAsync(request, result)) {
+                     if(m_trade.PositionClose(ticket)) {
                          closed_count++;
                          if(m_registry != NULL) m_registry.UnregisterTicket(ticket);
                      }
@@ -166,6 +138,9 @@ public:
              }
          }
       }
+
+      // Restore standard execution mode
+      m_trade.SetAsyncMode(original_async);
       return closed_count;
    }
 };
