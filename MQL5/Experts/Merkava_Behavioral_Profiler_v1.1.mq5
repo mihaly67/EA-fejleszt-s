@@ -17,9 +17,9 @@
 #include <AccountInfo.mqh>
 
 #include "../Indicators/FireControl_v2_25.mqh"
-#include "../Indicators/PanelControl_v2_21.mqh"
+#include "../Indicators/PanelControl_v2_22.mqh"
 #include "../Indicators/PhysicsEngine.mqh"
-#include "../Indicators/NavSystem_v2_21.mqh"
+#include "../Indicators/NavSystem_v2_22.mqh"
 #include "../Indicators/BlackBox_v2_10.mqh"
 #include "../Indicators/ProfitManagement_v2_19.mqh"
 
@@ -351,6 +351,16 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
        else if (event == EVENT_CHANGE_ENTRY)
        {
            Print("⚡ Entry Changed: " + EnumToString(entry));
+       }
+       else if (event == EVENT_TOGGLE_VISUAL)
+       {
+           // visual_active state is tracked inside the panel itself or nav system
+           // Since the user just clicked it, let's sync state
+           // m_panel keeps its own state in `m_visual_active`, let's just use it
+           // Alternatively we can just read from panel? No explicit getter yet, so we just toggle in Nav.
+           bool current_vis = m_panel.GetVisualActive(); // Need to add getter
+           m_nav_system.ToggleVisual(0, current_vis);
+           Print("👁️ Visual Mode Toggled: " + (current_vis ? "ON" : "OFF"));
        }
    }
 
