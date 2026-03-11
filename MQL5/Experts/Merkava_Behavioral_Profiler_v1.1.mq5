@@ -85,18 +85,18 @@ input color         Ctx_Mic_ColorR       = clrRed;
 input color         Ctx_Mic_ColorS       = clrGreen;
 
 input bool          Ctx_Sec_Use          = true;
-input int           Ctx_Sec_Depth        = 10;
-input int           Ctx_Sec_Dev          = 10;
-input int           Ctx_Sec_Back         = 5;
+input int           Ctx_Sec_Depth        = 4;
+input int           Ctx_Sec_Dev          = 5;
+input int           Ctx_Sec_Back         = 3;
 input ENUM_LINE_STYLE Ctx_Sec_Style      = STYLE_DASHDOT;
 input int           Ctx_Sec_Width        = 1;
 input color         Ctx_Sec_ColorR       = clrRed;
 input color         Ctx_Sec_ColorS       = clrGreen;
 
 input bool          Ctx_Ter_Use          = true;
-input int           Ctx_Ter_Depth        = 20;
-input int           Ctx_Ter_Dev          = 10;
-input int           Ctx_Ter_Back         = 5;
+input int           Ctx_Ter_Depth        = 7;
+input int           Ctx_Ter_Dev          = 5;
+input int           Ctx_Ter_Back         = 3;
 input ENUM_LINE_STYLE Ctx_Ter_Style      = STYLE_SOLID;
 input int           Ctx_Ter_Width        = 1;
 input color         Ctx_Ter_ColorR       = clrRed;
