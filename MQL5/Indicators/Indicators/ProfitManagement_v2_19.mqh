@@ -57,7 +57,6 @@ public:
       int closed_count = 0;
 
       // Temporary enable Async mode for Group Close Performance
-      bool original_async = m_trade.IsAsyncMode();
       m_trade.SetAsyncMode(true);
 
       for(int i=PositionsTotal()-1; i>=0; i--)
@@ -98,7 +97,7 @@ public:
       }
 
       // Restore standard execution mode
-      m_trade.SetAsyncMode(original_async);
+      m_trade.SetAsyncMode(false);
       return closed_count;
    }
 
@@ -108,7 +107,6 @@ public:
       int closed_count = 0;
 
       // Temporary enable Async mode for Group Close Performance
-      bool original_async = m_trade.IsAsyncMode();
       m_trade.SetAsyncMode(true);
 
       for(int i=PositionsTotal()-1; i>=0; i--)
@@ -140,7 +138,7 @@ public:
       }
 
       // Restore standard execution mode
-      m_trade.SetAsyncMode(original_async);
+      m_trade.SetAsyncMode(false);
       return closed_count;
    }
 };
