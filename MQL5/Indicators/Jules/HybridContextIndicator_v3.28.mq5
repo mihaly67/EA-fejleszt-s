@@ -89,14 +89,14 @@
 #property indicator_type9   DRAW_LINE
 #property indicator_style9  STYLE_SOLID
 #property indicator_color9  clrDodgerBlue
-#property indicator_width9  2
+#property indicator_width9  1
 
 //--- PLOT 10: Trend EMA SuperSlow (Buffer 9)
 #property indicator_label10 "Trend EMA SuperSlow (300)"
 #property indicator_type10  DRAW_LINE
 #property indicator_style10 STYLE_SOLID
 #property indicator_color10 clrRoyalBlue
-#property indicator_width10 2
+#property indicator_width10 1
 
 //--- Input Parameters (Strictly Linear - NO GROUPS)
 input bool               InpShowPivots         = true;
@@ -116,18 +116,18 @@ input color              InpMicroColorR1       = clrRed;
 input color              InpMicroColorS1       = clrGreen;
 
 input bool               InpUseSecondary       = true;
-input int                InpSecDepth           = 10;
-input int                InpSecDeviation       = 10;
-input int                InpSecBackstep        = 5;
+input int                InpSecDepth           = 4;
+input int                InpSecDeviation       = 5;
+input int                InpSecBackstep        = 3;
 input ENUM_LINE_STYLE    InpSecStyle           = STYLE_DASHDOT;
 input int                InpSecWidth           = 1;
 input color              InpSecColorR1         = clrRed;
 input color              InpSecColorS1         = clrGreen;
 
 input bool               InpUseTertiary        = true;
-input int                InpTerDepth           = 20;
-input int                InpTerDeviation       = 10;
-input int                InpTerBackstep        = 5;
+input int                InpTerDepth           = 7;
+input int                InpTerDeviation       = 5;
+input int                InpTerBackstep        = 3;
 input ENUM_LINE_STYLE    InpTerStyle           = STYLE_SOLID;
 input int                InpTerWidth           = 1;
 input color              InpTerColorR1         = clrRed;
@@ -383,14 +383,14 @@ int OnInit()
    // 8: Trend Slow (Data)
    SetIndexBuffer(8, TrendSlow, INDICATOR_DATA);
    PlotIndexSetInteger(8, PLOT_LINE_STYLE, STYLE_SOLID);
-   PlotIndexSetInteger(8, PLOT_LINE_WIDTH, 2);
+   PlotIndexSetInteger(8, PLOT_LINE_WIDTH, 1);
    PlotIndexSetInteger(8, PLOT_LINE_COLOR, clrDodgerBlue);
    PlotIndexSetDouble(8, PLOT_EMPTY_VALUE, EMPTY_VALUE);
 
    // 9: Trend SuperSlow (Data)
    SetIndexBuffer(9, TrendSuper, INDICATOR_DATA);
    PlotIndexSetInteger(9, PLOT_LINE_STYLE, STYLE_SOLID);
-   PlotIndexSetInteger(9, PLOT_LINE_WIDTH, 2);
+   PlotIndexSetInteger(9, PLOT_LINE_WIDTH, 1);
    PlotIndexSetInteger(9, PLOT_LINE_COLOR, clrRoyalBlue);
    PlotIndexSetDouble(9, PLOT_EMPTY_VALUE, EMPTY_VALUE);
 
