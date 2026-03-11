@@ -21,7 +21,7 @@
 #include "../Indicators/PhysicsEngine.mqh"
 #include "../Indicators/NavSystem_v2_21.mqh"
 #include "../Indicators/BlackBox_v2_10.mqh"
-#include "../Indicators/ProfitManagement_v2_18.mqh"
+#include "../Indicators/ProfitManagement_v2_19.mqh"
 
 CTrade        m_trade;
 CSymbolInfo   m_symbol;
