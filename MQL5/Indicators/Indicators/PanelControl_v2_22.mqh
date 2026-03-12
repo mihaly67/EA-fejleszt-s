@@ -27,7 +27,8 @@ enum ENUM_PANEL_EVENT
    EVENT_CHANGE_MODE,
    EVENT_CHANGE_ENTRY,
    EVENT_PARAM_UPDATE,
-   EVENT_TP_SL_UPDATE   // Virtual TP/SL Changed
+   EVENT_TP_SL_UPDATE,  // Virtual TP/SL Changed
+   EVENT_TOGGLE_VISUAL  // Toggle Chart Graphics
 };
 
 //+------------------------------------------------------------------+
