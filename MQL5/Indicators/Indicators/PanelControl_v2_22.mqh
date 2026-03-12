@@ -72,6 +72,7 @@ private:
    string ObjBtnFireBuy;
    string ObjBtnFireSell;
    string ObjBtnCloseProfit;
+   string ObjBtnVisual; // NEW: Visual Toggle Button
    string ObjLabelVirtualTP;
    string ObjEditVirtualTP;
    string ObjLabelVirtualSL;
