@@ -92,6 +92,7 @@ private:
    double      m_min_dist;
    double      m_virtual_tp;
    double      m_virtual_sl;
+   bool        m_visual_active; // State for visual toggle
    ENUM_FIRE_MODE m_fire_mode;
    ENUM_ENTRY_MODE m_entry_mode;
 
@@ -101,6 +102,7 @@ public:
        m_version_label = "Merkava v2.XX"; // Default fallback
        m_fire_mode = FIRE_MODE_STOP;
        m_entry_mode = ENTRY_PENDING;
+       m_visual_active = true;
    }
    ~CPanelControl() {}
 
