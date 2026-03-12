@@ -271,33 +271,43 @@ public:
        ObjectSetString(0, ObjEditMinDist, OBJPROP_TEXT, DoubleToString(m_min_dist, 0));
        ObjectSetInteger(0, ObjEditMinDist, OBJPROP_BGCOLOR, clrWhite); ObjectSetInteger(0, ObjEditMinDist, OBJPROP_COLOR, clrBlack);
 
+       int btn_h = 24; // 20% smaller than previous 30px
+       int cy_step = btn_h + 5;
+
+       // --- Visual Toggle Button ---
+       cy += 30;
+       ObjectCreate(0, ObjBtnVisual, OBJ_BUTTON, 0, 0, 0);
+       ObjectSetInteger(0, ObjBtnVisual, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnVisual, OBJPROP_YDISTANCE, cy);
+       ObjectSetInteger(0, ObjBtnVisual, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnVisual, OBJPROP_YSIZE, btn_h);
+       ObjectSetInteger(0, ObjBtnVisual, OBJPROP_FONTSIZE, 8);
+
        // --- Mode Toggle Button (Breakout/Limit) ---
-       cy+=30;
+       cy += cy_step;
        ObjectCreate(0, ObjBtnMode, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnMode, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnMode, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YSIZE, 30);
+       ObjectSetInteger(0, ObjBtnMode, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YSIZE, btn_h);
        ObjectSetInteger(0, ObjBtnMode, OBJPROP_FONTSIZE, 8);
 
        // --- Entry Toggle Button (Pending/Market) ---
-       cy+=35;
+       cy += cy_step;
        ObjectCreate(0, ObjBtnEntry, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YSIZE, 30);
+       ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YSIZE, btn_h);
        ObjectSetInteger(0, ObjBtnEntry, OBJPROP_FONTSIZE, 8);
 
        // --- Fire TRAP Button (Legacy) ---
-       cy+=40;
+       cy += cy_step;
        ObjectCreate(0, ObjBtnFire, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnFire, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnFire, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnFire, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnFire, OBJPROP_YSIZE, 40);
+       ObjectSetInteger(0, ObjBtnFire, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnFire, OBJPROP_YSIZE, btn_h + 4);
        ObjectSetString(0, ObjBtnFire, OBJPROP_TEXT, "FIRE TRAP");
        ObjectSetInteger(0, ObjBtnFire, OBJPROP_BGCOLOR, clrRed); ObjectSetInteger(0, ObjBtnFire, OBJPROP_COLOR, clrWhite);
 
        // --- Cease Fire ---
-       cy+=50;
+       cy += cy_step + 4;
        ObjectCreate(0, ObjBtnClear, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnClear, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnClear, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnClear, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnClear, OBJPROP_YSIZE, 30);
+       ObjectSetInteger(0, ObjBtnClear, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnClear, OBJPROP_YSIZE, btn_h);
        ObjectSetString(0, ObjBtnClear, OBJPROP_TEXT, "CEASE FIRE");
        ObjectSetInteger(0, ObjBtnClear, OBJPROP_BGCOLOR, clrOrange); ObjectSetInteger(0, ObjBtnClear, OBJPROP_COLOR, clrBlack);
 
@@ -308,24 +318,24 @@ public:
        // --- Fire BUY ---
        ObjectCreate(0, ObjBtnFireBuy, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_XDISTANCE, col2_x + 10); ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_YSIZE, 30);
+       ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_YSIZE, btn_h);
        ObjectSetString(0, ObjBtnFireBuy, OBJPROP_TEXT, "FIRE BUY");
-       ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_FONTSIZE, 8); // Reduced Font
+       ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_FONTSIZE, 8);
        ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_BGCOLOR, clrForestGreen); ObjectSetInteger(0, ObjBtnFireBuy, OBJPROP_COLOR, clrWhite);
 
        // --- Fire SELL ---
        ObjectCreate(0, ObjBtnFireSell, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_XDISTANCE, col2_x + 80); ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_YSIZE, 30);
+       ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_XSIZE, 60); ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_YSIZE, btn_h);
        ObjectSetString(0, ObjBtnFireSell, OBJPROP_TEXT, "FIRE SELL");
-       ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_FONTSIZE, 8); // Reduced Font
+       ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_FONTSIZE, 8);
        ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_BGCOLOR, clrFireBrick); ObjectSetInteger(0, ObjBtnFireSell, OBJPROP_COLOR, clrWhite);
 
        // --- Close Profit (New v2.15) ---
-       cy += 35;
+       cy += cy_step;
        ObjectCreate(0, ObjBtnCloseProfit, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnCloseProfit, OBJPROP_XDISTANCE, col2_x + 10); ObjectSetInteger(0, ObjBtnCloseProfit, OBJPROP_YDISTANCE, cy);
-       ObjectSetInteger(0, ObjBtnCloseProfit, OBJPROP_XSIZE, 130); ObjectSetInteger(0, ObjBtnCloseProfit, OBJPROP_YSIZE, 30);
+       ObjectSetInteger(0, ObjBtnCloseProfit, OBJPROP_XSIZE, 130); ObjectSetInteger(0, ObjBtnCloseProfit, OBJPROP_YSIZE, btn_h);
        ObjectSetString(0, ObjBtnCloseProfit, OBJPROP_TEXT, "CLOSE PROFIT");
        ObjectSetInteger(0, ObjBtnCloseProfit, OBJPROP_FONTSIZE, 8);
        ObjectSetInteger(0, ObjBtnCloseProfit, OBJPROP_BGCOLOR, clrDarkGreen); ObjectSetInteger(0, ObjBtnCloseProfit, OBJPROP_COLOR, clrWhite);
@@ -431,7 +441,7 @@ public:
        ObjectDelete(0, ObjLabelMinDist); ObjectDelete(0, ObjEditMinDist);
 
        ObjectDelete(0, ObjBtnFireBuy); ObjectDelete(0, ObjBtnFireSell);
-       ObjectDelete(0, ObjBtnCloseProfit); // New
+       ObjectDelete(0, ObjBtnCloseProfit); ObjectDelete(0, ObjBtnVisual);
 
        ObjectDelete(0, ObjLabelVirtualTP); ObjectDelete(0, ObjEditVirtualTP); // New
        ObjectDelete(0, ObjLabelVirtualSL); ObjectDelete(0, ObjEditVirtualSL); // New
@@ -473,6 +483,15 @@ public:
    }
 
    void UpdateButtons() {
+        // Visual Toggle Mode
+        if(m_visual_active) {
+            ObjectSetString(0, ObjBtnVisual, OBJPROP_TEXT, "VISUAL: ON");
+            ObjectSetInteger(0, ObjBtnVisual, OBJPROP_BGCOLOR, clrDarkCyan);
+        } else {
+            ObjectSetString(0, ObjBtnVisual, OBJPROP_TEXT, "VISUAL: OFF");
+            ObjectSetInteger(0, ObjBtnVisual, OBJPROP_BGCOLOR, clrDimGray);
+        }
+
         // Strategy Mode
         if(m_fire_mode == FIRE_MODE_STOP) {
             ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: STOP (Breakout)");
@@ -555,6 +574,13 @@ public:
              m_entry_mode = (m_entry_mode == ENTRY_PENDING) ? ENTRY_MARKET : ENTRY_PENDING;
              UpdateButtons();
              return EVENT_CHANGE_ENTRY;
+          }
+          else if (sparam == ObjBtnVisual)
+          {
+             // Toggle Visual Mode
+             m_visual_active = !m_visual_active;
+             UpdateButtons();
+             return EVENT_TOGGLE_VISUAL;
           }
        }
        else if(id == CHARTEVENT_OBJECT_ENDEDIT)
