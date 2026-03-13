@@ -103,7 +103,7 @@ public:
        m_prefix = "Merkava_";
        m_version_label = "Merkava v2.XX"; // Default fallback
        m_fire_mode = FIRE_MODE_STOP;
-       m_entry_mode = ENTRY_PENDING;
+       m_entry_mode = ENTRY_MARKET;
        m_visual_active = true;
    }
    ~CPanelControl() {}
@@ -128,7 +128,7 @@ public:
       m_virtual_tp = def_vtp;
       m_virtual_sl = def_vsl;
       m_fire_mode = FIRE_MODE_STOP;
-      m_entry_mode = ENTRY_PENDING;
+      m_entry_mode = ENTRY_MARKET;
 
       // Define Object Names
       ObjBG = m_prefix + "BG";

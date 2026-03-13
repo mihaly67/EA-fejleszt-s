@@ -38,7 +38,7 @@ CProfitManager m_profit_manager;
 //--- Inputs
 input double        InpSpreadMultStart   = 1.5;
 input double        InpSpreadMultStep    = 1.0;
-input int           InpLayers            = 3;
+input int           InpLayers            = 1;
 input double        InpMinSpreadPoints   = 60.0;
 input double        InpSafeZonePts       = 50.0;
 input string        InpIndPath           = "Jules\\";
