@@ -279,6 +279,8 @@ public:
        ObjectCreate(0, ObjBtnVisual, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnVisual, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnVisual, OBJPROP_YDISTANCE, cy);
        ObjectSetInteger(0, ObjBtnVisual, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnVisual, OBJPROP_YSIZE, btn_h);
+       ObjectSetString(0, ObjBtnVisual, OBJPROP_TEXT, "VISUAL: ON");
+       ObjectSetInteger(0, ObjBtnVisual, OBJPROP_BGCOLOR, clrDarkCyan); ObjectSetInteger(0, ObjBtnVisual, OBJPROP_COLOR, clrWhite);
        ObjectSetInteger(0, ObjBtnVisual, OBJPROP_FONTSIZE, 8);
 
        // --- Mode Toggle Button (Breakout/Limit) ---
@@ -286,6 +288,8 @@ public:
        ObjectCreate(0, ObjBtnMode, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnMode, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YDISTANCE, cy);
        ObjectSetInteger(0, ObjBtnMode, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnMode, OBJPROP_YSIZE, btn_h);
+       ObjectSetString(0, ObjBtnMode, OBJPROP_TEXT, "MODE: STOP (Breakout)");
+       ObjectSetInteger(0, ObjBtnMode, OBJPROP_BGCOLOR, clrOrangeRed); ObjectSetInteger(0, ObjBtnMode, OBJPROP_COLOR, clrWhite);
        ObjectSetInteger(0, ObjBtnMode, OBJPROP_FONTSIZE, 8);
 
        // --- Entry Toggle Button (Pending/Market) ---
@@ -293,6 +297,8 @@ public:
        ObjectCreate(0, ObjBtnEntry, OBJ_BUTTON, 0, 0, 0);
        ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XDISTANCE, x+10); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YDISTANCE, cy);
        ObjectSetInteger(0, ObjBtnEntry, OBJPROP_XSIZE, col_w-20); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_YSIZE, btn_h);
+       ObjectSetString(0, ObjBtnEntry, OBJPROP_TEXT, "ENTRY: PENDING");
+       ObjectSetInteger(0, ObjBtnEntry, OBJPROP_BGCOLOR, clrDimGray); ObjectSetInteger(0, ObjBtnEntry, OBJPROP_COLOR, clrWhite);
        ObjectSetInteger(0, ObjBtnEntry, OBJPROP_FONTSIZE, 8);
 
        // --- Fire TRAP Button (Legacy) ---
