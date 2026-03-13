@@ -135,6 +135,7 @@ public:
       ObjStat = m_prefix + "Status";
 
       // Left Column
+      ObjBtnVisual = m_prefix + "BtnVisual";
       ObjBtnFire = m_prefix + "BtnFire";
       ObjBtnClear = m_prefix + "BtnClear";
       ObjBtnMode = m_prefix + "BtnMode";
