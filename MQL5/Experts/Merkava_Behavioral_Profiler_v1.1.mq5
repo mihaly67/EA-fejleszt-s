@@ -17,7 +17,7 @@
 #include <AccountInfo.mqh>
 
 #include "../Indicators/FireControl_v2_25.mqh"
-#include "../Indicators/PanelControl_v2_22.mqh"
+#include "../Indicators/PanelControl_v2_23.mqh"
 #include "../Indicators/PhysicsEngine.mqh"
 #include "../Indicators/NavSystem_v2_22.mqh"
 #include "../Indicators/BlackBox_v2_10.mqh"
