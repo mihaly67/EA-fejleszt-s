@@ -24,8 +24,7 @@ Ebben a munkamenetben sikeresen javítottuk a Merkava UI gombjait, egységesíte
     *   Az összefűzött indikátor értékek a `BlackBox_v2_10` `RecordTick` metódusával ömlenek egy szinkronizált CSV fájlba, a kereskedési és account adatok helyén "0" (placeholder) értékekkel.
 
 ## 2. Megoldandó Probléma / Következő Lépések (Next Session)
-A kódok (EA, NavSystem, PanelControl, DataMiner) jelenleg szintaktikailag helyesek és hiba nélkül commitálva vannak.
-
+A kódok (EA, NavSystem, PanelControl, DataMiner) jelenleg szintaktikailag helyesek és hiba nélkül commitálva vannak. Azonban csv nem irja , a nem megfelelő könyvtár elérési utvonalak miatt vélhetőleg.
 1.  **Data Miner Futtatás:**
     A felhasználónak futtatnia kell a `Merkava_Data_Miner_v1.0.mq5`-öt egy kiválasztott devizapár élő chartján (a MetaTrader felületén, **nem** a Strategy Testerben), és leellenőrizni, hogy a létrejövő CSV (`Files/BlackBox/MINER...csv`) valóban tartalmazza-e a visszamenőleges indikátor-tick adatokat.
 2.  **ML Ops Integráció (Python / HMM):**
