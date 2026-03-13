@@ -16,12 +16,12 @@
 #include <Trade\PositionInfo.mqh>
 #include <AccountInfo.mqh>
 
-#include "../Indicators/FireControl_v2_25.mqh"
-#include "../Indicators/PanelControl_v2_23.mqh"
-#include "../Indicators/PhysicsEngine.mqh"
-#include "../Indicators/NavSystem_v2_22.mqh"
-#include "../Indicators/BlackBox_v2_10.mqh"
-#include "../Indicators/ProfitManagement_v2_19.mqh"
+#include "../Indicators/Indicators/FireControl_v2_25.mqh"
+#include "../Indicators/Indicators/PanelControl_v2_23.mqh"
+#include "../Indicators/Indicators/PhysicsEngine.mqh"
+#include "../Indicators/Indicators/NavSystem_v2_22.mqh"
+#include "../Indicators/Indicators/BlackBox_v2_10.mqh"
+#include "../Indicators/Indicators/ProfitManagement_v2_19.mqh"
 
 CTrade        m_trade;
 CSymbolInfo   m_symbol;

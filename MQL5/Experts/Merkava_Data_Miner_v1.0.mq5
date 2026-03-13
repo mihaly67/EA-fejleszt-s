@@ -8,8 +8,8 @@
 #property strict
 
 #include <Trade\SymbolInfo.mqh>
-#include "../Indicators/NavSystem_v2_22.mqh"
-#include "../Indicators/BlackBox_v2_10.mqh"
+#include "../Indicators/Indicators/NavSystem_v2_22.mqh"
+#include "../Indicators/Indicators/BlackBox_v2_10.mqh"
 
 //--- Inputs
 input datetime      InpStartDate         = D'2026.01.01 00:00:00'; // Start Date for Mining
