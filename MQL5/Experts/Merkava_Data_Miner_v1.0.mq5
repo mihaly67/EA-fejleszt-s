@@ -104,11 +104,6 @@ void OnTick()
 
    PrintFormat("📥 Downloaded %d ticks. Processing...", count);
 
-   // We need indicator data. Because indicators in MT5 are array series tied to bars,
-   // aligning pure ticks perfectly with historical indicator buffers is complex without
-   // running in Strategy Tester.
-   // For a live script, we approximate by fetching the 1-minute bar corresponding to the tick's time.
-
    int last_processed_pct = -1;
 
    for(int i = 0; i < count; i++) {
@@ -121,39 +116,52 @@ void OnTick()
            last_processed_pct = pct;
        }
 
-       // Find the bar index for this tick's time
-       int bar_idx = iBarShift(_Symbol, _Period, tick_time, true);
-       if(bar_idx < 0) continue; // Skip if no bar data matches
-
-       // Fetch indicator data at this specific historical bar index
-       m_nav_system.UpdateAtShift(bar_idx);
+       // We pass the historical tick to Refresh, simulating live feed for indicators
+       m_nav_system.Refresh(_Symbol, ticks[i]);
 
        double bid = ticks[i].bid;
        double ask = ticks[i].ask;
        double spread = (ask - bid) / _Point;
-       double bid_vol = 0; // Not available in all tick data
-       double ask_vol = 0;
+       long bid_vol = 0; // Not available in all tick data
+       long ask_vol = 0;
+
+       double pulse = m_nav_system.GetPulse();
+       double macd = m_nav_system.GetHybridMACD();
+       double mfi = m_nav_system.GetFlowMFI();
+       double delta = m_nav_system.GetFlowDelta();
+       double roc = m_nav_system.GetFlowROC();
+
+       double mp = m_nav_system.GetMicP(); double mr = m_nav_system.GetMicR(); double ms = m_nav_system.GetMicS();
+       double sp = m_nav_system.GetSecP(); double sr = m_nav_system.GetSecR(); double ss = m_nav_system.GetSecS();
+       double tp = m_nav_system.GetTerP(); double tr = m_nav_system.GetTerR(); double ts = m_nav_system.GetTerS();
+
+       double ema25 = m_nav_system.GetTrendFast();
+       double ema50 = m_nav_system.GetTrendMedium();
+       double ema150 = m_nav_system.GetTrendSlow();
+       double ema300 = m_nav_system.GetTrendSuper();
+
+       double wpr = m_nav_system.GetWPR();
+       double stoch = m_nav_system.GetStochK();
+       double rsi = m_nav_system.GetRSI();
 
        // Write to CSV - passing dummy data for trading metrics
-       m_black_box.LogTick(
-           tick_time, ticks[i].time_msc, "MINER", "OBSERVATION", "NONE",
+       m_black_box.RecordTick(
+           ticks[i].time_msc, "MINER", 0, "NONE",
            bid, ask, spread, bid_vol, ask_vol,
            0, 0, 0, 0, // OHLC (handled internally or zeroed)
-           0, 0, 0, // RSI, Vel, Acc
-           m_nav_system.GetMomentumPulse().MACD,
-           m_nav_system.GetMomentumPulse().DFCurve,
-           m_nav_system.GetHybridFlow().MFI,
-           m_nav_system.GetHybridFlow().ROC,
-           m_nav_system.GetHybridFlow().Delta,
-           m_nav_system.GetContext().mic_p, m_nav_system.GetContext().mic_r, m_nav_system.GetContext().mic_s,
-           m_nav_system.GetContext().sec_p, m_nav_system.GetContext().sec_r, m_nav_system.GetContext().sec_s,
-           m_nav_system.GetContext().ter_p, m_nav_system.GetContext().ter_r, m_nav_system.GetContext().ter_s,
-           m_nav_system.GetContext().ema_25, m_nav_system.GetContext().ema_50,
-           m_nav_system.GetContext().ema_150, m_nav_system.GetContext().ema_300,
-           m_nav_system.GetHybridMomentum().WPR, m_nav_system.GetHybridMomentum().Stoch_K,
+           rsi, 0, 0, // RSI, Vel, Acc
+           macd, pulse,
+           mfi, roc, delta,
+           mp, mr, ms,
+           sp, sr, ss,
+           tp, tr, ts,
+           ema25, ema50, ema150, ema300,
+           wpr, stoch,
            0, // Ping
-           0, 0, 0, 0, 0, 0, // Acc Stats
-           0, "NONE", 0, "NONE", "MINER", "EXTRACTED"
+           0, 0, 0, // Acc Stats (Balance, Margin, Pct)
+           0, 0, 0, // PL Stats
+           0, "NONE", 0, // Position info
+           "NONE", "MINER", "EXTRACTED"
        );
    }
 
