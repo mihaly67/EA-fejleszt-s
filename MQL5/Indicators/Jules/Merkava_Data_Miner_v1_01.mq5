@@ -12,8 +12,8 @@
 #include "../Indicators/DataMiner_BlackBox_v1_00.mqh"
 
 //--- Inputs
-input datetime InpStartDate   = D'2026.01.01 00:00:00'; // Start Date for Mining
-input datetime InpEndDate     = D'2026.03.12 23:59:59'; // End Date for Mining
+input datetime InpStartDate   = D'2024.01.01 00:00:00'; // Start Date for Mining
+input datetime InpEndDate     = D'2028.12.31 23:59:59'; // End Date for Mining
 input string   InpIndPath     = "Jules\\"; // Indicators Path
 input string   InpContextPath = "Jules\\HybridContextIndicator_v3.28";
 
