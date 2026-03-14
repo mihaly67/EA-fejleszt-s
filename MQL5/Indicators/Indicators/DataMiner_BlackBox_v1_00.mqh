@@ -29,7 +29,7 @@ public:
 
       // Unified Headers:
       // Standard -> Physics -> Pulse -> Flow -> Context (13) -> Momentum (2) -> Account
-      m_headers = "Time,TickMSC,Bid,Ask,Spread,BidVol,AskVol," +
+      m_headers = "Time,TickMSC,Bid,Ask,Spread," +
                   "Bar_Open,Bar_High,Bar_Low,Bar_Close,RSI,Velocity,Acceleration," +
                   "Hybrid_MACD,Hybrid_DFCurve," +
                   "Flow_MFI,Flow_ROC,Flow_Delta," +
@@ -82,7 +82,6 @@ public:
    void RecordTick(
       long tick_time_msc, // Master Source of Truth (Epoch MS)
       double bid, double ask, double spread,
-      long bid_vol, long ask_vol,
       double b_open, double b_high, double b_low, double b_close,
       double rsi, double velocity, double accel,
       double h_macd, double h_dfcurve,
@@ -101,7 +100,7 @@ public:
       string time_str = TimeToString(time_sec, TIME_DATE|TIME_SECONDS) + StringFormat(".%03d", ms);
 
       string row = StringFormat(
-         "%s,%I64d,%.5f,%.5f,%.1f,%d,%d," +
+         "%s,%I64d,%.5f,%.5f,%.1f," +
          "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f," +
          "%.5f,%.5f," +
          "%.3f,%.3f,%.3f," +
@@ -109,7 +108,7 @@ public:
          "%.3f,%.3f," + // Momentum
          "%I64d", // Ping_MS
 
-         time_str, tick_time_msc, bid, ask, spread, bid_vol, ask_vol,
+         time_str, tick_time_msc, bid, ask, spread,
          b_open, b_high, b_low, b_close, rsi, velocity, accel,
          h_macd, h_dfcurve,
          f_mfi, f_roc, f_delta,
