@@ -53,7 +53,7 @@ public:
 
       m_filename = "Merkava_" + symbol + "_" + version + "_" + date + "_" + time + ".csv";
 
-      m_file_handle = FileOpen(m_filename, FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
+      m_file_handle = FileOpen(m_filename, FILE_WRITE|FILE_TXT|FILE_ANSI, ",");
 
       if(m_file_handle == INVALID_HANDLE)
       {
@@ -63,6 +63,7 @@ public:
       }
 
       FileWrite(m_file_handle, m_headers);
+      FileFlush(m_file_handle);
       m_is_active = true;
       Print("BlackBox v2.10 Recording to: ", m_filename);
       return true;
