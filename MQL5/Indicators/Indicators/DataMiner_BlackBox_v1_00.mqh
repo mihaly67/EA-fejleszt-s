@@ -119,6 +119,6 @@ public:
       );
 
       FileWrite(m_file_handle, row);
-      FileFlush(m_file_handle); // Restored for live stream processing
+      // FileFlush(m_file_handle); // Removed for bulk historical extraction speed
    }
 };
