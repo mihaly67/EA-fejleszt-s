@@ -8,12 +8,10 @@
 #property strict
 
 #include <Trade\SymbolInfo.mqh>
-#include "../Indicators/DataMiner_NavSystem_v1_00.mqh"
-#include "../Indicators/DataMiner_BlackBox_v1_00.mqh"
+#include "../../Indicators/Indicators/DataMiner_NavSystem_v1_00.mqh"
+#include "../../Indicators/Indicators/DataMiner_BlackBox_v1_00.mqh"
 
 //--- Inputs
-input datetime InpStartDate   = D'2026.03.09 00:00:00'; // Start Date for Mining
-input datetime InpEndDate     = D'2026.03.13 23:59:59'; // End Date for Mining
 input string   InpIndPath     = "Jules\\"; // Indicators Path
 input string   InpContextPath = "Jules\\HybridContextIndicator_v3.28";
 
@@ -65,14 +63,17 @@ CDataMiner_NavSystem m_nav_system;
 CDataMiner_BlackBox  m_black_box;
 
 //--- Global State
-bool g_mining_done = false;
+double g_last_price = 0;
+double g_velocity = 0, g_acceleration = 0;
+long g_last_tick_msc = 0;
+long g_ticks_processed = 0;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
 int OnInit()
 {
-    Print("🚀 Merkava Data Miner v1.01 Initializing (Historical EA Mode)...");
+    Print("🚀 Merkava Data Miner v1.01 Initializing (Strategy Tester EA Mode)...");
 
     if(!m_symbol.Name(_Symbol)) return INIT_FAILED;
     m_symbol.RefreshRates();
@@ -113,9 +114,9 @@ int OnInit()
         return INIT_FAILED;
     }
 
-    m_black_box.Initialize(_Symbol, "MINER_v1.01");
+    m_black_box.Initialize(_Symbol, "MINER_TESTER_v1.01");
 
-    Print("✅ Miner Ready. Starting Historical Extraction in OnTick...");
+    Print("✅ Miner Ready. Standing by for Strategy Tester ticks...");
     return(INIT_SUCCEEDED);
 }
 
@@ -126,111 +127,88 @@ void OnDeinit(const int reason)
 {
     m_nav_system.Release();
     m_black_box.CloseLog();
-    Print("🛑 Miner Deinitialized.");
+    PrintFormat("🛑 Miner Deinitialized. Total ticks processed: %I64d", g_ticks_processed);
 }
 
 //+------------------------------------------------------------------+
-//| Expert tick function (Active Market Extraction)                  |
+//| Expert tick function (Strategy Tester Real-Time Evaluation)      |
 //+------------------------------------------------------------------+
 void OnTick()
 {
-    if(g_mining_done) return;
+    MqlTick current_tick;
+    if(!SymbolInfoTick(_Symbol, current_tick)) return;
 
-    Print("⛏️ Commencing Historical Tick Data Mining from ", TimeToString(InpStartDate), " to ", TimeToString(InpEndDate));
+    // Ensure new tick by timestamp (prevent duplicating same tick in fast markets)
+    if(current_tick.time_msc <= g_last_tick_msc) return;
 
-    MqlTick ticks[];
-    int count = CopyTicksRange(_Symbol, ticks, COPY_TICKS_ALL, (ulong)InpStartDate * 1000, (ulong)InpEndDate * 1000);
+    // Use shift 0 (current) to get the true tick-level indicator values as they form in real-time in the Tester
+    m_nav_system.Refresh(_Symbol, current_tick, 0);
 
-    if(count <= 0) {
-        PrintFormat("❌ Failed to download ticks (Count: %d). Error: %d. Check Date Range or Symbol History!", count, GetLastError());
-        g_mining_done = true;
-        ExpertRemove();
-        return;
+    double bid = current_tick.bid;
+    double ask = current_tick.ask;
+    double spread = (ask - bid) / _Point;
+
+    double pulse = m_nav_system.GetPulse();
+    double macd = m_nav_system.GetHybridMACD();
+
+    double mfi = m_nav_system.GetFlowMFI();
+    double delta = m_nav_system.GetFlowDelta();
+    double roc = m_nav_system.GetFlowROC();
+
+    double ema25 = m_nav_system.GetTrendFast();
+    double ema50 = m_nav_system.GetTrendMedium();
+    double ema150 = m_nav_system.GetTrendSlow();
+    double ema300 = m_nav_system.GetTrendSuper();
+
+    double wpr = m_nav_system.GetWPR();
+    double stoch = m_nav_system.GetStochK();
+    double rsi = m_nav_system.GetRSI();
+
+    // Basic Physics calculation using real-time milliseconds difference
+    if (g_last_price > 0) {
+        double time_diff_sec = (current_tick.time_msc - g_last_tick_msc) / 1000.0;
+        if (time_diff_sec > 0) {
+            double new_velocity = (bid - g_last_price) / time_diff_sec;
+            g_acceleration = new_velocity - g_velocity;
+            g_velocity = new_velocity;
+        }
+    } else {
+        g_velocity = 0;
+        g_acceleration = 0;
+    }
+    g_last_price = bid;
+
+    // Fetch OHLC
+    double b_open = 0, b_high = 0, b_low = 0, b_close = current_tick.bid;
+    MqlRates rates[1];
+    if (CopyRates(_Symbol, PERIOD_CURRENT, 0, 1, rates) > 0) {
+        b_open = rates[0].open;
+        b_high = rates[0].high;
+        b_low = rates[0].low;
     }
 
-    PrintFormat("📥 Downloaded %d ticks. Processing...", count);
+    long ping_ms = 0;
+    if (g_last_tick_msc > 0) ping_ms = current_tick.time_msc - g_last_tick_msc;
 
-    int last_processed_pct = -1;
-    double last_price = 0;
-    double velocity = 0, acceleration = 0;
+    // Write to CSV
+    m_black_box.RecordTick(
+        current_tick.time_msc,
+        bid, ask, spread,
+        b_open, b_high, b_low, b_close,
+        rsi, g_velocity, g_acceleration,
+        macd, pulse,
+        mfi, roc, delta,
+        ema25, ema50, ema150, ema300,
+        wpr, stoch,
+        ping_ms
+    );
 
-    for(int i = 0; i < count; i++) {
-        datetime tick_time = (datetime)(ticks[i].time_msc / 1000);
+    g_last_tick_msc = current_tick.time_msc;
+    g_ticks_processed++;
 
-        // Optimization: Print progress every 10%
-        int pct = (int)(((double)i / count) * 100);
-        if(pct != last_processed_pct && pct % 10 == 0) {
-            PrintFormat("⏳ Processing: %d%%", pct);
-            last_processed_pct = pct;
-        }
-
-        // We pass the historical tick to Refresh, simulating live feed for indicators (shift parameter is calculated inside)
-        m_nav_system.Refresh(_Symbol, ticks[i], tick_time);
-
-        double bid = ticks[i].bid;
-        double ask = ticks[i].ask;
-        double spread = (ask - bid) / _Point;
-
-        double pulse = m_nav_system.GetPulse();
-        double macd = m_nav_system.GetHybridMACD();
-
-        double mfi = m_nav_system.GetFlowMFI();
-        double delta = m_nav_system.GetFlowDelta();
-        double roc = m_nav_system.GetFlowROC();
-
-        double ema25 = m_nav_system.GetTrendFast();
-        double ema50 = m_nav_system.GetTrendMedium();
-        double ema150 = m_nav_system.GetTrendSlow();
-        double ema300 = m_nav_system.GetTrendSuper();
-
-        double wpr = m_nav_system.GetWPR();
-        double stoch = m_nav_system.GetStochK();
-        double rsi = m_nav_system.GetRSI();
-
-        // Basic Physics calculation
-        if (last_price > 0 && i > 0 && ticks[i].time_msc > ticks[i-1].time_msc) {
-            double new_velocity = (bid - last_price) / (ticks[i].time_msc - ticks[i-1].time_msc) * 1000.0;
-            acceleration = new_velocity - velocity;
-            velocity = new_velocity;
-        } else {
-            velocity = 0;
-            acceleration = 0;
-        }
-        last_price = bid;
-
-        // Fetch OHLC
-        double b_open = 0, b_high = 0, b_low = 0, b_close = 0;
-        MqlRates rates[1];
-        if (CopyRates(_Symbol, PERIOD_CURRENT, tick_time, 1, rates) > 0) {
-            b_open = rates[0].open;
-            b_high = rates[0].high;
-            b_low = rates[0].low;
-            b_close = rates[0].close;
-        }
-
-        long ping_ms = 0;
-        if (i > 0) ping_ms = ticks[i].time_msc - ticks[i-1].time_msc;
-
-        // Write to CSV
-        m_black_box.RecordTick(
-            ticks[i].time_msc,
-            bid, ask, spread,
-            b_open, b_high, b_low, b_close,
-            rsi, velocity, acceleration,
-            macd, pulse,
-            mfi, roc, delta,
-            ema25, ema50, ema150, ema300,
-            wpr, stoch,
-            ping_ms
-        );
+    // Optional progress tracking in tester journal
+    if(g_ticks_processed % 100000 == 0) {
+        PrintFormat("⏳ Extracted %I64d ticks...", g_ticks_processed);
     }
-
-    PrintFormat("✅ Mining Complete. All %d ticks logged. CSV saved directly in the terminal's Files/ directory.", count);
-
-    // Explicit final flush to disk
-    m_black_box.CloseLog();
-
-    g_mining_done = true;
-    ExpertRemove(); // Auto detach from chart
 }
 //+------------------------------------------------------------------+
