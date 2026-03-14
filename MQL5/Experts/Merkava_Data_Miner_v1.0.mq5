@@ -8,8 +8,8 @@
 #property strict
 
 #include <Trade\SymbolInfo.mqh>
-#include "../Indicators/Indicators/NavSystem_v2_22.mqh"
-#include "../Indicators/Indicators/BlackBox_v2_10.mqh"
+#include "../Indicators/NavSystem_v2_22.mqh"
+#include "../Indicators/BlackBox_v2_10.mqh"
 
 //--- Inputs
 input datetime      InpStartDate         = D'2026.01.01 00:00:00'; // Start Date for Mining
@@ -97,8 +97,10 @@ void OnTick()
    MqlTick ticks[];
    int count = CopyTicksRange(_Symbol, ticks, COPY_TICKS_ALL, (ulong)InpStartDate * 1000, (ulong)InpEndDate * 1000);
 
-   if(count == -1) {
-       Print("❌ Failed to download ticks. Error: ", GetLastError());
+   if(count <= 0) {
+       PrintFormat("❌ Failed to download ticks (Count: %d). Error: %d. Check Date Range or Symbol History!", count, GetLastError());
+       g_mining_done = true;
+       ExpertRemove();
        return;
    }
 
@@ -165,7 +167,7 @@ void OnTick()
        );
    }
 
-   Print("✅ Mining Complete. CSV saved in Files/BlackBox/ directory.");
+   Print("✅ Mining Complete. CSV saved directly in the terminal's Files/ directory.");
    g_mining_done = true;
    ExpertRemove(); // Auto detach from chart
 }
