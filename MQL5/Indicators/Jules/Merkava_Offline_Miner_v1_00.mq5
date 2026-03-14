@@ -20,34 +20,34 @@ input datetime InpStartDate = D'2026.01.01 00:00'; // Start Date for Data Extrac
 input datetime InpEndDate   = D'2026.03.01 00:00'; // End Date for Data Extraction
 
 // Pulse Params
-input int h_fast = 12;
-input int h_slow = 26;
-input int h_bb_per = 20;
-input double h_bb_dev = 2.0;
-input ENUM_MA_METHOD h_bb_meth = MODE_SMA;
-input int h_kelt_per = 20;
-input double h_kelt_dev = 1.5;
-input int h_kelt_atr = 20;
-input ENUM_MA_METHOD h_kelt_meth = MODE_SMA;
-input double h_macd_scale = 100.0;
-input int h_shift = 0;
-input double h_scale = 2.0;
-input bool h_auto = true;
-input int h_lookback = 100;
-input double h_divisor = 10.0;
+input int h_fast_inp = 12;
+input int h_slow_inp = 26;
+input int h_bb_per_inp = 20;
+input double h_bb_dev_inp = 2.0;
+input ENUM_MA_METHOD h_bb_meth_inp = MODE_SMA;
+input int h_kelt_per_inp = 20;
+input double h_kelt_dev_inp = 1.5;
+input int h_kelt_atr_inp = 20;
+input ENUM_MA_METHOD h_kelt_meth_inp = MODE_SMA;
+input double h_macd_scale_inp = 100.0;
+input int h_shift_inp = 0;
+input double h_scale_inp = 2.0;
+input bool h_auto_inp = true;
+input int h_lookback_inp = 100;
+input double h_divisor_inp = 10.0;
 
 // Flow Params
-input bool _f_fixed = false;
-input double _f_min = -10.0;
-input double _f_max = 110.0;
-input int _f_mfi = 14;
-input bool _f_vroc = true;
-input int _f_vroc_p = 14;
-input bool _f_approx = true;
-input int _f_smooth = 3;
-input int _f_norm = 100;
-input double _f_scale_f = 2.0;
-input double _f_vis = 1.0;
+input bool _f_fixed_inp = false;
+input double _f_min_inp = -10.0;
+input double _f_max_inp = 110.0;
+input int _f_mfi_inp = 14;
+input bool _f_vroc_inp = true;
+input int _f_vroc_p_inp = 14;
+input bool _f_approx_inp = true;
+input int _f_smooth_inp = 3;
+input int _f_norm_inp = 100;
+input double _f_scale_f_inp = 2.0;
+input double _f_vis_inp = 1.0;
 
 // Context Params
 input bool c_show_p = true;
@@ -69,7 +69,7 @@ input int m_stoch_d = 3;
 //--- Global Objects
 CDataMiner_NavSystem m_nav;
 CDataMiner_BlackBox  m_blackbox;
-CPhysicsEngine       m_physics;
+PhysicsEngine       m_physics;
 
 //+------------------------------------------------------------------+
 //| Script program start function                                    |
@@ -94,12 +94,12 @@ void OnStart()
     bool nav_init = m_nav.Initialize(
         _Symbol, PERIOD_CURRENT,
         "Jules\\Jules_Hybrid_Momentum_Pulse_v1.05.ex5",
-        h_fast, h_slow, h_bb_per, h_bb_dev, h_bb_meth,
-        h_kelt_per, h_kelt_dev, h_kelt_atr, h_kelt_meth,
-        h_macd_scale, h_shift, h_scale, h_auto, h_lookback, h_divisor,
+        h_fast_inp, h_slow_inp, h_bb_per_inp, h_bb_dev_inp, h_bb_meth_inp,
+        h_kelt_per_inp, h_kelt_dev_inp, h_kelt_atr_inp, h_kelt_meth_inp,
+        h_macd_scale_inp, h_shift_inp, h_scale_inp, h_auto_inp, h_lookback_inp, h_divisor_inp,
         "Jules\\HybridFlowIndicator_v1.126.ex5",
-        _f_fixed, _f_min, _f_max, _f_mfi, _f_vroc, _f_vroc_p,
-        _f_approx, _f_smooth, _f_norm, _f_scale_f, _f_vis,
+        _f_fixed_inp, _f_min_inp, _f_max_inp, _f_mfi_inp, _f_vroc_inp, _f_vroc_p_inp,
+        _f_approx_inp, _f_smooth_inp, _f_norm_inp, _f_scale_f_inp, _f_vis_inp,
         ctx, mom
     );
 
