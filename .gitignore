@@ -48,3 +48,8 @@ Knowledge_Base/Black_Ops/
 # SWAT RAG Database (FAISS)
 Knowledge_Base/SWAT_DB/
 SWAT_RAG_FAISS.zip
+
+# SWAT3 Info and Temporary Downloads
+ENVIRONMENT_SETUP/SWAT3_INFO/
+ENVIRONMENT_SETUP/SWAT3_INFO.zip
+ANALYSIS_TOOLS/ML_Ops/Gemini_ML_Research_Summary.txt
