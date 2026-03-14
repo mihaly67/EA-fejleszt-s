@@ -20,34 +20,34 @@ input datetime InpStartDate = D'2026.01.01 00:00'; // Start Date for Data Extrac
 input datetime InpEndDate   = D'2026.03.01 00:00'; // End Date for Data Extraction
 
 // Pulse Params
-input int h_fast_inp = 12;
-input int h_slow_inp = 26;
+input int h_fast_inp = 3;
+input int h_slow_inp = 6;
 input int h_bb_per_inp = 20;
 input double h_bb_dev_inp = 2.0;
-input ENUM_MA_METHOD h_bb_meth_inp = MODE_SMA;
+input ENUM_MA_METHOD h_bb_meth_inp = MODE_EMA;
 input int h_kelt_per_inp = 20;
 input double h_kelt_dev_inp = 1.5;
-input int h_kelt_atr_inp = 20;
-input ENUM_MA_METHOD h_kelt_meth_inp = MODE_SMA;
-input double h_macd_scale_inp = 100.0;
+input int h_kelt_atr_inp = 10;
+input ENUM_MA_METHOD h_kelt_meth_inp = MODE_EMA;
+input double h_macd_scale_inp = 4.0;
 input int h_shift_inp = 0;
-input double h_scale_inp = 2.0;
+input double h_scale_inp = 1.0;
 input bool h_auto_inp = true;
 input int h_lookback_inp = 100;
-input double h_divisor_inp = 10.0;
+input double h_divisor_inp = 7.0;
 
 // Flow Params
 input bool _f_fixed_inp = false;
-input double _f_min_inp = -10.0;
-input double _f_max_inp = 110.0;
-input int _f_mfi_inp = 14;
+input double _f_min_inp = -100.0;
+input double _f_max_inp = 200.0;
+input int _f_mfi_inp = 5;
 input bool _f_vroc_inp = true;
-input int _f_vroc_p_inp = 14;
+input int _f_vroc_p_inp = 5;
 input bool _f_approx_inp = true;
 input int _f_smooth_inp = 3;
 input int _f_norm_inp = 100;
-input double _f_scale_f_inp = 2.0;
-input double _f_vis_inp = 1.0;
+input double _f_scale_f_inp = 50.0;
+input double _f_vis_inp = 3.0;
 
 // Context Params
 input bool c_show_p = true;
@@ -55,16 +55,16 @@ input bool c_show_t = true;
 input int c_max_h = 2000;
 input bool c_show_f = false;
 input int c_fibo_h = 500;
-input bool c_m_use = true; input int c_m_depth = 5; input int c_m_dev = 5; input int c_m_back = 3; input ENUM_LINE_STYLE c_m_style = STYLE_DOT; input int c_m_width = 1; input color c_m_c1 = clrGray; input color c_m_c2 = clrDarkGray;
-input bool c_s_use = true; input int c_s_depth = 12; input int c_s_dev = 5; input int c_s_back = 3; input ENUM_LINE_STYLE c_s_style = STYLE_DASH; input int c_s_width = 2; input color c_s_c1 = clrSilver; input color c_s_c2 = clrDimGray;
-input bool c_t_use = true; input int c_t_depth = 36; input int c_t_dev = 5; input int c_t_back = 3; input ENUM_LINE_STYLE c_t_style = STYLE_SOLID; input int c_t_width = 3; input color c_t_c1 = clrWhite; input color c_t_c2 = clrWhite;
+input bool c_m_use = true; input int c_m_depth = 3; input int c_m_dev = 5; input int c_m_back = 3; input ENUM_LINE_STYLE c_m_style = STYLE_DOT; input int c_m_width = 1; input color c_m_c1 = clrRed; input color c_m_c2 = clrGreen;
+input bool c_s_use = true; input int c_s_depth = 4; input int c_s_dev = 5; input int c_s_back = 3; input ENUM_LINE_STYLE c_s_style = STYLE_DASHDOT; input int c_s_width = 1; input color c_s_c1 = clrRed; input color c_s_c2 = clrGreen;
+input bool c_t_use = true; input int c_t_depth = 7; input int c_t_dev = 5; input int c_t_back = 3; input ENUM_LINE_STYLE c_t_style = STYLE_SOLID; input int c_t_width = 1; input color c_t_c1 = clrRed; input color c_t_c2 = clrGreen;
 input int c_tr_f = 25; input int c_tr_m = 50; input int c_tr_s = 150; input int c_tr_sup = 300; input ENUM_MA_METHOD c_tr_meth = MODE_EMA;
 
 // Momentum Params
-input int m_wpr_per = 14;
-input int m_stoch_k = 14;
-input int m_stoch_slow = 3;
-input int m_stoch_d = 3;
+input int m_wpr_per = 5;
+input int m_stoch_k = 3;
+input int m_stoch_slow = 2;
+input int m_stoch_d = 2;
 
 //--- Global Objects
 CDataMiner_NavSystem m_nav;
@@ -190,7 +190,7 @@ void OnStart()
         m_blackbox.RecordTick(
             current_tick.time_msc,
             current_tick.bid, current_tick.ask, spread,
-            (long)current_tick.volume, (long)current_tick.volume, // Approximation for offline volume
+            // Removed BidVol, AskVol per user request
             b_open, b_high, b_low, b_close,
             rsi, velocity, acceleration,
             h_macd, h_dfcurve,
