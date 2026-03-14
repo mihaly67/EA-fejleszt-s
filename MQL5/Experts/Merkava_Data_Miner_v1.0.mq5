@@ -71,24 +71,18 @@ int OnInit()
 
    m_black_box.Initialize(_Symbol, "MINER_v1.0");
 
-   Print("✅ Miner Ready. Starting Data Extraction in OnTick...");
+   Print("✅ Miner Ready. Starting Offline Data Extraction (Weekend Safe)...");
+
+   // --- BEGIN EXTRACTION IN ONINIT ---
+   ExtractHistoricalData();
+
    return(INIT_SUCCEEDED);
 }
 
 //+------------------------------------------------------------------+
-//| Expert deinitialization function                                 |
+//| Historical Data Extraction Logic (Runs instantly on attach)      |
 //+------------------------------------------------------------------+
-void OnDeinit(const int reason)
-{
-   m_nav_system.Release();
-   m_black_box.CloseLog();
-   Print("🛑 Miner Deinitialized.");
-}
-
-//+------------------------------------------------------------------+
-//| Expert tick function                                             |
-//+------------------------------------------------------------------+
-void OnTick()
+void ExtractHistoricalData()
 {
    if(g_mining_done) return;
 
@@ -170,5 +164,23 @@ void OnTick()
    PrintFormat("✅ Mining Complete. All %d ticks logged. CSV saved directly in the terminal's Files/ directory.", count);
    g_mining_done = true;
    ExpertRemove(); // Auto detach from chart
+}
+
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+   m_nav_system.Release();
+   m_black_box.CloseLog();
+   Print("🛑 Miner Deinitialized.");
+}
+
+//+------------------------------------------------------------------+
+//| Expert tick function (Not used for historical mining anymore)    |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+   // Tick processing is moved to OnInit -> ExtractHistoricalData to support offline/weekend mining.
 }
 //+------------------------------------------------------------------+
