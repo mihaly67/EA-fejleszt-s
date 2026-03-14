@@ -1,0 +1,14 @@
+=== GITHUB REPO INDEXELÉSI TERV ===
+
+Fájl:  Colombo repos.jsonl
+Címke: Colombo repos
+--------------------------------------------------
+Fájl:  Black_Ops.jsonl
+Címke: Black_Ops
+--------------------------------------------------
+Fájl:  Thief repos.jsonl
+Címke: Thief repos
+--------------------------------------------------
+Fájl:  ML_Ops.jsonl
+Címke: ML_Ops
+--------------------------------------------------

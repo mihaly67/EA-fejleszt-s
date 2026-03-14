@@ -167,7 +167,7 @@ void OnTick()
        );
    }
 
-   Print("✅ Mining Complete. CSV saved directly in the terminal's Files/ directory.");
+   PrintFormat("✅ Mining Complete. All %d ticks logged. CSV saved directly in the terminal's Files/ directory.", count);
    g_mining_done = true;
    ExpertRemove(); // Auto detach from chart
 }
