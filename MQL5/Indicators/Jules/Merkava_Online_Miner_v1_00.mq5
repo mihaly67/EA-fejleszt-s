@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                     Merkava_Offline_Miner_v1_00.mq5 |
+//|                                      Merkava_Online_Miner_v1_00.mq5 |
 //|                                    Copyright 2026, Jules (Mimic) |
 //|                                             For Project Merkava  |
 //|                                                   Version 1.00   |
@@ -16,9 +16,6 @@
 #include "../Indicators/PhysicsEngine.mqh"
 
 //--- Inputs
-input datetime InpStartDate = D'2026.01.01 00:00'; // Start Date for Data Extraction
-input datetime InpEndDate   = D'2026.03.01 00:00'; // End Date for Data Extraction
-
 // Pulse Params
 input int h_fast_inp = 3;
 input int h_slow_inp = 6;
@@ -69,14 +66,14 @@ input int m_stoch_d = 2;
 //--- Global Objects
 CDataMiner_NavSystem m_nav;
 CDataMiner_BlackBox  m_blackbox;
-PhysicsEngine       m_physics;
+PhysicsEngine        m_physics;
 
 //+------------------------------------------------------------------+
 //| Script program start function                                    |
 //+------------------------------------------------------------------+
 void OnStart()
 {
-    Print("Merkava Offline Miner v1.00 Starting...");
+    Print("Merkava Online Miner v1.00 Starting...");
 
     // 1. Initialize NavSystem
     ContextParams ctx;
@@ -109,101 +106,92 @@ void OnStart()
     }
 
     // 2. Initialize BlackBox
-    if(!m_blackbox.Initialize(_Symbol, "v1_00_Miner")) {
+    if(!m_blackbox.Initialize(_Symbol, "v1_00_LiveMiner")) {
         Print("Failed to initialize BlackBox.");
         return;
     }
 
-    // 3. Extract Ticks
-    MqlTick ticks[];
-    long start_msc = (long)InpStartDate * 1000;
-    long end_msc   = (long)InpEndDate * 1000;
-
-    PrintFormat("Fetching ticks for %s from %s to %s", _Symbol, TimeToString(InpStartDate), TimeToString(InpEndDate));
-
-    int total_ticks = CopyTicksRange(_Symbol, ticks, COPY_TICKS_ALL, start_msc, end_msc);
-
-    if (total_ticks <= 0) {
-        Print("No historical ticks found in the specified range. Exiting.");
-        return;
-    }
-
-    PrintFormat("Successfully loaded %d ticks. Starting extraction loop...", total_ticks);
+    Print("Successfully connected. Waiting for live ticks (Crypto). Press STOP to end script.");
 
     // Physics Engine variables
     double last_price = 0;
     double velocity = 0, acceleration = 0;
+    long last_tick_msc = 0;
 
-    // 4. Processing Loop
-    for(int i = 0; i < total_ticks; i++) {
-        MqlTick current_tick = ticks[i];
+    // 4. Infinite Live Processing Loop
+    while(!IsStopped()) {
+        MqlTick current_tick;
+        if(SymbolInfoTick(_Symbol, current_tick)) {
 
-        // Skip ticks without bid price
-        if(current_tick.bid <= 0) continue;
+            // Check if it's a completely new tick based on milliseconds timestamp
+            if(current_tick.time_msc > last_tick_msc && current_tick.bid > 0) {
 
-        // Pass tick and its specific historical time to NavSystem
-        m_nav.Refresh(_Symbol, current_tick, current_tick.time);
+                // Live tick: shift = 0 in Refresh, extracting exact live indicator value matching this tick
+                m_nav.Refresh(_Symbol, current_tick, 0);
 
-        // Fetch values
-        double rsi = m_nav.GetRSI();
-        double h_macd = m_nav.GetHybridMACD();
-        double h_dfcurve = m_nav.GetPulse();
-        double f_mfi = m_nav.GetFlowMFI();
-        double f_roc = m_nav.GetFlowROC();
-        double f_delta = m_nav.GetFlowDelta();
+                // Fetch values
+                double rsi = m_nav.GetRSI();
+                double h_macd = m_nav.GetHybridMACD();
+                double h_dfcurve = m_nav.GetPulse();
+                double f_mfi = m_nav.GetFlowMFI();
+                double f_roc = m_nav.GetFlowROC();
+                double f_delta = m_nav.GetFlowDelta();
 
-        double ctx_ema_25 = m_nav.GetTrendFast();
-        double ctx_ema_50 = m_nav.GetTrendMedium();
-        double ctx_ema_150 = m_nav.GetTrendSlow();
-        double ctx_ema_300 = m_nav.GetTrendSuper();
+                double ctx_ema_25 = m_nav.GetTrendFast();
+                double ctx_ema_50 = m_nav.GetTrendMedium();
+                double ctx_ema_150 = m_nav.GetTrendSlow();
+                double ctx_ema_300 = m_nav.GetTrendSuper();
 
-        double wpr = m_nav.GetWPR();
-        double stoch_k = m_nav.GetStochK();
+                double wpr = m_nav.GetWPR();
+                double stoch_k = m_nav.GetStochK();
 
-        // Basic Physics calculation
-        if (last_price > 0 && current_tick.time_msc > ticks[i-1].time_msc) {
-            double new_velocity = (current_tick.bid - last_price) / (current_tick.time_msc - ticks[i-1].time_msc) * 1000.0;
-            acceleration = new_velocity - velocity;
-            velocity = new_velocity;
-        } else {
-            velocity = 0;
-            acceleration = 0;
+                // Basic Physics calculation
+                if (last_price > 0) {
+                    double time_diff_sec = (current_tick.time_msc - last_tick_msc) / 1000.0;
+                    if (time_diff_sec > 0) {
+                        double new_velocity = (current_tick.bid - last_price) / time_diff_sec;
+                        acceleration = new_velocity - velocity;
+                        velocity = new_velocity;
+                    }
+                } else {
+                    velocity = 0;
+                    acceleration = 0;
+                }
+
+                // Fetch Bar data
+                double b_open = 0, b_high = 0, b_low = 0, b_close = current_tick.bid;
+                MqlRates rates[1];
+                if (CopyRates(_Symbol, PERIOD_CURRENT, 0, 1, rates) > 0) {
+                    b_open = rates[0].open;
+                    b_high = rates[0].high;
+                    b_low = rates[0].low;
+                }
+
+                double spread = (current_tick.ask - current_tick.bid) / _Point;
+
+                long ping_ms = 0;
+                if (last_tick_msc > 0) ping_ms = current_tick.time_msc - last_tick_msc;
+
+                m_blackbox.RecordTick(
+                    current_tick.time_msc,
+                    current_tick.bid, current_tick.ask, spread,
+                    b_open, b_high, b_low, b_close,
+                    rsi, velocity, acceleration,
+                    h_macd, h_dfcurve,
+                    f_mfi, f_roc, f_delta,
+                    ctx_ema_25, ctx_ema_50, ctx_ema_150, ctx_ema_300,
+                    wpr, stoch_k,
+                    ping_ms
+                );
+
+                last_price = current_tick.bid;
+                last_tick_msc = current_tick.time_msc;
+            }
         }
-        last_price = current_tick.bid;
 
-        // Fetch Bar data using current tick time
-        double b_open = 0, b_high = 0, b_low = 0, b_close = 0;
-        MqlRates rates[1];
-        if (CopyRates(_Symbol, PERIOD_CURRENT, current_tick.time, 1, rates) > 0) {
-            b_open = rates[0].open;
-            b_high = rates[0].high;
-            b_low = rates[0].low;
-            b_close = rates[0].close;
-        }
-
-        double spread = (current_tick.ask - current_tick.bid) / _Point;
-
-        // Simulating Ping using time difference between ticks (as a generic proxy for market latency/anomalies in offline mode)
-        long ping_ms = 0;
-        if (i > 0) ping_ms = current_tick.time_msc - ticks[i-1].time_msc;
-
-        m_blackbox.RecordTick(
-            current_tick.time_msc,
-            current_tick.bid, current_tick.ask, spread,
-            // Removed BidVol, AskVol per user request
-            b_open, b_high, b_low, b_close,
-            rsi, velocity, acceleration,
-            h_macd, h_dfcurve,
-            f_mfi, f_roc, f_delta,
-            ctx_ema_25, ctx_ema_50, ctx_ema_150, ctx_ema_300,
-            wpr, stoch_k,
-            ping_ms
-        );
-
-        if (i % 100000 == 0) {
-            PrintFormat("Processed %d / %d ticks (%.2f%%)", i, total_ticks, (double)i / total_ticks * 100.0);
-        }
+        // Yield CPU
+        Sleep(1);
     }
 
-    Print("Data Miner execution finished successfully.");
+    Print("Data Miner execution finished/stopped by user.");
 }
