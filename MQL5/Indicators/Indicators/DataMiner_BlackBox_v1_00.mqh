@@ -118,6 +118,6 @@ public:
       );
 
       FileWrite(m_file_handle, row);
-      // FileFlush(m_file_handle); // Removed to prevent massive I/O overhead on millions of ticks
+      FileFlush(m_file_handle); // Restored for live stream processing
    }
 };
