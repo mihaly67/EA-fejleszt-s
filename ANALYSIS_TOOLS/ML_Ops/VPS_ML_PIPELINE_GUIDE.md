@@ -1,47 +1,49 @@
 # 🚀 Merkava Néma Színház - MLOps Pipeline Útmutató (VPS)
 
-Ez a dokumentum a `Merkava_Data_Miner_v1.0` által gyűjtött (pl. XAUUSD 5 napos tick) adathalmazok CPU-only, 8GB RAM limitált Ubuntu VPS környezetben történő feldolgozásához készült.
+Ez a dokumentum a Merkava_Data_Miner_v1.0 által gyűjtött (pl. XAUUSD 5 napos tick) adathalmazok CPU-only, 8GB RAM limitált Ubuntu VPS környezetben történő feldolgozásához készült.
 
 ## 1. Könyvtárszerkezet a VPS-en
-A rendszert a GitHub repó `ANALYSIS_TOOLS/ML_Ops/` mappáján belül találod, de ha külön mozgatod a VPS-re, ez a struktúra a mérvadó:
+A VPS-en a munkakönyvtár neve Merkava_ML_Ops legyen. Hozd létre ezt a mappát, és másold be a repóban található ANALYSIS_TOOLS/ML_Ops mappa teljes tartalmát. A szerkezetnek pontosan így kell kinéznie:
 
-```text
-ML_Ops/
+Merkava_ML_Ops/
 ├── data/                    # IDE MÁSOLD a DataMiner CSV fájlokat (pl. XAUUSD_tick.csv)
 ├── models/
-│   ├── base_model.py        # Közös interfész (ne nyúlj hozzá)
-│   ├── isolation_forest.py  # Anomália detektor (Scikit-Learn)
-│   └── hmm_model.py         # Hidden Markov Model (bróker rezsimek azonosítása)
+│   ├── __init__.py
+│   ├── base_model.py
+│   ├── isolation_forest.py
+│   └── hmm_model.py
 ├── pipeline/
-│   └── data_loader.py       # RAM kímélő (chunkolt) adatbetöltő
+│   ├── __init__.py
+│   ├── data_loader.py
+│   ├── legacy_anomaly_detector.py
+│   └── legacy_data_loader_demo.py
 ├── tests/
-│   └── test_pipeline.py     # Keretrendszer egészségügyi ellenőrzése
+│   ├── __init__.py
+│   └── test_pipeline.py
 └── utils/
-    ├── monitor.py           # CPU/RAM védelmi modul
-    └── mock_data_generator.py # Csak szimulációhoz
-```
+    ├── __init__.py
+    ├── monitor.py
+    └── mock_data_generator.py
 
 ## 2. Rendszerkövetelmények (Függőségek telepítése)
-Mielőtt bármit futtatnál a VPS-en, frissítsd a Python környezeted a szükséges csomagokkal:
+Mielőtt bármit futtatnál a VPS-en, frissítsd a Python környezeted a szükséges csomagokkal. Lépj be a munkakönyvtárba:
 
-```bash
-# Lépj be a projekt mappájába
-cd ANALYSIS_TOOLS/ML_Ops/
+cd Merkava_ML_Ops/
 
-# Telepítsd a csomagokat
+Telepítsd a csomagokat:
+
 pip install pandas numpy scikit-learn hmmlearn psutil pytest
-```
 
 ## 3. Rendszer Tesztelése (Opcionális, de ajánlott)
-Mielőtt ráengeded az 1GB+ XAUUSD fájlt a gépre, futtasd le a beépített Pytest szimulációt, amely megnézi, hogy a 8GB RAM-os `DataLoader` és a modellek megfelelően lettek-e importálva:
+Mielőtt ráengeded az 1GB+ XAUUSD fájlt a gépre, futtasd le a beépített Pytest szimulációt, amely megnézi, hogy a 8GB RAM-os DataLoader és a modellek megfelelően lettek-e importálva. (Az alábbi parancsban az export/PYTHONPATH elengedhetetlen, hogy a Python megtalálja a modulokat).
 
-```bash
-PYTHONPATH="." pytest tests/
-```
-Ha 100%-os zöld "passed" eredményt kapsz, a keretrendszer működik.
+export PYTHONPATH=.
+pytest tests/
+
+Ha 100%-os zöld passed eredményt kapsz, a keretrendszer működik.
 
 ## 4. Futtatás a Nyers Adattal
-Létrehozhatsz a projekt gyökerében egy egyszerű Python fájlt (pl. `run_analysis.py`), amivel betöltöd az adatot és elindítod a profilozást. Íme egy példa sablon a futtatáshoz:
+Létrehozhatsz a Merkava_ML_Ops mappában egy egyszerű Python fájlt (pl. run_analysis.py néven), amivel betöltöd az adatot és elindítod a profilozást. Íme egy példa sablon a futtatáshoz (a "fájl_neve.csv" részt cseréld ki a saját adathalmazod nevére):
 
 ```python
 # run_analysis.py tartalma:
@@ -77,11 +79,10 @@ df_hmm = hmm_model.detect(df_hmm)
 print("\nKÉSZ! A vizsgálat lefutott. A toxikus periódusok megtalálhatók a df_hmm['BROKER_STATE'] oszlopban.")
 ```
 
-**Futtatás a parancssorból a VPS-en:**
-```bash
+Futtatás a parancssorból a VPS-en:
+
 python3 run_analysis.py
-```
 
 ## 5. Mire kell figyelni? (Fontos)
-* **Memória Limits (OOM):** A `utils/monitor.py` modul bele van építve a `data_loader.py`-ba. Ha aVPS eléri a 90% RAM terhelést, a folyamat figyelmeztetést dob (`KRITIKUS MEMÓRIA SZINT`) és leállítja a további beolvasást, hogy megvédje a VPS-t az összeomlástól (Out-Of-Memory).
-* **Zaj és Nyers Adat:** A HMM és az Isolation Forest modellek _nyers_ adatra vágynak, ahogy kérted. Semmilyen elsimítás nincs beállítva. A mikrosekundum (TickMSC) szintű különbségek, a Spread hirtelen kitágulása és a Ping laggolása a legfőbb indikátorok, melyek alapján az ML eldönti, tiszta-e a brókeri kapcsolat.
+* Memória Limits (OOM): A monitor.py modul bele van építve a data_loader.py-ba. Ha aVPS eléri a 90% RAM terhelést, a folyamat figyelmeztetést dob (KRITIKUS MEMÓRIA SZINT) és leállítja a további beolvasást, hogy megvédje a VPS-t az összeomlástól.
+* Zaj és Nyers Adat: A HMM és az Isolation Forest modellek nyers adatra vágynak, ahogy kérted. Semmilyen elsimítás nincs beállítva. A mikrosekundum (TickMSC) szintű különbségek, a Spread hirtelen kitágulása és a Ping laggolása a legfőbb indikátorok, melyek alapján az ML eldönti, tiszta-e a brókeri kapcsolat.
