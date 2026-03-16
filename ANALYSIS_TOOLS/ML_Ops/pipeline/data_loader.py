@@ -24,21 +24,20 @@ class RobustDataLoader:
             logger.error(f"Fájl nem található: {file_path}")
             raise FileNotFoundError(f"A kért fájl nem létezik: {file_path}")
 
-        if not relevant_columns:
-            # Csak az anomália detektáláshoz feltétlenül szükséges oszlopokat tartjuk meg
-            # A 'DataMiner_BlackBox_v1_00.mqh' által biztosított valós fejlécek:
-            relevant_columns = [
-                "TickMSC", "Bid", "Ask", "Spread", "Ping_MS", "Ping",
-                "Velocity", "Acceleration", "Flow_Delta", "Hybrid_DFCurve", "WPR"
-            ]
-
+        # Ha nincs megadva specifikus oszloplista, akkor az összes DataMiner BlackBox v1.00
+        # (Physics, Context EMAs, Flow, Momentum) oszlopot betöltjük. Nincs több szándékos adatvesztés.
         logger.info(f"Adatbetöltés indítása: {file_path}")
         self.monitor.log_usage("Betöltés Előtt")
 
         chunk_list = []
         try:
-            # Chunking és column filtering
-            for i, chunk in enumerate(pd.read_csv(file_path, usecols=lambda c: c in relevant_columns, chunksize=self.chunksize)):
+            # Chunking filtering paraméter összeállítása
+            read_kwargs = {'chunksize': self.chunksize}
+            if relevant_columns:
+                read_kwargs['usecols'] = lambda c: c in relevant_columns
+
+            # Teljes CSV felolvasása (vagy a megadott oszlopoké)
+            for i, chunk in enumerate(pd.read_csv(file_path, **read_kwargs)):
                 # Ha a rendszer RAM túl magas (pl. 90%), megállítjuk a betöltést a halál előtt
                 if not self.monitor.check_memory_limit():
                      logger.warning(f"Memória korlát elérve a(z) {i}. chunknál. Betöltés megszakítva, csak az eddigi adatokat adjuk vissza.")

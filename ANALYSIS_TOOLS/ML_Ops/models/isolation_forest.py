@@ -45,18 +45,30 @@ class IsolationForestDetector(BaseModel):
         if ping_col in df.columns:
              df['Ping_Diff'] = df[ping_col].diff().fillna(0)
 
-        # Főbb dimenziók kijelölése a Data Miner oszlopok alapján
-        self.features = ['Bid_Diff', 'Spread', 'Spread_Diff', 'TimeDeltaMsc']
+        # DINAMIKUS FEATURE MAPPING (ZÉRÓ HARDKÓDOLÁS)
+        # Az összes oszlop, amit a DataMiner_BlackBox legenerált, fontos a detektornak.
+        # Csak a string vagy értelmezhetetlen idő metaadatokat hagyjuk ki a szoros matematikai térből.
 
-        if ping_col in df.columns:
-            self.features.extend([ping_col, 'Ping_Diff'])
+        exclude_cols = ['Time', 'TickMSC', 'TimeMsc']
+        self.features = []
 
-        # Extrák a fizikai motorból (Velocity, Flow_Delta), ha be lettek töltve
-        for extra in ['Velocity', 'Acceleration', 'Flow_Delta', 'WPR']:
-            if extra in df.columns:
-                self.features.append(extra)
+        for col in df.columns:
+            if col in exclude_cols:
+                continue
 
-        logger.info(f"[{self.model_name}] Kiválasztott Feature-ök: {self.features}")
+            # Csak numerikus adatok érdeklik az Isolation Forestet
+            if pd.api.types.is_numeric_dtype(df[col]):
+                df[col] = df[col].ffill() # Törtérték, ha hiányozna
+                self.features.append(col)
+
+                # A tüskékhez (spike) fontos az 1 lépéses differencia
+                # Pl. a WPR hirtelen megugrása, vagy Ping késleltetés a fontos a modellnek, nem csak az érték
+                if col not in ['Bid_Diff', 'Spread_Diff', 'Ping_Diff', 'TimeDeltaMsc']:
+                    diff_col_name = f"{col}_Diff"
+                    df[diff_col_name] = df[col].diff().fillna(0)
+                    self.features.append(diff_col_name)
+
+        logger.info(f"[{self.model_name}] Összes dinamikusan felvett Feature (Dimenzió: {len(self.features)} db)")
         return df
 
     def train(self, df: pd.DataFrame):
