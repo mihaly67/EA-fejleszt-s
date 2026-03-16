@@ -1,12 +1,21 @@
-# 🚀 Merkava Néma Színház - MLOps Pipeline Útmutató (VPS)
+# 🚀 Merkava Néma Színház - Teljes MLOps Futtatási Útmutató (VPS)
 
-Ez a dokumentum a Merkava_Data_Miner_v1.0 által gyűjtött (pl. XAUUSD 5 napos tick) adathalmazok CPU-only, 8GB RAM limitált Ubuntu VPS környezetben történő feldolgozásához készült.
+Ez a dokumentum lépésről lépésre végigvezet azon, hogyan futtasd le a betanítást és az anomália keresést a **MINER_TESTER_v1.01_20260309_000000.csv** adathalmazodon a 8GB RAM-os VPS-en.
 
-## 1. Könyvtárszerkezet a VPS-en
-A VPS-en a munkakönyvtár neve Merkava_ML_Ops legyen. Hozd létre ezt a mappát, és másold be a repóban található ANALYSIS_TOOLS/ML_Ops mappa teljes tartalmát. A szerkezetnek pontosan így kell kinéznie:
+## 1. Könyvtár és Fájlok Előkészítése a VPS-en
 
+Nyiss egy SSH terminált a VPS-en, és másold be az alábbi parancsokat pontosan így:
+
+mkdir -p Merkava_ML_Ops/data
+cd Merkava_ML_Ops
+
+Most másold fel (pl. WinSCP, FileZilla segítségével) a számítógépedről a `MINER_TESTER_v1.01_20260309_000000.csv` fájlt a VPS-en lévő `Merkava_ML_Ops/data/` mappába.
+Másold be mellé az ehhez az útmutatóhoz tartozó Python scripteket is (a GitHub `ANALYSIS_TOOLS/ML_Ops/` mappájának teljes tartalmát a `Merkava_ML_Ops/` mappába).
+
+A végső struktúrád így fog kinézni:
 Merkava_ML_Ops/
-├── data/                    # IDE MÁSOLD a DataMiner CSV fájlokat (pl. XAUUSD_tick.csv)
+├── data/
+│   └── MINER_TESTER_v1.01_20260309_000000.csv
 ├── models/
 │   ├── __init__.py
 │   ├── base_model.py
@@ -25,64 +34,91 @@ Merkava_ML_Ops/
     ├── monitor.py
     └── mock_data_generator.py
 
-## 2. Rendszerkövetelmények (Függőségek telepítése)
-Mielőtt bármit futtatnál a VPS-en, frissítsd a Python környezeted a szükséges csomagokkal. Lépj be a munkakönyvtárba:
+## 2. Függőségek Telepítése (Csak első alkalommal)
 
-cd Merkava_ML_Ops/
-
-Telepítsd a csomagokat:
+Futtasd le a terminálban:
 
 pip install pandas numpy scikit-learn hmmlearn psutil pytest
 
-## 3. Rendszer Tesztelése (Opcionális, de ajánlott)
-Mielőtt ráengeded az 1GB+ XAUUSD fájlt a gépre, futtasd le a beépített Pytest szimulációt, amely megnézi, hogy a 8GB RAM-os DataLoader és a modellek megfelelően lettek-e importálva. (Az alábbi parancsban az export/PYTHONPATH elengedhetetlen, hogy a Python megtalálja a modulokat).
+## 3. Rendszer Egészségügyi Tesztelése (Ajánlott)
+
+Bizonyosodj meg róla, hogy a rendszer látja a Python csomagjaidat:
 
 export PYTHONPATH=.
 pytest tests/
 
-Ha 100%-os zöld passed eredményt kapsz, a keretrendszer működik.
+Ha zöld (passed) eredményt látsz, a rendszer készen áll.
 
-## 4. Futtatás a Nyers Adattal
-Létrehozhatsz a Merkava_ML_Ops mappában egy egyszerű Python fájlt (pl. run_analysis.py néven), amivel betöltöd az adatot és elindítod a profilozást. Íme egy példa sablon a futtatáshoz (a "fájl_neve.csv" részt cseréld ki a saját adathalmazod nevére):
+## 4. A Futtató Script Létrehozása (run_analysis.py)
 
-```python
-# run_analysis.py tartalma:
+Másold be egyben az alábbi blokkot a terminálba. Ez a parancs automatikusan létrehozza a `run_analysis.py` nevű fájlt a szerveren, ami elvégzi az adatbetöltést, futtatja a két modellt (Isolation Forest és HMM), és a végén KIMENTI az eredményt egy új CSV-be.
+
+cat << 'EOF' > run_analysis.py
 import logging
+import os
 from pipeline.data_loader import RobustDataLoader
 from models.isolation_forest import IsolationForestDetector
 from models.hmm_model import HMMDetector
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
-# 1. Adat Betöltése (csak a releváns, BlackBox által exportált oszlopokat tartja meg a RAM-ban)
-loader = RobustDataLoader(chunksize=500000) # Félmilliós darabokban olvas (8GB RAM barát)
-df = loader.load_tick_data("data/XAUUSD_tick_5_days.csv")
+input_file = "data/MINER_TESTER_v1.01_20260309_000000.csv"
+output_file = "data/ANALYZED_RESULTS_MINER_TESTER.csv"
+
+# 1. Adat Betöltése
+loader = RobustDataLoader(chunksize=500000)
+df = loader.load_tick_data(input_file)
 
 if df.empty:
-    print("Hiba: Üres a fájl, vagy nem egyeznek az oszlopnevek.")
+    print("Kritikus Hiba: A betöltött DataFrame üres! Ellenőrizd a fájl nevét és az oszlopokat.")
     exit()
 
 # 2. Anomália Keresés (Isolation Forest)
-print("\n--- [ ISOLATION FOREST ] ---")
-iso_model = IsolationForestDetector(contamination=0.02) # Feltételezett 2% manipulált adat
-df_iso = iso_model.preprocess(df.copy())
-iso_model.train(df_iso)
-df_iso = iso_model.detect(df_iso)
+print("\n--- [ ISOLATION FOREST - ZAJ ÉS TÜSKE KERESÉS ] ---")
+iso_model = IsolationForestDetector(contamination=0.02)
+df = iso_model.preprocess(df)
+iso_model.train(df)
+df = iso_model.detect(df)
 
-# 3. Brókeri Rezsimek / Állapotok (Hidden Markov Model)
-print("\n--- [ HIDDEN MARKOV MODEL ] ---")
-hmm_model = HMMDetector(n_components=2) # 2 állapot: Normál vs. Manipulált
-df_hmm = hmm_model.preprocess(df.copy())
-hmm_model.train(df_hmm)
-df_hmm = hmm_model.detect(df_hmm)
+# A modell csinált egy 'Anomaly' (-1=hiba, 1=tiszta) és 'Anomaly_Score' oszlopot.
+# Átnevezzük őket, hogy ne keveredjen a HMM-el:
+df.rename(columns={'Anomaly': 'IF_Anomaly', 'Anomaly_Score': 'IF_Score'}, inplace=True)
 
-print("\nKÉSZ! A vizsgálat lefutott. A toxikus periódusok megtalálhatók a df_hmm['BROKER_STATE'] oszlopban.")
-```
+# 3. Brókeri Rezsimek (Hidden Markov Model)
+print("\n--- [ HIDDEN MARKOV MODEL - REZSIM KERESÉS ] ---")
+hmm_model = HMMDetector(n_components=2)
+df = hmm_model.preprocess(df)
+hmm_model.train(df)
+df = hmm_model.detect(df)
 
-Futtatás a parancssorból a VPS-en:
+# A modell csinált egy 'BROKER_STATE' (0 vagy 1) oszlopot.
 
+# 4. EREDMÉNYEK KIMENTÉSE CSV-be
+print(f"\n--- [ FIZIKAI MENTÉS FOLYAMATBAN ] ---")
+print(f"Eredmény mentése ide: {output_file}")
+df.to_csv(output_file, index=False)
+print("✅ Mentés Sikeres! Az elemzés véget ért.")
+EOF
+
+## 5. Az Elemzés Futtatása
+
+Indítsd el a feldolgozást:
+
+export PYTHONPATH=.
 python3 run_analysis.py
 
-## 5. Mire kell figyelni? (Fontos)
-* Memória Limits (OOM): A monitor.py modul bele van építve a data_loader.py-ba. Ha aVPS eléri a 90% RAM terhelést, a folyamat figyelmeztetést dob (KRITIKUS MEMÓRIA SZINT) és leállítja a további beolvasást, hogy megvédje a VPS-t az összeomlástól.
-* Zaj és Nyers Adat: A HMM és az Isolation Forest modellek nyers adatra vágynak, ahogy kérted. Semmilyen elsimítás nincs beállítva. A mikrosekundum (TickMSC) szintű különbségek, a Spread hirtelen kitágulása és a Ping laggolása a legfőbb indikátorok, melyek alapján az ML eldönti, tiszta-e a brókeri kapcsolat.
+## 6. A Kimenet Értelmezése (Hol van és mi az?)
+
+**A Terminálban megjelenő logok (Valós időben):**
+* Látni fogod, ahogy a betöltő (RobustDataLoader) 500.000 soros blokkokban falja be a fájlt.
+* Kiírja a memóriahasználatot (RAM), hogy lásd, ha a VPS 8GB-ja kifogyna.
+* A futás végén kiírja a talált toxikus időszakok/anomáliák darabszámát.
+
+**A Fizikai Kimeneti Fájl (Végeredmény):**
+* A futás után keletkezik egy új fájl: `Merkava_ML_Ops/data/ANALYZED_RESULTS_MINER_TESTER.csv`
+* **Mit tartalmaz?** Ugyanazt a tick adatot, amit betöltöttél, de **KIBŐVÍTVE HÁROM ÚJ OSZLOPPAL:**
+    1. **`IF_Anomaly`**: Ha az értéke `-1`, az azt jelenti, hogy az Isolation Forest algoritmus szerint az adott tick egyedi "kiugró" zaj vagy spread tüskét tartalmazott. Ha `1`, akkor normál tick volt.
+    2. **`IF_Score`**: Ez egy negatív szám, ha hiba van. Minél kisebb a szám (pl. -0.2), annál durvább az anomália.
+    3. **`BROKER_STATE`**: Ez egy tartós "Állapot" kód (általában `0` vagy `1`). A HMM tette rá. Pl. Ha hirtelen a 0-ás állapotból tartósan átvált az 1-esbe percekig, az azt jelenti, hogy a bróker "rezsimet" váltott (pl. hírek miatti csúszás vagy lassítás kezdődött). Ebből láthatod meg a "Néma Színház" manipulációit.
+
+Ezt a CSV-t letöltheted a VPS-ről és kényelmesen megnyithatod a saját gépeden (Excel, Python) további elemzésre.
