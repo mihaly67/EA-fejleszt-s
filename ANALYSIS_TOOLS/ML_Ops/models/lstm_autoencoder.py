@@ -215,7 +215,8 @@ class LSTMAutoencoderDetector(BaseModel):
         if not self.is_trained:
             return
 
-        model_file = f"{base_path}_keras.h5"
+        # A TensorFlow legújabb standard formátuma a `.keras` a legacy `.h5` helyett
+        model_file = f"{base_path}.keras"
         scaler_file = f"{base_path}_scaler.pkl"
 
         self.model.save(model_file)
@@ -225,8 +226,12 @@ class LSTMAutoencoderDetector(BaseModel):
     def load(self, base_path: str):
         from tensorflow.keras.models import load_model
 
-        model_file = f"{base_path}_keras.h5"
+        model_file = f"{base_path}.keras"
         scaler_file = f"{base_path}_scaler.pkl"
+
+        # Legacy támogatás, ha a felhasználó gépén még az előző (H5) hálózat mentése maradt meg
+        if not os.path.exists(model_file):
+            model_file = f"{base_path}_keras.h5"
 
         if not os.path.exists(model_file) or not os.path.exists(scaler_file):
             raise FileNotFoundError(f"Nem találom az LSTM fájlokat: {model_file}")
