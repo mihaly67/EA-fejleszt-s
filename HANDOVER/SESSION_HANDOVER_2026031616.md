@@ -13,18 +13,20 @@ Ez a munkamenet egy rendkívül intenzív, architekturális alapozó fázis volt
 2.  **Dinamikus Feature Mapping:** Felszámoltuk a "hardkódolt" oszlopszűrést. Az AI modellek mostantól 100%-ban dinamikusan olvassák be az összes indikátort (WPR, Stoch, EMAs, MFI, Velocity stb.), így a "Színész" semmit sem tud elrejteni.
 3.  **Isolation Forest (Első Védelmi Vonal):** A pórázt (`contamination="auto"`) levettük. A modell az élő 1.082.875 soros teszten hibátlanul lefutott, és reális, 3.18% (21.658 db) anomáliát (spread-tágítás, latency tüskék) detektált. Ez a modul bevált, megtartjuk!
 
-**A Vereségünk (A Tanulóbicikli Elbukása):**
-A **Hidden Markov Model (HMM)** elbukott a csatatéren. Bár a `covariance_type="diag"` mentőövet bedobtuk, az 1 millió soros, 49 dimenziós pénzügyi adatteret (ami tele van tökéletesen együttmozgó, multikollineáris indikátorokkal) a könnyűsúlyú `hmmlearn` nem tudta konvergálni. A végeredmény értelmezhetetlen matematikai zaj lett. Ezt az utat itt és most hivatalosan is elvetjük.
+**A Győzelmünk (A Nehéztüzérség Sikerrel Lefutott):**
+Az újonnan írt **LSTM Autoencoder** megküzdött az 1 millió soros (49 dimenziós) `MINER_TESTER_v1.01_20260309_000000.csv` adathalmazzal. A memóriarobbanásokat a `timeseries_dataset_from_array` batchelt megoldásával sikeresen védtük ki. A 8GB RAM-os VPS-en a hálózat sikeresen visszaépítette a piacot, és **5.00% anomáliát (54.172 "Színész" szekvenciát)** jelzett a HMM összeomlása után.
 
-## 2. Következő Lépés / Irányelv a Térképszobából
+## 2. Következő Lépés / Irányelv a Térképszobából (A Jövő Feladata)
 
-A Rendszerfőnök (Gemini) diagnózisa és utasítása alapján szintet lépünk. A HMM-et kukázzuk, és bevetjük a **Deep Learning Nehéztüzérséget**.
+Bár az 5% anomália detektálása óriási siker, önmagában nem elég informatív (lehet, hogy a bróker mindig színészkedik, lehet, hogy csak zaj). A Térképszoba a következő fázist a **Viselkedési Profilozás (Behavioral Profiling) Csatolásának** nevezte ki.
 
-**Az Új Architekturális Célok az Érkező Agent Számára:**
-1.  **LSTM Autoencoder (Keras/TensorFlow vagy PyTorch):** Létre kell hozni egy új `models/lstm_autoencoder.py` osztályt, ami a 49 dimenziót egy szűk (4-8 dimenziós) látens térré kompresszálja, majd megpróbálja visszaépíteni. Ahol a "Reconstruction Error" (MSE) kiugrik a normál eloszlásból, ott lépett közbe a bróker.
-2.  **Szekvencia Építés (Sliding Window):** A bróker-manipuláció időben történik, nem 1 tick alatt! A `preprocess` eljárásnak 30-60 tickes "ablakokat" (lookback szekvenciákat) kell generálnia a nyers adatsorból.
-3.  **Adatskálázás (Kritikus!):** A 49 dimenziót (árfolyam, EMA, RSI stb.) kötelező `MinMaxScaler` vagy `StandardScaler` segítségével normalizálni a betanítás és inferálás előtt, különben a neurális háló felrobban.
-4.  **Batch Processing (8GB RAM Védelem):** Az új, mélytanulásos fő futtató szkriptnek (`run_deep_profiler.py`) képesnek kell lennie batchekben (darabokban) betanítani és prediktálni, mert 1 millió 49 dimenziós szekvencia ablak azonnal megeszi a VPS 8GB memóriáját.
+**A Feladat a Következő Agentnek:**
+Korreletálni kell a detektált anomáliákat a felhasználó "Valós Kereskedési Cselekvéseivel" (Demó Trades). Látnunk kell, hogy az 5% LSTM anomália vajon csak a felhasználó *Belépés/Kilépés (Nyereség/Veszteség)* előtti és utáni 5-10 percre (elő- és utójáték) koncentrálódik-e!
+
+**A Stratégia (Egy közös, vak CSV elve):**
+1.  **MQL5 Oldal:** A `Merkava_Behavioral_Profiler_v1.1.mq5`-höz (vagy a BlackBox-hoz) hozzá kell adni a felhasználói kereskedés logolását is (pl. mikor lép be, mekkora Lottal, Nyert/Vesztett-e). Ezek az adatok bekerülnek a hatalmas nyers CSV-be a 49 indikátor mellé.
+2.  **Python ML Oldal (Vakteszt):** Az `LSTMAutoencoderDetector` `preprocess` metódusában dinamikusan ki kell zárni (el kell rejteni) minden olyan oszlopot az LSTM elől, ami a felhasználói kereskedésre utal (pl. kizárni a `Trade_` vagy `Order_` kezdetű oszlopokat a `.features` listából).
+3.  **Az Összekapcsolás:** Az LSTM *vakon* (csak a piacot, árakat, spreadet, indikátorokat nézve) megállapítja a `Reconstruction_Error` alapján, hogy a bróker trükközik-e (`LSTM_Anomaly` = -1). Ezután a kimeneti (`ANALYZED_RESULTS`) DataFrame-ben egymás mellé tesszük az LSTM "vak" detektálását és a felhasználó tényleges tranzakcióit. Így feketén-fehéren kiderül, hogy a bróker kifejezetten a felhasználó belépéseire reagál-e, és kiderül az is, hogy az LSTM elég érzékeny-e ezekre.
 
 **Készítette:** Jules (MLOps Építész AI)
 **Elfogadta:** Rendszerfőnök és Térképszoba (Gemini)
