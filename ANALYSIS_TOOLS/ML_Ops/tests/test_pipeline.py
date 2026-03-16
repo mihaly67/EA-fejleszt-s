@@ -12,6 +12,7 @@ from pipeline.data_loader import RobustDataLoader
 from utils.mock_data_generator import create_mock_tick_data
 from models.isolation_forest import IsolationForestDetector
 from models.hmm_model import HMMDetector
+from models.lstm_autoencoder import LSTMAutoencoderDetector
 
 @pytest.fixture(scope="module")
 def mock_csv_path():
@@ -84,3 +85,38 @@ def test_hmm_pipeline_warning(mock_csv_path, caplog):
         detector.train(df_processed)
         df_result = detector.detect(df_processed)
         assert 'BROKER_STATE' in df_result.columns, "Hiányzik a HMM rezsim azonosítója."
+
+def test_lstm_autoencoder_pipeline(mock_csv_path):
+    """
+    LSTM Autoencoder (Nehéztüzérség) csővezetékének tesztelése.
+    Ellenőrzi, hogy a Keras modell nem száll el OOM / Shape hibával,
+    képes-e szekvenciákat legenerálni, és az eredmény DataFrame hossza
+    pontosan megegyezik-e a bemenettel (a padding ellenére).
+    """
+    loader = RobustDataLoader()
+    df = loader.load_tick_data(mock_csv_path)
+
+    try:
+        import tensorflow
+        has_tf = True
+    except ImportError:
+        has_tf = False
+
+    # Nagyon kis paraméterezés a gyors teszteléshez
+    detector = LSTMAutoencoderDetector(seq_length=5, latent_dim=2, batch_size=32, epochs=1)
+
+    if not has_tf:
+        with pytest.raises(ImportError):
+            detector.train(df)
+    else:
+        # A tesztelés lefut, megnézzük a kimenet oszlopait és a dimenziókat
+        detector.train(df)
+        assert detector.is_trained, "Az LSTM modell nem jelzi a betanított állapotot."
+
+        # A detektált kimenet hosszának azonosnak kell lennie az eredeti adat hosszával
+        df_result = detector.detect(df.copy())
+        assert 'LSTM_Reconstruction_Error' in df_result.columns, "MSE hiba oszlop hiányzik"
+        assert 'LSTM_Anomaly' in df_result.columns, "Anomália (label) oszlop hiányzik"
+
+        # Ez a legfontosabb teszt a DataFrame ValueError elkerülésére (Padding Hiba)
+        assert len(df_result) == len(df), f"Eltörik az index! Bemenet: {len(df)}, Kimenet: {len(df_result)}"
