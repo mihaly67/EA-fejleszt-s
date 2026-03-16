@@ -1,6 +1,6 @@
-# 🚀 Merkava Néma Színház - Teljes MLOps Futtatási Útmutató (VPS)
+# 🚀 Merkava Néma Színház - Deep Learning Profilozó (VPS)
 
-Ez a dokumentum lépésről lépésre végigvezet azon, hogyan futtasd le a betanítást és az anomália keresést a **MINER_TESTER_v1.01_20260309_000000.csv** adathalmazodon a 8GB RAM-os VPS-en.
+Ez a dokumentum lépésről lépésre végigvezet azon, hogyan vesd be a "Nehéztüzérséget" (LSTM Autoencoder) a **MINER_TESTER_v1.01_20260309_000000.csv** adathalmazodon a 8GB RAM-os VPS-en, és szűrd ki a Színész (Bróker) manipulációs trükkjeit. A korábbi (HMM) tanulóbicikli kidobásra került.
 
 ## 1. Könyvtár és Fájlok Előkészítése a VPS-en
 
@@ -20,7 +20,8 @@ Merkava_ML_Ops/
 │   ├── __init__.py
 │   ├── base_model.py
 │   ├── isolation_forest.py
-│   └── hmm_model.py
+│   ├── hmm_model.py
+│   └── lstm_autoencoder.py  # Új Nehéztüzérség
 ├── pipeline/
 │   ├── __init__.py
 │   ├── data_loader.py
@@ -38,7 +39,7 @@ Merkava_ML_Ops/
 
 Futtasd le a terminálban:
 
-pip install pandas numpy scikit-learn hmmlearn psutil pytest
+pip install pandas numpy scikit-learn psutil pytest tensorflow
 
 ## 3. Rendszer Egészségügyi Tesztelése (Ajánlott)
 
@@ -49,84 +50,80 @@ pytest tests/
 
 Ha zöld (passed) eredményt látsz, a rendszer készen áll.
 
-## 4. A Futtató Script (A Gyújtáskapcsoló) Létrehozása: run_analysis.py
+## 4. A Futtató Script (A Gyújtáskapcsoló) Létrehozása: run_deep_profiler.py
 
-A GitHubról vagy FileZillával letöltött mappáid (models, pipeline, utils) csak a "motoralkatrészek". Hogy beinduljon a gép, létre kell hoznunk a Gyújtáskapcsolót (run_analysis.py), ami beolvassa a CSV-t, majd áttolja a modelleken.
-Ahhoz, hogy a script ne "törjön el" formázási hiba miatt a másolásnál, a legbiztonságosabb Linuxos szövegszerkesztőt, a `nano`-t fogjuk használni a VPS-en.
+A GitHubról vagy FileZillával letöltött mappáid (models, pipeline, utils) a "motoralkatrészek". Ahhoz, hogy ezt a 49 dimenziós nehéztüzérséget a VPS RAM-ja felrobbanása nélkül beindítsuk, létre kell hoznunk az új Gyújtáskapcsolót (`run_deep_profiler.py`).
 
-Írd be a terminálba a VPS-eden, hogy létrehozd a fájlt:
+Írd be a terminálba a VPS-eden, hogy létrehozd a fájlt (a `nano` megvéd az eltörő Windows-os formázásoktól):
 
-nano run_analysis.py
+nano run_deep_profiler.py
 
-A megnyíló fekete szerkesztőbe jelöld ki és másold be (Jobb klikk a terminálon) EZT a python kódot:
+A megnyíló fekete szerkesztőbe másold be EZT a Python kódot:
 
 ```python
 import logging
 import os
 from pipeline.data_loader import RobustDataLoader
 from models.isolation_forest import IsolationForestDetector
-from models.hmm_model import HMMDetector
+from models.lstm_autoencoder import LSTMAutoencoderDetector
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
 input_file = "data/MINER_TESTER_v1.01_20260309_000000.csv"
-output_file = "data/ANALYZED_RESULTS_MINER_TESTER.csv"
+output_file = "data/DEEP_ANALYSIS_MINER_TESTER.csv"
 
-# 1. Adat Betöltése
-loader = RobustDataLoader(chunksize=500000)
+# 1. Adat Betöltése (49 dimenzió, masszív adathalmaz)
+loader = RobustDataLoader(chunksize=100000) # Kisebb chunk a Neurális Háló Memória-igénye miatt
 df = loader.load_tick_data(input_file)
 
 if df.empty:
-    print("Kritikus Hiba: A betöltött DataFrame üres! Ellenőrizd a fájl nevét és az oszlopokat.")
+    print("Kritikus Hiba: A betöltött DataFrame üres! Ellenőrizd a fájlt.")
     exit()
 
-# 2. Anomália Keresés (Isolation Forest)
-print("\n--- [ ISOLATION FOREST - ZAJ ÉS TÜSKE KERESÉS ] ---")
-iso_model = IsolationForestDetector(contamination="auto") # Póráz levéve, AI dönt!
+# 2. ELŐSZŰRÉS: Isolation Forest (Zaj és Egyedi Tüskék)
+print("\n--- [ ISOLATION FOREST - ELŐSZŰRŐ ] ---")
+iso_model = IsolationForestDetector(contamination="auto")
 df = iso_model.preprocess(df)
 iso_model.train(df)
 df = iso_model.detect(df)
-
-# Átnevezzük az eredmény oszlopokat:
 df.rename(columns={'Anomaly': 'IF_Anomaly', 'Anomaly_Score': 'IF_Score'}, inplace=True)
 
-# 3. Brókeri Rezsimek (Hidden Markov Model)
-print("\n--- [ HIDDEN MARKOV MODEL - REZSIM KERESÉS ] ---")
-hmm_model = HMMDetector(n_components=2)
-df = hmm_model.preprocess(df)
-hmm_model.train(df)
-df = hmm_model.detect(df)
+# 3. NEHÉZTÜZÉRSÉG: Szekvenciális Deep Learning (LSTM Autoencoder)
+print("\n--- [ LSTM AUTOENCODER - SZEKVENCIA PROFILOZÁS ] ---")
+# 30 tickes "ablak", 8 dimenziós látens tér, batch méret korlátozás a VPS miatt
+lstm_model = LSTMAutoencoderDetector(seq_length=30, latent_dim=8, batch_size=256, epochs=5)
+lstm_model.train(df)
+df = lstm_model.detect(df)
+
+# Mentsük ki a neurális háló modelljét, ha később máson is tesztelnénk:
+lstm_model.save("models/saved_lstm_broker_profiler")
 
 # 4. EREDMÉNYEK KIMENTÉSE CSV-be
 print(f"\n--- [ FIZIKAI MENTÉS FOLYAMATBAN ] ---")
-print(f"Eredmény mentése ide: {output_file}")
 df.to_csv(output_file, index=False)
-print("✅ Mentés Sikeres! Az elemzés véget ért.")
+print(f"✅ Mentés Sikeres: {output_file}")
 ```
 
 **Mentés és Kilépés a Nanoból:**
-Nyomd meg a billentyűzeten a **Ctrl+O** (O, mint Oszkár) gombot a mentéshez, majd **Enter**.
-Utána nyomd meg a **Ctrl+X** gombot a kilépéshez. Ezzel a script biztosan, formázási hiba nélkül jött létre.
+Nyomd meg a billentyűzeten a **Ctrl+O** (Oszkár) gombot a mentéshez, majd **Enter**.
+Utána nyomd meg a **Ctrl+X** gombot a kilépéshez.
 
 ## 5. Az Elemzés Indítása
 
 Indítsd el a feldolgozást:
 
 export PYTHONPATH=.
-python3 run_analysis.py
+python3 run_deep_profiler.py
 
-## 6. A Kimenet Értelmezése (Hol van és mi az?)
+## 6. A Kimenet Értelmezése (Mi ez a "Deep Learning" Fájl?)
 
 **A Terminálban megjelenő logok (Valós időben):**
-* Látni fogod, ahogy a betöltő (RobustDataLoader) 500.000 soros blokkokban falja be a fájlt.
-* Kiírja a memóriahasználatot (RAM), hogy lásd, ha a VPS 8GB-ja kifogyna.
-* A futás végén kiírja a talált toxikus időszakok/anomáliák darabszámát.
+* A betöltő után látni fogod a TensorFlow progress bárját. Ez percekig vagy akár egy-két óráig is futhat az 1 millió soron (Epoch 1/5, Epoch 2/5). A Loss-nak folyamatosan csökkennie kell.
 
 **A Fizikai Kimeneti Fájl (Végeredmény):**
-* A futás után keletkezik egy új fájl: `Merkava_ML_Ops/data/ANALYZED_RESULTS_MINER_TESTER.csv`
-* **Mit tartalmaz?** Ugyanazt a tick adatot, amit betöltöttél, de **KIBŐVÍTVE HÁROM ÚJ OSZLOPPAL:**
-    1. **`IF_Anomaly`**: Ha az értéke `-1`, az azt jelenti, hogy az Isolation Forest algoritmus szerint az adott tick egyedi "kiugró" zaj vagy spread tüskét tartalmazott. Ha `1`, akkor normál tick volt.
-    2. **`IF_Score`**: Ez egy negatív szám, ha hiba van. Minél kisebb a szám (pl. -0.2), annál durvább az anomália.
-    3. **`BROKER_STATE`**: Ez egy tartós "Állapot" kód (általában `0` vagy `1`). A HMM tette rá. Pl. Ha hirtelen a 0-ás állapotból tartósan átvált az 1-esbe percekig, az azt jelenti, hogy a bróker "rezsimet" váltott (pl. hírek miatti csúszás vagy lassítás kezdődött). Ebből láthatod meg a "Néma Színház" manipulációit.
+* Létrejön a `data/DEEP_ANALYSIS_MINER_TESTER.csv`.
+* **Mit tartalmaz?** Az összes régi adatodat, plusz az IF eredményeit, ÉS A KÉT ÚJ LSTM OSZLOPOT:
+    1. **`LSTM_Reconstruction_Error`**: Ez a konkrét matematikai hiba. Ha a hálózat nem ismerte fel a bróker 30-tickes szekvenciáját (mert az mesterséges / toxikus volt), ez a szám hirtelen a normál (pl. 0.05) duplájára-triplájára fog ugrani.
+    2. **`LSTM_Anomaly`**: Ez már a kész, neked szóló szignál. `-1` jelenti a tisztán manipulált időablakot/bróker trükköt (Színész!), és `1` a természetes piaci eseményt.
 
 Ezt a CSV-t letöltheted a VPS-ről és kényelmesen megnyithatod a saját gépeden (Excel, Python) további elemzésre.
