@@ -68,7 +68,11 @@ class IsolationForestDetector(BaseModel):
                     df[diff_col_name] = df[col].diff().fillna(0)
                     self.features.append(diff_col_name)
 
-        logger.info(f"[{self.model_name}] Összes dinamikusan felvett Feature (Dimenzió: {len(self.features)} db)")
+        # Kód-ellenőrzés javítás: Ha az előre kiszámított "Bid_Diff" vagy "Ping_Diff"
+        # bent maradt a loop-ban, ne szerepeljen kétszer a modell feature halmazában.
+        self.features = list(set(self.features))
+
+        logger.info(f"[{self.model_name}] Összes dinamikusan felvett Feature (Egyedi Dimenzió: {len(self.features)} db)")
         return df
 
     def train(self, df: pd.DataFrame):
