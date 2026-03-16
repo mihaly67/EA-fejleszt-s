@@ -15,8 +15,9 @@ class IsolationForestDetector(BaseModel):
     dimenziós adatok (pl. gyorsulás, spread tüskék) klaszterezésében.
     """
 
-    def __init__(self, contamination=0.01, random_state=42):
+    def __init__(self, contamination="auto", random_state=42):
         super().__init__("IsolationForest")
+        # Térképszoba Utasítás: Levettük a pórázt az AI-ról, automatikusan keresi a küszöböt
         self.contamination = contamination
         self.random_state = random_state
         self.features = []
@@ -68,7 +69,12 @@ class IsolationForestDetector(BaseModel):
                     df[diff_col_name] = df[col].diff().fillna(0)
                     self.features.append(diff_col_name)
 
-        logger.info(f"[{self.model_name}] Összes dinamikusan felvett Feature (Dimenzió: {len(self.features)} db)")
+        # Kód-ellenőrzés javítás: Ha az előre kiszámított "Bid_Diff" vagy "Ping_Diff"
+        # bent maradt a loop-ban, ne szerepeljen kétszer a modell feature halmazában.
+        # A sorted() garantálja, hogy a feature lista determinisztikus maradjon különböző futások között.
+        self.features = sorted(list(set(self.features)))
+
+        logger.info(f"[{self.model_name}] Összes dinamikusan felvett Feature (Egyedi Dimenzió: {len(self.features)} db)")
         return df
 
     def train(self, df: pd.DataFrame):

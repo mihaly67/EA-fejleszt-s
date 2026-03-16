@@ -41,7 +41,7 @@ def test_isolation_forest_pipeline(mock_csv_path):
     df = loader.load_tick_data(mock_csv_path)
 
     # Inicializálás
-    detector = IsolationForestDetector(contamination=0.05, random_state=42)
+    detector = IsolationForestDetector(contamination="auto", random_state=42)
 
     # Feature Engineering
     df_processed = detector.preprocess(df)

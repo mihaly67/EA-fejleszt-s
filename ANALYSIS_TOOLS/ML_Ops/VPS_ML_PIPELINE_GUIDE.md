@@ -49,11 +49,18 @@ pytest tests/
 
 Ha zöld (passed) eredményt látsz, a rendszer készen áll.
 
-## 4. A Futtató Script Létrehozása (run_analysis.py)
+## 4. A Futtató Script (A Gyújtáskapcsoló) Létrehozása: run_analysis.py
 
-Másold be egyben az alábbi blokkot a terminálba. Ez a parancs automatikusan létrehozza a `run_analysis.py` nevű fájlt a szerveren, ami elvégzi az adatbetöltést, futtatja a két modellt (Isolation Forest és HMM), és a végén KIMENTI az eredményt egy új CSV-be.
+A GitHubról vagy FileZillával letöltött mappáid (models, pipeline, utils) csak a "motoralkatrészek". Hogy beinduljon a gép, létre kell hoznunk a Gyújtáskapcsolót (run_analysis.py), ami beolvassa a CSV-t, majd áttolja a modelleken.
+Ahhoz, hogy a script ne "törjön el" formázási hiba miatt a másolásnál, a legbiztonságosabb Linuxos szövegszerkesztőt, a `nano`-t fogjuk használni a VPS-en.
 
-cat << 'EOF' > run_analysis.py
+Írd be a terminálba a VPS-eden, hogy létrehozd a fájlt:
+
+nano run_analysis.py
+
+A megnyíló fekete szerkesztőbe jelöld ki és másold be (Jobb klikk a terminálon) EZT a python kódot:
+
+```python
 import logging
 import os
 from pipeline.data_loader import RobustDataLoader
@@ -75,13 +82,12 @@ if df.empty:
 
 # 2. Anomália Keresés (Isolation Forest)
 print("\n--- [ ISOLATION FOREST - ZAJ ÉS TÜSKE KERESÉS ] ---")
-iso_model = IsolationForestDetector(contamination=0.02)
+iso_model = IsolationForestDetector(contamination="auto") # Póráz levéve, AI dönt!
 df = iso_model.preprocess(df)
 iso_model.train(df)
 df = iso_model.detect(df)
 
-# A modell csinált egy 'Anomaly' (-1=hiba, 1=tiszta) és 'Anomaly_Score' oszlopot.
-# Átnevezzük őket, hogy ne keveredjen a HMM-el:
+# Átnevezzük az eredmény oszlopokat:
 df.rename(columns={'Anomaly': 'IF_Anomaly', 'Anomaly_Score': 'IF_Score'}, inplace=True)
 
 # 3. Brókeri Rezsimek (Hidden Markov Model)
@@ -91,16 +97,18 @@ df = hmm_model.preprocess(df)
 hmm_model.train(df)
 df = hmm_model.detect(df)
 
-# A modell csinált egy 'BROKER_STATE' (0 vagy 1) oszlopot.
-
 # 4. EREDMÉNYEK KIMENTÉSE CSV-be
 print(f"\n--- [ FIZIKAI MENTÉS FOLYAMATBAN ] ---")
 print(f"Eredmény mentése ide: {output_file}")
 df.to_csv(output_file, index=False)
 print("✅ Mentés Sikeres! Az elemzés véget ért.")
-EOF
+```
 
-## 5. Az Elemzés Futtatása
+**Mentés és Kilépés a Nanoból:**
+Nyomd meg a billentyűzeten a **Ctrl+O** (O, mint Oszkár) gombot a mentéshez, majd **Enter**.
+Utána nyomd meg a **Ctrl+X** gombot a kilépéshez. Ezzel a script biztosan, formázási hiba nélkül jött létre.
+
+## 5. Az Elemzés Indítása
 
 Indítsd el a feldolgozást:
 
