@@ -103,11 +103,13 @@ class LSTMAutoencoderDetector(BaseModel):
         """
         logger.info(f"[{self.model_name}] Deep Learning Adatelőkészítés (Skálázás és Tisztítás)...")
 
+        # A 'Trade_' vagy 'Order_' prefixű oszlopok dinamikusan kiszűrésre kerülnek a jövőben,
+        # hogy a Viselkedési Profilozó (Behavioral Profiler) vak maradjon a felhasználó tranzakcióira.
         exclude_cols = ['Time', 'TickMSC', 'TimeMsc', 'IF_Anomaly', 'IF_Score', 'BROKER_STATE']
         self.features = []
 
         for col in df.columns:
-            if col in exclude_cols:
+            if col in exclude_cols or col.startswith('Trade_') or col.startswith('Order_'):
                 continue
             if pd.api.types.is_numeric_dtype(df[col]):
                 df[col] = df[col].ffill().fillna(0) # Biztosítjuk a hálózat stabilitását
