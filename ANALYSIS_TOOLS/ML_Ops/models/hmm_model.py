@@ -47,12 +47,18 @@ class HMMDetector(BaseModel):
 
         # Alapvető volatilitás és sebesség dimenziók a rejtett állapotok kereséséhez
         df['Spread'] = df['Spread'].ffill()
-        df['Ping'] = df['Ping'].ffill()
         df['Bid_Return'] = df['Bid'].pct_change().fillna(0)
+
+        # Kezeli a DataMiner_BlackBox 'Ping_MS' vs default 'Ping' elnevezést
+        ping_col = 'Ping_MS' if 'Ping_MS' in df.columns else 'Ping'
+        if ping_col in df.columns:
+            df[ping_col] = df[ping_col].ffill()
+            self.features = ['Spread', ping_col, 'Bid_Return']
+        else:
+            self.features = ['Spread', 'Bid_Return']
 
         # Nagyon fontos: A HMM az időbeli szekvenciákat tanulja, így a ping/spread
         # folyamatos eloszlása határozza meg a brókeri állapotot (rezsimet).
-        self.features = ['Spread', 'Ping', 'Bid_Return']
 
         logger.info(f"[{self.model_name}] HMM Dimenziók beállítva: {self.features}")
         return df

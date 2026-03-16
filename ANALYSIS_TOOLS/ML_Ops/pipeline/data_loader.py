@@ -26,7 +26,11 @@ class RobustDataLoader:
 
         if not relevant_columns:
             # Csak az anomália detektáláshoz feltétlenül szükséges oszlopokat tartjuk meg
-            relevant_columns = ["TickMSC", "Bid", "Ask", "Spread", "BidVol", "AskVol", "Ping"]
+            # A 'DataMiner_BlackBox_v1_00.mqh' által biztosított valós fejlécek:
+            relevant_columns = [
+                "TickMSC", "Bid", "Ask", "Spread", "Ping_MS", "Ping",
+                "Velocity", "Acceleration", "Flow_Delta", "Hybrid_DFCurve", "WPR"
+            ]
 
         logger.info(f"Adatbetöltés indítása: {file_path}")
         self.monitor.log_usage("Betöltés Előtt")

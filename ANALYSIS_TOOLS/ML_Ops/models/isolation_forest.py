@@ -39,15 +39,22 @@ class IsolationForestDetector(BaseModel):
 
         # Brókeri spread manipuláció és ping/szerver-oldali delay-ek
         df['Spread_Diff'] = df['Spread'].diff().fillna(0)
-        df['Ping_Diff'] = df['Ping'].diff().fillna(0)
 
-        # Főbb dimenziók kijelölése
-        self.features = ['Bid_Diff', 'Spread', 'Spread_Diff', 'Ping', 'Ping_Diff', 'TimeDeltaMsc']
+        # MT5 Data Miner (v1.00) esetén Ping_MS a neve
+        ping_col = 'Ping_MS' if 'Ping_MS' in df.columns else 'Ping'
+        if ping_col in df.columns:
+             df['Ping_Diff'] = df[ping_col].diff().fillna(0)
 
-        # Opcionális Volume (ha van a "Naked Sensor"-ban)
-        if 'BidVol' in df.columns and 'AskVol' in df.columns:
-            df['TotalVol'] = df['BidVol'] + df['AskVol']
-            self.features.append('TotalVol')
+        # Főbb dimenziók kijelölése a Data Miner oszlopok alapján
+        self.features = ['Bid_Diff', 'Spread', 'Spread_Diff', 'TimeDeltaMsc']
+
+        if ping_col in df.columns:
+            self.features.extend([ping_col, 'Ping_Diff'])
+
+        # Extrák a fizikai motorból (Velocity, Flow_Delta), ha be lettek töltve
+        for extra in ['Velocity', 'Acceleration', 'Flow_Delta', 'WPR']:
+            if extra in df.columns:
+                self.features.append(extra)
 
         logger.info(f"[{self.model_name}] Kiválasztott Feature-ök: {self.features}")
         return df
