@@ -103,19 +103,33 @@ class LSTMAutoencoderDetector(BaseModel):
         """
         logger.info(f"[{self.model_name}] Deep Learning Adatelőkészítés (Skálázás és Tisztítás)...")
 
-        # A 'Trade_' vagy 'Order_' prefixű oszlopok dinamikusan kiszűrésre kerülnek a jövőben,
-        # hogy a Viselkedési Profilozó (Behavioral Profiler) vak maradjon a felhasználó tranzakcióira.
-        exclude_cols = ['Time', 'TickMSC', 'TimeMsc', 'IF_Anomaly', 'IF_Score', 'BROKER_STATE']
+        # Explicit lista a DataMiner_BlackBox_v1_00.mqh alapján.
+        # Minden ezen kívüli oszlop (pl. Balance, Trade_, Phase) ki lesz zárva a hálózat elől,
+        # így az LSTM vak marad a felhasználó viselkedésére.
+        allowed_features = [
+            'Bid', 'Ask', 'Spread', 'Bar_Open', 'Bar_High', 'Bar_Low', 'Bar_Close',
+            'RSI', 'Velocity', 'Acceleration', 'Hybrid_MACD', 'Hybrid_DFCurve',
+            'Flow_MFI', 'Flow_ROC', 'Flow_Delta',
+            'Ctx_EMA_25', 'Ctx_EMA_50', 'Ctx_EMA_150', 'Ctx_EMA_300',
+            'WPR', 'Stoch_K', 'Ping_MS'
+        ]
+
         self.features = []
 
-        for col in df.columns:
-            if col in exclude_cols or col.startswith('Trade_') or col.startswith('Order_'):
-                continue
-            if pd.api.types.is_numeric_dtype(df[col]):
-                df[col] = df[col].ffill().fillna(0) # Biztosítjuk a hálózat stabilitását
-                self.features.append(col)
+        for col in allowed_features:
+            # Alternatív oszlopnév kezelés, pl. Ping -> Ping_MS
+            actual_col = col
+            if col == 'Ping_MS' and 'Ping' in df.columns and 'Ping_MS' not in df.columns:
+                actual_col = 'Ping'
 
-        self.features = sorted(list(set(self.features)))
+            if actual_col in df.columns:
+                if pd.api.types.is_numeric_dtype(df[actual_col]):
+                    df[actual_col] = df[actual_col].ffill().fillna(0) # Biztosítjuk a hálózat stabilitását
+                    self.features.append(actual_col)
+            else:
+                logger.warning(f"[{self.model_name}] Hiányzó engedélyezett oszlop a DataFrame-ben: {actual_col}")
+
+        # Nincs szükség sorting-ra, hagyjuk a megadott logikai sorrendet
         logger.info(f"[{self.model_name}] Dimenziók száma: {len(self.features)}")
 
         # Adat kinyerése
