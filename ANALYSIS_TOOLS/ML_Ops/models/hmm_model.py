@@ -46,21 +46,31 @@ class HMMDetector(BaseModel):
         logger.info(f"[{self.model_name}] HMM Feature Engineering...")
 
         # Alapvető volatilitás és sebesség dimenziók a rejtett állapotok kereséséhez
-        df['Spread'] = df['Spread'].ffill()
-        df['Bid_Return'] = df['Bid'].pct_change().fillna(0)
+        # DINAMIKUS FEATURE MAPPING (ZÉRÓ HARDKÓDOLÁS)
+        # Az összes DataMiner_BlackBox által generált oszlop az "Állapottér" része a HMM-ben.
+        # Nincs felesleges válogatás. Ami a CSV-ben van, az kell az AI-nak.
 
-        # Kezeli a DataMiner_BlackBox 'Ping_MS' vs default 'Ping' elnevezést
-        ping_col = 'Ping_MS' if 'Ping_MS' in df.columns else 'Ping'
-        if ping_col in df.columns:
-            df[ping_col] = df[ping_col].ffill()
-            self.features = ['Spread', ping_col, 'Bid_Return']
-        else:
-            self.features = ['Spread', 'Bid_Return']
+        exclude_cols = ['Time', 'TickMSC', 'TimeMsc']
+        self.features = []
 
-        # Nagyon fontos: A HMM az időbeli szekvenciákat tanulja, így a ping/spread
-        # folyamatos eloszlása határozza meg a brókeri állapotot (rezsimet).
+        # A HMM szereti a relatív változásokat a nyers árak (1.08552) helyett
+        if 'Bid' in df.columns:
+            df['Bid_Return'] = df['Bid'].pct_change().fillna(0)
+            self.features.append('Bid_Return')
 
-        logger.info(f"[{self.model_name}] HMM Dimenziók beállítva: {self.features}")
+        for col in df.columns:
+            if col in exclude_cols or col == 'Bid_Return':
+                continue
+
+            # Csak a matematikai adatokat engedjük be (nem stringet)
+            if pd.api.types.is_numeric_dtype(df[col]):
+                df[col] = df[col].ffill() # HMM elhasalna egy NaN értéken!
+                self.features.append(col)
+
+        # Nagyon fontos: A HMM az időbeli szekvenciákat tanulja, így az indikátorok
+        # folyamatos eloszlása fogja meghatározni a brókeri makro állapotot (rezsimet).
+
+        logger.info(f"[{self.model_name}] Összes HMM Dimenzió betöltve: {len(self.features)} db")
         return df
 
     def train(self, df: pd.DataFrame):
