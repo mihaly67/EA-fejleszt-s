@@ -33,7 +33,7 @@ class HMMDetector(BaseModel):
             from hmmlearn.hmm import GaussianHMM
             self.model = GaussianHMM(
                 n_components=self.n_components,
-                covariance_type="full",
+                covariance_type="diag",  # Térképszoba Utasítás: A 48 dimenziós Multikollinearitás elkerülése
                 n_iter=100,
                 random_state=self.random_state
             )

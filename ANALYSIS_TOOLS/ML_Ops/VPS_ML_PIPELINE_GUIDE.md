@@ -82,7 +82,7 @@ if df.empty:
 
 # 2. Anomália Keresés (Isolation Forest)
 print("\n--- [ ISOLATION FOREST - ZAJ ÉS TÜSKE KERESÉS ] ---")
-iso_model = IsolationForestDetector(contamination=0.02)
+iso_model = IsolationForestDetector(contamination="auto") # Póráz levéve, AI dönt!
 df = iso_model.preprocess(df)
 iso_model.train(df)
 df = iso_model.detect(df)
