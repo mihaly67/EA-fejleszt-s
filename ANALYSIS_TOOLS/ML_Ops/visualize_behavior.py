@@ -20,17 +20,27 @@ except ImportError:
     HAS_PLOT = False
     logger.warning("Matplotlib nincs telepítve. Csak szöveges kiértékelés (Konzol Riport) készül! (pip install matplotlib)")
 
-def analyze_trade_impact(df, filename):
+def analyze_trade_impact(df, filename, output_dir):
     """
     Kikeresi a Trade eseményeket (ahol a 'PosCount' megváltozott 0-ról 1-re vagy 1-ről 0-ra),
     és megvizsgálja az azt megelőző és követő 15-30 tickes ablakot az 'LSTM_Anomaly' (Manipuláció) tekintetében.
+    A konzol kimenetet egy txt fájlba is elmenti.
     """
-    logger.info(f"\n=======================================================")
-    logger.info(f"🔍 MÉLYELEMZÉS: {filename}")
-    logger.info(f"=======================================================")
+    report_lines = []
+
+    def log_and_store(msg):
+        logger.info(msg)
+        report_lines.append(msg)
+
+    log_and_store(f"\n=======================================================")
+    log_and_store(f"🔍 MÉLYELEMZÉS: {filename}")
+    log_and_store(f"=======================================================")
 
     if 'PosCount' not in df.columns or 'LSTM_Anomaly' not in df.columns:
-        logger.error(f"Hiányoznak a szükséges oszlopok (PosCount, LSTM_Anomaly) a {filename} fájlból!")
+        err_msg = f"Hiányoznak a szükséges oszlopok (PosCount, LSTM_Anomaly) a {filename} fájlból!"
+        logger.error(err_msg)
+        report_lines.append("HIBA: " + err_msg)
+        _save_report(report_lines, filename, output_dir)
         return
 
     # Megkeressük azokat a sorokat (tickeket), ahol tranzakció történt (PosCount változott)
@@ -38,11 +48,12 @@ def analyze_trade_impact(df, filename):
     trade_indices = df.index[df['PosCount'].diff().fillna(0) != 0].tolist()
 
     if not trade_indices:
-        logger.info("ℹ️ Ebben a fájlban NEM volt rögzített kereskedés (PosCount nem változott).")
-        logger.info(f"Összes Brókeri Anomália (Piaci Zaj / Színész) a fájlban: {len(df[df['LSTM_Anomaly'] == -1])} db ({(len(df[df['LSTM_Anomaly'] == -1])/len(df))*100:.2f}%)")
+        log_and_store("ℹ️ Ebben a fájlban NEM volt rögzített kereskedés (PosCount nem változott).")
+        log_and_store(f"Összes Brókeri Anomália (Piaci Zaj / Színész) a fájlban: {len(df[df['LSTM_Anomaly'] == -1])} db ({(len(df[df['LSTM_Anomaly'] == -1])/len(df))*100:.2f}%)")
+        _save_report(report_lines, filename, output_dir)
         return
 
-    logger.info(f"🔥 Talált Kereskedési Események (Nyitás/Zárás): {len(trade_indices)} db")
+    log_and_store(f"🔥 Talált Kereskedési Események (Nyitás/Zárás): {len(trade_indices)} db")
 
     window_size = 30 # Tick ablak a Trade ELŐTT és UTÁN
     actor_interventions = 0
@@ -62,15 +73,29 @@ def analyze_trade_impact(df, filename):
         if not anomalies_in_window.empty:
             actor_interventions += 1
             max_error = anomalies_in_window['LSTM_Reconstruction_Error'].max()
-            logger.info(f"🚨 [MANIPULÁCIÓ DETEKTÁLVA] Trade Időpont: {trade_time}")
-            logger.info(f"   -> A Trade körüli +/- {window_size} tickben az AI {len(anomalies_in_window)} db 'Színész' beavatkozást talált!")
-            logger.info(f"   -> Maximális Visszaépítési Hiba (Reconstruction Error): {max_error:.4f}")
+            log_and_store(f"🚨 [MANIPULÁCIÓ DETEKTÁLVA] Trade Időpont: {trade_time}")
+            log_and_store(f"   -> A Trade körüli +/- {window_size} tickben az AI {len(anomalies_in_window)} db 'Színész' beavatkozást talált!")
+            log_and_store(f"   -> Maximális Visszaépítési Hiba (Reconstruction Error): {max_error:.4f}")
         else:
-            logger.info(f"✅ [TISZTA TRADE] Trade Időpont: {trade_time} -> Nem volt manipuláció a nyitás/zárás körül.")
+            log_and_store(f"✅ [TISZTA TRADE] Trade Időpont: {trade_time} -> Nem volt manipuláció a nyitás/zárás körül.")
 
     intervention_rate = (actor_interventions / len(trade_indices)) * 100
-    logger.info(f"\n📊 ÖSSZEGZÉS:")
-    logger.info(f"A bróker az esetek {intervention_rate:.2f}%-ában reagált aktívan ('Színészkedett') a te kereskedéseidre!")
+    log_and_store(f"\n📊 ÖSSZEGZÉS:")
+    log_and_store(f"A bróker az esetek {intervention_rate:.2f}%-ában reagált aktívan ('Színészkedett') a te kereskedéseidre!")
+
+    _save_report(report_lines, filename, output_dir)
+
+def _save_report(lines, filename, output_dir):
+    """Kimenti az összegyűjtött riportot egy txt fájlba."""
+    report_filename = f"REPORT_{filename.replace('.csv', '.txt')}"
+    output_path = os.path.join(output_dir, report_filename)
+
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines) + '\n')
+        logger.info(f"📝 Elemzési Riport (.txt) kimentve ide: {output_path}")
+    except Exception as e:
+        logger.error(f"Hiba a txt riport ({output_path}) mentése közben: {str(e)}")
 
 def create_visual_plot(df, filename, output_dir):
     """
@@ -154,7 +179,7 @@ def run_evaluator():
             df = pd.read_csv(file_path, usecols=usecols)
 
             # 1. Konzol Riport és Kiértékelés (Emberi nyelven)
-            analyze_trade_impact(df, filename)
+            analyze_trade_impact(df, filename, output_dir)
 
             # 2. Vizuális Plot generálása (Kép)
             create_visual_plot(df, filename, output_dir)
