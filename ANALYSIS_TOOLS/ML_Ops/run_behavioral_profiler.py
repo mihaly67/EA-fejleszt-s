@@ -41,31 +41,35 @@ def run_profiler():
             logger.warning(f"A fájl {file_name} üres, kihagyjuk.")
             continue
 
-        # 2. LSTM Inicializálása minden fájlhoz külön (hogy az adott instrumentum/időszak dinamikáját tanulja meg)
-        # Nehéztüzérség bevetése: CPU optimalizált, RAM kímélő batch_size.
-        # A szekvencia hosszát megváltoztathatjuk, most az alap 30, amit javasoltál "kiterjeszteni".
-        # Legyen 30 alap, de később ezt könnyen módosíthatod.
-        seq_length = 30
-        lstm = LSTMAutoencoderDetector(seq_length=seq_length, latent_dim=8, batch_size=256, epochs=5)
+        # 2. LSTM Inicializálása minden fájlhoz és Spektrum Futtatás
+        # Több rétegben futtatjuk a hálót: a rövid tickek (5-10) az agresszív rángatásokat fogják,
+        # míg a hosszú tickek (25-30) a tartós brókeri lefagyásokat (Tick Sűrűség zuhanást) veszik észre.
+        spectrum_windows = [5, 10, 15, 20, 25, 30]
 
-        # 3. Betanítás (Az LSTM 'vak' marad a Balance, PosCount, Trade_ oszlopokra az lstm_autoencoder.py frissítése miatt)
-        logger.info(f"[{file_name}] LSTM Hálózat betanítása a piaci (vak) adatokon...")
-        try:
-            lstm.train(df_original)
-        except Exception as e:
-            logger.error(f"[{file_name}] Hiba a betanítás során: {str(e)}")
-            continue
+        for seq_length in spectrum_windows:
+            logger.info(f"\n--- [SPEKTRUM FÁZIS: seq_length={seq_length}] ---")
 
-        # 4. Detektálás és Összevetés
-        # A detect metódus visszaadja a teljes DataFrame-et kiegészítve az LSTM_Anomaly és Error oszlopokkal
-        logger.info(f"[{file_name}] Predikció és Anomália (Színész) keresés...")
-        df_analyzed = lstm.detect(df_original.copy())
+            # Nehéztüzérség bevetése: CPU optimalizált, RAM kímélő batch_size
+            lstm = LSTMAutoencoderDetector(seq_length=seq_length, latent_dim=8, batch_size=256, epochs=5)
 
-        # 5. Eredmények Mentése (Összevetés a jövőbeli elemzéshez)
-        output_file = os.path.join(output_dir, f"ANALYZED_{file_name}")
-        df_analyzed.to_csv(output_file, index=False)
+            # 3. Betanítás (Az LSTM 'vak' marad a Balance, PosCount, Trade_ oszlopokra)
+            logger.info(f"[{file_name} - seq{seq_length}] LSTM Hálózat betanítása a piaci (vak) adatokon...")
+            try:
+                # Klónozzuk, mert a belső függvény (scale/detect) esetleg inplace beleír a dataframe-be
+                lstm.train(df_original.copy())
+            except Exception as e:
+                logger.error(f"[{file_name} - seq{seq_length}] Hiba a betanítás során: {str(e)}")
+                continue
 
-        logger.info(f"✅ SIKER: Az elemzett fájl kimentve (összevetéshez kész): {output_file}")
+            # 4. Detektálás és Összevetés
+            logger.info(f"[{file_name} - seq{seq_length}] Predikció és Anomália (Színész) keresés...")
+            df_analyzed = lstm.detect(df_original.copy())
+
+            # 5. Eredmények Mentése, külön fájlban per spektrum ablak
+            output_file = os.path.join(output_dir, f"ANALYZED_{file_name.replace('.csv', '')}_seq{seq_length}.csv")
+            df_analyzed.to_csv(output_file, index=False)
+
+            logger.info(f"✅ SIKER: Elemzett fájl kimentve (seq={seq_length}): {output_file}")
 
     logger.info("\n🎉 Minden fájl feldolgozása befejeződött!")
 

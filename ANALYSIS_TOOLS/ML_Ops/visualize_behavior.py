@@ -59,14 +59,19 @@ def analyze_trade_impact(df, filename, output_dir):
 
     log_and_store(f"🔥 Talált Kereskedési Események (Nyitás/Zárás): {len(trade_indices)} db")
 
-    window_size = 30 # Tick ablak a Trade ELŐTT és UTÁN, ez paraméterezhetővé tehető
+    # Dinamikus ablakméret az alapján, hogy milyen seq_ fájlt elemzünk (pl. _seq5.csv -> 5)
+    import re
+    match = re.search(r'_seq(\d+)\.csv', filename)
+    seq_length = int(match.group(1)) if match else 30
+    window_size = seq_length  # A trade körüli megfigyelés (előjáték és utórengés) igazodjon a háló ablakához
+
     actor_interventions = 0
 
     for idx in trade_indices:
         # Trade ideje (Time oszlop, ha van)
         trade_time = df.loc[idx, 'Time'] if 'Time' in df.columns else f"Tick Index: {idx}"
 
-        # Trade előtti "előjáték" (Előkészíti-e a bróker a terepet a táguló spreaddel?)
+        # Trade előtti "előjáték" (Előkészíti-e a bróker a terepet a táguló spreaddel/lefagyással?)
         start_idx = max(0, idx - window_size)
         end_idx = min(len(df), idx + window_size)
 
@@ -80,6 +85,30 @@ def analyze_trade_impact(df, filename, output_dir):
             log_and_store(f"🚨 [MANIPULÁCIÓ DETEKTÁLVA] Trade Időpont: {trade_time}")
             log_and_store(f"   -> A Trade körüli +/- {window_size} tickben az AI {len(anomalies_in_window)} db 'Színész' beavatkozást talált!")
             log_and_store(f"   -> Maximális Visszaépítési Hiba (Reconstruction Error): {max_error:.4f}")
+
+            # --- Ok-okozati riporting (Vizuális megfigyelés alapján) ---
+            # 1. Keresünk tartós "Lefagyást" (Zéróhoz közeli tick sűrűség)
+            if 'Time_Delta_MS' in anomalies_in_window.columns:
+                max_delta = anomalies_in_window['Time_Delta_MS'].max()
+                if max_delta > 10000: # Több mint 10 mp várakozás 1 tickre (Bróker dermedés)
+                    log_and_store(f"   -> OK: [LEFAGYÁS] A bróker masszívan lelassult, a ticksűrűség megállt! (Max tick szünet: {max_delta/1000:.1f} másodperc)")
+
+            # 2. Extrém Spread tágítás (ha van ilyen oszlop)
+            if 'Spread' in anomalies_in_window.columns:
+                # Összehasonlítjuk a helyi átlag spreadet a csúccsal
+                avg_spread = df['Spread'].mean()
+                max_spread = anomalies_in_window['Spread'].max()
+                if max_spread > avg_spread * 2: # Duplájára nőtt
+                    log_and_store(f"   -> OK: [EXTRÉM SPREAD] A spread indokolatlanul kitágult (Helyi Csúcs: {max_spread:.1f})")
+
+            # 3. Agresszív ár-rángatás (Bid ugrás rövid idő alatt)
+            if 'Bid' in anomalies_in_window.columns:
+                price_volatility = anomalies_in_window['Bid'].max() - anomalies_in_window['Bid'].min()
+                # Ha a Bid ugrás egy nagyon rövid szekvenciában extrém magas
+                # (Ezt nehéz fix értékhez kötni instrumentum függetlenül, de a relatív változás nagy)
+                # Ide egy egyszerű logikai ellenőrzés is elég
+                log_and_store(f"   -> INFO: Árfolyam (Bid) oszcilláció az ablakban: {price_volatility:.5f}")
+
         else:
             log_and_store(f"✅ [TISZTA TRADE] Trade Időpont: {trade_time} -> Nem volt manipuláció a nyitás/zárás körül.")
 
@@ -176,7 +205,7 @@ def run_evaluator():
             sample_df = pd.read_csv(file_path, nrows=1)
             cols = sample_df.columns.tolist()
 
-            target_cols = ['Time', 'Bid', 'PosCount', 'LSTM_Reconstruction_Error', 'LSTM_Anomaly', 'Trade_Action', 'LotDir', 'LSTM_Threshold']
+            target_cols = ['Time', 'Bid', 'PosCount', 'LSTM_Reconstruction_Error', 'LSTM_Anomaly', 'Trade_Action', 'LotDir', 'LSTM_Threshold', 'Time_Delta_MS', 'Spread']
             usecols = [c for c in target_cols if c in cols]
 
             # Betöltés
