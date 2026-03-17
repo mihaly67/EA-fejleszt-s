@@ -40,4 +40,28 @@ Nyisd meg az `ANALYZED_...` kezdetű fájlt (Excelben vagy Pandas-szal).
    - `LSTM_Reconstruction_Error`: A hiba mértéke (minél nagyobb, annál furcsább a piac).
    - `LSTM_Anomaly`: **1** = Normál piac, **-1** = Bróker Manipuláció ("Színész").
 
-**A Döntő Kérdés:** Keresd meg azokat a sorokat, ahol te pozíciót nyitottál (pl. `PosCount` megváltozik, `Trade_Action` stb.), és nézd meg, hogy közvetlenül előtte vagy utána az `LSTM_Anomaly` átvált-e **-1**-re. Ha igen, akkor a bróker a te viselkedésedre reagálva tágítja a spreadet vagy manipulálja az árat!
+**A Döntő Kérdés (Manuális):** Keresd meg azokat a sorokat, ahol te pozíciót nyitottál (pl. `PosCount` megváltozik), és nézd meg, hogy az `LSTM_Anomaly` átvált-e **-1**-re (ez azt jelenti, a bróker a te viselkedésedre reagálva tágítja a spreadet).
+
+## 6. Automatikus Vizualizáció és Értékelés (Az Emberi Riport)
+Mivel az Excel táblázatok manuális böngészése nehézkes, elkészült a `visualize_behavior.py` script, amely elvégzi helyetted a teljes munka nehezét, és emberi nyelven összefoglalja a bróker "Színész" akcióit.
+
+### 6.1. Grafikus Csomag Telepítése (Csak egyszer kell)
+Hogy a script gyönyörű grafikonokat (Képeket) is tudjon generálni az összképről, telepítened kell a `matplotlib`-et a szerveren (ha eddig nem tetted meg):
+```bash
+pip install matplotlib
+```
+
+### 6.2. Az Értékelő Script Futtatása
+Amint lefutott a `run_behavioral_profiler.py` és létrejöttek az `ANALYZED_` fájlok, futtasd az elemzőt:
+```bash
+python3 visualize_behavior.py
+```
+
+### 6.3. Mit fogsz látni?
+A script két dolgot csinál:
+1. **A Konzolodon (Szöveges Riport):** Minden egyes kereskedésedet kikeresi (amikor a `PosCount` változott), és megnézi a nyitás előtti és utáni **+/- 30 tickes** ablakot. Kiírja a konzolra, hogy az adott trade "Tiszta" volt-e, vagy az AI "Manipulációt" detektált a nyitásod körül. A végén ad egy százalékos summát (pl. *"A bróker az esetek 65%-ában reagált aktívan a te kereskedéseidre!"*).
+2. **Kép Fájlok (.png) Kimentése:** A `data/analyzed/` mappába minden fájlhoz lerak egy `PLOT_ANALYZED_...png` képet. Ezen a képen (két grafikon egymás alatt):
+   - **Felső:** Látod a nyers piaci Árat (Bid), és **kék háromszögekkel** vannak bejelölve a te kereskedési pontjaid.
+   - **Alsó:** Látod a "Színész" beavatkozásait. A narancssárga vonal az AI "Reconstruction Error"-ja, a **piros pontok** pedig azokat a tickeket jelölik, amik átlépték a manipulációs küszöböt (`Anomaly = -1`).
+
+Ezen a képen egy szempillantás alatt láthatod a korrelációt: *Ott van piros pont az alsó grafikonon, ahol te kék háromszöggel nyitottad a pozíciót a felsőn?* Ha igen, a bróker reagál rád!
