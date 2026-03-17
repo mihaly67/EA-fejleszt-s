@@ -42,8 +42,11 @@ def run_profiler():
             continue
 
         # 2. LSTM Inicializálása minden fájlhoz külön (hogy az adott instrumentum/időszak dinamikáját tanulja meg)
-        # Nehéztüzérség bevetése: CPU optimalizált, RAM kímélő batch_size
-        lstm = LSTMAutoencoderDetector(seq_length=30, latent_dim=8, batch_size=256, epochs=5)
+        # Nehéztüzérség bevetése: CPU optimalizált, RAM kímélő batch_size.
+        # A szekvencia hosszát megváltoztathatjuk, most az alap 30, amit javasoltál "kiterjeszteni".
+        # Legyen 30 alap, de később ezt könnyen módosíthatod.
+        seq_length = 30
+        lstm = LSTMAutoencoderDetector(seq_length=seq_length, latent_dim=8, batch_size=256, epochs=5)
 
         # 3. Betanítás (Az LSTM 'vak' marad a Balance, PosCount, Trade_ oszlopokra az lstm_autoencoder.py frissítése miatt)
         logger.info(f"[{file_name}] LSTM Hálózat betanítása a piaci (vak) adatokon...")

@@ -43,6 +43,10 @@ def analyze_trade_impact(df, filename, output_dir):
         _save_report(report_lines, filename, output_dir)
         return
 
+    threshold_val = df['LSTM_Threshold'].iloc[0] if 'LSTM_Threshold' in df.columns else "N/A"
+    if threshold_val != "N/A":
+        log_and_store(f"📈 LSTM Autoencoder Anomália Küszöb (Threshold): {threshold_val:.4f} (Ezen felüli hiba számít 'Színész' beavatkozásnak)")
+
     # Megkeressük azokat a sorokat (tickeket), ahol tranzakció történt (PosCount változott)
     # Ahol a .diff() nem 0, ott történt egy Trade nyitás vagy zárás
     trade_indices = df.index[df['PosCount'].diff().fillna(0) != 0].tolist()
@@ -55,7 +59,7 @@ def analyze_trade_impact(df, filename, output_dir):
 
     log_and_store(f"🔥 Talált Kereskedési Események (Nyitás/Zárás): {len(trade_indices)} db")
 
-    window_size = 30 # Tick ablak a Trade ELŐTT és UTÁN
+    window_size = 30 # Tick ablak a Trade ELŐTT és UTÁN, ez paraméterezhetővé tehető
     actor_interventions = 0
 
     for idx in trade_indices:
@@ -172,7 +176,7 @@ def run_evaluator():
             sample_df = pd.read_csv(file_path, nrows=1)
             cols = sample_df.columns.tolist()
 
-            target_cols = ['Time', 'Bid', 'PosCount', 'LSTM_Reconstruction_Error', 'LSTM_Anomaly', 'Trade_Action', 'LotDir']
+            target_cols = ['Time', 'Bid', 'PosCount', 'LSTM_Reconstruction_Error', 'LSTM_Anomaly', 'Trade_Action', 'LotDir', 'LSTM_Threshold']
             usecols = [c for c in target_cols if c in cols]
 
             # Betöltés
