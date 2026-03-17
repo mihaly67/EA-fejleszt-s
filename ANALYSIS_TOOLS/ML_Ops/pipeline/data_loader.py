@@ -56,6 +56,38 @@ class RobustDataLoader:
             del chunk_list
             gc.collect()
 
+            # ---- BEHAVIORAL PROFILING: Tick Sűrűség (Lefagyás) Számítás ----
+            # Ha van TickMSC vagy TimeMsc oszlop, kiszámoljuk a két tick közötti időt.
+            # Ebből az LSTM azonnal látni fogja, ha a bróker "lefagyasztja" a chartot (pl. 60000 ms = 1 perc).
+            time_col = None
+            if 'TickMSC' in df_final.columns:
+                time_col = 'TickMSC'
+            elif 'TimeMsc' in df_final.columns:
+                time_col = 'TimeMsc'
+
+            if time_col:
+                # Kiszámoljuk az időeltolódást ms-ban. Az első sornál NaN lesz, amit 0-ra állítunk.
+                df_final['Time_Delta_MS'] = df_final[time_col].diff().fillna(0)
+                # Ha véletlenül negatív lenne (óra átállítás vagy rossz sorrend), 0-ra cseréljük
+                df_final['Time_Delta_MS'] = df_final['Time_Delta_MS'].clip(lower=0)
+                logger.info(f"✔ 'Time_Delta_MS' (Tick Sűrűség / Lefagyás) indikátor kiszámítva a '{time_col}' alapján.")
+            else:
+                # Fallback, ha nincs milliszekundum, csak 'Time' (másodperc).
+                # Megpróbáljuk datetime-má alakítani és másodpercben kifejezni, majd ms-ra váltani.
+                if 'Time' in df_final.columns:
+                    try:
+                        df_final['Time_Parsed'] = pd.to_datetime(df_final['Time'], errors='coerce')
+                        df_final['Time_Delta_MS'] = df_final['Time_Parsed'].diff().dt.total_seconds().fillna(0) * 1000
+                        df_final['Time_Delta_MS'] = df_final['Time_Delta_MS'].clip(lower=0)
+                        df_final.drop(columns=['Time_Parsed'], inplace=True)
+                        logger.info(f"✔ 'Time_Delta_MS' (Tick Sűrűség / Lefagyás) indikátor kiszámítva a 'Time' alapján.")
+                    except Exception as e:
+                        logger.warning(f"Nem sikerült a Time oszlopból delta-t számolni: {e}")
+                        df_final['Time_Delta_MS'] = 0
+                else:
+                    logger.warning("Nem találtam Time vagy TickMSC oszlopot a fájlban, 'Time_Delta_MS' nullázva.")
+                    df_final['Time_Delta_MS'] = 0
+
             self.monitor.log_usage("Betöltés Után")
             logger.info(f"Sikeres adatbetöltés: {len(df_final)} sor.")
             return df_final

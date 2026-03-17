@@ -103,31 +103,17 @@ class LSTMAutoencoderDetector(BaseModel):
         """
         logger.info(f"[{self.model_name}] Deep Learning Adatelőkészítés (Skálázás és Tisztítás)...")
 
-        # Explicit lista a DataMiner_BlackBox_v1_00.mqh alapján.
-        # Minden ezen kívüli oszlop (pl. Balance, Trade_, Phase) ki lesz zárva a hálózat elől,
-        # így az LSTM vak marad a felhasználó viselkedésére.
-        allowed_features = [
-            'Bid', 'Ask', 'Spread', 'Bar_Open', 'Bar_High', 'Bar_Low', 'Bar_Close',
-            'RSI', 'Velocity', 'Acceleration', 'Hybrid_MACD', 'Hybrid_DFCurve',
-            'Flow_MFI', 'Flow_ROC', 'Flow_Delta',
-            'Ctx_EMA_25', 'Ctx_EMA_50', 'Ctx_EMA_150', 'Ctx_EMA_300',
-            'WPR', 'Stoch_K', 'Ping_MS'
-        ]
+        # Teljesen dinamikus Feature Mapping: a memóriaszabályoknak (Python ML Feature Mapping) megfelelően
+        # minden numerikus oszlopot bevonunk, kivéve a 'Trade_' vagy 'Order_' (és a 'PosCount', 'Balance')
+        # kezdetűeket, amik elárulnák a felhasználó cselekvéseit. Nincs hardkódolt lista!
+        excluded_prefixes = ('Trade_', 'Order_', 'PosCount', 'Balance', 'Time', 'TickMSC', 'TimeMsc', 'Phase')
 
         self.features = []
-
-        for col in allowed_features:
-            # Alternatív oszlopnév kezelés, pl. Ping -> Ping_MS
-            actual_col = col
-            if col == 'Ping_MS' and 'Ping' in df.columns and 'Ping_MS' not in df.columns:
-                actual_col = 'Ping'
-
-            if actual_col in df.columns:
-                if pd.api.types.is_numeric_dtype(df[actual_col]):
-                    df[actual_col] = df[actual_col].ffill().fillna(0) # Biztosítjuk a hálózat stabilitását
-                    self.features.append(actual_col)
-            else:
-                logger.warning(f"[{self.model_name}] Hiányzó engedélyezett oszlop a DataFrame-ben: {actual_col}")
+        for col in df.columns:
+            if not col.startswith(excluded_prefixes) and pd.api.types.is_numeric_dtype(df[col]):
+                # Ha Ping, akkor elfogadjuk, mert nem exclude.
+                df[col] = df[col].ffill().fillna(0) # Biztosítjuk a hálózat stabilitását
+                self.features.append(col)
 
         # Nincs szükség sorting-ra, hagyjuk a megadott logikai sorrendet
         logger.info(f"[{self.model_name}] Dimenziók száma: {len(self.features)}")
@@ -217,6 +203,9 @@ class LSTMAutoencoderDetector(BaseModel):
         full_mse = np.concatenate([padding, mse])
 
         df['LSTM_Reconstruction_Error'] = full_mse
+
+        # Eltároljuk a küszöböt is a DataFrame-ben (így a jelentés generáló szkript is láthatja)
+        df['LSTM_Threshold'] = self.threshold
 
         # Anomália Detektálás (-1 = Manipulált / Színész beavatkozás, 1 = Normál)
         df['LSTM_Anomaly'] = np.where(df['LSTM_Reconstruction_Error'] > self.threshold, -1, 1)
