@@ -177,14 +177,27 @@ class LSTMAutoencoderDetector(BaseModel):
 
         mse = np.array(mse_list)
 
-        # Küszöb Finomhangolása: Fix percentilis helyett Z-score (Átlag + N * Szórás) alapú dinamikus küszöb.
-        # Ha a bróker sokat manipulál, a 95. percentilis (felső 5%) túl magasan vágna le, és elsiklana a manipuláció felett.
-        # A `mean + 2.5 * std` viszont a természetes piaci zaj eloszlásához alkalmazkodik.
-        mse_mean = np.mean(mse)
-        mse_std = np.std(mse)
-        self.threshold = mse_mean + (2.5 * mse_std)
+        # --- KÜSZÖB (THRESHOLD) ROBUSTUS FINOMHANGOLÁSA ---
+        # Ha a bróker masszívan manipulál (akár 30-50%-ban apró rángatásokkal), a hagyományos
+        # átlag és szórás hatalmasra nő a kiugró értékek (outlierek) miatt. Ez indokolatlanul
+        # magasan tartja a küszöböt (pl. 1.7), elrejtve a kisebb "színészkedéseket".
+        #
+        # Megoldás: "Tiszta Bázis" (Robust Baseline). Csak a legnyugodtabb piacot (az MSE alsó 50%-át)
+        # vesszük alapul az átlaghoz és szóráshoz. Ebből számoljuk ki a valódi piaci "nanotick zajt".
 
-        logger.info(f"[{self.model_name}] Autoencoder Betanítva! Dinamikus Hiba Küszöb (Mean+2.5*Std): {self.threshold:.5f} (Átlag: {mse_mean:.5f}, Szórás: {mse_std:.5f})")
+        # 1. Kiválogatjuk a medián alatti (legnyugodtabb) hibákat
+        median_mse = np.median(mse)
+        clean_base = mse[mse <= median_mse]
+
+        # 2. Ennek a "tiszta" bázisnak a paraméterei
+        clean_mean = np.mean(clean_base)
+        clean_std = np.std(clean_base)
+
+        # 3. A küszöböt a tiszta bázisra építjük (Pl. a tiszta átlag + 5 * tiszta szórás).
+        # Ez garantáltan alacsonyabb lesz (pl. 1.0 körül), és ráül a természetes zaj tetejére!
+        self.threshold = clean_mean + (5.0 * clean_std)
+
+        logger.info(f"[{self.model_name}] Autoencoder Betanítva! ROBUSTUS Hiba Küszöb: {self.threshold:.5f} (Tiszta Bázis Átlag: {clean_mean:.5f}, Szórás: {clean_std:.5f})")
 
     def detect(self, df: pd.DataFrame) -> pd.DataFrame:
         if not self.is_trained:
