@@ -193,11 +193,32 @@ class LSTMAutoencoderDetector(BaseModel):
         clean_mean = np.mean(clean_base)
         clean_std = np.std(clean_base)
 
-        # 3. A küszöböt a tiszta bázisra építjük (Pl. a tiszta átlag + 5 * tiszta szórás).
-        # Ez garantáltan alacsonyabb lesz (pl. 1.0 körül), és ráül a természetes zaj tetejére!
-        self.threshold = clean_mean + (5.0 * clean_std)
+        # 3. A küszöböt a tiszta bázisra építjük (Pl. a tiszta átlag + X * tiszta szórás).
+        # SWAT4 Frissítés: Ha a piac nagyon volatilis (az eredeti adathalmazban hatalmas ugrások vannak),
+        # vagy épp ellenkezőleg, nagyon pangó, akkor a threshold ne fix 5.0-ás szorzó legyen.
+        # Használjuk fel a "Time_Delta_MS" (tick sűrűség) vagy a teljes hiba eloszlását önszabályozásra!
+        # Ha a piac volatilis és zajos (median hiba eleve nagy), a küszöb szorzó lecsökken (pl. 2.0-ra),
+        # hogy szorosabban kövesse a mozgásokat (alacsonyabb küszöb = 0.4 - 0.6 tartomány).
 
-        logger.info(f"[{self.model_name}] Autoencoder Betanítva! ROBUSTUS Hiba Küszöb: {self.threshold:.5f} (Tiszta Bázis Átlag: {clean_mean:.5f}, Szórás: {clean_std:.5f})")
+        # "Self-Tuning Anomaly Threshold" (Önszabályozó Küszöb a Volatilitás Alapján)
+        # Ha a globális szórás hatalmas (nagyon rángat a piac), a szorzó kisebb lesz (közelebb a mediánhoz).
+        global_std = np.std(mse)
+        if global_std > 2.0:
+            volatility_multiplier = 2.0 # Nyüzsgő/Volatilis piac, szorosabb küszöb
+        elif global_std > 1.0:
+            volatility_multiplier = 3.5
+        else:
+            volatility_multiplier = 5.0 # Pangó éjszakai piac, lazább küszöb a fals pozitívok ellen
+
+        self.threshold = clean_mean + (volatility_multiplier * clean_std)
+
+        # SWAT4 Korrekció: Ha a tiszta szórás is rendkívül kicsi (nagyon sima "robot" piac),
+        # megakadályozzuk, hogy a threshold irreálisan kicsi legyen (pl. 0.05).
+        # Ahogy a felhasználó kérte, pörgős piacon a küszöb eshet 0.4 - 0.6 közé.
+        self.threshold = max(0.4, self.threshold)
+
+        logger.info(f"[{self.model_name}] Autoencoder Betanítva! ÖNSZABÁLYOZÓ ROBUSTUS Hiba Küszöb: {self.threshold:.5f}")
+        logger.info(f"[{self.model_name}] -> Tiszta Bázis Átlag: {clean_mean:.5f}, Szórás: {clean_std:.5f}, Szorzó: {volatility_multiplier}x")
 
     def detect(self, df: pd.DataFrame) -> pd.DataFrame:
         if not self.is_trained:

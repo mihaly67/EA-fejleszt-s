@@ -44,8 +44,10 @@ def run_profiler():
         # 2. LSTM Inicializálása minden fájlhoz és Spektrum Futtatás
         # Több rétegben futtatjuk a hálót: a rövid tickek (5-10) az agresszív rángatásokat fogják,
         # míg a hosszú tickek (25-30) a tartós brókeri lefagyásokat (Tick Sűrűség zuhanást) veszik észre.
-        # UPDATE: Még sűrűbb alsó tartomány a finom Tick Trendfordulók detektálásához.
-        spectrum_windows = [3, 5, 7, 10, 15, 20, 25, 30]
+        # UPDATE SWAT4: A nagyon volatilis, nyüzsgő piacon (ahol a Tick Sűrűség magas és az árak
+        # rángatnak) a magasabb szekvenciák (30, 40, 50, 60) bizonyultak a leghatékonyabbnak,
+        # hogy a nagyobb ablakokban látható oszcillációt a rendszer kiszűrje.
+        spectrum_windows = [10, 15, 20, 30, 40, 50, 60]
 
         for seq_length in spectrum_windows:
             logger.info(f"\n--- [SPEKTRUM FÁZIS: seq_length={seq_length}] ---")
