@@ -158,7 +158,19 @@ def analyze_trade_impact(df, filename, output_dir):
     log_and_store(f"\n📊 ÖSSZEGZÉS:")
     log_and_store(f"A bróker az esetek {intervention_rate:.2f}%-ában reagált aktívan ('Színészkedett') a te kereskedéseidre!")
 
+    # Elmentjük az összegyűjtött riportot
     _save_report(report_lines, filename, output_dir)
+
+    # Visszatérünk az összegző statisztikákkal a szintetizáláshoz
+    return {
+        "filename": filename,
+        "seq_length": seq_length,
+        "threshold": threshold_val,
+        "total_trades": len(trade_indices),
+        "interventions": actor_interventions,
+        "intervention_rate": intervention_rate,
+        "max_error_overall": df['LSTM_Reconstruction_Error'].max() if 'LSTM_Reconstruction_Error' in df.columns else 0
+    }
 
 def _save_report(lines, filename, output_dir):
     """Kimenti az összegyűjtött riportot egy txt fájlba."""
@@ -250,6 +262,9 @@ def run_evaluator():
         logger.error("Nem találtam elemzett (ANALYZED_) CSV fájlokat az összevetéshez!")
         return
 
+    # Összegyűjtjük a futások statisztikáit a végső szintetizáló riporthoz
+    spectrum_stats = []
+
     for file_path in csv_files:
         filename = os.path.basename(file_path)
         try:
@@ -267,13 +282,69 @@ def run_evaluator():
             df = pd.read_csv(file_path, usecols=usecols)
 
             # 1. Konzol Riport és Kiértékelés (Emberi nyelven)
-            analyze_trade_impact(df, filename, output_dir)
+            stats = analyze_trade_impact(df, filename, output_dir)
+            if stats:
+                # Kinyerjük az alapot, hogy az azonos fájlhoz tartozó szekvenciákat csoportosítani tudjuk
+                # pl. "ANALYZED_Merkava_XAUUSD_v1.10_20260318_160820_seq30.csv" -> "Merkava_XAUUSD_v1.10_20260318_160820"
+                import re
+                base_match = re.search(r'ANALYZED_(.*)_seq\d+\.csv', filename)
+                base_name = base_match.group(1) if base_match else "Ismeretlen_Fajl"
+                stats['base_name'] = base_name
+                spectrum_stats.append(stats)
 
             # 2. Vizuális Plot generálása (Kép)
             create_visual_plot(df, filename, output_dir)
 
         except Exception as e:
             logger.error(f"Hiba a {filename} fájl értékelésekor: {str(e)}")
+
+    # 3. SZINTETIZÁLÓ RIPORT LÉTREHOZÁSA
+    if spectrum_stats:
+        generate_synthesis_report(spectrum_stats, output_dir)
+
+def generate_synthesis_report(stats_list, output_dir):
+    """
+    Készít egy emberi szempontból értékelhető, átfogó összefoglalót a szekvencia spektrumokról.
+    Ez megmutatja, hogy melyik szekvencia milyen beavatkozási rátát és hibát generált.
+    """
+    # Csoportosítás alapfájlok szerint
+    df_stats = pd.DataFrame(stats_list)
+    base_names = df_stats['base_name'].unique()
+
+    for base_name in base_names:
+        report_lines = []
+        report_lines.append(f"=======================================================")
+        report_lines.append(f"📊 ÖSSZEVONT SPEKTRUM ÉRTÉKELÉS: {base_name}")
+        report_lines.append(f"=======================================================\n")
+        report_lines.append("Ez a jelentés szintetizálja a különböző szekvenciahosszok (ablakok) ML elemzését.")
+        report_lines.append("Cél: Megtalálni az optimális 'látóteret' a brókeri manipuláció felismerésére.\n")
+
+        # Szekvencia szerint növekvő sorrendbe rendezés
+        file_stats = df_stats[df_stats['base_name'] == base_name].sort_values(by='seq_length')
+
+        report_lines.append(f"{'Szekvencia (Tick)':<20} | {'Küszöb (Threshold)':<20} | {'Max Oszcillációs Hiba':<25} | {'Beavatkozási Ráta (%)':<25}")
+        report_lines.append("-" * 95)
+
+        for _, row in file_stats.iterrows():
+            seq_str = f"{row['seq_length']} tick"
+            thresh_str = f"{row['threshold']:.4f}" if isinstance(row['threshold'], float) else str(row['threshold'])
+            error_str = f"{row['max_error_overall']:.4f}"
+            rate_str = f"{row['intervention_rate']:.2f}% ({row['interventions']}/{row['total_trades']})"
+
+            report_lines.append(f"{seq_str:<20} | {thresh_str:<20} | {error_str:<25} | {rate_str:<25}")
+
+        report_lines.append("\n💡 ÉRTÉKELÉSI ÚTMUTATÓ (GEMINI RAG IRÁNYELVEK):")
+        report_lines.append("- Ha a piac volatilis (pörgős), a nagyobb szekvenciák (30-60) a megbízhatóbbak,")
+        report_lines.append("  mivel kiszűrik a normális piaci zajt, de megfogják a mesterséges oszcillációt.")
+        report_lines.append("- Ahol a beavatkozási ráta tartósan magas (pl. 40-50%), az az ideális felbontás a bróker leleplezésére.")
+
+        out_path = os.path.join(output_dir, f"SPECTRUM_SUMMARY_{base_name}.txt")
+        try:
+            with open(out_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(report_lines) + '\n')
+            logger.info(f"🏆 Szintetizáló Spektrum Riport sikeresen kimentve: {out_path}")
+        except Exception as e:
+            logger.error(f"Hiba a szintetizáló riport ({out_path}) mentése közben: {str(e)}")
 
 if __name__ == '__main__':
     run_evaluator()
