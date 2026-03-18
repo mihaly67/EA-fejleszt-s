@@ -1,0 +1,21 @@
+=======================================================
+📊 ÖSSZEVONT SPEKTRUM ÉRTÉKELÉS: Merkava_XAUUSD_v1.10_20260317_231658
+=======================================================
+
+Ez a jelentés szintetizálja a különböző szekvenciahosszok (ablakok) ML elemzését.
+Cél: Megtalálni az optimális 'látóteret' a brókeri manipuláció felismerésére.
+
+Szekvencia (Tick)    | Küszöb (Threshold)   | Max Oszcillációs Hiba     | Beavatkozási Ráta (%)
+-----------------------------------------------------------------------------------------------
+10 tick              | 1.0698               | 6.2215                    | 27.14% (19/70)
+15 tick              | 1.0980               | 5.3928                    | 37.14% (26/70)
+20 tick              | 1.0828               | 4.4572                    | 34.29% (24/70)
+30 tick              | 1.1328               | 3.6029                    | 21.43% (15/70)
+40 tick              | 1.1610               | 3.3477                    | 20.00% (14/70)
+50 tick              | 1.1410               | 2.9936                    | 22.86% (16/70)
+60 tick              | 1.1360               | 3.1244                    | 24.29% (17/70)
+
+💡 ÉRTÉKELÉSI ÚTMUTATÓ (GEMINI RAG IRÁNYELVEK):
+- Ha a piac volatilis (pörgős), a nagyobb szekvenciák (30-60) a megbízhatóbbak,
+  mivel kiszűrik a normális piaci zajt, de megfogják a mesterséges oszcillációt.
+- Ahol a beavatkozási ráta tartósan magas (pl. 40-50%), az az ideális felbontás a bróker leleplezésére.
