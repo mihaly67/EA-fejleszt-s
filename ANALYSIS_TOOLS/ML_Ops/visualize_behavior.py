@@ -112,6 +112,31 @@ def analyze_trade_impact(df, filename, output_dir):
         else:
             log_and_store(f"✅ [TISZTA TRADE] Trade Időpont: {trade_time} -> Nem volt manipuláció a nyitás/zárás körül.")
 
+        # --- Ellentétes Elmozdulás (Adverse Excursion / Rám Ugrás) Számítás ---
+        # Azt nézzük, hogy a belépéstől (pozitív diff) kezdve az árfolyam azonnal ellenünk mozdul-e a következő tickeken.
+        # Ha 'LotDir' == 1 (Buy), a Bid esése az ellenség. Ha 'LotDir' == -1 (Sell), a Bid növekedése az ellenség.
+        if 'LotDir' in df.columns and 'Bid' in df.columns:
+            # Csak nyitás esetén vizsgáljuk a rám ugrást (zárásnál nem)
+            if df.loc[idx, 'PosCount'] > df.loc[max(0, idx - 1), 'PosCount']:
+                trade_dir = df.loc[idx, 'LotDir']
+                entry_price = df.loc[idx, 'Bid']
+
+                # A belépéstől (idx) a megadott ablak végéig (end_idx) vizsgáljuk a mozgást
+                forward_window = df.iloc[idx:end_idx]
+
+                if not forward_window.empty and trade_dir != 0:
+                    if trade_dir == 1: # Long / Buy
+                        lowest_bid = forward_window['Bid'].min()
+                        excursion = entry_price - lowest_bid
+                        if excursion > 0:
+                            log_and_store(f"   -> 📉 [ELLENTÉTES ELMOZDULÁS] A bróker a Buy belépésed után azonnal ellened vitte az árat! (Maximális esés az ablakban: -{excursion:.5f} pont)")
+
+                    elif trade_dir == -1: # Short / Sell
+                        highest_bid = forward_window['Bid'].max()
+                        excursion = highest_bid - entry_price
+                        if excursion > 0:
+                            log_and_store(f"   -> 📈 [ELLENTÉTES ELMOZDULÁS] A bróker a Sell belépésed után azonnal ellened vitte az árat! (Maximális emelkedés az ablakban: +{excursion:.5f} pont)")
+
     intervention_rate = (actor_interventions / len(trade_indices)) * 100
     log_and_store(f"\n📊 ÖSSZEGZÉS:")
     log_and_store(f"A bróker az esetek {intervention_rate:.2f}%-ában reagált aktívan ('Színészkedett') a te kereskedéseidre!")

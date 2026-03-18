@@ -106,12 +106,15 @@ class LSTMAutoencoderDetector(BaseModel):
         # Teljesen dinamikus Feature Mapping: a memóriaszabályoknak (Python ML Feature Mapping) megfelelően
         # minden numerikus oszlopot bevonunk, kivéve a 'Trade_' vagy 'Order_' (és a 'PosCount', 'Balance')
         # kezdetűeket, amik elárulnák a felhasználó cselekvéseit. Nincs hardkódolt lista!
-        excluded_prefixes = ('Trade_', 'Order_', 'PosCount', 'Balance', 'Time', 'TickMSC', 'TimeMsc', 'Phase')
+        # KÖTELEZŐ: A 'Lot' és 'Profit' oszlopoknak is itt a helye, különben Target Leak (Overfitting) lesz!
+        excluded_prefixes = ('Trade_', 'Order_', 'PosCount', 'Balance', 'Phase', 'Lot', 'Profit')
+        excluded_exact = ('Time', 'TickMSC', 'TimeMsc')
 
         self.features = []
         for col in df.columns:
-            if not col.startswith(excluded_prefixes) and pd.api.types.is_numeric_dtype(df[col]):
-                # Ha Ping, akkor elfogadjuk, mert nem exclude.
+            # A 'Time_Delta_MS' oszlop nem kerülhet kizárásra (mint a sima 'Time'), mert az a lefagyás kulcsa!
+            if not col.startswith(excluded_prefixes) and col not in excluded_exact and pd.api.types.is_numeric_dtype(df[col]):
+                # Ha Ping, vagy Time_Delta, akkor elfogadjuk, mert nem exclude.
                 df[col] = df[col].ffill().fillna(0) # Biztosítjuk a hálózat stabilitását
                 self.features.append(col)
 
