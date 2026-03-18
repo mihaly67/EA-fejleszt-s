@@ -177,9 +177,14 @@ class LSTMAutoencoderDetector(BaseModel):
 
         mse = np.array(mse_list)
 
-        # Küszöb: A hibák felső 5%-a már Anomália
-        self.threshold = np.percentile(mse, 95)
-        logger.info(f"[{self.model_name}] Autoencoder Betanítva! Kritikus Hiba Küszöb (Threshold): {self.threshold:.5f}")
+        # Küszöb Finomhangolása: Fix percentilis helyett Z-score (Átlag + N * Szórás) alapú dinamikus küszöb.
+        # Ha a bróker sokat manipulál, a 95. percentilis (felső 5%) túl magasan vágna le, és elsiklana a manipuláció felett.
+        # A `mean + 2.5 * std` viszont a természetes piaci zaj eloszlásához alkalmazkodik.
+        mse_mean = np.mean(mse)
+        mse_std = np.std(mse)
+        self.threshold = mse_mean + (2.5 * mse_std)
+
+        logger.info(f"[{self.model_name}] Autoencoder Betanítva! Dinamikus Hiba Küszöb (Mean+2.5*Std): {self.threshold:.5f} (Átlag: {mse_mean:.5f}, Szórás: {mse_std:.5f})")
 
     def detect(self, df: pd.DataFrame) -> pd.DataFrame:
         if not self.is_trained:
