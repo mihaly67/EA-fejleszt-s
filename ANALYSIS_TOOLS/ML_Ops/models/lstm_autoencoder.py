@@ -106,12 +106,15 @@ class LSTMAutoencoderDetector(BaseModel):
         # Teljesen dinamikus Feature Mapping: a memóriaszabályoknak (Python ML Feature Mapping) megfelelően
         # minden numerikus oszlopot bevonunk, kivéve a 'Trade_' vagy 'Order_' (és a 'PosCount', 'Balance')
         # kezdetűeket, amik elárulnák a felhasználó cselekvéseit. Nincs hardkódolt lista!
-        excluded_prefixes = ('Trade_', 'Order_', 'PosCount', 'Balance', 'Time', 'TickMSC', 'TimeMsc', 'Phase')
+        # KÖTELEZŐ: A 'Lot' és 'Profit' oszlopoknak is itt a helye, különben Target Leak (Overfitting) lesz!
+        excluded_prefixes = ('Trade_', 'Order_', 'PosCount', 'Balance', 'Phase', 'Lot', 'Profit')
+        excluded_exact = ('Time', 'TickMSC', 'TimeMsc')
 
         self.features = []
         for col in df.columns:
-            if not col.startswith(excluded_prefixes) and pd.api.types.is_numeric_dtype(df[col]):
-                # Ha Ping, akkor elfogadjuk, mert nem exclude.
+            # A 'Time_Delta_MS' oszlop nem kerülhet kizárásra (mint a sima 'Time'), mert az a lefagyás kulcsa!
+            if not col.startswith(excluded_prefixes) and col not in excluded_exact and pd.api.types.is_numeric_dtype(df[col]):
+                # Ha Ping, vagy Time_Delta, akkor elfogadjuk, mert nem exclude.
                 df[col] = df[col].ffill().fillna(0) # Biztosítjuk a hálózat stabilitását
                 self.features.append(col)
 
@@ -174,9 +177,27 @@ class LSTMAutoencoderDetector(BaseModel):
 
         mse = np.array(mse_list)
 
-        # Küszöb: A hibák felső 5%-a már Anomália
-        self.threshold = np.percentile(mse, 95)
-        logger.info(f"[{self.model_name}] Autoencoder Betanítva! Kritikus Hiba Küszöb (Threshold): {self.threshold:.5f}")
+        # --- KÜSZÖB (THRESHOLD) ROBUSTUS FINOMHANGOLÁSA ---
+        # Ha a bróker masszívan manipulál (akár 30-50%-ban apró rángatásokkal), a hagyományos
+        # átlag és szórás hatalmasra nő a kiugró értékek (outlierek) miatt. Ez indokolatlanul
+        # magasan tartja a küszöböt (pl. 1.7), elrejtve a kisebb "színészkedéseket".
+        #
+        # Megoldás: "Tiszta Bázis" (Robust Baseline). Csak a legnyugodtabb piacot (az MSE alsó 50%-át)
+        # vesszük alapul az átlaghoz és szóráshoz. Ebből számoljuk ki a valódi piaci "nanotick zajt".
+
+        # 1. Kiválogatjuk a medián alatti (legnyugodtabb) hibákat
+        median_mse = np.median(mse)
+        clean_base = mse[mse <= median_mse]
+
+        # 2. Ennek a "tiszta" bázisnak a paraméterei
+        clean_mean = np.mean(clean_base)
+        clean_std = np.std(clean_base)
+
+        # 3. A küszöböt a tiszta bázisra építjük (Pl. a tiszta átlag + 5 * tiszta szórás).
+        # Ez garantáltan alacsonyabb lesz (pl. 1.0 körül), és ráül a természetes zaj tetejére!
+        self.threshold = clean_mean + (5.0 * clean_std)
+
+        logger.info(f"[{self.model_name}] Autoencoder Betanítva! ROBUSTUS Hiba Küszöb: {self.threshold:.5f} (Tiszta Bázis Átlag: {clean_mean:.5f}, Szórás: {clean_std:.5f})")
 
     def detect(self, df: pd.DataFrame) -> pd.DataFrame:
         if not self.is_trained:

@@ -112,6 +112,48 @@ def analyze_trade_impact(df, filename, output_dir):
         else:
             log_and_store(f"✅ [TISZTA TRADE] Trade Időpont: {trade_time} -> Nem volt manipuláció a nyitás/zárás körül.")
 
+        # --- Ellentétes Elmozdulás (Adverse Excursion / Rám Ugrás) Számítás ---
+        # Azt nézzük, hogy a belépéstől (pozitív diff) kezdve az árfolyam azonnal ellenünk mozdul-e a következő tickeken.
+        # Ha 'LotDir' == 1 (Buy), a Bid esése az ellenség. Ha 'LotDir' == -1 (Sell), a Bid növekedése az ellenség.
+        if 'LotDir' in df.columns and 'Bid' in df.columns:
+            # Csak nyitás esetén vizsgáljuk a rám ugrást (zárásnál nem)
+            if df.loc[idx, 'PosCount'] > df.loc[max(0, idx - 1), 'PosCount']:
+                trade_dir = df.loc[idx, 'LotDir']
+                entry_price = df.loc[idx, 'Bid']
+
+                # A belépéstől (idx) a megadott ablak végéig (end_idx) vizsgáljuk a mozgást
+                forward_window = df.iloc[idx:end_idx]
+
+                if not forward_window.empty and trade_dir != 0:
+                    if trade_dir == 1: # Long / Buy
+                        lowest_bid = forward_window['Bid'].min()
+                        excursion = entry_price - lowest_bid
+                        if excursion > 0:
+                            log_and_store(f"   -> 📉 [ELLENTÉTES ELMOZDULÁS] A bróker a Buy belépésed után azonnal ellened vitte az árat! (Maximális esés az ablakban: -{excursion:.5f} pont)")
+
+                    elif trade_dir == -1: # Short / Sell
+                        highest_bid = forward_window['Bid'].max()
+                        excursion = highest_bid - entry_price
+                        if excursion > 0:
+                            log_and_store(f"   -> 📈 [ELLENTÉTES ELMOZDULÁS] A bróker a Sell belépésed után azonnal ellened vitte az árat! (Maximális emelkedés az ablakban: +{excursion:.5f} pont)")
+
+                    # --- MIKRO TRENDFORDULÁS (Slope / Meredekség) ---
+                    # Kiszámoljuk a Bid ár lineáris trendjét (meredekségét) a forward ablakban.
+                    # Ha a meredekség nagyon ellentétes a nyitott pozícióval, az tartósabb (tick-szintű) szándékos rángatásra utal.
+                    if len(forward_window) > 2:
+                        y = forward_window['Bid'].values
+                        x = np.arange(len(y))
+                        # numpy polyfit az egyszerű lineáris regresszióhoz (y = mx + b) -> slope (m) az első elem
+                        slope, _ = np.polyfit(x, y, 1)
+
+                        # Definiálunk egy minimális meredekség küszöböt a zaj kiszűrésére (pl. 0.001 tickenként)
+                        min_slope_threshold = 0.001
+
+                        if trade_dir == 1 and slope < -min_slope_threshold:
+                            log_and_store(f"   -> ⚠️ [MIKRO TRENDFORDULÁS] A piac trendje a Buy után egyértelműen ellened fordult! (Meredekség: {slope:.5f})")
+                        elif trade_dir == -1 and slope > min_slope_threshold:
+                            log_and_store(f"   -> ⚠️ [MIKRO TRENDFORDULÁS] A piac trendje a Sell után egyértelműen ellened fordult! (Meredekség: +{slope:.5f})")
+
     intervention_rate = (actor_interventions / len(trade_indices)) * 100
     log_and_store(f"\n📊 ÖSSZEGZÉS:")
     log_and_store(f"A bróker az esetek {intervention_rate:.2f}%-ában reagált aktívan ('Színészkedett') a te kereskedéseidre!")
@@ -143,11 +185,20 @@ def create_visual_plot(df, filename, output_dir):
 
     output_path = os.path.join(output_dir, f"PLOT_{filename.replace('.csv', '.png')}")
 
-    # Kisebb minta, ha túl nagy a fájl (vizualizációhoz 10 000 tick elég, hogy látszódjon a tüske)
-    plot_df = df.tail(10000).copy()
-    plot_df.reset_index(drop=True, inplace=True)
+    # Dinamikus adatvágás: Hogy a grafikon és a riport fedje egymást, a teljes kereskedési időszakot (első és utolsó trade közötti szakaszt + egy kis ráhagyást) ábrázoljuk.
+    trade_indices = df.index[df['PosCount'].diff().fillna(0) != 0].tolist()
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
+    if trade_indices:
+        first_trade = max(0, trade_indices[0] - 500)
+        last_trade = min(len(df), trade_indices[-1] + 500)
+        plot_df = df.iloc[first_trade:last_trade].copy()
+    else:
+        # Ha nincs trade, csak a legutolsó 10000 tick
+        plot_df = df.tail(10000).copy()
+
+    # Az x-tengelyen az eredeti fájl indexeit tartjuk meg, így könnyebb egyeztetni a loggal.
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(18, 10), sharex=True)
 
     # Felső grafikon: Bid Ár + Kereskedések
     ax1.plot(plot_df.index, plot_df['Bid'], label='Bid Price', color='black', linewidth=1)
@@ -157,7 +208,7 @@ def create_visual_plot(df, filename, output_dir):
         trade_points = plot_df[plot_df['PosCount'].diff().fillna(0) != 0]
         ax1.scatter(trade_points.index, trade_points['Bid'], color='blue', s=100, label='Kereskedés (Trade Event)', marker='v', zorder=5)
 
-    ax1.set_title(f'Piaci Árfolyam (Bid) - {filename}')
+    ax1.set_title(f'Piaci Árfolyam (Bid) - Kereskedési Időszak Fókusz - {filename}')
     ax1.set_ylabel('Price')
     ax1.legend()
     ax1.grid(True, alpha=0.3)
@@ -167,10 +218,14 @@ def create_visual_plot(df, filename, output_dir):
 
     # Anomália pontok (ahol LSTM_Anomaly == -1)
     anomalies = plot_df[plot_df['LSTM_Anomaly'] == -1]
-    ax2.scatter(anomalies.index, anomalies['LSTM_Reconstruction_Error'], color='red', s=30, label='AI Detektált Manipuláció (Színész)')
+    ax2.scatter(anomalies.index, anomalies['LSTM_Reconstruction_Error'], color='red', s=30, label='AI Detektált Manipuláció (Színész)', zorder=5)
+
+    if 'LSTM_Threshold' in plot_df.columns:
+        threshold = plot_df['LSTM_Threshold'].iloc[0]
+        ax2.axhline(y=threshold, color='r', linestyle='--', alpha=0.5, label='Anomália Küszöb (Threshold)')
 
     ax2.set_title('AI Visszaépítési Hiba (Reconstruction Error / Manipuláció Tüskék)')
-    ax2.set_xlabel('Utolsó 10000 Tick Index')
+    ax2.set_xlabel('Tick Index (Teljes Fájlhoz Képest)')
     ax2.set_ylabel('MSE Error')
     ax2.legend()
     ax2.grid(True, alpha=0.3)

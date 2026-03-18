@@ -1,0 +1,60 @@
+
+=======================================================
+🔍 MÉLYELEMZÉS: ANALYZED_Merkava_XAUUSD_v1.10_20260317_235010_seq20.csv
+=======================================================
+📈 LSTM Autoencoder Anomália Küszöb (Threshold): 1.3369 (Ezen felüli hiba számít 'Színész' beavatkozásnak)
+🔥 Talált Kereskedési Események (Nyitás/Zárás): 42 db
+🚨 [MANIPULÁCIÓ DETEKTÁLVA] Trade Időpont: 2026.03.17 23:50:36.492
+   -> A Trade körüli +/- 20 tickben az AI 20 db 'Színész' beavatkozást talált!
+   -> Maximális Visszaépítési Hiba (Reconstruction Error): 1.4534
+   -> INFO: Árfolyam (Bid) oszcilláció az ablakban: 0.50000
+🚨 [MANIPULÁCIÓ DETEKTÁLVA] Trade Időpont: 2026.03.17 23:50:45.296
+   -> A Trade körüli +/- 20 tickben az AI 16 db 'Színész' beavatkozást talált!
+   -> Maximális Visszaépítési Hiba (Reconstruction Error): 1.4534
+   -> INFO: Árfolyam (Bid) oszcilláció az ablakban: 0.44000
+🚨 [MANIPULÁCIÓ DETEKTÁLVA] Trade Időpont: 2026.03.17 23:51:06.703
+   -> A Trade körüli +/- 20 tickben az AI 1 db 'Színész' beavatkozást talált!
+   -> Maximális Visszaépítési Hiba (Reconstruction Error): 1.4534
+   -> INFO: Árfolyam (Bid) oszcilláció az ablakban: 0.00000
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:51:21.698 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:51:32.098 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:51:33.901 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:51:36.295 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:51:50.093 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:51:52.695 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:52:02.300 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:52:07.694 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:52:10.691 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:52:21.097 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:52:46.698 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:53:04.493 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:53:06.492 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:53:15.092 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:53:24.292 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:53:29.693 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:53:33.692 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:53:39.699 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:53:55.296 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:53:59.116 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:54:00.294 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:54:03.096 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:54:12.294 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:54:14.493 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:54:19.497 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:54:20.897 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:54:52.896 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:54:55.297 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:55:19.101 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:55:25.700 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:55:28.500 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:55:39.106 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:55:39.297 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:56:23.895 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:56:28.098 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:56:35.298 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:56:51.498 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:56:56.697 -> Nem volt manipuláció a nyitás/zárás körül.
+✅ [TISZTA TRADE] Trade Időpont: 2026.03.17 23:57:13.701 -> Nem volt manipuláció a nyitás/zárás körül.
+
+📊 ÖSSZEGZÉS:
+A bróker az esetek 7.14%-ában reagált aktívan ('Színészkedett') a te kereskedéseidre!
