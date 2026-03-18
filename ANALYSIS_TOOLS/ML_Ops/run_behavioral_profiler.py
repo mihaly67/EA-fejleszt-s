@@ -45,9 +45,11 @@ def run_profiler():
         # Több rétegben futtatjuk a hálót: a rövid tickek (5-10) az agresszív rángatásokat fogják,
         # míg a hosszú tickek (25-30) a tartós brókeri lefagyásokat (Tick Sűrűség zuhanást) veszik észre.
         # UPDATE SWAT4: A nagyon volatilis, nyüzsgő piacon (ahol a Tick Sűrűség magas és az árak
-        # rángatnak) a magasabb szekvenciák (30, 40, 50, 60) bizonyultak a leghatékonyabbnak,
-        # hogy a nagyobb ablakokban látható oszcillációt a rendszer kiszűrje.
-        spectrum_windows = [10, 15, 20, 30, 40, 50, 60]
+        # rángatnak) a magasabb szekvenciák (30-120) bizonyultak a leghatékonyabbnak, hogy a nagyobb
+        # ablakokban látható oszcillációt a rendszer kiszűrje.
+        # Viszont az éjszakai (pangó/döglődő) piacokhoz elengedhetetlen a mikroszkopikus (3, 5, 7)
+        # tartomány fenntartása a trendfordulók azonosítására.
+        spectrum_windows = [3, 5, 7, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120]
 
         for seq_length in spectrum_windows:
             logger.info(f"\n--- [SPEKTRUM FÁZIS: seq_length={seq_length}] ---")
