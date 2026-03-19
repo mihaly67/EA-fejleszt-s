@@ -1,0 +1,30 @@
+=======================================================
+📊 ÖSSZEVONT SPEKTRUM ÉRTÉKELÉS: Merkava_XAUUSD_v1.10_20260319_211736
+=======================================================
+
+Ez a jelentés szintetizálja a különböző szekvenciahosszok (ablakok) ML elemzését.
+Cél: Megtalálni az optimális 'látóteret' a brókeri manipuláció felismerésére.
+
+Szekvencia (Tick)    | Küszöb (Threshold)   | Max Oszcillációs Hiba     | Beavatkozási Ráta (%)
+-----------------------------------------------------------------------------------------------
+3 tick               | 0.4736               | 66.9024                   | 41.35% (98/237)
+5 tick               | 0.6766               | 41.5783                   | 48.10% (114/237)
+7 tick               | 0.5886               | 29.4318                   | 35.02% (83/237)
+10 tick              | 0.7963               | 22.2818                   | 21.94% (52/237)
+15 tick              | 0.5019               | 16.5676                   | 51.05% (121/237)
+20 tick              | 0.5823               | 10.9753                   | 38.40% (91/237)
+30 tick              | 0.5277               | 7.6435                    | 36.71% (87/237)
+40 tick              | 1.0962               | 6.4089                    | 21.94% (52/237)
+50 tick              | 0.6716               | 46.0525                   | 42.62% (101/237)
+60 tick              | 1.0891               | 76717.2877                | 84.39% (200/237)
+70 tick              | 0.8461               | 4786.7742                 | 48.95% (116/237)
+80 tick              | 0.8216               | 63.9702                   | 50.63% (120/237)
+90 tick              | 0.8913               | 240680899.5415            | 47.68% (113/237)
+100 tick             | 0.8446               | 3836982.2050              | 44.30% (105/237)
+110 tick             | 0.4000               | nan                       | 0.00% (0/237)
+120 tick             | 0.7653               | 87.9436                   | 65.40% (155/237)
+
+💡 ÉRTÉKELÉSI ÚTMUTATÓ (GEMINI RAG IRÁNYELVEK):
+- Ha a piac volatilis (pörgős), a nagyobb szekvenciák (30-60) a megbízhatóbbak,
+  mivel kiszűrik a normális piaci zajt, de megfogják a mesterséges oszcillációt.
+- Ahol a beavatkozási ráta tartósan magas (pl. 40-50%), az az ideális felbontás a bróker leleplezésére.
