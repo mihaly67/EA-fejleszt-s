@@ -66,7 +66,12 @@ class LSTMAutoencoderDetector(BaseModel):
         outputs = TimeDistributed(Dense(num_features))(decoded_lstm)
 
         self.model = Model(inputs=inputs, outputs=outputs)
-        self.model.compile(optimizer='adam', loss='mse')
+
+        # SWAT4 NaN Fix: Gradient Clipping az Adam Optimizer-ben
+        from tensorflow.keras.optimizers import Adam
+        optimizer = Adam(learning_rate=0.001, clipnorm=1.0)
+
+        self.model.compile(optimizer=optimizer, loss='mse')
 
     def _get_dataset(self, X_scaled: np.ndarray):
         """
