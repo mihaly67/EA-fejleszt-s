@@ -8,8 +8,9 @@ import pandas as pd
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from pipeline.virtual_streamer import VirtualClockStreamer
+from pipeline.adaptive_windowing import calculate_kaufman_efficiency_ratio, get_optimal_sequence_length
+from pipeline.page_hinkley import PageHinkleyTest
 from models.rolling_lstm import RollingLSTMAutoencoder
-from dtaianomaly.windowing import compute_window_size
 
 # Logolás beállítása
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # --- PARAMÉTEREK ---
 CALIBRATION_INTERVAL_MINUTES = 5.0 # Milyen sűrűn (virtuális perc) kalibráljuk újra a szekvencia ablakot?
-INITIAL_SEQ_LENGTH = 30 # Kezdeti vak repülés, amíg nincs elég adat
+INITIAL_SEQ_LENGTH = 80 # "Vak" repülés induláskor (Warm-Up fázis)
 
 def extract_recent_history(streamer: VirtualClockStreamer, lookback_minutes: float = 60.0) -> pd.DataFrame:
     """
@@ -37,49 +38,41 @@ def extract_recent_history(streamer: VirtualClockStreamer, lookback_minutes: flo
 
 def calibrate_lstm_window(history_df: pd.DataFrame, lstm: RollingLSTMAutoencoder):
     """
-    Fourier (FFT) és Autokorreláció (ACF) alapján újra-kalkulálja a domináns frekvenciát,
-    majd lefordítja a Keras hálózatot az új (vagy maradék) adatokon, ha a méret változik.
+    A Kaufman Efficiency Ratio (ER) alapján újra-kalkulálja a piaci trend/zaj arányt,
+    és meghatározza az optimális szekvenciahosszt. Ez a paradigmaváltás:
+    Alacsony Volatilitás (ER~0) -> Nagy Ablak (150+)
+    Magas Volatilitás (ER~1) -> Kis Ablak (40)
     """
-    if len(history_df) < INITIAL_SEQ_LENGTH * 2:
-        logger.warning("Nincs elég múltbeli adat a kalibrációhoz. Várunk.")
+    # 5 percnyi (legalább 200) adat kell az első stabil ER értékhez
+    if len(history_df) < 200:
+        logger.warning("Nincs elég múltbeli adat a stabil kalibrációhoz (warm-up). Várunk.")
         return
 
-    # Keresünk egy Price/Indicator oszlopot
-    target_col = 'Bid' # Default
-    for col in ['Time_Delta_MS', 'RSI', 'Flow_MFI', 'Hybrid_Context_EMA_25']:
-        if col in history_df.columns:
-            target_col = col
-            break
+    # Keressük az árat (Bid)
+    target_col = 'Bid'
+    if target_col not in history_df.columns:
+        logger.warning("Nincs 'Bid' oszlop az adatokban, az Efficiency Ratio nem számítható megfelelően.")
+        return
 
     logger.info(f"[KALIBRÁCIÓ] Múltbeli tickek száma: {len(history_df)}. Fókusz: '{target_col}'")
-    series = history_df[target_col].ffill().fillna(0).values
+    prices = history_df[target_col].ffill().fillna(0).values
 
-    # Szekvencia önadaptáció (Elszigetelt Try-Except blokkokkal, hogy egyik hiba se rontsa el a másikat)
-    opt_window_fft = 30
-    opt_window_acf = 30
+    # Számítjuk az Efficiency Ratiot az utolsó 50 mozgás alapján
+    er = calculate_kaufman_efficiency_ratio(prices, period=min(50, len(prices)-1))
 
-    try:
-        # Ha nem sikerül, a dtaianomaly default_window_size=30 visszatéréssel védi ki a ValueError-t
-        opt_window_fft = compute_window_size(series, window_size='fft', lower_bound=3, upper_bound=150, default_window_size=30)
-    except Exception as e:
-        logger.warning(f"FFT önadaptáció sikertelen: {e}. Fallback: 30")
+    # Kiszámítjuk a Gemini-kutatás alapján az ideális ablakot
+    final_window = get_optimal_sequence_length(er)
 
-    try:
-        opt_window_acf = compute_window_size(series, window_size='acf', lower_bound=3, upper_bound=150, default_window_size=30)
-    except Exception as e:
-        logger.warning(f"ACF önadaptáció sikertelen: {e}. Fallback: 30")
+    logger.info(f"[KALIBRÁCIÓ] Piaci Állapot: ER={er:.4f} -> Javasolt Látótér: {final_window} tick.")
 
-    ideal_window = int((opt_window_fft + opt_window_acf) / 2)
-    final_window = max(3, min(150, ideal_window))
-
-    # Ablak frissítése a memóriában (Akkor is lefut, ha volt Exception, csak a fallback értékkel!)
+    # Ablak frissítése a memóriában
     try:
         lstm.update_window_size(final_window)
 
         # Ha a modell 'kiesett' a képzésből (mert átméreteződött, vagy ez az első kalibráció)
         # Akkor újra kell tanítani a legutolsó "normális" 60 percen (History_df)
         if not lstm.is_trained:
-            logger.info(f"[KALIBRÁCIÓ] LSTM újratanítása az új {final_window} ablakra...")
+            logger.info(f"[KALIBRÁCIÓ] LSTM újratanítása a {final_window} ablakra a legfrissebb adatokkal...")
             # Nem szivárogtatunk Targetet, a history_df is csak a múlt.
             lstm.train(history_df)
 
@@ -111,6 +104,10 @@ def run_simulation():
     tick_count = 0
     anomalies_found = 0
 
+    # Hibrid Drift Kezelés inicializálása
+    ph_test = PageHinkleyTest(threshold=15.0, delta=0.05)
+    last_drift_recalibration_time = 0.0
+
     # 1. ÉLŐ STREAMING HUROK SZIMULÁLÁSA
     for current_virtual_time_ms, tick_dict in streamer.stream_ticks():
         tick_count += 1
@@ -129,13 +126,27 @@ def run_simulation():
 
             last_calibration_time_min = elapsed_min
 
-        # 3. ONLINE ANOMÁLIA DETEKTÁLÁS (Minden ticknél)
+        # 3. ONLINE ANOMÁLIA DETEKTÁLÁS ÉS DRIFT KEZELÉS (Minden ticknél)
         # Hozzáadjuk a ticket a Rolling LSTM deque-hez
         is_window_full = lstm.add_tick(tick_dict)
 
         # Ha megvan a minimális ablakhossz, és a modell már be van tanítva
         if is_window_full and lstm.is_trained:
             mse = lstm.predict_current_window()
+
+            # --- Page-Hinkley Drift Test ---
+            # Figyeljük, hogy elszállt-e a piac normál hibaeloszlása (Koncepció-drift)
+            is_drift = ph_test.update(mse)
+
+            if is_drift and (elapsed_min - last_drift_recalibration_time) > 2.0:
+                logger.warning(f"⚠️ [DRIFT DETEKTÁLVA] Page-Hinkley teszt hirtelen piac-karakterisztika változást észlelt! Küszöb újra-kalibrálás...")
+                history_df = extract_recent_history(streamer, lookback_minutes=60.0)
+                # Csak a thresholdot és az ablakot frissítjük az ER-ből, NEM tanítunk súlyokat, hogy ne tanulja be az anomáliát!
+                calibrate_lstm_window(history_df, lstm)
+                last_drift_recalibration_time = elapsed_min
+                # Ha a hálózat a Page-Hinkley drift ellenére sem volt "kiesve", a threshold
+                # a fenti calibrate híváson belül lefutó train(history_df) miatt már frissült (ha új az ablakméret).
+
             state = lstm.evaluate_state(mse)
 
             if state == "STATE_ACTOR":
