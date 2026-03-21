@@ -45,7 +45,8 @@ def test_virtual_clock_progression(mock_csv_file):
     t2, data2 = next(generator)
     assert t2 == 1010000
     assert streamer.virtual_clock == 1010000
-    assert data2['Bid'] == 1.1001
+    # A spektrális denoising miatt az érték kissé változhat (savgol filter)
+    assert np.isclose(data2['Bid'], 1.1001, atol=0.001)
 
     # A negyedik ticknél a különbség 80000 ms (azaz több mint 1 perc)
     t3, data3 = next(generator)

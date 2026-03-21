@@ -35,6 +35,21 @@ class VirtualClockStreamer:
 
         # Biztosítjuk, hogy az időbélyegek sorrendben vannak
         self.df = self.df.sort_values(by=self.time_col).reset_index(drop=True)
+
+        # Opcionális Spektrális Denoising (Zajszűrés) előszűrőként CPU-hoz (Savitzky-Golay)
+        # HFT környezetben az extrém (nanotick) zaj eltüntetése drasztikusan javítja az LSTM pontosságát,
+        # anélkül, hogy az $O(N^3)$ komplexitású R-SSA-t futtatnánk.
+        if 'Bid' in self.df.columns and len(self.df) >= 5: # Legalább window_length kell a szűrőhöz
+            try:
+                from scipy.signal import savgol_filter
+                # Finom, 5-ös ablakú, 2. fokú polinom szűrés, hogy csak a mikro-zajt nyomja el, de a trendet ne.
+                self.df['Bid_Denoised'] = savgol_filter(self.df['Bid'], window_length=5, polyorder=2)
+                # Alapértelmezett oszlop csere, így az autoencoder már ezt tanulja
+                self.df['Bid'] = self.df['Bid_Denoised']
+                logger.info("[Virtual Streamer] Savitzky-Golay spektrális Denoising alkalmazva a 'Bid' oszlopon.")
+            except ImportError:
+                pass
+
         self.start_time = self.df[self.time_col].iloc[0]
         self.virtual_clock = self.start_time
 

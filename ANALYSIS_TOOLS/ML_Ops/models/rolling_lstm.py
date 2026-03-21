@@ -88,22 +88,25 @@ class RollingLSTMAutoencoder(LSTMAutoencoderDetector):
         if not self.is_trained or self.model is None:
             raise RuntimeError("A Rolling LSTM modellt be kell tanítani a történelmi adatokon, mielőtt élőben detektálna!")
 
-        # Memória Pandas DataFrame-é alakítása (hogy a scaler működjön)
-        df_window = pd.DataFrame(list(self.memory), columns=self.feature_names)
+        # Optimalizáció CPU-hoz (O(1) jellegű felgyorsított inferencia):
+        # Ahelyett, hogy Pandas DataFrame-et hoznánk létre minden ticknél,
+        # natív Numpy array-t használunk, ami drasztikusan csökkenti a memóriamásolási overheadet.
+        X_raw = np.array(self.memory)
 
         # Standardizálás a korábban (kalibrációkor) betanított scaler-rel
-        X_raw = df_window.values
         X_scaled = self.scaler.transform(X_raw)
 
         # Keras (Batch=1, Seq_length, Features) input formázása
-        # Mivel ez egyetlen ablak (ablak formátum: (1, seq, features)), nem generátort használunk, hanem sima Numpy array-t
         input_tensor = np.expand_dims(X_scaled, axis=0)
 
         # Predikció (gyors, OOM mentes egyetlen adatsoron)
-        pred_tensor = self.model.predict(input_tensor, verbose=0)
+        # verbose=0 helyett a model(input_tensor, training=False) használata a Keras hívás gyorsítására (TF overhead elkerülése)
+        import tensorflow as tf
+        pred_tensor = self.model(input_tensor, training=False)
+        pred_tensor_np = pred_tensor.numpy()
 
         # MSE hiba számítása (axis=1 és 2-n átlagolva az egyetlen batch-re)
-        mse = np.mean(np.power(input_tensor - pred_tensor, 2))
+        mse = np.mean(np.power(input_tensor - pred_tensor_np, 2))
 
         return mse
 
