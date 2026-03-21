@@ -1,129 +1,54 @@
-# 🚀 Merkava Néma Színház - Deep Learning Profilozó (VPS)
+# ML-Ops Pipeline & Valós Idejű Streaming Útmutató (VPS)
 
-Ez a dokumentum lépésről lépésre végigvezet azon, hogyan vesd be a "Nehéztüzérséget" (LSTM Autoencoder) a **MINER_TESTER_v1.01_20260309_000000.csv** adathalmazodon a 8GB RAM-os VPS-en, és szűrd ki a Színész (Bróker) manipulációs trükkjeit. A korábbi (HMM) tanulóbicikli kidobásra került.
+Ez a dokumentum a megújult, **Önadaptív Látótér** architektúrára épülő Machine Learning pipeline használatát írja le. Az új rendszer képes a MetaTrader 5 (MT5) tick-adatait szimulált valós időben (streaming) feldolgozni, és a piaci volatilitáshoz (Kaufman Efficiency Ratio) igazítani a saját LSTM memóriáját (szekvenciahosszát) és a detektálási küszöböt (Page-Hinkley drift teszt).
 
-## 1. Könyvtár és Fájlok Előkészítése a VPS-en
+## 1. Függőségek és Telepítés (VPS Környezet)
+A rendszer egy memóriakorlátos (8GB RAM), CPU-only környezetre lett optimalizálva (pl. Ubuntu VPS).
+Győződj meg róla, hogy az alábbi könyvtárak telepítve vannak a Python 3 virtuális környezetedben:
 
-Nyiss egy SSH terminált a VPS-en, és másold be az alábbi parancsokat pontosan így:
-
-mkdir -p Merkava_ML_Ops/data
-cd Merkava_ML_Ops
-
-Most másold fel (pl. WinSCP, FileZilla segítségével) a számítógépedről a `MINER_TESTER_v1.01_20260309_000000.csv` fájlt a VPS-en lévő `Merkava_ML_Ops/data/` mappába.
-Másold be mellé az ehhez az útmutatóhoz tartozó Python scripteket is (a GitHub `ANALYSIS_TOOLS/ML_Ops/` mappájának teljes tartalmát a `Merkava_ML_Ops/` mappába).
-
-A végső struktúrád így fog kinézni:
-Merkava_ML_Ops/
-├── data/
-│   └── MINER_TESTER_v1.01_20260309_000000.csv
-├── models/
-│   ├── __init__.py
-│   ├── base_model.py
-│   ├── isolation_forest.py
-│   ├── hmm_model.py
-│   └── lstm_autoencoder.py  # Új Nehéztüzérség
-├── pipeline/
-│   ├── __init__.py
-│   ├── data_loader.py
-│   ├── legacy_anomaly_detector.py
-│   └── legacy_data_loader_demo.py
-├── tests/
-│   ├── __init__.py
-│   └── test_pipeline.py
-└── utils/
-    ├── __init__.py
-    ├── monitor.py
-    └── mock_data_generator.py
-
-## 2. Függőségek Telepítése (Csak első alkalommal)
-
-Futtasd le a terminálban:
-
-pip install pandas numpy scikit-learn psutil pytest tensorflow
-
-## 3. Rendszer Egészségügyi Tesztelése (Ajánlott)
-
-Bizonyosodj meg róla, hogy a rendszer látja a Python csomagjaidat:
-
-export PYTHONPATH=.
-pytest tests/
-
-Ha zöld (passed) eredményt látsz, a rendszer készen áll.
-
-## 4. A Futtató Script (A Gyújtáskapcsoló) Létrehozása: run_deep_profiler.py
-
-A GitHubról vagy FileZillával letöltött mappáid (models, pipeline, utils) a "motoralkatrészek". Ahhoz, hogy ezt a 49 dimenziós nehéztüzérséget a VPS RAM-ja felrobbanása nélkül beindítsuk, létre kell hoznunk az új Gyújtáskapcsolót (`run_deep_profiler.py`).
-
-Írd be a terminálba a VPS-eden, hogy létrehozd a fájlt (a `nano` megvéd az eltörő Windows-os formázásoktól):
-
-nano run_deep_profiler.py
-
-A megnyíló fekete szerkesztőbe másold be EZT a Python kódot:
-
-```python
-import logging
-import os
-from pipeline.data_loader import RobustDataLoader
-from models.isolation_forest import IsolationForestDetector
-from models.lstm_autoencoder import LSTMAutoencoderDetector
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
-
-input_file = "data/MINER_TESTER_v1.01_20260309_000000.csv"
-output_file = "data/DEEP_ANALYSIS_MINER_TESTER.csv"
-
-# 1. Adat Betöltése (49 dimenzió, masszív adathalmaz)
-loader = RobustDataLoader(chunksize=100000) # Kisebb chunk a Neurális Háló Memória-igénye miatt
-df = loader.load_tick_data(input_file)
-
-if df.empty:
-    print("Kritikus Hiba: A betöltött DataFrame üres! Ellenőrizd a fájlt.")
-    exit()
-
-# 2. ELŐSZŰRÉS: Isolation Forest (Zaj és Egyedi Tüskék)
-print("\n--- [ ISOLATION FOREST - ELŐSZŰRŐ ] ---")
-iso_model = IsolationForestDetector(contamination="auto")
-df = iso_model.preprocess(df)
-iso_model.train(df)
-df = iso_model.detect(df)
-df.rename(columns={'Anomaly': 'IF_Anomaly', 'Anomaly_Score': 'IF_Score'}, inplace=True)
-
-# 3. NEHÉZTÜZÉRSÉG: Szekvenciális Deep Learning (LSTM Autoencoder)
-print("\n--- [ LSTM AUTOENCODER - SZEKVENCIA PROFILOZÁS ] ---")
-# 30 tickes "ablak", 8 dimenziós látens tér, batch méret korlátozás a VPS miatt
-lstm_model = LSTMAutoencoderDetector(seq_length=30, latent_dim=8, batch_size=256, epochs=5)
-lstm_model.train(df)
-df = lstm_model.detect(df)
-
-# Mentsük ki a neurális háló modelljét, ha később máson is tesztelnénk:
-lstm_model.save("models/saved_lstm_broker_profiler")
-
-# 4. EREDMÉNYEK KIMENTÉSE CSV-be
-print(f"\n--- [ FIZIKAI MENTÉS FOLYAMATBAN ] ---")
-df.to_csv(output_file, index=False)
-print(f"✅ Mentés Sikeres: {output_file}")
+```bash
+pip install pandas numpy scikit-learn tensorflow scipy dtaianomaly
 ```
 
-**Mentés és Kilépés a Nanoból:**
-Nyomd meg a billentyűzeten a **Ctrl+O** (Oszkár) gombot a mentéshez, majd **Enter**.
-Utána nyomd meg a **Ctrl+X** gombot a kilépéshez.
+*Megjegyzés: A `scipy` a spektrális zajszűréshez (Savitzky-Golay Denoising), a `tensorflow` a Keras LSTM modellhez, a `dtaianomaly` pedig az idősoros funkciókhoz szükséges.*
 
-## 5. Az Elemzés Indítása
+## 2. A Valós Idejű Szimulátor Futtatása (Streaming)
 
-Indítsd el a feldolgozást:
+A rendszer lelke a `run_streaming_simulation.py`. Ez a script fogja a `data/` mappában lévő nyers (DataMiner) CSV fájlokat, és tickenként (milliszekundumos időzítéssel) "beadagolja" a hálózatnak, pontosan úgy, mintha egy élő MT5 kapcsolat lenne.
 
+### Adatok előkészítése
+1. Másold a MetaTrader 5-ből exportált CSV fájlokat (pl. `Merkava_XAUUSD_v1.10_*.csv`) az `ANALYSIS_TOOLS/ML_Ops/data/` könyvtárba.
+2. **Fontos:** Ne legyen benne a fájlnévben az `ANALYZED_` előtag, mert azokat a script figyelmen kívül hagyja.
+
+### A Szimuláció Indítása
+Lépj be az `ML_Ops` könyvtárba, állítsd be a Python útvonalat, majd indítsd el a scriptet:
+
+```bash
+cd ANALYSIS_TOOLS/ML_Ops/
 export PYTHONPATH=.
-python3 run_deep_profiler.py
+python3 run_streaming_simulation.py
+```
 
-## 6. A Kimenet Értelmezése (Mi ez a "Deep Learning" Fájl?)
+### Mit fogsz látni futás közben?
+A konzolon a következő eseményeket követheted nyomon:
+*   **[Virtual Streamer]**: Betölti a fájlt és elindítja a virtuális időzítőt. Alkalmazza a Savitzky-Golay mikro-zajszűrést a Bid árfolyamon.
+*   **[KALIBRÁCIÓ]**: Az induláskor (Warm-up fázis) és minden 5. virtuális percben a rendszer megvizsgálja a Kaufman Efficiency Ratio-t (ER). Ha a piac "döglött" (ER ~ 0), megnöveli az LSTM ablakot (pl. 150 tick). Ha a piac pörög (ER ~ 1), lecsökkenti az ablakot (pl. 40 tick). Ekkor a modell betanulja az eddigi "normál" mozgásokat.
+*   **⚠️ [DRIFT DETEKTÁLVA]**: Ha a bróker elkezdi masszívan manipulálni az árat (a normális hibaeloszlás hirtelen és tartósan megváltozik), a Page-Hinkley teszt riaszt, és a rendszer a súlyok újratanítása nélkül újra-kalkulálja a hiba-küszöböt (Threshold).
+*   **🚨 [BRÓKERI MANŐVER]**: Amikor a `RollingLSTM` által mért visszaépítési hiba (Reconstruction Error) túllépi a dinamikusan számított küszöböt, a rendszer anomáliát (színész beavatkozást) jelez.
 
-**A Terminálban megjelenő logok (Valós időben):**
-* A betöltő után látni fogod a TensorFlow progress bárját. Ez percekig vagy akár egy-két óráig is futhat az 1 millió soron (Epoch 1/5, Epoch 2/5). A Loss-nak folyamatosan csökkennie kell.
+## 3. Modellek és Modulok Működése
 
-**A Fizikai Kimeneti Fájl (Végeredmény):**
-* Létrejön a `data/DEEP_ANALYSIS_MINER_TESTER.csv`.
-* **Mit tartalmaz?** Az összes régi adatodat, plusz az IF eredményeit, ÉS A KÉT ÚJ LSTM OSZLOPOT:
-    1. **`LSTM_Reconstruction_Error`**: Ez a konkrét matematikai hiba. Ha a hálózat nem ismerte fel a bróker 30-tickes szekvenciáját (mert az mesterséges / toxikus volt), ez a szám hirtelen a normál (pl. 0.05) duplájára-triplájára fog ugrani.
-    2. **`LSTM_Anomaly`**: Ez már a kész, neked szóló szignál. `-1` jelenti a tisztán manipulált időablakot/bróker trükköt (Színész!), és `1` a természetes piaci eseményt.
+*   **`pipeline/adaptive_windowing.py`**: Itt található a Kaufman ER matematika, amely a piaci zaj/trend arányt fordítja le optimális szekvenciahosszra a Gemini kutatás alapján.
+*   **`pipeline/page_hinkley.py`**: A matematikai drift-detektor, ami megvédi a hálózatot a "Katasztrofális Felejtéstől" (amikor a gép elkezdené "normálisnak" tekinteni az elhúzódó brókeri rángatást).
+*   **`models/rolling_lstm.py`**: A Keras LSTM Autoencoder stateful, csúszóablakos (deque) megvalósítása. Numpy és Tensor szintű optimalizációkkal lett felgyorsítva, hogy a Keras ne terhelje túl a VPS processzorát.
+*   **`pipeline/virtual_streamer.py`**: A Time-Bucketing motor, ami a valós időt szimulálja a CSV időbélyegek alapján.
 
-Ezt a CSV-t letöltheted a VPS-ről és kényelmesen megnyithatod a saját gépeden (Excel, Python) további elemzésre.
+## 4. Tesztelés (Fejlesztőknek)
+
+A kód stabilitásának megőrzéséhez egy komplett `pytest` tesztcsomag is rendelkezésre áll, ami leellenőrzi a Streaming logikát, az idő szivárgást (Target Leak) és az $O(1)$ optimalizált Keras hívásokat. Futtatása:
+
+```bash
+cd ANALYSIS_TOOLS/ML_Ops/
+python3 -m pytest tests/
+```
+
