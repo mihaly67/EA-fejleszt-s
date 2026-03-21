@@ -17,14 +17,15 @@ pip install pandas numpy scikit-learn tensorflow scipy dtaianomaly
 A rendszer lelke a `run_streaming_simulation.py`. Ez a script fogja a `data/` mappában lévő nyers (DataMiner) CSV fájlokat, és tickenként (milliszekundumos időzítéssel) "beadagolja" a hálózatnak, pontosan úgy, mintha egy élő MT5 kapcsolat lenne.
 
 ### Adatok előkészítése
-Másold be a MetaTrader 5-ből exportált CSV fájlt pontosan az eredeti fájlnevével (pl. `Merkava_XAUUSD_v1.10_*.csv`) az `ANALYSIS_TOOLS/ML_Ops/data/` könyvtárba. Semmilyen átnevezésre vagy szerkesztésre nincs szükség, a script automatikusan felismeri és beolvassa a nyers DataMiner logokat!
+Másold be a MetaTrader 5-ből exportált CSV fájlt pontosan az eredeti fájlnevével (pl. `Merkava_XAUUSD_v1.10_*.csv`) a VPS-en található `Merkava_ML_Ops/data/` könyvtárba. Semmilyen átnevezésre vagy szerkesztésre nincs szükség, a script automatikusan felismeri és beolvassa a nyers DataMiner logokat!
 
 ### A Szimuláció Indítása
-Állj a projekt gyökérkönyvtárába (`Merkava_ML_Ops/`), állítsd be a Python útvonalat az `ANALYSIS_TOOLS/ML_Ops` könyvtárra, és indítsd el a scriptet egyetlen paranccsal:
+Lépj be a VPS munkakönyvtárába (`Merkava_ML_Ops/`), állítsd be a Python útvonalat a jelenlegi mappára (`.`), és indítsd el a scriptet:
 
 ```bash
-export PYTHONPATH=ANALYSIS_TOOLS/ML_Ops/
-python3 ANALYSIS_TOOLS/ML_Ops/run_streaming_simulation.py
+cd ~/Merkava_ML_Ops/
+export PYTHONPATH=.
+python3 run_streaming_simulation.py
 ```
 
 ### Mit fogsz látni futás közben?
@@ -43,10 +44,11 @@ A konzolon a következő eseményeket követheted nyomon:
 
 ## 4. Tesztelés (Fejlesztőknek)
 
-A kód stabilitásának megőrzéséhez egy komplett `pytest` tesztcsomag is rendelkezésre áll, ami leellenőrzi a Streaming logikát, az idő szivárgást (Target Leak) és az $O(1)$ optimalizált Keras hívásokat. A tesztek futtatása a gyökérkönyvtárból:
+A kód stabilitásának megőrzéséhez egy komplett `pytest` tesztcsomag is rendelkezésre áll, ami leellenőrzi a Streaming logikát, az idő szivárgást (Target Leak) és az $O(1)$ optimalizált Keras hívásokat. A tesztek futtatása a VPS munkakönyvtárából (`Merkava_ML_Ops/`):
 
 ```bash
-export PYTHONPATH=ANALYSIS_TOOLS/ML_Ops/
-python3 -m pytest ANALYSIS_TOOLS/ML_Ops/tests/
+cd ~/Merkava_ML_Ops/
+export PYTHONPATH=.
+python3 -m pytest tests/
 ```
 
