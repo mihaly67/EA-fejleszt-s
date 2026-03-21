@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # --- PARAMÉTEREK ---
-CALIBRATION_INTERVAL_MINUTES = 5.0 # Milyen sűrűn (virtuális perc) kalibráljuk újra a szekvencia ablakot?
+CALIBRATION_INTERVAL_MINUTES = 15.0 # Milyen sűrűn (virtuális perc) kalibráljuk újra a szekvencia ablakot (tanítással)? - Ritkítva a sebességért
 INITIAL_SEQ_LENGTH = 80 # "Vak" repülés induláskor (Warm-Up fázis)
 
 def extract_recent_history(streamer: VirtualClockStreamer, lookback_minutes: float = 60.0) -> pd.DataFrame:
@@ -104,6 +104,9 @@ def run_simulation():
     tick_count = 0
     anomalies_found = 0
 
+    # Kimeneti adatok (Állókép generálás a vizualizációhoz)
+    output_rows = []
+
     # Hibrid Drift Kezelés inicializálása
     ph_test = PageHinkleyTest(threshold=15.0, delta=0.05)
     last_drift_recalibration_time = 0.0
@@ -112,6 +115,12 @@ def run_simulation():
     for current_virtual_time_ms, tick_dict in streamer.stream_ticks():
         tick_count += 1
         elapsed_min = streamer.get_elapsed_time_minutes()
+
+        # Alapértelmezett kimeneti adatok (ha még nincs elég múltunk detektálni)
+        row_output = tick_dict.copy()
+        row_output['LSTM_Reconstruction_Error'] = 0.0
+        row_output['LSTM_Threshold'] = getattr(lstm, 'threshold', 0.0)
+        row_output['LSTM_Anomaly'] = 1 # 1 = Normál piac
 
         # 2. IDŐZÍTETT (TIME-BUCKETING) KALIBRÁCIÓ
         # "Ugrottunk 5 percet a virtuális időben?"
@@ -126,13 +135,22 @@ def run_simulation():
 
             last_calibration_time_min = elapsed_min
 
-        # 3. ONLINE ANOMÁLIA DETEKTÁLÁS ÉS DRIFT KEZELÉS (Minden ticknél)
+        # 3. ONLINE ANOMÁLIA DETEKTÁLÁS ÉS DRIFT KEZELÉS
         # Hozzáadjuk a ticket a Rolling LSTM deque-hez
         is_window_full = lstm.add_tick(tick_dict)
 
-        # Ha megvan a minimális ablakhossz, és a modell már be van tanítva
+        # SEBESSÉG OPTIMALIZÁCIÓ (Mini-Batch Inferencia a VPS-hez):
+        # A Keras modell C++ backend hívása minden egyes ticknél (pl. milliszekundumonként)
+        # hatalmas overheadet jelent, ami miatt a szimuláció lassabb a valós időnél.
+        # Megoldás: Csak minden 10. ticknél futtatunk AI inferenciát (Reconstruction Error-t).
+        # A maradék 9 ticknél a legutolsó kiszámított MSE-t (és state-et) használjuk.
         if is_window_full and lstm.is_trained:
-            mse = lstm.predict_current_window()
+            if tick_count % 10 == 0:
+                mse = lstm.predict_current_window()
+                lstm.last_calculated_mse = mse # Eltároljuk a ritkított köztes állapotokhoz
+            else:
+                # Cache-elt hiba használata (nem hívjuk meg a nehéz TensorFlow-t)
+                mse = getattr(lstm, 'last_calculated_mse', 0.0)
 
             # --- Page-Hinkley Drift Test ---
             # Figyeljük, hogy elszállt-e a piac normál hibaeloszlása (Koncepció-drift)
@@ -149,15 +167,33 @@ def run_simulation():
 
             state = lstm.evaluate_state(mse)
 
+            # Kimeneti adatok frissítése az adott ticken
+            row_output['LSTM_Reconstruction_Error'] = mse
+            row_output['LSTM_Threshold'] = lstm.threshold
+            row_output['LSTM_Anomaly'] = -1 if state == "STATE_ACTOR" else 1
+
             if state == "STATE_ACTOR":
                 anomalies_found += 1
                 # Extrém logolás csak ritkán, hogy ne robbantsuk le a konzolt
                 if anomalies_found % 50 == 0:
                      logger.warning(f"🚨 [BRÓKERI MANŐVER] Virtuális idő: {elapsed_min:.2f} perc | Hiba: {mse:.4f} > {lstm.threshold:.4f}")
 
+        # Eredmény hozzáfűzése a listához
+        output_rows.append(row_output)
+
     logger.info(f"\n✅ SZIMULÁCIÓ VÉGE.")
     logger.info(f"Feldolgozott tickek: {tick_count}")
-    logger.info(f"Összes azonosított 'Színész/Actor' tick (visszafordulási javaslat): {anomalies_found}")
+    logger.info(f"Összes azonosított 'Színész/Actor' tick: {anomalies_found}")
+
+    # 4. KIMENET GENERÁLÁSA A VIZUALIZÁCIÓHOZ (Az Állókép)
+    # Ezt a CSV fájlt tudja a visualize_behavior.py megenni a grafikonok rajzolásához.
+    output_df = pd.DataFrame(output_rows)
+    filename = os.path.basename(file_path)
+    output_path = os.path.join(data_dir, f"ANALYZED_RESULTS_streaming_{filename}")
+
+    logger.info(f"📈 Eredmények kimentése vizualizációhoz: {output_path}")
+    output_df.to_csv(output_path, index=False)
+    logger.info(f"Minden adat elmentve. Futtasd a 'visualize_behavior.py'-t a grafikonokhoz!")
 
 if __name__ == '__main__':
     run_simulation()

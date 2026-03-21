@@ -1,0 +1,109 @@
+ (venv) misi@vmi2665315:~/Merkava_ML_Ops$ cd ~/Merkava_ML_Ops/
+export PYTHONPATH=.
+python3 run_streaming_simulation.py
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1774121361.202376  262780 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2026-03-21 20:29:32,840 - INFO -
+==============================================
+2026-03-21 20:29:32,840 - INFO - VIRTUAL CLOCK STREAMER INDÍTÁSA
+2026-03-21 20:29:32,841 - INFO - Fájl: Merkava_XAUUSD_v1.10_20260317_231658.csv
+2026-03-21 20:29:32,841 - INFO - ==============================================
+2026-03-21 20:29:32,841 - INFO - [Virtual Streamer] Adatok betöltése: /home/misi/Merkava_ML_Ops/data/Merkava_XAUUSD_v1.10_20260317_231658.csv
+2026-03-21 20:29:32,939 - INFO - [Virtual Streamer] Savitzky-Golay spektrális Denoising alkalmazva a 'Bid' oszlopon.
+2026-03-21 20:29:32,940 - INFO - [Virtual Streamer] Összes tick: 2179. Virtuális kezdőidő: 1773789419295
+2026-03-21 20:29:33,029 - INFO -
+[VIRTUAL CLOCK] 5.00 virtuális perc eltelt. Kalibráció indul...
+2026-03-21 20:29:33,039 - INFO - [KALIBRÁCIÓ] Múltbeli tickek száma: 417. Fókusz: 'RSI'
+2026-03-21 20:29:33,046 - INFO - [Rolling LSTM] Memória Méretezés: 30 -> 84 tick
+2026-03-21 20:29:33,046 - INFO - [KALIBRÁCIÓ] LSTM újratanítása az új 84 ablakra...
+2026-03-21 20:29:33,046 - INFO - [LSTM_Autoencoder] Deep Learning Adatelőkészítés (Skálázás és Tisztítás)...
+2026-03-21 20:29:33,066 - INFO - [LSTM_Autoencoder] Dimenziók száma: 42
+2026-03-21 20:29:33,072 - INFO - [LSTM_Autoencoder] Hálózat Építése: Input(84, 42) -> Bottleneck(8)
+E0000 00:00:1774121373.082424  262780 cuda_platform.cc:52] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: UNKNOWN ERROR (303)
+2026-03-21 20:29:33,274 - INFO - [LSTM_Autoencoder] Szekvencia Batch Generátor Indítása (11GB memóriarobbanás kivédve)...
+2026-03-21 20:29:33,408 - INFO - [LSTM_Autoencoder] LSTM Autoencoder Betanítás Indítása (Batch: 1)...
+334/334 ━━━━━━━━━━━━━━━━━━━━ 27s 53ms/step - loss: 138193.2500 - learning_rate: 0.0010
+2026-03-21 20:30:00,416 - INFO - [LSTM_Autoencoder] Normál piaci visszaépítési hiba kiszámítása a Thresholdhoz...
+2026-03-21 20:30:06,406 - INFO - [LSTM_Autoencoder] Autoencoder Betanítva! ÖNSZABÁLYOZÓ ROBUSTUS Hiba Küszöb: 0.78881
+2026-03-21 20:30:06,406 - INFO - [LSTM_Autoencoder] -> Tiszta Bázis Átlag: 0.55838, Szórás: 0.11522, Szorzó: 2.0x
+2026-03-21 20:30:50,933 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 6.28 perc | Hiba: 1.6257 > 0.7888
+2026-03-21 20:31:36,173 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 7.01 perc | Hiba: 2.5553 > 0.7888
+2026-03-21 20:32:18,632 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 7.74 perc | Hiba: 3.9149 > 0.7888
+2026-03-21 20:33:03,223 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 8.43 perc | Hiba: 4.3627 > 0.7888
+2026-03-21 20:33:46,203 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 9.09 perc | Hiba: 4.5896 > 0.7888
+2026-03-21 20:34:33,219 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 9.89 perc | Hiba: 8.6136 > 0.7888
+2026-03-21 20:34:51,964 - INFO -
+[VIRTUAL CLOCK] 10.01 virtuális perc eltelt. Kalibráció indul...
+2026-03-21 20:34:51,974 - INFO - [KALIBRÁCIÓ] Múltbeli tickek száma: 792. Fókusz: 'RSI'
+2026-03-21 20:34:51,980 - INFO - [Rolling LSTM] Memória Méretezés: 84 -> 71 tick
+2026-03-21 20:34:51,980 - INFO - [KALIBRÁCIÓ] LSTM újratanítása az új 71 ablakra...
+2026-03-21 20:34:51,980 - INFO - [LSTM_Autoencoder] Deep Learning Adatelőkészítés (Skálázás és Tisztítás)...
+2026-03-21 20:34:51,999 - INFO - [LSTM_Autoencoder] Dimenziók száma: 42
+2026-03-21 20:34:52,007 - INFO - [LSTM_Autoencoder] Hálózat Építése: Input(71, 42) -> Bottleneck(8)
+2026-03-21 20:34:52,096 - INFO - [LSTM_Autoencoder] Szekvencia Batch Generátor Indítása (11GB memóriarobbanás kivédve)...
+2026-03-21 20:34:52,173 - INFO - [LSTM_Autoencoder] LSTM Autoencoder Betanítás Indítása (Batch: 1)...
+722/722 ━━━━━━━━━━━━━━━━━━━━ 38s 42ms/step - loss: 0.7689 - learning_rate: 0.0010
+2026-03-21 20:35:30,203 - INFO - [LSTM_Autoencoder] Normál piaci visszaépítési hiba kiszámítása a Thresholdhoz...
+2026-03-21 20:35:39,355 - INFO - [LSTM_Autoencoder] Autoencoder Betanítva! ÖNSZABÁLYOZÓ ROBUSTUS Hiba Küszöb: 2.05173
+2026-03-21 20:35:39,356 - INFO - [LSTM_Autoencoder] -> Tiszta Bázis Átlag: 1.03633, Szórás: 0.50770, Szorzó: 2.0x
+2026-03-21 20:36:09,108 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 10.62 perc | Hiba: 21.3532 > 2.0517
+2026-03-21 20:36:45,462 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 11.32 perc | Hiba: 48.7691 > 2.0517
+2026-03-21 20:37:22,405 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 12.10 perc | Hiba: 553.5742 > 2.0517
+2026-03-21 20:37:57,889 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 12.95 perc | Hiba: 28.5329 > 2.0517
+2026-03-21 20:38:34,756 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 13.38 perc | Hiba: 26.4645 > 2.0517
+2026-03-21 20:39:11,010 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 14.02 perc | Hiba: 22.1407 > 2.0517
+2026-03-21 20:39:47,977 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 14.81 perc | Hiba: 12.3013 > 2.0517
+2026-03-21 20:40:02,211 - INFO -
+[VIRTUAL CLOCK] 15.02 virtuális perc eltelt. Kalibráció indul...
+2026-03-21 20:40:02,219 - INFO - [KALIBRÁCIÓ] Múltbeli tickek száma: 1151. Fókusz: 'RSI'
+2026-03-21 20:40:02,224 - INFO - [Rolling LSTM] Memória Méretezés: 71 -> 72 tick
+2026-03-21 20:40:02,225 - INFO - [KALIBRÁCIÓ] LSTM újratanítása az új 72 ablakra...
+2026-03-21 20:40:02,225 - INFO - [LSTM_Autoencoder] Deep Learning Adatelőkészítés (Skálázás és Tisztítás)...
+2026-03-21 20:40:02,245 - INFO - [LSTM_Autoencoder] Dimenziók száma: 42
+2026-03-21 20:40:02,253 - INFO - [LSTM_Autoencoder] Hálózat Építése: Input(72, 42) -> Bottleneck(8)
+2026-03-21 20:40:02,351 - INFO - [LSTM_Autoencoder] Szekvencia Batch Generátor Indítása (11GB memóriarobbanás kivédve)...
+2026-03-21 20:40:02,424 - INFO - [LSTM_Autoencoder] LSTM Autoencoder Betanítás Indítása (Batch: 1)...
+1080/1080 ━━━━━━━━━━━━━━━━━━━━ 55s 43ms/step - loss: 0.5020 - learning_rate: 0.0010
+2026-03-21 20:40:57,020 - INFO - [LSTM_Autoencoder] Normál piaci visszaépítési hiba kiszámítása a Thresholdhoz...
+2026-03-21 20:41:11,882 - INFO - [LSTM_Autoencoder] Autoencoder Betanítva! ÖNSZABÁLYOZÓ ROBUSTUS Hiba Küszöb: 1.83263
+2026-03-21 20:41:11,882 - INFO - [LSTM_Autoencoder] -> Tiszta Bázis Átlag: 1.00644, Szórás: 0.41310, Szorzó: 2.0x
+2026-03-21 20:42:56,133 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 16.77 perc | Hiba: 6.5660 > 1.8326
+2026-03-21 20:43:31,832 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 17.50 perc | Hiba: 19607406223.3375 > 1.8326
+2026-03-21 20:44:08,921 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 18.14 perc | Hiba: 140975227459943.0000 > 1.8326
+2026-03-21 20:44:45,791 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 18.79 perc | Hiba: 3.9219 > 1.8326
+2026-03-21 20:45:23,501 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 19.30 perc | Hiba: 2.2760 > 1.8326
+2026-03-21 20:46:01,734 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 19.86 perc | Hiba: 2.1591 > 1.8326
+2026-03-21 20:46:06,590 - INFO -
+[VIRTUAL CLOCK] 20.02 virtuális perc eltelt. Kalibráció indul...
+2026-03-21 20:46:06,600 - INFO - [KALIBRÁCIÓ] Múltbeli tickek száma: 1550. Fókusz: 'RSI'
+2026-03-21 20:46:06,607 - INFO - [Rolling LSTM] Memória Méretezés: 72 -> 85 tick
+2026-03-21 20:46:06,607 - INFO - [KALIBRÁCIÓ] LSTM újratanítása az új 85 ablakra...
+2026-03-21 20:46:06,607 - INFO - [LSTM_Autoencoder] Deep Learning Adatelőkészítés (Skálázás és Tisztítás)...
+2026-03-21 20:46:06,631 - INFO - [LSTM_Autoencoder] Dimenziók száma: 42
+2026-03-21 20:46:06,639 - INFO - [LSTM_Autoencoder] Hálózat Építése: Input(85, 42) -> Bottleneck(8)
+2026-03-21 20:46:06,725 - INFO - [LSTM_Autoencoder] Szekvencia Batch Generátor Indítása (11GB memóriarobbanás kivédve)...
+2026-03-21 20:46:06,793 - INFO - [LSTM_Autoencoder] LSTM Autoencoder Betanítás Indítása (Batch: 1)...
+1466/1466 ━━━━━━━━━━━━━━━━━━━━ 84s 51ms/step - loss: 9.8969 - learning_rate: 0.0010
+2026-03-21 20:47:30,332 - INFO - [LSTM_Autoencoder] Normál piaci visszaépítési hiba kiszámítása a Thresholdhoz...
+2026-03-21 20:47:49,503 - INFO - [LSTM_Autoencoder] Autoencoder Betanítva! ÖNSZABÁLYOZÓ ROBUSTUS Hiba Küszöb: 2.89261
+2026-03-21 20:47:49,503 - INFO - [LSTM_Autoencoder] -> Tiszta Bázis Átlag: 0.99062, Szórás: 0.38040, Szorzó: 5.0x
+2026-03-21 20:55:19,425 - WARNING -  [BRÓKERI MANŐVER] Virtuális idő: 24.96 perc | Hiba: 10.4891 > 2.8926
+2026-03-21 20:55:24,205 - INFO -
+[VIRTUAL CLOCK] 25.03 virtuális perc eltelt. Kalibráció indul...
+2026-03-21 20:55:24,219 - INFO - [KALIBRÁCIÓ] Múltbeli tickek száma: 2066. Fókusz: 'RSI'
+2026-03-21 20:55:24,227 - INFO - [Rolling LSTM] Memória Méretezés: 85 -> 88 tick
+2026-03-21 20:55:24,227 - INFO - [KALIBRÁCIÓ] LSTM újratanítása az új 88 ablakra...
+2026-03-21 20:55:24,228 - INFO - [LSTM_Autoencoder] Deep Learning Adatelőkészítés (Skálázás és Tisztítás)...
+2026-03-21 20:55:24,250 - INFO - [LSTM_Autoencoder] Dimenziók száma: 42
+2026-03-21 20:55:24,258 - INFO - [LSTM_Autoencoder] Hálózat Építése: Input(88, 42) -> Bottleneck(8)
+2026-03-21 20:55:24,361 - INFO - [LSTM_Autoencoder] Szekvencia Batch Generátor Indítása (11GB memóriarobbanás kivédve)...
+2026-03-21 20:55:24,438 - INFO - [LSTM_Autoencoder] LSTM Autoencoder Betanítás Indítása (Batch: 1)...
+1979/1979 ━━━━━━━━━━━━━━━━━━━━ 114s 53ms/step - loss: 237.2426 - learning_rate: 0.0010
+2026-03-21 20:57:18,811 - INFO - [LSTM_Autoencoder] Normál piaci visszaépítési hiba kiszámítása a Thresholdhoz...
+2026-03-21 20:57:45,685 - INFO - [LSTM_Autoencoder] Autoencoder Betanítva! ÖNSZABÁLYOZÓ ROBUSTUS Hiba Küszöb: 2.73749
+2026-03-21 20:57:45,685 - INFO - [LSTM_Autoencoder] -> Tiszta Bázis Átlag: 0.77951, Szórás: 0.39160, Szorzó: 5.0x
+2026-03-21 20:59:30,646 - INFO -
+✅ SZIMULÁCIÓ VÉGE.
+2026-03-21 20:59:30,647 - INFO - Feldolgozott tickek: 2179
+2026-03-21 20:59:30,647 - INFO - Összes azonosított 'Színész/Actor' tick (visszafordulási javaslat): 1005
