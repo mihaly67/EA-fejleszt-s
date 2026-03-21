@@ -17,16 +17,14 @@ pip install pandas numpy scikit-learn tensorflow scipy dtaianomaly
 A rendszer lelke a `run_streaming_simulation.py`. Ez a script fogja a `data/` mappában lévő nyers (DataMiner) CSV fájlokat, és tickenként (milliszekundumos időzítéssel) "beadagolja" a hálózatnak, pontosan úgy, mintha egy élő MT5 kapcsolat lenne.
 
 ### Adatok előkészítése
-1. Másold a MetaTrader 5-ből exportált CSV fájlokat (pl. `Merkava_XAUUSD_v1.10_*.csv`) az `ANALYSIS_TOOLS/ML_Ops/data/` könyvtárba.
-2. **Fontos:** Ne legyen benne a fájlnévben az `ANALYZED_` előtag, mert azokat a script figyelmen kívül hagyja.
+Másold be a MetaTrader 5-ből exportált CSV fájlt pontosan az eredeti fájlnevével (pl. `Merkava_XAUUSD_v1.10_*.csv`) az `ANALYSIS_TOOLS/ML_Ops/data/` könyvtárba. Semmilyen átnevezésre vagy szerkesztésre nincs szükség, a script automatikusan felismeri és beolvassa a nyers DataMiner logokat!
 
 ### A Szimuláció Indítása
-Lépj be az `ML_Ops` könyvtárba, állítsd be a Python útvonalat, majd indítsd el a scriptet:
+Állj a projekt gyökérkönyvtárába (`Merkava_ML_Ops/`), állítsd be a Python útvonalat az `ANALYSIS_TOOLS/ML_Ops` könyvtárra, és indítsd el a scriptet egyetlen paranccsal:
 
 ```bash
-cd ANALYSIS_TOOLS/ML_Ops/
-export PYTHONPATH=.
-python3 run_streaming_simulation.py
+export PYTHONPATH=ANALYSIS_TOOLS/ML_Ops/
+python3 ANALYSIS_TOOLS/ML_Ops/run_streaming_simulation.py
 ```
 
 ### Mit fogsz látni futás közben?
@@ -45,10 +43,10 @@ A konzolon a következő eseményeket követheted nyomon:
 
 ## 4. Tesztelés (Fejlesztőknek)
 
-A kód stabilitásának megőrzéséhez egy komplett `pytest` tesztcsomag is rendelkezésre áll, ami leellenőrzi a Streaming logikát, az idő szivárgást (Target Leak) és az $O(1)$ optimalizált Keras hívásokat. Futtatása:
+A kód stabilitásának megőrzéséhez egy komplett `pytest` tesztcsomag is rendelkezésre áll, ami leellenőrzi a Streaming logikát, az idő szivárgást (Target Leak) és az $O(1)$ optimalizált Keras hívásokat. A tesztek futtatása a gyökérkönyvtárból:
 
 ```bash
-cd ANALYSIS_TOOLS/ML_Ops/
-python3 -m pytest tests/
+export PYTHONPATH=ANALYSIS_TOOLS/ML_Ops/
+python3 -m pytest ANALYSIS_TOOLS/ML_Ops/tests/
 ```
 
