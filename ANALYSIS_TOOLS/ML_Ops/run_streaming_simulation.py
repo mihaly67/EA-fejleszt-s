@@ -189,11 +189,17 @@ def run_simulation():
     # Ezt a CSV fájlt tudja a visualize_behavior.py megenni a grafikonok rajzolásához.
     output_df = pd.DataFrame(output_rows)
     filename = os.path.basename(file_path)
-    output_path = os.path.join(data_dir, f"ANALYZED_RESULTS_streaming_{filename}")
+
+    # A visualize_behavior.py a 'data/analyzed' mappában keresi a fájlokat
+    analyzed_dir = os.path.join(data_dir, "analyzed")
+    if not os.path.exists(analyzed_dir):
+        os.makedirs(analyzed_dir)
+
+    output_path = os.path.join(analyzed_dir, f"ANALYZED_RESULTS_streaming_{filename}")
 
     logger.info(f"📈 Eredmények kimentése vizualizációhoz: {output_path}")
     output_df.to_csv(output_path, index=False)
-    logger.info(f"Minden adat elmentve. Futtasd a 'visualize_behavior.py'-t a grafikonokhoz!")
+    logger.info(f"Minden adat elmentve. Futtasd a 'python3 visualize_behavior.py'-t a grafikonokhoz!")
 
 if __name__ == '__main__':
     run_simulation()
