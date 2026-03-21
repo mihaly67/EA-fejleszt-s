@@ -43,12 +43,8 @@ def determine_optimal_window(df: pd.DataFrame, method: str = 'fft') -> int:
 
     try:
         # Felső határ limitálása, hogy a memóriakorlátokat betartsa (max 150)
-        window = compute_window_size(series, window_size=method, lower_bound=3, upper_bound=150)
-
-        # dtaianomaly -1-et ad vissza hiba esetén
-        if window == -1:
-             logger.warning(f"A '{method}' módszer nem tudott optimális ablakot számítani. Fallback: 30")
-             return 30
+        # default_window_size megadása kötelező, különben ValueError-t dob a sikertelen futás
+        window = compute_window_size(series, window_size=method, lower_bound=3, upper_bound=150, default_window_size=30)
 
         logger.info(f"💡 SIKER: Az optimális ablakméret automatikusan meghatározva ({method}): {window} tick")
         return int(window)
