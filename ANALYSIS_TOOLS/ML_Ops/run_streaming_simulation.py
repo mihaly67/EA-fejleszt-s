@@ -1,7 +1,12 @@
 import os
+import sys
 import glob
 import logging
 import pandas as pd
+
+# Biztosítjuk, hogy a lokális csomagok importálhatók legyenek (ModuleNotFoundError fix)
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from pipeline.virtual_streamer import VirtualClockStreamer
 from models.rolling_lstm import RollingLSTMAutoencoder
 from dtaianomaly.windowing import compute_window_size
@@ -49,19 +54,26 @@ def calibrate_lstm_window(history_df: pd.DataFrame, lstm: RollingLSTMAutoencoder
     logger.info(f"[KALIBRÁCIÓ] Múltbeli tickek száma: {len(history_df)}. Fókusz: '{target_col}'")
     series = history_df[target_col].ffill().fillna(0).values
 
-    # Szekvencia önadaptáció
+    # Szekvencia önadaptáció (Elszigetelt Try-Except blokkokkal, hogy egyik hiba se rontsa el a másikat)
+    opt_window_fft = 30
+    opt_window_acf = 30
+
     try:
-        opt_window_fft = compute_window_size(series, window_size='fft', lower_bound=3, upper_bound=150)
-        opt_window_acf = compute_window_size(series, window_size='acf', lower_bound=3, upper_bound=150)
+        # Ha nem sikerül, a dtaianomaly default_window_size=30 visszatéréssel védi ki a ValueError-t
+        opt_window_fft = compute_window_size(series, window_size='fft', lower_bound=3, upper_bound=150, default_window_size=30)
+    except Exception as e:
+        logger.warning(f"FFT önadaptáció sikertelen: {e}. Fallback: 30")
 
-        # -1 = hiba a dtaianomaly-ban
-        fft = opt_window_fft if opt_window_fft != -1 else 30
-        acf = opt_window_acf if opt_window_acf != -1 else 30
+    try:
+        opt_window_acf = compute_window_size(series, window_size='acf', lower_bound=3, upper_bound=150, default_window_size=30)
+    except Exception as e:
+        logger.warning(f"ACF önadaptáció sikertelen: {e}. Fallback: 30")
 
-        ideal_window = int((fft + acf) / 2)
-        final_window = max(3, min(150, ideal_window))
+    ideal_window = int((opt_window_fft + opt_window_acf) / 2)
+    final_window = max(3, min(150, ideal_window))
 
-        # Ablak frissítése a memóriában
+    # Ablak frissítése a memóriában (Akkor is lefut, ha volt Exception, csak a fallback értékkel!)
+    try:
         lstm.update_window_size(final_window)
 
         # Ha a modell 'kiesett' a képzésből (mert átméreteződött, vagy ez az első kalibráció)
@@ -72,7 +84,7 @@ def calibrate_lstm_window(history_df: pd.DataFrame, lstm: RollingLSTMAutoencoder
             lstm.train(history_df)
 
     except Exception as e:
-        logger.error(f"[KALIBRÁCIÓ] Hiba az önadaptációban: {e}")
+        logger.error(f"[KALIBRÁCIÓ] Kritikus hiba a hálózat frissítésében: {e}")
 
 def run_simulation():
     data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
