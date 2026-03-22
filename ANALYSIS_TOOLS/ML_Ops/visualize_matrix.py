@@ -173,6 +173,8 @@ def create_matrix_plot(df, filename, output_dir):
     if 'Market_State' in plot_df.columns:
         # Kitöltjük a hátteret a Low/Med/High szerint (zöld, sárga, piros)
         colors = {'Low_Volatility': 'lightgreen', 'Medium_Volatility': 'lightyellow', 'High_Volatility': 'lightcoral'}
+        labels_added = {'Low_Volatility': False, 'Medium_Volatility': False, 'High_Volatility': False}
+
         # Kis trükk a folytonos színezéshez: iterálunk az állapotváltásokon
         plot_df['State_Change'] = (plot_df['Market_State'] != plot_df['Market_State'].shift()).cumsum()
 
@@ -180,8 +182,16 @@ def create_matrix_plot(df, filename, output_dir):
             state_name = group['Market_State'].iloc[0]
             if isinstance(state_name, pd.Series): state_name = state_name.iloc[0]
             color = colors.get(state_name, 'white')
-            # Vízszintes span festés (xmin, xmax)
-            ax_price.axvspan(group.index.min(), group.index.max(), color=color, alpha=0.3, lw=0)
+
+            # Csak az első alkalommal adunk neki labelet, hogy ne legyen ezer elem a legendben
+            if not labels_added.get(state_name, False):
+                label_name = state_name.replace('_', ' ')
+                labels_added[state_name] = True
+                # Vízszintes span festés label-lel
+                ax_price.axvspan(group.index.min(), group.index.max(), color=color, alpha=0.3, lw=0, label=label_name)
+            else:
+                # További szakaszoknál nincs label, csak szín
+                ax_price.axvspan(group.index.min(), group.index.max(), color=color, alpha=0.3, lw=0)
 
     # --- 2. ÁRFOLYAM (Bid) ÉS TRADE-EK ---
     ax_price.plot(plot_df.index, plot_df['Bid'], color='black', lw=1, label='Bid Price')
@@ -189,7 +199,7 @@ def create_matrix_plot(df, filename, output_dir):
         trade_points = plot_df[plot_df['PosCount'].diff().fillna(0) != 0]
         ax_price.scatter(trade_points.index, trade_points['Bid'], color='blue', s=100, label='Trade (Nyitás/Zárás)', marker='v', zorder=5)
 
-    ax_price.set_title(f'Piaci Árfolyam és Market State Háttér (Zöld=Low, Sárga=Med, Piros=High) - {filename}')
+    ax_price.set_title(f'Piaci Árfolyam és Market State - {filename}')
     ax_price.set_ylabel('Bid Price')
     ax_price.legend(loc='upper right')
     ax_price.grid(True, alpha=0.3)
