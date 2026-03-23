@@ -77,7 +77,10 @@ def run_advanced_profiler():
     loader = RobustDataLoader(chunksize=5000)
 
     # A spektrum, amit párhuzamosan le akarunk tesztelni minden fájlon
-    spectrum_windows = [40, 80, 120, 150]
+    # A felhasználó kérésére (finom felbontású spektrum elemzés a VPS-en éjszakára)
+    # A 40 és 120 közötti kritikus tartományban 10 tickes lépésekkel finomítjuk a hálót,
+    # hogy pontosan kirajzolódjon a "Szent Grál" haranggörbéje. Fölötte ritkítjuk.
+    spectrum_windows = [40, 50, 60, 70, 80, 90, 100, 110, 120, 150]
 
     for file_path in csv_files:
         file_name = os.path.basename(file_path)
