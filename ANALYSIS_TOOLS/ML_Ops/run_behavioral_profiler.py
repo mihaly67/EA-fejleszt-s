@@ -102,18 +102,21 @@ def run_profiler():
         final_window = opt_window_suss if opt_window_suss > 3 else ideal_window
         final_window = max(3, min(150, final_window)) # Biztonsági korlátok
 
-        # Továbbra is megtartunk pár végletet az emberi vizuális spektrum összehasonlításhoz (A Riport generáló miatt),
-        # de a "Dinamikus" hálózat megkapja a kiemelt fókuszát.
-        spectrum_windows = [3, final_window, 120]
+        # A felhasználó kérésére (finom felbontású spektrum elemzés a VPS-en éjszakára)
+        # A 40 és 120 közötti kritikus tartományban 10 tickes lépésekkel finomítjuk a hálót,
+        # hogy pontosan kirajzolódjon a "Szent Grál" haranggörbéje. Fölötte ritkítjuk.
+        # Megtartjuk a final_window-t is, hátha a dtaianomaly mondott valami furcsát
+        spectrum_windows = [40, 50, 60, 70, 80, 90, 100, 110, 120, 150]
+        spectrum_windows.append(final_window)
 
-        # Kiszűrjük a duplikációkat, ha az ideális 3 vagy 120 lenne
+        # Kiszűrjük a duplikációkat és rendezzük
         spectrum_windows = sorted(list(set(spectrum_windows)))
 
         for seq_length in spectrum_windows:
             if seq_length == final_window:
-                logger.info(f"\n--- [SPEKTRUM FÁZIS: seq_length={seq_length} (ÖNADAPTÍV OPTIMUM)] ---")
+                logger.info(f"\n--- [SPEKTRUM FÁZIS: seq_length={seq_length} (ÖNADAPTÍV DTAIANOMALY)] ---")
             else:
-                logger.info(f"\n--- [SPEKTRUM FÁZIS: seq_length={seq_length} (KONTROLL ABLAK)] ---")
+                logger.info(f"\n--- [SPEKTRUM FÁZIS: seq_length={seq_length} (FINOM HÁLÓ ABLAK)] ---")
 
             # Nehéztüzérség bevetése: CPU optimalizált, RAM kímélő batch_size
             lstm = LSTMAutoencoderDetector(seq_length=seq_length, latent_dim=8, batch_size=256, epochs=5)
