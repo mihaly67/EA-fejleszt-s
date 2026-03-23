@@ -78,9 +78,9 @@ def run_advanced_profiler():
 
     # A spektrum, amit párhuzamosan le akarunk tesztelni minden fájlon
     # A felhasználó kérésére (finom felbontású spektrum elemzés a VPS-en éjszakára)
-    # A 40 és 120 közötti kritikus tartományban 10 tickes lépésekkel finomítjuk a hálót,
-    # hogy pontosan kirajzolódjon a "Szent Grál" haranggörbéje. Fölötte ritkítjuk.
-    spectrum_windows = [40, 50, 60, 70, 80, 90, 100, 110, 120, 150]
+    # A 20 és 120 közötti kritikus tartományban 10 tickes lépésekkel finomítjuk a hálót
+    # (a lassú piaci manipulációk extrém finom kiszűrésére), 120 fölött pedig csak egy 150-es véglet marad.
+    spectrum_windows = [20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 150]
 
     for file_path in csv_files:
         file_name = os.path.basename(file_path)
