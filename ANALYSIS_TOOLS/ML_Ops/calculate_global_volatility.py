@@ -111,16 +111,29 @@ def calculate_global_volatility(data_dir: str, output_dir: str):
         }
     }
 
-    # 3. Kimentés JSON formátumban
+    # 3. Kimentés JSON (Gépnek) és TXT (Embernek) formátumban
     os.makedirs(output_dir, exist_ok=True)
     json_path = os.path.join(output_dir, f"{symbol}_Volatility_Scale.json")
+    txt_path = os.path.join(output_dir, f"REPORT_{symbol}_Volatility_Scale.txt")
 
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(scale_dict, f, indent=4)
 
+    # TXT generálása
+    with open(txt_path, 'w', encoding='utf-8') as f:
+        f.write(f"=== GLOBÁLIS VOLATILITÁS SKÁLA ({symbol}) ===\n")
+        f.write(f"Elemzett adatpontok (tickek): {scale_dict['Statistics']['Data_Points']}\n")
+        f.write(f"Zajszűrt Minimum: {scale_dict['Statistics']['Absolute_Min_1%']:.6f}\n")
+        f.write(f"Zajszűrt Maximum: {scale_dict['Statistics']['Absolute_Max_99%']:.6f}\n")
+        f.write(f"Átlag: {scale_dict['Statistics']['Mean']:.6f} | Medián: {scale_dict['Statistics']['Median']:.6f}\n\n")
+        f.write(f"--- AZ 5-ÖS SKÁLA (A Mátrix Profilozó ezt használja) ---\n")
+        for class_name, bounds in scale_dict["Classes"].items():
+            f.write(f"  - {class_name:15}: {bounds['lower_bound']:.6f} -> {bounds['upper_bound']:.6f}\n")
+
     logger.info("--------------------------------------------------")
     logger.info(f"🎉 SIKER! Globális Volatilitás Skála (1-5) létrehozva!")
-    logger.info(f"📁 Mentve ide: {json_path}")
+    logger.info(f"📁 Gép-olvasható Mentve ide: {json_path}")
+    logger.info(f"📄 Ember-olvasható Mentve ide: {txt_path}")
     for class_name, bounds in scale_dict["Classes"].items():
         logger.info(f"  - {class_name}: {bounds['lower_bound']:.6f} -> {bounds['upper_bound']:.6f}")
     logger.info("Ezt a skálát fogja használni a Mátrix Profilozó az egységes besoroláshoz.")
