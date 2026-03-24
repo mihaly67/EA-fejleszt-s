@@ -87,7 +87,7 @@ void OnStart()
       // Formazas: TimeMsc, Bid (5 tizedes), Ask (5 tizedes)
       // Bizonyos instrumentumoknal (pl XAUUSD) lehet, hogy kevesebb tizedes kell,
       // de a %f (Float) biztonsagosan kimenti az erteket.
-      string line = StringFormat("%llu,%.5f,%.5f",
+      string line = StringFormat("%I64d,%.5f,%.5f",
                                  tick_array[i].time_msc,
                                  tick_array[i].bid,
                                  tick_array[i].ask);

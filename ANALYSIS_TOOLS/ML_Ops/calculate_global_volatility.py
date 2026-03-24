@@ -96,18 +96,18 @@ def calculate_global_volatility(data_dir: str, output_dir: str):
     scale_dict = {
         "Symbol": symbol,
         "Classes": {
-            "Class_1_Dead":     {"lower_bound": 0.0,                        "upper_bound": min_vol + step},
-            "Class_2_Quiet":    {"lower_bound": min_vol + step,             "upper_bound": min_vol + 2*step},
-            "Class_3_Average":  {"lower_bound": min_vol + 2*step,           "upper_bound": min_vol + 3*step},
-            "Class_4_Active":   {"lower_bound": min_vol + 3*step,           "upper_bound": min_vol + 4*step},
-            "Class_5_Extreme":  {"lower_bound": min_vol + 4*step,           "upper_bound": float('inf')}
+            "Class_1_Dead":     {"lower_bound": 0.0,                        "upper_bound": float(min_vol + step)},
+            "Class_2_Quiet":    {"lower_bound": float(min_vol + step),      "upper_bound": float(min_vol + 2*step)},
+            "Class_3_Average":  {"lower_bound": float(min_vol + 2*step),    "upper_bound": float(min_vol + 3*step)},
+            "Class_4_Active":   {"lower_bound": float(min_vol + 3*step),    "upper_bound": float(min_vol + 4*step)},
+            "Class_5_Extreme":  {"lower_bound": float(min_vol + 4*step),    "upper_bound": float('inf')}
         },
         "Statistics": {
-            "Data_Points": len(vol_array),
-            "Absolute_Min_1%": min_vol,
-            "Absolute_Max_99%": max_vol,
-            "Median": np.median(vol_array),
-            "Mean": np.mean(vol_array)
+            "Data_Points": int(len(vol_array)),
+            "Absolute_Min_1%": float(min_vol),
+            "Absolute_Max_99%": float(max_vol),
+            "Median": float(np.median(vol_array)),
+            "Mean": float(np.mean(vol_array))
         }
     }
 
