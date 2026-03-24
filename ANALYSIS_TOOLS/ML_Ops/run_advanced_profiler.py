@@ -3,6 +3,7 @@ import glob
 import pandas as pd
 import numpy as np
 import logging
+import json
 from pipeline.data_loader import RobustDataLoader
 from models.lstm_autoencoder import LSTMAutoencoderDetector
 
@@ -10,14 +11,46 @@ from models.lstm_autoencoder import LSTMAutoencoderDetector
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def calculate_market_state(df: pd.DataFrame, window_size: int = 500) -> pd.DataFrame:
+def load_global_anchor(symbol: str) -> dict:
+    """Megpróbálja betölteni az 1-5 fokozatú Globális Volatilitás Horgonyt a fájlból."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    # Várható fájlnév: pl. XAUUSD_Volatility_Scale.json
+    scale_path = os.path.join(base_dir, 'data', 'analyzed', f'{symbol}_Volatility_Scale.json')
+
+    if os.path.exists(scale_path):
+        try:
+            with open(scale_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                logger.info(f"⚓ Globális Horgony sikeresen betöltve: {scale_path}")
+                return data['Classes']
+        except Exception as e:
+            logger.error(f"Hiba a skála betöltésekor ({scale_path}): {e}")
+
+    # Ha nincs meg az instrumentum-specifikus, próbálkozzunk az alapértelmezettel
+    # (amit a teszt kedvéért ide raktunk le fix névvel a repóba)
+    fallback_path = os.path.join(base_dir, 'data', 'analyzed', 'XAUUSD_Volatility_Scale.json')
+    if os.path.exists(fallback_path):
+         try:
+            with open(fallback_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                logger.warning(f"⚠️ Nem találtam {symbol} specifikus horgonyt, a XAUUSD skáláját használom ({fallback_path})!")
+                return data['Classes']
+         except Exception as e:
+            logger.error(f"Hiba a fallback skála betöltésekor: {e}")
+
+    logger.error("❌ Kritikus hiba: Nem találtam Globális Volatilitás Horgonyt! Kérlek futtasd le a calculate_global_volatility.py-t először!")
+    return None
+
+def calculate_market_state(df: pd.DataFrame, window_size: int = 500, symbol: str = "XAUUSD") -> pd.DataFrame:
     """
     Kiszámítja a Tick Volatilitást és a Tick Sűrűséget egy hosszú (500 tickes) gördülő ablakban,
-    majd ezek alapján felcímkézi a tickeket 'Market_State' vödrökbe (Alacsony/Közepes/Magas Volatilitás).
-    Ezzel elkerüljük, hogy a rövid brókeri rángatások fals "pörgős" címkét kapjanak.
+    majd ezek alapján felcímkézi a tickeket az 1-5 'Market_State' osztályba az Abszolút Horgony alapján.
     """
     logger.info(f"📊 Piaci állapotok (Volatilitás/Sűrűség) kiszámítása {window_size} tickes simítással...")
     df_state = df.copy()
+
+    # Horgony betöltése
+    anchor_classes = load_global_anchor(symbol)
 
     # 1. Tick Volatilitás (Árfolyam szórása)
     if 'Bid' in df_state.columns:
@@ -29,33 +62,39 @@ def calculate_market_state(df: pd.DataFrame, window_size: int = 500) -> pd.DataF
     # 2. Tick Sűrűség (Mennyi idő telt el két tick között)
     time_col = 'TickMSC' if 'TickMSC' in df_state.columns else 'TimeMsc'
     if time_col in df_state.columns:
-        # A különbség milliszekundumban (Két tick között eltelt idő)
         df_state['Time_Delta'] = df_state[time_col].diff().fillna(0)
-        # 500 tickes mozgóátlag a sűrűségre (Nagy Time_Delta = Ritka tickek = Döglött piac)
         df_state['Tick_Density_Avg'] = df_state['Time_Delta'].rolling(window=window_size, min_periods=10).mean().fillna(0)
     else:
-        logger.warning(f"Nincs időbélyeg oszlop a sűrűség számításához!")
         df_state['Tick_Density_Avg'] = 0.0
 
-    # 3. Vödrözés (Bucketing) a Volatilitás alapján (Kvantilisekkel)
-    # Csak ott számolunk kvantilist, ahol már beállt a mozgóátlag (ne az elejét torzítsa)
-    valid_vol = df_state['Tick_Volatility'][df_state['Tick_Volatility'] > 0]
-
-    if len(valid_vol) > 100:
-        q33 = valid_vol.quantile(0.33)
-        q66 = valid_vol.quantile(0.66)
-
+    # 3. Vödrözés (Bucketing) a Globális Horgony alapján (Class 1-5)
+    if anchor_classes:
         conditions = [
-            (df_state['Tick_Volatility'] <= q33),
-            (df_state['Tick_Volatility'] > q33) & (df_state['Tick_Volatility'] <= q66),
-            (df_state['Tick_Volatility'] > q66)
+            (df_state['Tick_Volatility'] <= anchor_classes['Class_1_Dead']['upper_bound']),
+            (df_state['Tick_Volatility'] > anchor_classes['Class_2_Quiet']['lower_bound']) & (df_state['Tick_Volatility'] <= anchor_classes['Class_2_Quiet']['upper_bound']),
+            (df_state['Tick_Volatility'] > anchor_classes['Class_3_Average']['lower_bound']) & (df_state['Tick_Volatility'] <= anchor_classes['Class_3_Average']['upper_bound']),
+            (df_state['Tick_Volatility'] > anchor_classes['Class_4_Active']['lower_bound']) & (df_state['Tick_Volatility'] <= anchor_classes['Class_4_Active']['upper_bound']),
+            (df_state['Tick_Volatility'] > anchor_classes['Class_5_Extreme']['lower_bound'])
         ]
-        choices = ['Low_Volatility', 'Medium_Volatility', 'High_Volatility']
-        df_state['Market_State'] = np.select(conditions, choices, default='Medium_Volatility')
-
-        logger.info(f"Vödrök határai: Low <= {q33:.5f} < Medium <= {q66:.5f} < High")
+        choices = ['Class_1_Dead', 'Class_2_Quiet', 'Class_3_Average', 'Class_4_Active', 'Class_5_Extreme']
+        df_state['Market_State'] = np.select(conditions, choices, default='Class_3_Average')
+        logger.info(f"✅ Adatok sikeresen besorolva a Globális 5-ös skálán (Abszolút Vödrözés).")
     else:
-        df_state['Market_State'] = 'Medium_Volatility'
+        # Biztonsági (visszafelé kompatibilis) ág, ha a fájl mégsem lenne ott, visszavált a régi logikára
+        logger.warning("⚠️ Mivel nincs horgony, visszaváltok a régi lokális tercilis számításra (Low/Med/High).")
+        valid_vol = df_state['Tick_Volatility'][df_state['Tick_Volatility'] > 0]
+        if len(valid_vol) > 100:
+            q33 = valid_vol.quantile(0.33)
+            q66 = valid_vol.quantile(0.66)
+            conditions = [
+                (df_state['Tick_Volatility'] <= q33),
+                (df_state['Tick_Volatility'] > q33) & (df_state['Tick_Volatility'] <= q66),
+                (df_state['Tick_Volatility'] > q66)
+            ]
+            choices = ['Low_Volatility', 'Medium_Volatility', 'High_Volatility']
+            df_state['Market_State'] = np.select(conditions, choices, default='Medium_Volatility')
+        else:
+            df_state['Market_State'] = 'Medium_Volatility'
 
     return df_state
 
@@ -76,11 +115,9 @@ def run_advanced_profiler():
     logger.info(f"Összesen {len(csv_files)} db CSV fájlt találtam Haladó Profilozásra (Mátrix módszer).")
     loader = RobustDataLoader(chunksize=5000)
 
-    # A spektrum, amit párhuzamosan le akarunk tesztelni minden fájlon
-    # A felhasználó kérésére (finom felbontású spektrum elemzés a VPS-en éjszakára)
-    # A 20 és 120 közötti kritikus tartományban 10 tickes lépésekkel finomítjuk a hálót
-    # (a lassú piaci manipulációk extrém finom kiszűrésére), 120 fölött pedig csak egy 150-es véglet marad.
-    spectrum_windows = [20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 150]
+    # A spektrum kibővítve a felhasználó legújabb kérésére:
+    # 10-től 200-ig 10-es lépésekben, onnan ritkítva 250, 300, 400, 500-ra.
+    spectrum_windows = list(range(10, 201, 10)) + [250, 300, 400, 500]
 
     for file_path in csv_files:
         file_name = os.path.basename(file_path)

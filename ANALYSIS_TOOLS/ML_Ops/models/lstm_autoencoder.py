@@ -13,7 +13,7 @@ try:
 except ImportError:
     pass
 
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler
 logger = logging.getLogger(__name__)
 
 class LSTMAutoencoderDetector(BaseModel):
@@ -37,7 +37,9 @@ class LSTMAutoencoderDetector(BaseModel):
         self.epochs = epochs
 
         self.features = []
-        self.scaler = StandardScaler()
+        # StandardScaler helyett RobustScaler, hogy a hatalmas kiugrások
+        # (amitől felrobban a 200+ tickes LSTM gradiens) ne torzítsák el az arányokat.
+        self.scaler = RobustScaler()
         self.threshold = 0.0 # Ide kerül a dinamikus hiba küszöbérték (pl. 95. percentilis)
 
         try:
@@ -129,12 +131,17 @@ class LSTMAutoencoderDetector(BaseModel):
         # Adat kinyerése
         X_raw = df[self.features].values
 
-        # A neurális háló érzékeny a nyers árakra (1.080 vs 100000 Volume),
-        # ezért kötelező az értékeket 0 átlag és 1 szórás köré rendezni.
+        # A neurális háló érzékeny a nyers árakra. A RobustScaler mediánt és
+        # IQR-t használ, ami stabilabbá teszi a modellt a brókeri extrém tüskék ellen.
         if fit_scaler:
             X_scaled = self.scaler.fit_transform(X_raw)
         else:
             X_scaled = self.scaler.transform(X_raw)
+
+        # Biztonsági levágás (Clipping), hogy megakadályozzuk a "loss: nan"
+        # (gradiens felrobbanás) jelenséget a 200 feletti ablakoknál,
+        # ha valami irreális érték csúszna be.
+        X_scaled = np.clip(X_scaled, -10.0, 10.0)
 
         return X_scaled
 
