@@ -59,12 +59,21 @@ class LSTMAutoencoderDetector(BaseModel):
         inputs = Input(shape=(self.seq_length, num_features))
 
         # ENCODER: Idősoros tömörítés
-        encoded = LSTM(16, activation='relu', return_sequences=False)(inputs)
+        # A Keras alapértelmezett aktiválása a 'tanh', ami -1 és 1 közé szorítja a cellaállapotot.
+        # A korábbi explicit 'relu' a 200+ tickes ablakoknál (BPTT során) exponenciális
+        # gradiens felrobbanást (loss: 1.3e25 -> nan) okozott. Eltávolítva a stabil tanh-hoz.
+        encoded = LSTM(16, return_sequences=False)(inputs)
+
+        # A Bottleneck tömörítésnél maradhat a 'relu' (az csak egyszer fut le szekvenciánként, nem ismétlődik)
         bottleneck = Dense(self.latent_dim, activation='relu')(encoded)
 
         # DECODER: Visszaépítés a szűk keresztmetszetből
         repeated = RepeatVector(self.seq_length)(bottleneck)
-        decoded_lstm = LSTM(16, activation='relu', return_sequences=True)(repeated)
+
+        # A Visszaépítő LSTM is stabil 'tanh' aktivációt használ.
+        decoded_lstm = LSTM(16, return_sequences=True)(repeated)
+
+        # Kimeneti réteg: lineáris visszaépítés a Standardizált/Robust értékekre
         outputs = TimeDistributed(Dense(num_features))(decoded_lstm)
 
         self.model = Model(inputs=inputs, outputs=outputs)
