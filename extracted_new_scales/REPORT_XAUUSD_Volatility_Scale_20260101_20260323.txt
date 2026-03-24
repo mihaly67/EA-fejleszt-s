@@ -1,0 +1,12 @@
+=== GLOBÁLIS VOLATILITÁS SKÁLA (XAUUSD) ===
+Elemzett adatpontok (tickek): 14960081
+Zajszűrt Minimum: 0.324262
+Zajszűrt Maximum: 7.028769
+Átlag: 1.602329 | Medián: 1.203576
+
+--- AZ 5-ÖS SKÁLA (A Mátrix Profilozó ezt használja) ---
+  - Class_1_Dead   : 0.000000 -> 1.665164
+  - Class_2_Quiet  : 1.665164 -> 3.006065
+  - Class_3_Average: 3.006065 -> 4.346966
+  - Class_4_Active : 4.346966 -> 5.687868
+  - Class_5_Extreme: 5.687868 -> inf

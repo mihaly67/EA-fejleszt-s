@@ -49,12 +49,19 @@ def analyze_matrix_trades(df: pd.DataFrame, filename: str, output_dir: str):
     report_lines.append(f"🔎 Tesztelt Szekvencia Ablakok: {seq_lengths} tick")
     report_lines.append(f"🎯 Összes Kereskedés (Trade) száma: {len(trade_indices)}\n")
 
-    # Statisztikák tárolása: stat[Market_State][Seq_Length] = (Talált Anomáliák, Összes Trade)
-    stats = {
-        'Low_Volatility': {seq: [0, 0] for seq in seq_lengths},
-        'Medium_Volatility': {seq: [0, 0] for seq in seq_lengths},
-        'High_Volatility': {seq: [0, 0] for seq in seq_lengths}
-    }
+    # Statisztikák tárolása az 5 osztályos Globális Horgony alapján
+    # stat[Market_State][Seq_Length] = [Talált Anomáliák, Összes Trade, Total Anomália Sűrűség Fájlban]
+    classes = ['Class_1_Dead', 'Class_2_Quiet', 'Class_3_Average', 'Class_4_Active', 'Class_5_Extreme']
+    stats = {cls: {seq: [0, 0, 0] for seq in seq_lengths} for cls in classes}
+
+    # Kiszámoljuk az összes anomália számát a teljes fájlban (sűrűségi súlyozáshoz)
+    for seq in seq_lengths:
+        col_name = f'Anomaly_Seq_{seq}'
+        for cls in classes:
+            if col_name in df.columns and 'Market_State' in df.columns:
+                # Mennyi anomáliát talált EBBEN az osztályban összesen a fájlban (nem csak a trade körül)
+                total_anomalies_in_class = len(df[(df['Market_State'] == cls) & (df[col_name] == -1)])
+                stats[cls][seq][2] = total_anomalies_in_class
 
     for idx in trade_indices:
         # Trade körüli +/- 30 tickes ablak vizsgálata (Brókeri 'rám ugrás' keresése)
@@ -63,10 +70,15 @@ def analyze_matrix_trades(df: pd.DataFrame, filename: str, output_dir: str):
         window = df.iloc[start_idx:end_idx]
 
         # Milyen piaci állapotban volt a trade (az adott ticknél)?
-        m_state = df.at[idx, 'Market_State'] if 'Market_State' in df.columns else 'Medium_Volatility'
+        m_state = df.at[idx, 'Market_State'] if 'Market_State' in df.columns else 'Class_3_Average'
         # Biztosítás, ha a Pandas valamiért sorozatot ad vissza (pl. duplikált index)
         if isinstance(m_state, pd.Series):
              m_state = m_state.iloc[0]
+
+        # Ha régi CSV-vel futunk (Low/Med/High), map-eljük át az új osztályokhoz
+        legacy_map = {'Low_Volatility': 'Class_1_Dead', 'Medium_Volatility': 'Class_3_Average', 'High_Volatility': 'Class_5_Extreme'}
+        if m_state in legacy_map:
+            m_state = legacy_map[m_state]
 
         # Hozzáadjuk a statisztikához, hogy ebben a Market_State-ben volt egy trade
         if m_state in stats:
@@ -79,9 +91,9 @@ def analyze_matrix_trades(df: pd.DataFrame, filename: str, output_dir: str):
                     stats[m_state][seq][0] += 1 # Találat (Intervention) counter
 
     # Riport generálása a statisztikákból
-    for state in ['Low_Volatility', 'Medium_Volatility', 'High_Volatility']:
+    for state in classes:
         report_lines.append(f"📊 PIACI ÁLLAPOT: {state.upper()}")
-        report_lines.append("-" * 50)
+        report_lines.append("-" * 70)
 
         # Csak azokat írjuk ki, ahol volt legalább 1 trade
         total_trades_in_state = list(stats[state].values())[0][1]
@@ -91,34 +103,57 @@ def analyze_matrix_trades(df: pd.DataFrame, filename: str, output_dir: str):
             continue
 
         report_lines.append(f"  Összes kereskedés itt: {total_trades_in_state}")
+        report_lines.append(f"  Ablak  | Trade Találat | Érzékenység (Zaj) | Súlyozott Jóság (Signal/Noise)")
+        report_lines.append(f"  -------------------------------------------------------------------")
 
-        best_rate = -1
+        best_score = -1
         best_seq = None
 
         for seq in seq_lengths:
             hits = stats[state][seq][0]
             rate = (hits / total_trades_in_state) * 100
-            report_lines.append(f"    - Ablak: {seq:3d} tick -> Találat: {hits:3d}/{total_trades_in_state} ({rate:5.1f}%)")
 
-            if rate > best_rate:
-                best_rate = rate
+            # Stasztikai Súlyozás (Signal-to-Noise Ratio):
+            # A találat jó dolog (Signal), de ha a hálózat egész nap "vaklármát" fúj (Zaj)
+            # abban az osztályban (Class_X), akkor értéktelen a jelzése.
+            # Sűrűség = Összes anomália a fájlban / Fájl hossza (az adott state-ben)
+            total_anomalies_in_state = stats[state][seq][2]
+            ticks_in_state = len(df[df['Market_State'] == state]) if 'Market_State' in df.columns else len(df)
+
+            # Érzékenység: Milyen gyakran jelez anomáliát (minél kisebb, annál exkluzívabb)
+            sensitivity = (total_anomalies_in_state / max(1, ticks_in_state)) * 100
+
+            # Súlyozott Pontszám: Találati Arány (Signal) osztva az Érzékenységgel (Noise)
+            # +0.1 a nullával való osztás ellen
+            weighted_score = rate / (sensitivity + 0.1)
+
+            report_lines.append(f"  {seq:3d} t. |  {hits:3d}/{total_trades_in_state} ({rate:5.1f}%) |       {sensitivity:5.2f}%       |     {weighted_score:6.2f}")
+
+            if weighted_score > best_score and hits > 0: # Csak akkor nyerhet, ha talált is valamit
+                best_score = weighted_score
                 best_seq = seq
 
-        report_lines.append(f"  🏆 GYŐZTES EBBEN AZ ÁLLAPOTBAN: {best_seq} tickes ablak ({best_rate:.1f}% felismerés)\n")
+        report_lines.append(f"\n  🏆 SÚLYOZOTT GYŐZTES EBBEN AZ ÁLLAPOTBAN: {best_seq} tickes ablak (Kiváló SNR)\n")
 
     # Végső Konklúzió (A Szabály)
-    report_lines.append("💡 KONKLÚZIÓ (A KORRELÁCIÓS SZABÁLY):")
-    for state in ['Low_Volatility', 'Medium_Volatility', 'High_Volatility']:
+    report_lines.append("💡 KONKLÚZIÓ (A KORRELÁCIÓS SZABÁLY SÚLYOZVA):")
+    for state in classes:
         total_trades = list(stats[state].values())[0][1]
         if total_trades > 0:
-            best_rate = -1
+            best_score = -1
             best_seq = None
             for seq in seq_lengths:
-                rate = (stats[state][seq][0] / total_trades) * 100
-                if rate > best_rate:
-                    best_rate = rate
+                hits = stats[state][seq][0]
+                rate = (hits / total_trades) * 100
+                total_anom = stats[state][seq][2]
+                ticks = len(df[df['Market_State'] == state]) if 'Market_State' in df.columns else len(df)
+                sens = (total_anom / max(1, ticks)) * 100
+                score = rate / (sens + 0.1)
+
+                if score > best_score and hits > 0:
+                    best_score = score
                     best_seq = seq
-            report_lines.append(f"Ha a piac {state.replace('_Volatility', '')}, akkor az ideális ablak: {best_seq} tick.")
+            report_lines.append(f"Ha a piac {state.replace('Class_', '')}, akkor az ideális ablak: {best_seq} tick.")
 
     _save_report(report_lines, filename, output_dir)
     return stats
@@ -171,9 +206,19 @@ def create_matrix_plot(df, filename, output_dir):
 
     # --- 1. PIACI ÁLLAPOTOK SZÍNEZÉSE (Háttér) ---
     if 'Market_State' in plot_df.columns:
-        # Kitöltjük a hátteret a Low/Med/High szerint (zöld, sárga, piros)
-        colors = {'Low_Volatility': 'lightgreen', 'Medium_Volatility': 'lightyellow', 'High_Volatility': 'lightcoral'}
-        labels_added = {'Low_Volatility': False, 'Medium_Volatility': False, 'High_Volatility': False}
+        # Kitöltjük a hátteret a Globális Horgony (Class 1-5) szerint
+        colors = {
+            'Class_1_Dead': '#E3F2FD',      # Nagyon világoskék
+            'Class_2_Quiet': '#C8E6C9',     # Világoszöld
+            'Class_3_Average': '#FFF9C4',   # Világossárga
+            'Class_4_Active': '#FFE0B2',    # Világosnarancs
+            'Class_5_Extreme': '#FFCDD2',   # Világospiros
+            # Legacy fallback
+            'Low_Volatility': 'lightgreen',
+            'Medium_Volatility': 'lightyellow',
+            'High_Volatility': 'lightcoral'
+        }
+        labels_added = {k: False for k in colors.keys()}
 
         # Kis trükk a folytonos színezéshez: iterálunk az állapotváltásokon
         plot_df['State_Change'] = (plot_df['Market_State'] != plot_df['Market_State'].shift()).cumsum()
