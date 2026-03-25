@@ -29,7 +29,7 @@ class LSTMAutoencoderDetector(BaseModel):
     a visszaépítési hiba (Reconstruction Error / MSE) az egekbe szökik.
     """
 
-    def __init__(self, seq_length=30, latent_dim=8, batch_size=256, epochs=50, threshold_multiplier=3.0):
+    def __init__(self, seq_length=30, latent_dim=8, batch_size=256, epochs=50, threshold_multiplier=1.5):
         super().__init__("LSTM_Autoencoder")
         self.seq_length = seq_length  # Hány tickes ablakot (Lookback) lát a hálózat egyszerre?
         self.latent_dim = latent_dim  # 49 dimenzió -> 8 dimenzió (Tömörítés)
@@ -209,11 +209,13 @@ class LSTMAutoencoderDetector(BaseModel):
         # Így a küszöb természetes módon követi az alapzaj szintjét, és a detektálási arány
         # organikusan tud ingadozni anélkül, hogy "elszállna".
 
-        # Kiszámoljuk az alsó 50% (tisztább adatok) átlagát
-        median_mse = np.median(mse)
-        clean_mean = np.mean(mse[mse <= median_mse])
+        # A "Fat-Tail Paradoxon" miatt az MSE értékek erősen aszimmetrikusak.
+        # Hogy a zajból az információt ki tudjuk nyerni (0.3 - 0.5 körüli küszöb),
+        # az alsó 90% (a stabil zóna) átlagát vesszük alapul az 50% helyett.
+        p90_mse = np.percentile(mse, 90)
+        clean_mean = np.mean(mse[mse <= p90_mse])
 
-        # Alkalmazzuk a szórásmentes organikus szorzót (K)
+        # Alkalmazzuk a szórásmentes organikus szorzót (K = 1.5 default)
         self.threshold = clean_mean * self.threshold_multiplier
 
         # Ha a piac annyira tökéletes (szinte nulla hiba, pl. robot kereskedés zárt piacon),
