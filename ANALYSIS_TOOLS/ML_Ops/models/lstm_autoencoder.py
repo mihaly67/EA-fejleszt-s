@@ -60,30 +60,34 @@ class LSTMAutoencoderDetector(BaseModel):
         inputs = Input(shape=(self.seq_length, num_features))
 
         # ENCODER: Idősoros tömörítés
-        # A Keras alapértelmezett aktiválása a 'tanh', ami -1 és 1 közé szorítja a cellaállapotot.
-        # A korábbi explicit 'relu' a 200+ tickes ablakoknál (BPTT során) exponenciális
-        # gradiens felrobbanást (loss: 1.3e25 -> nan) okozott. Eltávolítva a stabil tanh-hoz.
-        encoded = LSTM(16, return_sequences=False)(inputs)
+        # A "lapos, változatlan, 1680-as loss" okozója a Vanishing Gradient probléma. A Keras default
+        # 'tanh' aktivációja miatt egy óriási (skálázott) manipulációs tüske -1/1 közé préselődik,
+        # a gradiense pedig nullázódik. Így a hálózat szó szerint lefagy, és nem tud tanulni az epochok között.
+        # Ennek megoldása a ReLU aktiváció VISSZAÁLLÍTÁSA!
+        # A ReLU a nagy tüskéket is átereszti, gradiense (1.0) állandó, így ismét hatalmas,
+        # mozgó és dinamikus variabilitás jelenik meg az epochok (és szekvenciák) között (akár ezres v. milliós különbségek).
+        encoded = LSTM(16, activation='relu', return_sequences=False)(inputs)
 
-        # A Bottleneck tömörítésnél maradhat a 'relu' (az csak egyszer fut le szekvenciánként, nem ismétlődik)
+        # A Bottleneck tömörítésnél is marad a 'relu'
         bottleneck = Dense(self.latent_dim, activation='relu')(encoded)
 
         # DECODER: Visszaépítés a szűk keresztmetszetből
         repeated = RepeatVector(self.seq_length)(bottleneck)
 
-        # A Visszaépítő LSTM is stabil 'tanh' aktivációt használ.
-        decoded_lstm = LSTM(16, return_sequences=True)(repeated)
+        # A Visszaépítő LSTM is 'relu' aktivációt használ az epoch-variabilitás fenntartásához.
+        decoded_lstm = LSTM(16, activation='relu', return_sequences=True)(repeated)
 
         # Kimeneti réteg: lineáris visszaépítés a Standardizált/Robust értékekre
         outputs = TimeDistributed(Dense(num_features))(decoded_lstm)
 
         self.model = Model(inputs=inputs, outputs=outputs)
 
-        # SWAT4: Az eredeti "Gradient Felrobbanás" (NaN) miatt eltávolítottuk az explcit ReLU-t.
-        # A mostani Keras Default 'tanh' önmagában is stabilizálja az LSTM rejtett állapotát -1 és 1 között,
-        # ezért a drasztikus Gradient Clipping (clipnorm=1.0) felesleges és megöli az MSE variabilitását.
+        # Hogy az agresszív 'relu' BPTT (hosszú, 150 tickes szekvenciák) miatt ne okozzon
+        # "kvintilliós / NaN" felrobbanást a memóriában (Exploding Gradient),
+        # az Adam optimizer-be beállítunk egy tág, de szigorú falat: clipnorm=1.0.
+        # Így a model őrülten táncol és variál, de a szakadék szélénél biztonságba húz.
         from tensorflow.keras.optimizers import Adam
-        optimizer = Adam(learning_rate=0.001)
+        optimizer = Adam(learning_rate=0.001, clipnorm=1.0)
 
         self.model.compile(optimizer=optimizer, loss='mse')
 
@@ -152,9 +156,9 @@ class LSTMAutoencoderDetector(BaseModel):
 
         # A korábbi drasztikus levágás (np.clip(-10, 10)) megszüntette az anomáliák
         # természetes variabilitását (a 60%-os lapos hibaarányt eredményezve).
-        # Mivel az LSTM default 'tanh' aktivációja már önmagában védi a gradienst a
-        # felrobbanástól a 200+ tickes BPTT során, itt már felesleges "lefejezni" a
-        # brókeri manipulációt jelentő valódi kiugró tüskéket. A RobustScaler elég.
+        # Bár visszatértünk a 'relu' aktivációhoz, a gradiens felrobbanást most már
+        # az Adam optimizer 'clipnorm=1.0' védi. Így felesleges "lefejezni" a
+        # brókeri manipulációt jelentő valódi kiugró tüskéket az adatbemenetnél.
 
         return X_scaled
 
@@ -193,14 +197,18 @@ class LSTMAutoencoderDetector(BaseModel):
 
         logger.info(f"[{self.model_name}] Normál piaci visszaépítési hiba kiszámítása a Thresholdhoz...")
 
-        # MSE kiszámítása kötegenként, hogy ne töltsük be az 1 milliót egyszerre
-        mse_list = []
+        # MAE (Mean Absolute Error) kiszámítása kötegenként MSE helyett.
+        # Mivel a brókeri manipulációs tüskék (fat-tail) óriási skálázott értékek,
+        # a négyzetre emelés (power 2) a teljes ablak hibáját (pl. 1690-re) dominálta,
+        # megszüntetve a finom variabilitást (és minden 60%-ra laposodott).
+        # Az abszolút különbség (abs) nem torzít exponenciálisan!
+        error_list = []
         for batch_x, _ in dataset:
             batch_pred = self.model.predict_on_batch(batch_x)
-            batch_mse = np.mean(np.power(batch_x - batch_pred, 2), axis=(1, 2))
-            mse_list.extend(batch_mse)
+            batch_error = np.mean(np.abs(batch_x - batch_pred), axis=(1, 2))
+            error_list.extend(batch_error)
 
-        mse = np.array(mse_list)
+        mse = np.array(error_list) # Az elnevezést meghagyjuk (mse), hogy a többi logika működjön
 
         # --- KÜSZÖB (THRESHOLD) FINOMHANGOLÁSA (ORGANIKUS SZORZÓ ALAPJÁN) ---
         # A "Fat-Tail Paradoxon" megoldása: A szórásmentes organikus szorzó (Mean Multiplier).
@@ -244,14 +252,15 @@ class LSTMAutoencoderDetector(BaseModel):
         X_scaled = self.preprocess(df, fit_scaler=False)
         dataset = self._get_dataset(X_scaled)
 
-        # Visszaépítési hiba számítása batch-enként (OOM védelem)
-        mse_list = []
+        # Visszaépítési hiba (MAE) számítása batch-enként (OOM védelem)
+        # Négyzetes hiba helyett Abszolút hiba a fat-tail miatt.
+        error_list = []
         for batch_x, _ in dataset:
             batch_pred = self.model.predict_on_batch(batch_x)
-            batch_mse = np.mean(np.power(batch_x - batch_pred, 2), axis=(1, 2))
-            mse_list.extend(batch_mse)
+            batch_error = np.mean(np.abs(batch_x - batch_pred), axis=(1, 2))
+            error_list.extend(batch_error)
 
-        mse = np.array(mse_list)
+        mse = np.array(error_list) # Elnevezés marad, de a valóságban ez már MAE
 
         # Mivel a "Sliding Window" miatt a legelső (seq_length - 1) darab tickből nincs
         # teljes ablakunk, azokhoz kipárnázzuk a hibát az első ismert hibával,
