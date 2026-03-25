@@ -79,9 +79,11 @@ class LSTMAutoencoderDetector(BaseModel):
 
         self.model = Model(inputs=inputs, outputs=outputs)
 
-        # SWAT4 NaN Fix: Gradient Clipping az Adam Optimizer-ben
+        # SWAT4: Az eredeti "Gradient Felrobbanás" (NaN) miatt eltávolítottuk az explcit ReLU-t.
+        # A mostani Keras Default 'tanh' önmagában is stabilizálja az LSTM rejtett állapotát -1 és 1 között,
+        # ezért a drasztikus Gradient Clipping (clipnorm=1.0) felesleges és megöli az MSE variabilitását.
         from tensorflow.keras.optimizers import Adam
-        optimizer = Adam(learning_rate=0.001, clipnorm=1.0)
+        optimizer = Adam(learning_rate=0.001)
 
         self.model.compile(optimizer=optimizer, loss='mse')
 
@@ -148,10 +150,11 @@ class LSTMAutoencoderDetector(BaseModel):
         else:
             X_scaled = self.scaler.transform(X_raw)
 
-        # Biztonsági levágás (Clipping), hogy megakadályozzuk a "loss: nan"
-        # (gradiens felrobbanás) jelenséget a 200 feletti ablakoknál,
-        # ha valami irreális érték csúszna be.
-        X_scaled = np.clip(X_scaled, -10.0, 10.0)
+        # A korábbi drasztikus levágás (np.clip(-10, 10)) megszüntette az anomáliák
+        # természetes variabilitását (a 60%-os lapos hibaarányt eredményezve).
+        # Mivel az LSTM default 'tanh' aktivációja már önmagában védi a gradienst a
+        # felrobbanástól a 200+ tickes BPTT során, itt már felesleges "lefejezni" a
+        # brókeri manipulációt jelentő valódi kiugró tüskéket. A RobustScaler elég.
 
         return X_scaled
 
