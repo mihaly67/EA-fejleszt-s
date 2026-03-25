@@ -198,44 +198,37 @@ class LSTMAutoencoderDetector(BaseModel):
 
         mse = np.array(mse_list)
 
-        # --- KÜSZÖB (THRESHOLD) DINAMIKUS FINOMHANGOLÁSA (ROBUSTUS FELSŐ KORLÁT - UPPER BOUND) ---
-        # A korábbi MAD módszer csődöt mondott (20-22%-os extrém magas találati arányt,
-        # vagyis rengeteg fals pozitívot generált), mert a hálózat hibaeloszlása a "tiszta"
-        # időszakokban túlzottan kicsi volt (szinte 0 szórás). Ehhez képest egy átlagos, normális
-        # piaci felpörgés is olyan nagynak számított, ami azonnal átütötte a szűk (1.7-es) küszöböt.
+        # --- KÜSZÖB (THRESHOLD) FINOMHANGOLÁSA (CONTAMINATION / PERCENTILIS ALAPJÁN) ---
+        # Miután az LSTM-et stabilizáltuk a 'loss: nan' hiba ellen (RobustScaler + tanh aktiváció),
+        # a visszaépítési hibák (MSE) extrém módon aszimmetrikusak és laposak lettek a korábbiakhoz
+        # képest. Az olyan statisztikai önszabályozó "Szent Grálok", mint a Mean+4*STD (ami 0% találatot hozott),
+        # a MAD (ami 22% fals pozitívot hozott), vagy a Scaled P90*1.25 (ami szintén 0%-ot hozott 3 feletti
+        # küszöbökkel), mind kudarcot vallottak az eloszlás ezen abnormális "zsíros farkú" (fat-tail) mivoltán.
         #
-        # Az új, gépi tanulási és iparági "Szent Grál" megoldás (hogy elkerüljük a kitalált százalékokat,
-        # de reális 1-5% körüli "színész" rátát kapjunk): A hibák (MSE) alsó 90%-át "Normál Piacnak"
-        # fogadjuk el. Ez a 90% adja meg a tényleges piaci zaj alap-szórását. Erre az alapra
-        # számolunk egy statisztikai (Chebyshev/Z-score) felső korlátot. Ezzel a hálózat saját maga,
-        # a saját normál zaja alapján húzza meg a vágási vonalat a legextrémebb rángatásoknak.
+        # Az iparági gépi tanulásban, Unsupervised ML hálózatoknál az egyetlen dimenzió- és
+        # szórásfüggetlen megoldás a Kvantilis (Percentilis) vágás, vagyis a "Contamination Rate".
+        # Ha a betanító adat legrosszabb 1.0 - 2.0%-át kijelöljük anomáliának, a hálózat sosem fog
+        # 0%-os találattal lefutni, de 22%-os "vaklármával" sem. Minden egyes szekvenciahossz
+        # (10-től 500-ig) hajszálpontosan ugyanakkora (~1%) alapzajból fog indulni.
+        # Ennek köszönhetően a Mátrix Vizualizáló Súlyozott SNR (Signal/Noise) képlete végre
+        # IGAZSÁGOSAN tudja értékelni, hogy a fix 1% zaj mellett melyik szekvencia találta el a legtöbb
+        # valódi trade környéki anomáliát!
 
-        # 1. Leválasztjuk a normál piac "plafonját" (a 90. percentilist)
-        # Ez a pont mutatja meg, hol van a normál piaci zaj 90%-ának felső határa.
-        p90_threshold = np.percentile(mse, 90)
+        contamination_rate = 1.0 # A piac legrosszabb 1%-a (extrém manipulációk)
+        percentile_target = 100.0 - contamination_rate
 
-        # 2. Dinamikus Skálázott Percentilis (Scaled P90)
-        # Az összes korábbi módszer (IQR, MAD, Mean+4*STD) azért bukott meg a 0% és 22%
-        # végletekkel, mert a pénzügyi LSTM MSE eloszlásának "szórása" extrém aszimmetrikus.
-        # A legstabilabb horgony a P90 plafonja. Egy igazi anomália (brókeri manipuláció)
-        # ezt a "normális" plafont is meg kell haladja valamennyivel.
-        # Itt egy 25%-os (1.25) szorzót alkalmazunk a P90-re. Ez nem fix százalékos levágás
-        # (nem kitalált 2-5% "contamination"), hanem a hálózat saját szekvenciális
-        # zajszintjének 125%-os relatív "tüskéjét" keresi (ami automatikusan le-fel skálázódik
-        # a belső hiba abszolút értékével).
-        self.threshold = p90_threshold * 1.25
+        self.threshold = np.percentile(mse, percentile_target)
 
         # Ha a piac annyira tökéletes (szinte nulla hiba, pl. robot kereskedés zárt piacon),
-        # beállítunk egy abszolút technikai padlót (pl. 0.01), hogy ne fújjon vaklármát a lebegőpontos zajokra.
+        # beállítunk egy abszolút technikai padlót (pl. 0.01), hogy ne fújjon vaklármát a kvantálási zajokra.
         self.threshold = max(0.01, self.threshold)
 
         # Diagnosztika a log-ba
         anomaly_count = np.sum(mse > self.threshold)
         dynamic_contamination = (anomaly_count / len(mse)) * 100.0
 
-        logger.info(f"[{self.model_name}] Autoencoder Betanítva! ROBUSZTUS FELSŐ KORLÁT KÜSZÖB (P90 * 1.25): {self.threshold:.5f}")
-        logger.info(f"[{self.model_name}] -> P90 Határ (Normál zaj plafon): {p90_threshold:.5f}")
-        logger.info(f"[{self.model_name}] -> A rendszer automatikusan {dynamic_contamination:.2f}% adatot azonosított Extrém Anomáliaként a betanító halmazban.")
+        logger.info(f"[{self.model_name}] Autoencoder Betanítva! PERCENTILIS KÜSZÖB ({percentile_target}%): {self.threshold:.5f}")
+        logger.info(f"[{self.model_name}] -> Az eloszlás alapján a legrosszabb {contamination_rate}% lett anomáliának (Színész) címkézve a teszthalmazban.")
 
     def detect(self, df: pd.DataFrame) -> pd.DataFrame:
         if not self.is_trained:
