@@ -193,14 +193,18 @@ class LSTMAutoencoderDetector(BaseModel):
 
         logger.info(f"[{self.model_name}] Normál piaci visszaépítési hiba kiszámítása a Thresholdhoz...")
 
-        # MSE kiszámítása kötegenként, hogy ne töltsük be az 1 milliót egyszerre
-        mse_list = []
+        # MAE (Mean Absolute Error) kiszámítása kötegenként MSE helyett.
+        # Mivel a brókeri manipulációs tüskék (fat-tail) óriási skálázott értékek,
+        # a négyzetre emelés (power 2) a teljes ablak hibáját (pl. 1690-re) dominálta,
+        # megszüntetve a finom variabilitást (és minden 60%-ra laposodott).
+        # Az abszolút különbség (abs) nem torzít exponenciálisan!
+        error_list = []
         for batch_x, _ in dataset:
             batch_pred = self.model.predict_on_batch(batch_x)
-            batch_mse = np.mean(np.power(batch_x - batch_pred, 2), axis=(1, 2))
-            mse_list.extend(batch_mse)
+            batch_error = np.mean(np.abs(batch_x - batch_pred), axis=(1, 2))
+            error_list.extend(batch_error)
 
-        mse = np.array(mse_list)
+        mse = np.array(error_list) # Az elnevezést meghagyjuk (mse), hogy a többi logika működjön
 
         # --- KÜSZÖB (THRESHOLD) FINOMHANGOLÁSA (ORGANIKUS SZORZÓ ALAPJÁN) ---
         # A "Fat-Tail Paradoxon" megoldása: A szórásmentes organikus szorzó (Mean Multiplier).
@@ -244,14 +248,15 @@ class LSTMAutoencoderDetector(BaseModel):
         X_scaled = self.preprocess(df, fit_scaler=False)
         dataset = self._get_dataset(X_scaled)
 
-        # Visszaépítési hiba számítása batch-enként (OOM védelem)
-        mse_list = []
+        # Visszaépítési hiba (MAE) számítása batch-enként (OOM védelem)
+        # Négyzetes hiba helyett Abszolút hiba a fat-tail miatt.
+        error_list = []
         for batch_x, _ in dataset:
             batch_pred = self.model.predict_on_batch(batch_x)
-            batch_mse = np.mean(np.power(batch_x - batch_pred, 2), axis=(1, 2))
-            mse_list.extend(batch_mse)
+            batch_error = np.mean(np.abs(batch_x - batch_pred), axis=(1, 2))
+            error_list.extend(batch_error)
 
-        mse = np.array(mse_list)
+        mse = np.array(error_list) # Elnevezés marad, de a valóságban ez már MAE
 
         # Mivel a "Sliding Window" miatt a legelső (seq_length - 1) darab tickből nincs
         # teljes ablakunk, azokhoz kipárnázzuk a hibát az első ismert hibával,

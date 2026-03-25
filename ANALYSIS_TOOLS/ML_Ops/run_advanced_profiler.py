@@ -115,9 +115,9 @@ def run_advanced_profiler():
     logger.info(f"Összesen {len(csv_files)} db CSV fájlt találtam Haladó Profilozásra (Mátrix módszer).")
     loader = RobustDataLoader(chunksize=5000)
 
-    # A spektrum kibővítve a felhasználó legújabb kérésére:
-    # 10-től 200-ig 10-es lépésekben, onnan ritkítva 250, 300, 400, 500-ra.
-    spectrum_windows = list(range(10, 201, 10)) + [250, 300, 400, 500]
+    # A spektrum sebesség optimalizálás és tesztelés miatt 150-ben maximalizálva
+    # 10-től 150-ig 10-es lépésekben.
+    spectrum_windows = list(range(10, 151, 10))
 
     for file_path in csv_files:
         file_name = os.path.basename(file_path)
