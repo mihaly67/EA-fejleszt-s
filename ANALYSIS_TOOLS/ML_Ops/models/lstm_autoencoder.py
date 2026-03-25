@@ -29,7 +29,7 @@ class LSTMAutoencoderDetector(BaseModel):
     a visszaépítési hiba (Reconstruction Error / MSE) az egekbe szökik.
     """
 
-    def __init__(self, seq_length=30, latent_dim=8, batch_size=256, epochs=50):
+    def __init__(self, seq_length=30, latent_dim=8, batch_size=256, epochs=50, threshold_multiplier=3.0):
         super().__init__("LSTM_Autoencoder")
         self.seq_length = seq_length  # Hány tickes ablakot (Lookback) lát a hálózat egyszerre?
         self.latent_dim = latent_dim  # 49 dimenzió -> 8 dimenzió (Tömörítés)
@@ -40,7 +40,8 @@ class LSTMAutoencoderDetector(BaseModel):
         # StandardScaler helyett RobustScaler, hogy a hatalmas kiugrások
         # (amitől felrobban a 200+ tickes LSTM gradiens) ne torzítsák el az arányokat.
         self.scaler = RobustScaler()
-        self.threshold = 0.0 # Ide kerül a dinamikus hiba küszöbérték (pl. 95. percentilis)
+        self.threshold = 0.0 # Ide kerül a dinamikus hiba küszöbérték
+        self.threshold_multiplier = threshold_multiplier
 
         try:
             from tensorflow.keras.models import Model
@@ -198,26 +199,22 @@ class LSTMAutoencoderDetector(BaseModel):
 
         mse = np.array(mse_list)
 
-        # --- KÜSZÖB (THRESHOLD) FINOMHANGOLÁSA (CONTAMINATION / PERCENTILIS ALAPJÁN) ---
-        # Miután az LSTM-et stabilizáltuk a 'loss: nan' hiba ellen (RobustScaler + tanh aktiváció),
-        # a visszaépítési hibák (MSE) extrém módon aszimmetrikusak és laposak lettek a korábbiakhoz
-        # képest. Az olyan statisztikai önszabályozó "Szent Grálok", mint a Mean+4*STD (ami 0% találatot hozott),
-        # a MAD (ami 22% fals pozitívot hozott), vagy a Scaled P90*1.25 (ami szintén 0%-ot hozott 3 feletti
-        # küszöbökkel), mind kudarcot vallottak az eloszlás ezen abnormális "zsíros farkú" (fat-tail) mivoltán.
-        #
-        # Az iparági gépi tanulásban, Unsupervised ML hálózatoknál az egyetlen dimenzió- és
-        # szórásfüggetlen megoldás a Kvantilis (Percentilis) vágás, vagyis a "Contamination Rate".
-        # Ha a betanító adat legrosszabb 1.0 - 2.0%-át kijelöljük anomáliának, a hálózat sosem fog
-        # 0%-os találattal lefutni, de 22%-os "vaklármával" sem. Minden egyes szekvenciahossz
-        # (10-től 500-ig) hajszálpontosan ugyanakkora (~1%) alapzajból fog indulni.
-        # Ennek köszönhetően a Mátrix Vizualizáló Súlyozott SNR (Signal/Noise) képlete végre
-        # IGAZSÁGOSAN tudja értékelni, hogy a fix 1% zaj mellett melyik szekvencia találta el a legtöbb
-        # valódi trade környéki anomáliát!
+        # --- KÜSZÖB (THRESHOLD) FINOMHANGOLÁSA (ORGANIKUS SZORZÓ ALAPJÁN) ---
+        # A "Fat-Tail Paradoxon" megoldása: A szórásmentes organikus szorzó (Mean Multiplier).
+        # Mivel a `tanh` aktiváció miatt a visszaépítési hibák (MSE) stabilak és tömörítettek lettek,
+        # az olyan hagyományos statisztikák, mint az STD vagy IQR kudarcot vallottak. A fix percentilis (1%)
+        # ugyan stabil volt, de információvesztéssel járt.
+        # Itt egy organikus módszert alkalmazunk: az adatok alsó 50%-ának (tisztább szakaszok)
+        # átlagát vesszük alapul (clean_mean), és ezt szorozzuk meg egy fix értékkel (pl. 3.0).
+        # Így a küszöb természetes módon követi az alapzaj szintjét, és a detektálási arány
+        # organikusan tud ingadozni anélkül, hogy "elszállna".
 
-        contamination_rate = 1.0 # A piac legrosszabb 1%-a (extrém manipulációk)
-        percentile_target = 100.0 - contamination_rate
+        # Kiszámoljuk az alsó 50% (tisztább adatok) átlagát
+        median_mse = np.median(mse)
+        clean_mean = np.mean(mse[mse <= median_mse])
 
-        self.threshold = np.percentile(mse, percentile_target)
+        # Alkalmazzuk a szórásmentes organikus szorzót (K)
+        self.threshold = clean_mean * self.threshold_multiplier
 
         # Ha a piac annyira tökéletes (szinte nulla hiba, pl. robot kereskedés zárt piacon),
         # beállítunk egy abszolút technikai padlót (pl. 0.01), hogy ne fújjon vaklármát a kvantálási zajokra.
@@ -225,10 +222,10 @@ class LSTMAutoencoderDetector(BaseModel):
 
         # Diagnosztika a log-ba
         anomaly_count = np.sum(mse > self.threshold)
-        dynamic_contamination = (anomaly_count / len(mse)) * 100.0
+        dynamic_contamination = (anomaly_count / len(mse)) * 100.0 if len(mse) > 0 else 0.0
 
-        logger.info(f"[{self.model_name}] Autoencoder Betanítva! PERCENTILIS KÜSZÖB ({percentile_target}%): {self.threshold:.5f}")
-        logger.info(f"[{self.model_name}] -> Az eloszlás alapján a legrosszabb {contamination_rate}% lett anomáliának (Színész) címkézve a teszthalmazban.")
+        logger.info(f"[{self.model_name}] Autoencoder Betanítva! ORGANIKUS KÜSZÖB (Clean Mean: {clean_mean:.5f} * K: {self.threshold_multiplier}): {self.threshold:.5f}")
+        logger.info(f"[{self.model_name}] -> Az organikus küszöb alapján dinamikus találati arány: {dynamic_contamination:.2f}% anomália a teszthalmazban.")
 
     def detect(self, df: pd.DataFrame) -> pd.DataFrame:
         if not self.is_trained:
