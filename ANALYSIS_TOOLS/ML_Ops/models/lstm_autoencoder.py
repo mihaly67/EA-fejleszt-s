@@ -198,48 +198,40 @@ class LSTMAutoencoderDetector(BaseModel):
 
         mse = np.array(mse_list)
 
-        # --- KÜSZÖB (THRESHOLD) ROBUSTUS FINOMHANGOLÁSA ---
-        # Ha a bróker masszívan manipulál (akár 30-50%-ban apró rángatásokkal), a hagyományos
-        # átlag és szórás hatalmasra nő a kiugró értékek (outlierek) miatt. Ez indokolatlanul
-        # magasan tartja a küszöböt (pl. 1.7), elrejtve a kisebb "színészkedéseket".
-        #
-        # Megoldás: "Tiszta Bázis" (Robust Baseline). Csak a legnyugodtabb piacot (az MSE alsó 50%-át)
-        # vesszük alapul az átlaghoz és szóráshoz. Ebből számoljuk ki a valódi piaci "nanotick zajt".
+        # --- KÜSZÖB (THRESHOLD) DINAMIKUS FINOMHANGOLÁSA (ADATVEZÉRELT / OUTLIER ALAPJÁN) ---
+        # A felhasználó és a RAG iránymutatása alapján megszüntetjük a "kitalált" (hardcoded 3%)
+        # percentilis vagy szennyezettségi rátákat, és helyette egy statisztikailag robusztus,
+        # automatikus Outlier Detection módszert (Tukey's Fences / IQR Method) használunk a
+        # hálózat által produkált hiba (MSE) eloszlására.
+        # Így a rendszer MAGÁNAK találja meg a küszöböt, figyelembe véve az adott szekvenciahossz
+        # jellegzetességeit.
 
-        # 1. Kiválogatjuk a medián alatti (legnyugodtabb) hibákat
-        median_mse = np.median(mse)
-        clean_base = mse[mse <= median_mse]
+        # 1. Kiszámoljuk az MSE (Reconstruction Error) eloszlásának kvartiliseit
+        q25 = np.percentile(mse, 25)
+        q75 = np.percentile(mse, 75)
 
-        # 2. Ennek a "tiszta" bázisnak a paraméterei
-        clean_mean = np.mean(clean_base)
-        clean_std = np.std(clean_base)
+        # 2. Interquartile Range (IQR): A középső 50% "normál" adat terjedelme
+        iqr = q75 - q25
 
-        # 3. A küszöböt a tiszta bázisra építjük (Pl. a tiszta átlag + X * tiszta szórás).
-        # SWAT4 Frissítés: Ha a piac nagyon volatilis (az eredeti adathalmazban hatalmas ugrások vannak),
-        # vagy épp ellenkezőleg, nagyon pangó, akkor a threshold ne fix 5.0-ás szorzó legyen.
-        # Használjuk fel a "Time_Delta_MS" (tick sűrűség) vagy a teljes hiba eloszlását önszabályozásra!
-        # Ha a piac volatilis és zajos (median hiba eleve nagy), a küszöb szorzó lecsökken (pl. 2.0-ra),
-        # hogy szorosabban kövesse a mozgásokat (alacsonyabb küszöb = 0.4 - 0.6 tartomány).
+        # 3. Kiszámoljuk a Felső Küszöböt (Upper Fence).
+        # A klasszikus statisztikában az 1.5 * IQR a "mild outlier", a 3.0 * IQR az "extreme outlier".
+        # Mivel a pénzügyi piacoknak vastag farkuk van (fat-tail distribution), és csak a brókeri
+        # manipulációkat (extreme outliers) keressük, a robusztus 3.0 * IQR szorzót használjuk a 75. percentilistől.
+        # Ez biztosítja, hogy minden szekvenciahossz (10-től 500-ig) a prpoporcionálisan HARMADIK standard
+        # deviációs "könyöknél" fogja elvágni a hibákat, mindenféle fix % kitalálása nélkül!
+        self.threshold = q75 + (3.0 * iqr)
 
-        # "Self-Tuning Anomaly Threshold" (Önszabályozó Küszöb a Volatilitás Alapján)
-        # Ha a globális szórás hatalmas (nagyon rángat a piac), a szorzó kisebb lesz (közelebb a mediánhoz).
-        global_std = np.std(mse)
-        if global_std > 2.0:
-            volatility_multiplier = 2.0 # Nyüzsgő/Volatilis piac, szorosabb küszöb
-        elif global_std > 1.0:
-            volatility_multiplier = 3.5
-        else:
-            volatility_multiplier = 5.0 # Pangó éjszakai piac, lazább küszöb a fals pozitívok ellen
+        # Ha a piac annyira tökéletes (szinte nulla hiba, pl. robot kereskedés zárt piacon),
+        # beállítunk egy abszolút technikai padlót (pl. 0.01), hogy ne fújjon vaklármát a lebegőpontos zajokra.
+        self.threshold = max(0.01, self.threshold)
 
-        self.threshold = clean_mean + (volatility_multiplier * clean_std)
+        # Diagnosztika a log-ba
+        anomaly_count = np.sum(mse > self.threshold)
+        dynamic_contamination = (anomaly_count / len(mse)) * 100.0
 
-        # SWAT4 Korrekció: Ha a tiszta szórás is rendkívül kicsi (nagyon sima "robot" piac),
-        # megakadályozzuk, hogy a threshold irreálisan kicsi legyen (pl. 0.05).
-        # Ahogy a felhasználó kérte, pörgős piacon a küszöb eshet 0.4 - 0.6 közé.
-        self.threshold = max(0.4, self.threshold)
-
-        logger.info(f"[{self.model_name}] Autoencoder Betanítva! ÖNSZABÁLYOZÓ ROBUSTUS Hiba Küszöb: {self.threshold:.5f}")
-        logger.info(f"[{self.model_name}] -> Tiszta Bázis Átlag: {clean_mean:.5f}, Szórás: {clean_std:.5f}, Szorzó: {volatility_multiplier}x")
+        logger.info(f"[{self.model_name}] Autoencoder Betanítva! DINAMIKUS OUTLIER KÜSZÖB (Q75 + 3*IQR): {self.threshold:.5f}")
+        logger.info(f"[{self.model_name}] -> Statisztikai Q25: {q25:.5f}, Q75: {q75:.5f}, IQR: {iqr:.5f}")
+        logger.info(f"[{self.model_name}] -> A rendszer automatikusan {dynamic_contamination:.2f}% adatot azonosított Extrém Anomáliaként a betanító halmazban.")
 
     def detect(self, df: pd.DataFrame) -> pd.DataFrame:
         if not self.is_trained:
