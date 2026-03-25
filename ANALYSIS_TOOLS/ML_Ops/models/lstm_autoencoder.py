@@ -198,28 +198,35 @@ class LSTMAutoencoderDetector(BaseModel):
 
         mse = np.array(mse_list)
 
-        # --- KÜSZÖB (THRESHOLD) DINAMIKUS FINOMHANGOLÁSA (ADATVEZÉRELT / OUTLIER ALAPJÁN) ---
-        # A felhasználó és a RAG iránymutatása alapján megszüntetjük a "kitalált" (hardcoded 3%)
-        # percentilis vagy szennyezettségi rátákat, és helyette egy statisztikailag robusztus,
-        # automatikus Outlier Detection módszert (Tukey's Fences / IQR Method) használunk a
-        # hálózat által produkált hiba (MSE) eloszlására.
-        # Így a rendszer MAGÁNAK találja meg a küszöböt, figyelembe véve az adott szekvenciahossz
-        # jellegzetességeit.
+        # --- KÜSZÖB (THRESHOLD) DINAMIKUS FINOMHANGOLÁSA (ROBUSZTUS MAD ALAPJÁN) ---
+        # A korábbi IQR (Q75 + 3*IQR) módszer 0%-os találati arányt hozott, mert az LSTM
+        # hibaeloszlása nagyon erősen aszimmetrikus (jobbra húzott) a Mátrix elemzés során.
+        # Az ilyen "fat-tailed" eloszlásokon (ahol a hálózat néhány manipulatív tickre
+        # csillagászati hibát ad) a felső kvartilis (Q75) is magával húzódik, ezáltal a
+        # küszöb irreálisan magasra nő, elfedve a valódi brókeri trükköket.
+        #
+        # A megoldás: Median Absolute Deviation (MAD), a legrobusztusabb outlier detektor
+        # aszimmetrikus zajban. A medián egyáltalán nem mozdul el a felső kiugró tüskéktől!
 
-        # 1. Kiszámoljuk az MSE (Reconstruction Error) eloszlásának kvartiliseit
-        q25 = np.percentile(mse, 25)
-        q75 = np.percentile(mse, 75)
+        # 1. Kiszámoljuk a hibák mediánját (a "tipikus" hálózat-hiba normál piacon)
+        median_mse = np.median(mse)
 
-        # 2. Interquartile Range (IQR): A középső 50% "normál" adat terjedelme
-        iqr = q75 - q25
+        # 2. Kiszámoljuk az abszolút eltérések mediánját (MAD)
+        abs_dev = np.abs(mse - median_mse)
+        mad = np.median(abs_dev)
 
-        # 3. Kiszámoljuk a Felső Küszöböt (Upper Fence).
-        # A klasszikus statisztikában az 1.5 * IQR a "mild outlier", a 3.0 * IQR az "extreme outlier".
-        # Mivel a pénzügyi piacoknak vastag farkuk van (fat-tail distribution), és csak a brókeri
-        # manipulációkat (extreme outliers) keressük, a robusztus 3.0 * IQR szorzót használjuk a 75. percentilistől.
-        # Ez biztosítja, hogy minden szekvenciahossz (10-től 500-ig) a prpoporcionálisan HARMADIK standard
-        # deviációs "könyöknél" fogja elvágni a hibákat, mindenféle fix % kitalálása nélkül!
-        self.threshold = q75 + (3.0 * iqr)
+        # Matematikai korrekció (normál eloszláshoz méretezett MAD, azaz "Modified Z-score" szorzó)
+        mad_scaled = mad * 1.4826
+
+        # Biztosíték nulla osztó ellen (ha minden adat hajszálpontosan ugyanaz lenne)
+        if mad_scaled == 0:
+            mad_scaled = 1e-6
+
+        # 3. Kiszámítjuk a Küszöböt (Threshold)
+        # Az "Iglewicz and Hoaglin (1993)" szabály szerint, ha a modified Z-score > 3.5, akkor
+        # az egyértelmű outlier (anomália). Mivel egyedi Mátrix Profilozót építünk, a robusztus
+        # 3.5-es szorzó statisztikailag tökéletes küszöböt ad, aminek semmi köze a "kitalált 3%"-hoz.
+        self.threshold = median_mse + (3.5 * mad_scaled)
 
         # Ha a piac annyira tökéletes (szinte nulla hiba, pl. robot kereskedés zárt piacon),
         # beállítunk egy abszolút technikai padlót (pl. 0.01), hogy ne fújjon vaklármát a lebegőpontos zajokra.
@@ -229,8 +236,8 @@ class LSTMAutoencoderDetector(BaseModel):
         anomaly_count = np.sum(mse > self.threshold)
         dynamic_contamination = (anomaly_count / len(mse)) * 100.0
 
-        logger.info(f"[{self.model_name}] Autoencoder Betanítva! DINAMIKUS OUTLIER KÜSZÖB (Q75 + 3*IQR): {self.threshold:.5f}")
-        logger.info(f"[{self.model_name}] -> Statisztikai Q25: {q25:.5f}, Q75: {q75:.5f}, IQR: {iqr:.5f}")
+        logger.info(f"[{self.model_name}] Autoencoder Betanítva! ROBUSZTUS MAD KÜSZÖB (Median + 3.5*MAD): {self.threshold:.5f}")
+        logger.info(f"[{self.model_name}] -> Statisztikai Median: {median_mse:.5f}, Scaled MAD: {mad_scaled:.5f}")
         logger.info(f"[{self.model_name}] -> A rendszer automatikusan {dynamic_contamination:.2f}% adatot azonosított Extrém Anomáliaként a betanító halmazban.")
 
     def detect(self, df: pd.DataFrame) -> pd.DataFrame:
