@@ -210,25 +210,20 @@ class LSTMAutoencoderDetector(BaseModel):
         # számolunk egy statisztikai (Chebyshev/Z-score) felső korlátot. Ezzel a hálózat saját maga,
         # a saját normál zaja alapján húzza meg a vágási vonalat a legextrémebb rángatásoknak.
 
-        # 1. Leválasztjuk az MSE "Normál Piac" eloszlását (az alsó 90%-ot)
+        # 1. Leválasztjuk a normál piac "plafonját" (a 90. percentilist)
+        # Ez a pont mutatja meg, hol van a normál piaci zaj 90%-ának felső határa.
         p90_threshold = np.percentile(mse, 90)
-        normal_market_mse = mse[mse <= p90_threshold]
 
-        # 2. Ennek a "Normál Piacnak" az Átlaga és Szórása adja a valódi piaci zaj mértékét
-        normal_mean = np.mean(normal_market_mse)
-        normal_std = np.std(normal_market_mse)
-
-        # 3. Kiszámítjuk a Küszöböt (Threshold) a normál zaj alapján.
-        # A normál eloszlás szabályai szerint a "nagyon extrém" anomáliák (amit a bróker okoz)
-        # a normál piac átlagától 4.0 - 5.0 standard deviációra (szórásra) vannak.
-        # Itt fixálunk egy 4.0-es szorzót (Four Sigma), ami statisztikailag globálisan az adatok
-        # 99.99%-át befedi a *normális* eloszlásban. Ami ezt a 4 Sigma korlátot is átüti a P90 zóna
-        # szórásából számítva, az biztosan mesterséges manipuláció!
-        self.threshold = normal_mean + (4.0 * normal_std)
-
-        # Biztosíték: Ha a számított küszöb valami extrém okból a 90. percentilis alá esne,
-        # mindenképpen a P90 lesz a minimum, hogy véletlenül se fújjunk riasztást a normál adatokra.
-        self.threshold = max(p90_threshold, self.threshold)
+        # 2. Dinamikus Skálázott Percentilis (Scaled P90)
+        # Az összes korábbi módszer (IQR, MAD, Mean+4*STD) azért bukott meg a 0% és 22%
+        # végletekkel, mert a pénzügyi LSTM MSE eloszlásának "szórása" extrém aszimmetrikus.
+        # A legstabilabb horgony a P90 plafonja. Egy igazi anomália (brókeri manipuláció)
+        # ezt a "normális" plafont is meg kell haladja valamennyivel.
+        # Itt egy 25%-os (1.25) szorzót alkalmazunk a P90-re. Ez nem fix százalékos levágás
+        # (nem kitalált 2-5% "contamination"), hanem a hálózat saját szekvenciális
+        # zajszintjének 125%-os relatív "tüskéjét" keresi (ami automatikusan le-fel skálázódik
+        # a belső hiba abszolút értékével).
+        self.threshold = p90_threshold * 1.25
 
         # Ha a piac annyira tökéletes (szinte nulla hiba, pl. robot kereskedés zárt piacon),
         # beállítunk egy abszolút technikai padlót (pl. 0.01), hogy ne fújjon vaklármát a lebegőpontos zajokra.
@@ -238,8 +233,8 @@ class LSTMAutoencoderDetector(BaseModel):
         anomaly_count = np.sum(mse > self.threshold)
         dynamic_contamination = (anomaly_count / len(mse)) * 100.0
 
-        logger.info(f"[{self.model_name}] Autoencoder Betanítva! ROBUSZTUS FELSŐ KORLÁT KÜSZÖB (Normál Átlag + 4*Szórás): {self.threshold:.5f}")
-        logger.info(f"[{self.model_name}] -> Statisztikai Normál Átlag (Alsó 90%): {normal_mean:.5f}, Szórás: {normal_std:.5f}, P90 Határ: {p90_threshold:.5f}")
+        logger.info(f"[{self.model_name}] Autoencoder Betanítva! ROBUSZTUS FELSŐ KORLÁT KÜSZÖB (P90 * 1.25): {self.threshold:.5f}")
+        logger.info(f"[{self.model_name}] -> P90 Határ (Normál zaj plafon): {p90_threshold:.5f}")
         logger.info(f"[{self.model_name}] -> A rendszer automatikusan {dynamic_contamination:.2f}% adatot azonosított Extrém Anomáliaként a betanító halmazban.")
 
     def detect(self, df: pd.DataFrame) -> pd.DataFrame:
