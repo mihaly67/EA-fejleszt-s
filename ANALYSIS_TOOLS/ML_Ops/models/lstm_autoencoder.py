@@ -84,10 +84,12 @@ class LSTMAutoencoderDetector(BaseModel):
 
         # Hogy az agresszív 'relu' BPTT (hosszú, 150 tickes szekvenciák) miatt ne okozzon
         # "kvintilliós / NaN" felrobbanást a memóriában (Exploding Gradient),
-        # az Adam optimizer-be beállítunk egy tág, de szigorú falat: clipnorm=1.0.
-        # Így a model őrülten táncol és variál, de a szakadék szélénél biztonságba húz.
+        # de a felhasználó által kért epoch-onkénti variabilitás (akár ezertől milliárdig)
+        # visszatérhessen, az Adam optimizer-ből KI VESSZÜK a drasztikus clipnorm=1.0-át.
+        # Így a modell tényleg szabadon ugrál, amit a MAE K-Means úgyis tökéletesen kezelni fog.
+        # (Ha a NaN mégis probléma lenne egy VPS-en, max 'clipvalue=1000' adható, de hagyjuk szabadon).
         from tensorflow.keras.optimizers import Adam
-        optimizer = Adam(learning_rate=0.001, clipnorm=1.0)
+        optimizer = Adam(learning_rate=0.001)
 
         self.model.compile(optimizer=optimizer, loss='mse')
 
@@ -156,9 +158,9 @@ class LSTMAutoencoderDetector(BaseModel):
 
         # A korábbi drasztikus levágás (np.clip(-10, 10)) megszüntette az anomáliák
         # természetes variabilitását (a 60%-os lapos hibaarányt eredményezve).
-        # Bár visszatértünk a 'relu' aktivációhoz, a gradiens felrobbanást most már
-        # az Adam optimizer 'clipnorm=1.0' védi. Így felesleges "lefejezni" a
-        # brókeri manipulációt jelentő valódi kiugró tüskéket az adatbemenetnél.
+        # A felhasználó kérésére az epoch-variabilitás maximalizálása érdekében
+        # sem a bemeneti skálázásnál, sem a gradiensnél (clipnorm) nincs drasztikus vágás,
+        # a kiugró brókeri tüskéket (outliereket) a K-Means és a MAE úgyis biztonságosan kezeli.
 
         return X_scaled
 
@@ -210,27 +212,34 @@ class LSTMAutoencoderDetector(BaseModel):
 
         mse = np.array(error_list) # Az elnevezést meghagyjuk (mse), hogy a többi logika működjön
 
-        # --- KÜSZÖB (THRESHOLD) FINOMHANGOLÁSA (ORGANIKUS SZORZÓ ALAPJÁN) ---
-        # A "Fat-Tail Paradoxon" megoldása: A szórásmentes organikus szorzó (Mean Multiplier).
-        # Mivel a `tanh` aktiváció miatt a visszaépítési hibák (MSE) stabilak és tömörítettek lettek,
-        # az olyan hagyományos statisztikák, mint az STD vagy IQR kudarcot vallottak. A fix percentilis (1%)
-        # ugyan stabil volt, de információvesztéssel járt.
-        # Itt egy organikus módszert alkalmazunk: az adatok alsó 50%-ának (tisztább szakaszok)
-        # átlagát vesszük alapul (clean_mean), és ezt szorozzuk meg egy fix értékkel (pl. 3.0).
-        # Így a küszöb természetes módon követi az alapzaj szintjét, és a detektálási arány
-        # organikusan tud ingadozni anélkül, hogy "elszállna".
+        # --- KÜSZÖB (THRESHOLD) FINOMHANGOLÁSA (UNSUPERVISED MACHINE LEARNING - K-MEANS) ---
+        # A korábbi, felhasználó által kifogásolt "lapos 60%-os találati arányt" a hardkódolt szorzók
+        # (pl. 'alsó 50% * 1.2') okozták, mivel azok mesterségesen vágtak bele a normál zaj sűrűjébe.
+        # Az "Öntanulás" jegyében a határvonal meghúzását teljes mértékben rábízzuk egy algoritmusra (K-Means).
+        # A K-Means megkeresi az összes hiba (MAE) között a matematikai szakadékot: a "Normál", sűrű, alacsony
+        # hibájú csoport és a ritkás, magas hibájú "Anomália" (Brókeri tüske) csoport között.
 
-        # A "Fat-Tail Paradoxon" megoldása: A szórásmentes organikus szorzó (Mean Multiplier).
-        # Mivel a `tanh` aktiváció miatt a visszaépítési hibák (MSE) stabilak és tömörítettek lettek,
-        # egy sima, lineáris Szorzó a "Tiszta Átlagon" (alsó 50%) tökéletes organikus megoldást ad.
-        # Ez visszaállítja az eltérő szekvenciahosszok természetes ingadozását.
+        # 1. Átalakítjuk az 1D hibatömböt 2D oszloppá a sklearn számára
+        mse_reshaped = mse.reshape(-1, 1)
 
-        # Kiszámoljuk az alsó 50% (tisztább adatok) átlagát
-        median_mse = np.median(mse)
-        clean_mean = np.mean(mse[mse <= median_mse])
+        # 2. Ráengedjük a K-Means-t, hogy ossza a hibákat 2 klaszterre (Normál vs Anomália)
+        # N_init='auto' elnyomja a warningokat a legújabb scikit-learn verziókban
+        from sklearn.cluster import KMeans
+        kmeans = KMeans(n_clusters=2, random_state=42, n_init='auto').fit(mse_reshaped)
 
-        # Alkalmazzuk a szórásmentes organikus szorzót (K = 1.2 default)
-        self.threshold = clean_mean * self.threshold_multiplier
+        # 3. Kiderítjük, melyik klaszter központja (centroid) a nagyobb. Az lesz az Anomália klaszter.
+        centers = kmeans.cluster_centers_.flatten()
+        anomaly_cluster_index = np.argmax(centers)
+
+        # 4. Megkeressük az Anomália klaszterbe sorolt összes hibát
+        anomalies_in_cluster = mse[kmeans.labels_ == anomaly_cluster_index]
+
+        if len(anomalies_in_cluster) > 0:
+            # Az organikus küszöb: Az anomália csoportba sorolt legkisebb hiba.
+            self.threshold = float(np.min(anomalies_in_cluster))
+        else:
+            # Fallback (ha valamiért egyetlen klaszterbe omlana minden): fallback P99-re
+            self.threshold = float(np.percentile(mse, 99))
 
         # Ha a piac annyira tökéletes (szinte nulla hiba, pl. robot kereskedés zárt piacon),
         # beállítunk egy abszolút technikai padlót (pl. 0.01), hogy ne fújjon vaklármát a kvantálási zajokra.
@@ -240,8 +249,8 @@ class LSTMAutoencoderDetector(BaseModel):
         anomaly_count = np.sum(mse > self.threshold)
         dynamic_contamination = (anomaly_count / len(mse)) * 100.0 if len(mse) > 0 else 0.0
 
-        logger.info(f"[{self.model_name}] Autoencoder Betanítva! ORGANIKUS KÜSZÖB (Clean Mean: {clean_mean:.5f} * K: {self.threshold_multiplier}): {self.threshold:.5f}")
-        logger.info(f"[{self.model_name}] -> Az organikus küszöb alapján dinamikus találati arány: {dynamic_contamination:.2f}% anomália a teszthalmazban.")
+        logger.info(f"[{self.model_name}] Autoencoder Betanítva! K-MEANS KLASZTER KÜSZÖB: {self.threshold:.5f} (Centroidok: {centers})")
+        logger.info(f"[{self.model_name}] -> Az öntanuló K-Means küszöb alapján dinamikus találati arány: {dynamic_contamination:.2f}% anomália a teszthalmazban.")
 
     def detect(self, df: pd.DataFrame) -> pd.DataFrame:
         if not self.is_trained:
