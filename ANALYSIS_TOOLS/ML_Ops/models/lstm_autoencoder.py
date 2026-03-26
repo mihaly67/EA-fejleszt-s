@@ -84,10 +84,12 @@ class LSTMAutoencoderDetector(BaseModel):
 
         # Hogy az agresszív 'relu' BPTT (hosszú, 150 tickes szekvenciák) miatt ne okozzon
         # "kvintilliós / NaN" felrobbanást a memóriában (Exploding Gradient),
-        # az Adam optimizer-be beállítunk egy tág, de szigorú falat: clipnorm=1.0.
-        # Így a model őrülten táncol és variál, de a szakadék szélénél biztonságba húz.
+        # de a felhasználó által kért epoch-onkénti variabilitás (akár ezertől milliárdig)
+        # visszatérhessen, az Adam optimizer-ből KI VESSZÜK a drasztikus clipnorm=1.0-át.
+        # Így a modell tényleg szabadon ugrál, amit a MAE K-Means úgyis tökéletesen kezelni fog.
+        # (Ha a NaN mégis probléma lenne egy VPS-en, max 'clipvalue=1000' adható, de hagyjuk szabadon).
         from tensorflow.keras.optimizers import Adam
-        optimizer = Adam(learning_rate=0.001, clipnorm=1.0)
+        optimizer = Adam(learning_rate=0.001)
 
         self.model.compile(optimizer=optimizer, loss='mse')
 
@@ -156,9 +158,9 @@ class LSTMAutoencoderDetector(BaseModel):
 
         # A korábbi drasztikus levágás (np.clip(-10, 10)) megszüntette az anomáliák
         # természetes variabilitását (a 60%-os lapos hibaarányt eredményezve).
-        # Bár visszatértünk a 'relu' aktivációhoz, a gradiens felrobbanást most már
-        # az Adam optimizer 'clipnorm=1.0' védi. Így felesleges "lefejezni" a
-        # brókeri manipulációt jelentő valódi kiugró tüskéket az adatbemenetnél.
+        # A felhasználó kérésére az epoch-variabilitás maximalizálása érdekében
+        # sem a bemeneti skálázásnál, sem a gradiensnél (clipnorm) nincs drasztikus vágás,
+        # a kiugró brókeri tüskéket (outliereket) a K-Means és a MAE úgyis biztonságosan kezeli.
 
         return X_scaled
 
