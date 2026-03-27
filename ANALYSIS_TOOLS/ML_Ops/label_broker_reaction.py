@@ -109,20 +109,55 @@ class BrokerReactionLabeler:
                     is_reaction = True
                     reaction_reasons.append(f"SL Vadászat/Rángatás (Vol: {future_volatility:.2f})")
 
+                # MIKRO-TREND MEGHATÁROZÁSA (Az Attribúciós Hiba kiszűrése Counter-Trend belépéseknél)
+                # Ha eső piacon veszel (Buy), az árfolyam normális, természetes (Target=0) viselkedése, hogy tovább esik ellened.
+                # Ezt a "Lassú Kivéreztetést" csak TRENDIRÁNYÚ (Trend-Following) belépésnél büntetjük (Target=1).
+                start_lookback = max(0, i - 50)
+                past_prices = df.iloc[start_lookback:i]['Bid'].values
+                if len(past_prices) > 10:
+                    # Egyszerű lineáris regresszió (meredekség / slope) az elmúlt 50 tickre
+                    x = np.arange(len(past_prices))
+                    slope, _ = np.polyfit(x, past_prices, 1)
+                    is_uptrend = slope > 0.0001
+                    is_downtrend = slope < -0.0001
+                else:
+                    is_uptrend = False
+                    is_downtrend = False
+
+                is_counter_trade = (trade_dir == 1 and is_downtrend) or (trade_dir == -1 and is_uptrend)
+
                 # MINTÁZAT 3: "Slow Bleed" (Kivéreztetés Döglött Piacon / Klasszikus Adverse Excursion)
-                # Ha nincs rángatás (nincs "Whipsaw"), de az ár monoton elindul ellenünk.
-                if trade_dir == 1: # Buy (Az árfolyam esése az ellenség)
-                    lowest_bid = future_window['Bid'].min()
-                    excursion = entry_price - lowest_bid
-                    if excursion > self.excursion_threshold and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
-                        is_reaction = True
-                        reaction_reasons.append(f"Lassú Kivéreztetés (-{excursion:.2f})")
-                elif trade_dir == -1: # Sell (Az árfolyam növekedése az ellenség)
-                    highest_bid = future_window['Bid'].max()
-                    excursion = highest_bid - entry_price
-                    if excursion > self.excursion_threshold and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
-                        is_reaction = True
-                        reaction_reasons.append(f"Lassú Kivéreztetés (+{excursion:.2f})")
+                # CSAK TRENDIRÁNYÚ BELÉPÉSNÉL (vagy oldalazásnál) GYANÚS, HA AZ ÁR AZONNAL ELLENÜNK INDUL!
+                # Counter-Trade esetén az esés (Buy-nál) a normális piac (Target=0).
+                if not is_counter_trade:
+                    if trade_dir == 1: # Buy (Az árfolyam esése az ellenség)
+                        lowest_bid = future_window['Bid'].min()
+                        excursion = entry_price - lowest_bid
+                        if excursion > self.excursion_threshold and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
+                            is_reaction = True
+                            reaction_reasons.append(f"Lassú Kivéreztetés (-{excursion:.2f})")
+                    elif trade_dir == -1: # Sell (Az árfolyam növekedése az ellenség)
+                        highest_bid = future_window['Bid'].max()
+                        excursion = highest_bid - entry_price
+                        if excursion > self.excursion_threshold and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
+                            is_reaction = True
+                            reaction_reasons.append(f"Lassú Kivéreztetés (+{excursion:.2f})")
+                else:
+                    # MINTÁZAT 3B (COUNTER-TREND): A bróker algoritmusa "rácsatlakozik" a Counter-Trade-re.
+                    # Ha eső piacon Buy-t nyitsz, és az ár "természetellenesen" AZONNAL, egyből felpattan a javadra (B-Book internalizáció),
+                    # majd esetleg Whipsaw-ba megy át (amit fent a 2-es pont megfog), az a gyanús brókeri reakció.
+                    if trade_dir == 1: # Buy eső piacon
+                        highest_bid = future_window['Bid'].max()
+                        counter_excursion = highest_bid - entry_price
+                        if counter_excursion > self.excursion_threshold and not any("Vadászat" in r for r in reaction_reasons):
+                            is_reaction = True
+                            reaction_reasons.append(f"Természetellenes Azonnali Fordulat (Counter: +{counter_excursion:.2f})")
+                    elif trade_dir == -1: # Sell emelkedő piacon
+                        lowest_bid = future_window['Bid'].min()
+                        counter_excursion = entry_price - lowest_bid
+                        if counter_excursion > self.excursion_threshold and not any("Vadászat" in r for r in reaction_reasons):
+                            is_reaction = True
+                            reaction_reasons.append(f"Természetellenes Azonnali Fordulat (Counter: -{counter_excursion:.2f})")
 
                 # 4. SPREAD MANIPULÁCIÓ (Kiegészítő fegyver)
                 if 'Spread' in df.columns:
