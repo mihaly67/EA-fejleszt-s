@@ -292,7 +292,7 @@ def run_validator():
         logger.info(f"\n[VAKU 3.0] Offline Kályha Validáció indítása: {file_name}")
 
         df = pd.read_csv(file)
-        validator = Vaku3OfflineValidator(window_size=50) # 50 tickes CUSUM/ER ablak
+        validator = Vaku3OfflineValidator(window_size=15) # A Címkéző (10 tick) fókuszához igazítva
 
         # 1. Ortogonális Feature Kinyerés
         validator.extract_features(df)
