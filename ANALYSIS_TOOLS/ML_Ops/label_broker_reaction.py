@@ -3,9 +3,21 @@ import glob
 import pandas as pd
 import numpy as np
 import logging
+import warnings
+warnings.filterwarnings('ignore')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+try:
+    import matplotlib
+    matplotlib.use('Agg') # Server mód grafikus felület nélkül (VPS-en)
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
+    HAS_PLOT = True
+except ImportError:
+    HAS_PLOT = False
+    logger.warning("Matplotlib nincs telepítve. Grafikonok (PNG) nem készülnek! (pip install matplotlib)")
 
 # ==============================================================================
 # ⚙️ FELHASZNÁLÓI BEÁLLÍTÁSOK (CÍMKÉZÉSI SZABÁLYOK FINOMHANGOLÁSA)
@@ -52,11 +64,16 @@ class BrokerReactionLabeler:
     def __init__(self, config=LabelerConfig):
         self.config = config
 
-    def process_file(self, file_path, output_dir):
+    def process_file(self, file_path, output_dir, report_dir):
         file_name = os.path.basename(file_path)
         logger.info(f"\n=======================================================")
         logger.info(f"🏷️ VISELKEDÉSPROFILOZÓ CÍMKÉZÉS: {file_name}")
         logger.info(f"=======================================================")
+
+        report_lines = []
+        report_lines.append(f"=========================================================================")
+        report_lines.append(f"🏷️ BRÓKERI REAKCIÓ (CÍMKÉZÉSI) RIPORT: {file_name}")
+        report_lines.append(f"=========================================================================\n")
 
         try:
             df = pd.read_csv(file_path)
@@ -74,6 +91,7 @@ class BrokerReactionLabeler:
 
         trade_count = 0
         reaction_count = 0
+        trade_events_for_plot = []
 
         # Végigfutunk a sorokon és megkeressük az ESEMÉNYEKET (Belépés / Zárás)
         for i in range(1, len(df)):
@@ -203,26 +221,82 @@ class BrokerReactionLabeler:
                     df.loc[label_start:i, 'Broker_Reaction_Target'] = 1
                     df.loc[i, 'Reaction_Type'] = " | ".join(reaction_reasons)
 
-                    logger.info(f"   🚨 [BRÓKER REAKCIÓ] {event_type} #{trade_count} -> Ok: {df.loc[i, 'Reaction_Type']}")
+                    msg = f"🚨 [BRÓKER REAKCIÓ] {event_type} #{trade_count} (Sor: {i}) -> Ok: {df.loc[i, 'Reaction_Type']}"
+                    logger.info(f"   {msg}")
+                    report_lines.append(msg)
+                    trade_events_for_plot.append({'index': i, 'type': event_type, 'target': 1})
                 else:
-                    logger.info(f"   ✅ [TERMÉSZETES PIAC] {event_type} #{trade_count} -> A piac akadálytalanul haladt tovább.")
+                    msg = f"✅ [TERMÉSZETES PIAC] {event_type} #{trade_count} (Sor: {i}) -> A piac akadálytalanul haladt tovább."
+                    logger.info(f"   {msg}")
+                    report_lines.append(msg)
+                    trade_events_for_plot.append({'index': i, 'type': event_type, 'target': 0})
 
-        # Fájl Mentése
+        # Összegzés a Riportba
+        summary = f"\n--- ÖSSZEGZÉS: {file_name} ---\nÖsszes Esemény (Trade Nyitás/Zárás): {trade_count}\nEbből Brókeri Reakció (Target=1): {reaction_count} ({(reaction_count/max(1, trade_count))*100:.1f}%)"
+        report_lines.append(summary)
+
+        # Fájlok Mentése
         output_file = os.path.join(output_dir, f"LABELED_{file_name}")
         df.to_csv(output_file, index=False)
 
-        logger.info(f"--- ÖSSZEGZÉS: {file_name} ---")
-        logger.info(f"Összes Belépés (Trade): {trade_count}")
-        logger.info(f"Ebből Brókeri Reakció (Target=1): {reaction_count} ({(reaction_count/max(1, trade_count))*100:.1f}%)")
-        logger.info(f"Kimentve: {output_file}\n")
+        report_file = os.path.join(report_dir, f"LABEL_REPORT_{file_name.replace('.csv', '')}.txt")
+        with open(report_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(report_lines))
 
+        logger.info(summary)
+        logger.info(f"Adatbázis Kimentve: {output_file}")
+        logger.info(f"Riport Kimentve: {report_file}\n")
+
+        # Vizualizáció Grafikonon (Ha van Matplotlib)
+        if HAS_PLOT:
+            self._plot_labels(df, trade_events_for_plot, file_name, report_dir)
+
+    def _plot_labels(self, df, trade_events, file_name, report_dir):
+        """Kirajzolja a Bid árat, és piros háttérrel megjelöli az 1-esre címkézett (Manipulált) területeket."""
+        try:
+            plt.figure(figsize=(16, 8))
+            plt.title(f"Brókeri Reakció (Címkézés) Vizualizációja: {file_name}")
+
+            # X tengely (Index vagy Tick sorszám)
+            x_data = df.index
+            y_data = df['Bid']
+            plt.plot(x_data, y_data, label='Bid (Árfolyam)', color='blue', linewidth=1)
+
+            # Beszínezzük pirossal azokat az "Állapotokat" (10 tickes sávokat), amik Target=1 címkét kaptak
+            labeled_indices = df[df['Broker_Reaction_Target'] == 1].index
+            for idx in labeled_indices:
+                plt.axvspan(idx - 0.5, idx + 0.5, color='red', alpha=0.3, lw=0)
+
+            # Megjelöljük a konkrét Trade (Nyitás/Zárás) Eseményeket pöttyökkel
+            for ev in trade_events:
+                idx = ev['index']
+                price = df.loc[idx, 'Bid']
+                if ev['target'] == 1:
+                    plt.scatter(idx, price, color='red', s=100, marker='X', zorder=5, label='Reakció (Trükk)' if 'Reakció (Trükk)' not in plt.gca().get_legend_handles_labels()[1] else "")
+                else:
+                    plt.scatter(idx, price, color='green', s=100, marker='o', zorder=5, label='Normál Piac' if 'Normál Piac' not in plt.gca().get_legend_handles_labels()[1] else "")
+
+            plt.xlabel('Tick Sorszám')
+            plt.ylabel('Bid Árfolyam')
+            plt.legend(loc='best')
+            plt.grid(True, linestyle='--', alpha=0.6)
+            plt.tight_layout()
+
+            plot_file = os.path.join(report_dir, f"LABEL_PLOT_{file_name.replace('.csv', '')}.png")
+            plt.savefig(plot_file, dpi=150)
+            plt.close()
+            logger.info(f"📊 Vizualizáció kimentve: {plot_file}")
+        except Exception as e:
+            logger.error(f"Hiba a grafikon generálása során: {str(e)}")
 
 def run_labeler():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     input_dir = os.path.join(base_dir, 'data')
     output_dir = os.path.join(base_dir, 'data', 'labeled')
+    report_dir = os.path.join(base_dir, 'reports_tmp')
 
     os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(report_dir, exist_ok=True)
 
     csv_files = glob.glob(os.path.join(input_dir, '*.csv'))
     csv_files = [f for f in csv_files if "ANALYZED" not in os.path.basename(f) and "LABELED" not in os.path.basename(f)]
@@ -237,7 +311,7 @@ def run_labeler():
     labeler = BrokerReactionLabeler(config=LabelerConfig)
 
     for file in csv_files:
-        labeler.process_file(file, output_dir)
+        labeler.process_file(file, output_dir, report_dir)
 
 if __name__ == '__main__':
     run_labeler()
