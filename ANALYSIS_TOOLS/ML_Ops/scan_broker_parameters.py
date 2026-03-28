@@ -54,7 +54,32 @@ class BrokerParameterScanner:
 
             # Esemény alapadatok
             event_type = "NYITÁS" if is_open else "ZÁRÁS"
-            trade_dir = df.loc[i, 'LotDir'] if 'LotDir' in df.columns else 0
+            # Dinamikus Irány (LotDir, Trade_Dir, vagy szöveges Buy/Sell) felismerése
+            raw_dir = 0
+            if 'LotDir' in df.columns:
+                raw_dir = df.loc[i, 'LotDir']
+            elif 'Trade_Dir' in df.columns:
+                raw_dir = df.loc[i, 'Trade_Dir']
+
+            trade_dir = 0
+            if isinstance(raw_dir, str):
+                raw_str = raw_dir.strip().lower()
+                if raw_str in ['1', 'buy', 'long']: trade_dir = 1
+                elif raw_str in ['-1', 'sell', 'short', '0']: trade_dir = -1 # A MetaTrader-ben sokszor a 0 a SELL vagy a BUY!
+            else:
+                # MT5 ENUM_ORDER_TYPE: 0 = BUY, 1 = SELL (Gyakran ez exportálódik)
+                # Vagy 1 = BUY, -1 = SELL. Ezt le kell fedni!
+                if raw_dir == 0:
+                    trade_dir = 1 # Ha 0, feltételezzük, hogy MT5 BUY (ORDER_TYPE_BUY)
+                elif raw_dir == 1:
+                    trade_dir = -1 if 'Order_Type' in df.columns else 1 # Ha Order Type, akkor 1 = Sell. Ha LotDir, 1 = Buy. Ezt nehéz eldönteni.
+                elif raw_dir == -1:
+                    trade_dir = -1
+                elif raw_dir > 0:
+                    trade_dir = 1
+                elif raw_dir < 0:
+                    trade_dir = -1
+
             entry_price = df.loc[i, 'Bid']
             timestamp = df.loc[i, 'TimeMsc'] if 'TimeMsc' in df.columns else (df.loc[i, 'TickMSC'] if 'TickMSC' in df.columns else df.loc[i, 'Time'] if 'Time' in df.columns else i)
 
@@ -80,9 +105,19 @@ class BrokerParameterScanner:
                     spread_multiplier = max_spread / local_avg_spread
 
             # 2. Tick Lefagyasztás (Max Latency)
+            # A felhasználó panasza: "mennyi ideig nem jelentkezik újabb tick".
+            # Ez NEM az ablak hossza, hanem az egymást követő tickek közötti MAXIMÁLIS ugrás (diff) a future_window-ban!
             max_latency = 0.0
-            if 'Time_Delta_MS' in df.columns:
-                max_latency = future_window['Time_Delta_MS'].max()
+            # Kisbetűs-nagybetűs rugalmas oszlopkeresés (TimeMsc, Time_msc, TickMSC)
+            time_cols = [c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
+            if time_cols:
+                time_col = time_cols[0]
+                max_latency = future_window[time_col].diff().max()
+            elif 'Time_Delta_MS' in df.columns:
+                max_latency = future_window['Time_Delta_MS'].max() # Ez már eleve a diff
+
+            if pd.isna(max_latency):
+                max_latency = 0.0
 
             # 3. Adverse Excursion (Rám Ugrás maximuma)
             adverse_excursion = 0.0
