@@ -7,6 +7,35 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# ==============================================================================
+# ⚙️ FELHASZNÁLÓI BEÁLLÍTÁSOK (CÍMKÉZÉSI SZABÁLYOK FINOMHANGOLÁSA)
+# Ezt a blokkot nyugodtan módosíthatod a CSV teszteléseid (Data Profiling) alapján!
+# ==============================================================================
+
+class LabelerConfig:
+    # Milyen messzire nézzünk előre a belépés/zárás után (tickekben)?
+    FORWARD_WINDOW = 10
+
+    # 📉 ADVERSE EXCURSION (Rám Ugrás / Lassú Kivéreztetés)
+    # Minimális ellentétes elmozdulás pontban. (pl. 0.5 vagy 1.0)
+    EXCURSION_THRESHOLD = 0.5
+
+    # ↔️ SPREAD MANIPULÁCIÓ
+    # Hányszorosára kell tágulnia a Spreadnek a helyi átlaghoz képest?
+    # (A bróker profit zárásnál gyakran agresszívebb. Pl. 2.0 = duplázódás, 1.5 = 50% tágulás)
+    SPREAD_MULTIPLIER_OPEN = 1.5
+    SPREAD_MULTIPLIER_CLOSE = 2.0
+
+    # ⏱️ TICK LEFAGYASZTÁS / KÉSLELTETÉS (LATENCY)
+    # Milyen Time_Delta_MS (milliszekundum) számít "lefagyasztásnak"?
+    LATENCY_THRESHOLD_MS = 2000
+
+    # ⚡ SL VADÁSZAT / RÁNGATÁS (WHIPSAW)
+    # Hányszorosa legyen a 10-tickes jövőbeli volatilitás (Max-Min) az előző 50 tick átlagának?
+    WHIPSAW_THRESHOLD = 1.5
+
+# ==============================================================================
+
 class BrokerReactionLabeler:
     """
     'A Kályha' - Felügyelt Tanulás (Supervised Learning) Címkéző Algoritmus
@@ -20,22 +49,8 @@ class BrokerReactionLabeler:
     Ha a piac természetes mederben haladt tovább a belépés után: TARGET = 0 (Természetes Piac).
     """
 
-    def __init__(self, forward_window=10, excursion_threshold=0.0, spread_multiplier=2.0, latency_threshold=1000, whipsaw_threshold=1.5):
-        # Milyen messzire nézzünk előre a belépés után (tickekben)? Bróker reakció: 1-10 tick.
-        self.forward_window = forward_window
-
-        # Minimális ellentétes elmozdulás (pontban), amit már "Rám Ugrásnak / Lassú Kivéreztetésnek" veszünk.
-        self.excursion_threshold = excursion_threshold
-
-        # Hányszorosára kell tágulnia a Spreadnek a helyi átlaghoz képest, hogy anomália legyen?
-        self.spread_multiplier = spread_multiplier
-
-        # Milyen Time_Delta_MS (késleltetés) számít "lefagyasztásnak" (Ping manipulation)?
-        self.latency_threshold = latency_threshold
-
-        # "Szúrkálás" / "SL Vadászat" (Whipsaw) érzékenysége.
-        # Hányszorosa a 10-tickes volatilitás (Max-Min) az előző helyi átlagnak?
-        self.whipsaw_threshold = whipsaw_threshold
+    def __init__(self, config=LabelerConfig):
+        self.config = config
 
     def process_file(self, file_path, output_dir):
         file_name = os.path.basename(file_path)
@@ -60,16 +75,21 @@ class BrokerReactionLabeler:
         trade_count = 0
         reaction_count = 0
 
-        # Végigfutunk a sorokon és megkeressük az ESEMÉNYEKET (Belépés / Trade Nyitás)
+        # Végigfutunk a sorokon és megkeressük az ESEMÉNYEKET (Belépés / Zárás)
         for i in range(1, len(df)):
-            # Csak a NYITÁSOKAT vizsgáljuk (amikor a PosCount megnő)
-            if df.loc[i, 'PosCount'] > df.loc[i-1, 'PosCount']:
+            # 1. NYITÁSOK VIZSGÁLATA (amikor a PosCount megnő)
+            is_open = df.loc[i, 'PosCount'] > df.loc[i-1, 'PosCount']
+            # 2. ZÁRÁSOK VIZSGÁLATA (amikor a PosCount csökken)
+            is_close = df.loc[i, 'PosCount'] < df.loc[i-1, 'PosCount']
+
+            if is_open or is_close:
                 trade_count += 1
                 trade_dir = df.loc[i, 'LotDir']
-                entry_price = df.loc[i, 'Bid'] # Leegyszerűsítve (Ask lenne Buy esetén, de az irány a lényeg)
+                event_type = "NYITÁS" if is_open else "ZÁRÁS"
+                entry_price = df.loc[i, 'Bid']
 
-                # A belépéstől számított rövid 'forward_window'
-                end_idx = min(i + self.forward_window, len(df))
+                # A belépés/zárás utáni rövid 'forward_window'
+                end_idx = min(i + self.config.FORWARD_WINDOW, len(df))
                 future_window = df.iloc[i:end_idx]
 
                 if future_window.empty or trade_dir == 0:
@@ -99,17 +119,16 @@ class BrokerReactionLabeler:
                             is_reaction = True
                             reaction_reasons.append(f"Trükk/Visszafordulás (Fake: -{entry_price-min_first:.2f}, Rev: +{max_rest-entry_price:.2f})")
 
-                # MINTÁZAT 2: "SL Hunting / Whipsaw" (Agresszív Rángatás / Le-Felszúrás)
-                # Extrém magas volatilitás a 10 ticken belül az előző nyugalomhoz képest (A pörgős piac brókeri fegyvere).
+                # MINTÁZAT 2: "SL Hunting / Whipsaw" (Agresszív Rángatás / Le-Felszúrás) - CSAK NYITÁSKOR
                 start_lookback = max(0, i - 50)
                 local_volatility = df.iloc[start_lookback:i]['Bid'].max() - df.iloc[start_lookback:i]['Bid'].min()
                 future_volatility = future_window['Bid'].max() - future_window['Bid'].min()
 
-                if local_volatility > 0 and future_volatility > (local_volatility * self.whipsaw_threshold):
+                if is_open and local_volatility > 0 and future_volatility > (local_volatility * self.config.WHIPSAW_THRESHOLD):
                     is_reaction = True
                     reaction_reasons.append(f"SL Vadászat/Rángatás (Vol: {future_volatility:.2f})")
 
-                # MIKRO-TREND MEGHATÁROZÁSA (Az Attribúciós Hiba kiszűrése Counter-Trend belépéseknél)
+                # MIKRO-TREND MEGHATÁROZÁSA (Az Attribúciós Hiba kiszűrése Counter-Trend belépéseknél) - CSAK NYITÁSKOR
                 # Ha eső piacon veszel (Buy), az árfolyam normális, természetes (Target=0) viselkedése, hogy tovább esik ellened.
                 # Ezt a "Lassú Kivéreztetést" csak TRENDIRÁNYÚ (Trend-Following) belépésnél büntetjük (Target=1).
                 start_lookback = max(0, i - 50)
@@ -126,66 +145,67 @@ class BrokerReactionLabeler:
 
                 is_counter_trade = (trade_dir == 1 and is_downtrend) or (trade_dir == -1 and is_uptrend)
 
-                # MINTÁZAT 3: "Slow Bleed" (Kivéreztetés Döglött Piacon / Klasszikus Adverse Excursion)
-                # CSAK TRENDIRÁNYÚ BELÉPÉSNÉL (vagy oldalazásnál) GYANÚS, HA AZ ÁR AZONNAL ELLENÜNK INDUL!
-                # Counter-Trade esetén az esés (Buy-nál) a normális piac (Target=0).
-                if not is_counter_trade:
-                    if trade_dir == 1: # Buy (Az árfolyam esése az ellenség)
-                        lowest_bid = future_window['Bid'].min()
-                        excursion = entry_price - lowest_bid
-                        if excursion > self.excursion_threshold and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
-                            is_reaction = True
-                            reaction_reasons.append(f"Lassú Kivéreztetés (-{excursion:.2f})")
-                    elif trade_dir == -1: # Sell (Az árfolyam növekedése az ellenség)
-                        highest_bid = future_window['Bid'].max()
-                        excursion = highest_bid - entry_price
-                        if excursion > self.excursion_threshold and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
-                            is_reaction = True
-                            reaction_reasons.append(f"Lassú Kivéreztetés (+{excursion:.2f})")
-                else:
-                    # MINTÁZAT 3B (COUNTER-TREND): A bróker algoritmusa "rácsatlakozik" a Counter-Trade-re.
-                    # Ha eső piacon Buy-t nyitsz, és az ár "természetellenesen" AZONNAL, egyből felpattan a javadra (B-Book internalizáció),
-                    # majd esetleg Whipsaw-ba megy át (amit fent a 2-es pont megfog), az a gyanús brókeri reakció.
-                    if trade_dir == 1: # Buy eső piacon
-                        highest_bid = future_window['Bid'].max()
-                        counter_excursion = highest_bid - entry_price
-                        if counter_excursion > self.excursion_threshold and not any("Vadászat" in r for r in reaction_reasons):
-                            is_reaction = True
-                            reaction_reasons.append(f"Természetellenes Azonnali Fordulat (Counter: +{counter_excursion:.2f})")
-                    elif trade_dir == -1: # Sell emelkedő piacon
-                        lowest_bid = future_window['Bid'].min()
-                        counter_excursion = entry_price - lowest_bid
-                        if counter_excursion > self.excursion_threshold and not any("Vadászat" in r for r in reaction_reasons):
-                            is_reaction = True
-                            reaction_reasons.append(f"Természetellenes Azonnali Fordulat (Counter: -{counter_excursion:.2f})")
+                # MINTÁZAT 3: "Slow Bleed" (Kivéreztetés Döglött Piacon / Klasszikus Adverse Excursion) - CSAK NYITÁSKOR
+                if is_open:
+                    if not is_counter_trade:
+                        if trade_dir == 1: # Buy (Az árfolyam esése az ellenség)
+                            lowest_bid = future_window['Bid'].min()
+                            excursion = entry_price - lowest_bid
+                            if excursion > self.config.EXCURSION_THRESHOLD and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
+                                is_reaction = True
+                                reaction_reasons.append(f"Lassú Kivéreztetés (-{excursion:.2f})")
+                        elif trade_dir == -1: # Sell (Az árfolyam növekedése az ellenség)
+                            highest_bid = future_window['Bid'].max()
+                            excursion = highest_bid - entry_price
+                            if excursion > self.config.EXCURSION_THRESHOLD and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
+                                is_reaction = True
+                                reaction_reasons.append(f"Lassú Kivéreztetés (+{excursion:.2f})")
+                    else:
+                        # MINTÁZAT 3B (COUNTER-TREND): A bróker algoritmusa "rácsatlakozik" a Counter-Trade-re.
+                        if trade_dir == 1: # Buy eső piacon
+                            highest_bid = future_window['Bid'].max()
+                            counter_excursion = highest_bid - entry_price
+                            if counter_excursion > self.config.EXCURSION_THRESHOLD and not any("Vadászat" in r for r in reaction_reasons):
+                                is_reaction = True
+                                reaction_reasons.append(f"Természetellenes Azonnali Fordulat (Counter: +{counter_excursion:.2f})")
+                        elif trade_dir == -1: # Sell emelkedő piacon
+                            lowest_bid = future_window['Bid'].min()
+                            counter_excursion = entry_price - lowest_bid
+                            if counter_excursion > self.config.EXCURSION_THRESHOLD and not any("Vadászat" in r for r in reaction_reasons):
+                                is_reaction = True
+                                reaction_reasons.append(f"Természetellenes Azonnali Fordulat (Counter: -{counter_excursion:.2f})")
 
-                # 4. SPREAD MANIPULÁCIÓ (Kiegészítő fegyver)
+                # 4. SPREAD MANIPULÁCIÓ (Nyitáskor és Záráskor is!)
                 if 'Spread' in df.columns:
                     local_avg_spread = df.iloc[start_lookback:i]['Spread'].mean()
                     if not pd.isna(local_avg_spread) and local_avg_spread > 0:
                         max_future_spread = future_window['Spread'].max()
-                        if max_future_spread > (local_avg_spread * self.spread_multiplier):
+
+                        # Külön szorzó nyitásra és zárásra (profit védelme)
+                        active_multiplier = self.config.SPREAD_MULTIPLIER_OPEN if is_open else self.config.SPREAD_MULTIPLIER_CLOSE
+
+                        if max_future_spread > (local_avg_spread * active_multiplier):
                             is_reaction = True
-                            reaction_reasons.append(f"Spread Tágítás ({max_future_spread:.1f})")
+                            reaction_reasons.append(f"Spread Tágítás {event_type} ({max_future_spread:.1f})")
 
                 # 5. TICK LEFAGYASZTÁS / LATENCY (Kiegészítő fegyver)
                 if 'Time_Delta_MS' in df.columns:
                     max_latency = future_window['Time_Delta_MS'].max()
-                    if max_latency > self.latency_threshold:
+                    if max_latency > self.config.LATENCY_THRESHOLD_MS:
                         is_reaction = True
-                        reaction_reasons.append(f"Lefagyás ({max_latency:.0f}ms)")
+                        reaction_reasons.append(f"Lefagyás/Késleltetés {event_type} ({max_latency:.0f}ms)")
 
                 # Ha a Bróker Algoritmus reagált (Bármelyik a fentiek közül teljesült)
                 if is_reaction:
                     reaction_count += 1
-                    # A belépés előtti "Állapotot" (az előző 10 ticket is) felcímkézzük 1-esre
+                    # A belépés/zárás előtti "Állapotot" felcímkézzük 1-esre
                     label_start = max(0, i - 10)
                     df.loc[label_start:i, 'Broker_Reaction_Target'] = 1
                     df.loc[i, 'Reaction_Type'] = " | ".join(reaction_reasons)
 
-                    logger.info(f"   🚨 [BRÓKER REAKCIÓ] Trade #{trade_count} -> Ok: {df.loc[i, 'Reaction_Type']}")
+                    logger.info(f"   🚨 [BRÓKER REAKCIÓ] {event_type} #{trade_count} -> Ok: {df.loc[i, 'Reaction_Type']}")
                 else:
-                    logger.info(f"   ✅ [TERMÉSZETES PIAC] Trade #{trade_count} -> A piac akadálytalanul haladt tovább.")
+                    logger.info(f"   ✅ [TERMÉSZETES PIAC] {event_type} #{trade_count} -> A piac akadálytalanul haladt tovább.")
 
         # Fájl Mentése
         output_file = os.path.join(output_dir, f"LABELED_{file_name}")
@@ -213,8 +233,8 @@ def run_labeler():
 
     logger.info(f"Összesen {len(csv_files)} fájl vár viselkedésprofilozó címkézésre (Állapotfelmérés).")
 
-    # A Címkéző inicializálása (Trükkök, SL vadászat, Kivéreztetés)
-    labeler = BrokerReactionLabeler(forward_window=10, excursion_threshold=0.5, spread_multiplier=2.0, latency_threshold=2000, whipsaw_threshold=1.5)
+    # A Címkéző inicializálása a globális Config blokk alapján
+    labeler = BrokerReactionLabeler(config=LabelerConfig)
 
     for file in csv_files:
         labeler.process_file(file, output_dir)
