@@ -102,7 +102,31 @@ class BrokerReactionLabeler:
 
             if is_open or is_close:
                 trade_count += 1
-                trade_dir = df.loc[i, 'LotDir']
+
+                # Robusztus Trade Irány feldolgozás
+                raw_dir = 0
+                if 'LotDir' in df.columns:
+                    raw_dir = df.loc[i, 'LotDir']
+                elif 'Trade_Dir' in df.columns:
+                    raw_dir = df.loc[i, 'Trade_Dir']
+
+                trade_dir = 0
+                if isinstance(raw_dir, str):
+                    raw_str = raw_dir.strip().lower()
+                    if raw_str in ['1', 'buy', 'long']: trade_dir = 1
+                    elif raw_str in ['-1', 'sell', 'short', '0']: trade_dir = -1
+                else:
+                    if raw_dir == 0:
+                        trade_dir = 1 # Ha 0, feltételezzük, hogy MT5 BUY (ORDER_TYPE_BUY)
+                    elif raw_dir == 1:
+                        trade_dir = -1 if 'Order_Type' in df.columns else 1
+                    elif raw_dir == -1:
+                        trade_dir = -1
+                    elif raw_dir > 0:
+                        trade_dir = 1
+                    elif raw_dir < 0:
+                        trade_dir = -1
+
                 event_type = "NYITÁS" if is_open else "ZÁRÁS"
                 entry_price = df.loc[i, 'Bid']
 
@@ -207,11 +231,22 @@ class BrokerReactionLabeler:
                             reaction_reasons.append(f"Spread Tágítás {event_type} ({max_future_spread:.1f})")
 
                 # 5. TICK LEFAGYASZTÁS / LATENCY (Kiegészítő fegyver)
-                if 'Time_Delta_MS' in df.columns:
+                # A felhasználó panasza: "mennyi ideig nem jelentkezik újabb tick".
+                max_latency = 0.0
+                # Kisbetűs-nagybetűs rugalmas oszlopkeresés (TimeMsc, Time_msc, TickMSC)
+                time_cols = [c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
+                if time_cols:
+                    time_col = time_cols[0]
+                    max_latency = future_window[time_col].diff().max()
+                elif 'Time_Delta_MS' in df.columns:
                     max_latency = future_window['Time_Delta_MS'].max()
-                    if max_latency > self.config.LATENCY_THRESHOLD_MS:
-                        is_reaction = True
-                        reaction_reasons.append(f"Lefagyás/Késleltetés {event_type} ({max_latency:.0f}ms)")
+
+                if pd.isna(max_latency):
+                    max_latency = 0.0
+
+                if max_latency > self.config.LATENCY_THRESHOLD_MS:
+                    is_reaction = True
+                    reaction_reasons.append(f"Lefagyás/Késleltetés {event_type} ({max_latency:.0f}ms)")
 
                 # Ha a Bróker Algoritmus reagált (Bármelyik a fentiek közül teljesült)
                 if is_reaction:
