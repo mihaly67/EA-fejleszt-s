@@ -112,7 +112,15 @@ class BrokerParameterScanner:
             time_cols = [c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
             if time_cols:
                 time_col = time_cols[0]
-                max_latency = future_window[time_col].diff().max()
+                # Mivel az MT5 időbélyegek gyakran stringek ("2026.01.01 09:00:01.136"), a diff() előtt
+                # kötelező átkonvertálni datetime formátumra, különben NaN-t / string kivonási hibát kapunk (ez okozta a nullát)!
+                try:
+                    time_series = pd.to_datetime(future_window[time_col], format='mixed', errors='coerce')
+                    # A diff() timedelta formátumot ad (pl. '0 days 00:00:01.500000'), ezt milliszekundumra váltjuk (.dt.total_seconds() * 1000)
+                    latencies = time_series.diff().dt.total_seconds() * 1000.0
+                    max_latency = latencies.max()
+                except Exception:
+                    pass
             elif 'Time_Delta_MS' in df.columns:
                 max_latency = future_window['Time_Delta_MS'].max() # Ez már eleve a diff
 
