@@ -63,9 +63,12 @@ class Vaku3OfflineValidator:
     """
     A 'Smoking Gun' Bizonyíték Kályhája: Összeköti a Vaku 3.0 (HMM, CUSUM IAT, ER)
     állapotfelmérését a tegnapi (label_broker_reaction.py) Célváltozókkal (TARGET=1).
-    Célja bebizonyítani, hogy a HMM 'Theater' állapota tényleg megelőzi-e az SL-vadászatot.
+    Célja bebizonyítani, hogy a HMM melyik állapota korrelál legerősebben a Brókeri
+    Manipulációval (Színházzal / Adverse Excursion) az 1-10 tickes éles ablakokban.
     """
-    def __init__(self, window_size=50):
+    # A window_size-t radikálisan levisszük 15-re, hogy a HMM ugyanolyan rövidlátó,
+    # de tűéles "mikro-reakció" érzékelést kapjon a zajról (ER, Spread), mint a 10 tickes Címkézőnk!
+    def __init__(self, window_size=15):
         self.window_size = window_size
         self.price_buffer = NumpyRingBuffer(window_size)
         self.spread_buffer = NumpyRingBuffer(window_size)
@@ -160,23 +163,36 @@ class Vaku3OfflineValidator:
         self.model.fit(self.observation_space)
         self.is_fitted = True
 
-        # --- SEMANTIC MAPPING (Az Öntanuló 'Színház' felismerés) ---
+        # --- SEMANTIC MAPPING (Az Öntanuló 'Színház' felismerés javított standardizálása) ---
         # A model.means_ tartalmazza a 3 rejtett állapot (0,1,2) 3D középértékeit:
-        # Oszlopok: 0=Log-ER, 1=Spread_Elasticity, 2=Tick_Density
+        # Oszlopok: 0=Log-ER (negatív értékek), 1=Spread_Elasticity (~1.0), 2=Tick_Density (0 körüli Z-score)
         means = self.model.means_
 
         # Indexek a mátrixban
         er_idx = 0
         spread_idx = 1
+        tick_idx = 2
 
-        # A Gemini képlete a "Theater" (Manipuláció/Rángatás) megtalálására:
-        # Legalacsonyabb ER (nulla haladás, nagy rángatás) ÉS legmagasabb Spread Elasticity (szúrás)
-        # Azaz a 'Log-ER mínusz Spread Elasticity' értékének minimumát keressük.
-        theater_score = means[:, er_idx] - means[:, spread_idx]
-        theater_state = int(np.argmin(theater_score))
+        # Mivel a Log-ER és a Spread teljesen más dimenziók (negatív vs pozitív),
+        # a nyers kivonás torzít. Skálázzuk (Z-score) mindkét oszlopot 0-1 átlag köré, hogy igazságos legyen a verseny!
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        scaled_means = scaler.fit_transform(means)
 
-        # Concrete (Betonfal): A leghatékonyabb haladás (Maximum ER)
-        concrete_state = int(np.argmax(means[:, er_idx]))
+        # A "Theater" az, ahol az (Inverz) Hatékonyság a legmagasabb (azaz Log-ER a legkisebb -> Z-score negatív),
+        # ÉS a Spread Elasticity (z-score) a legnagyobb.
+        # Formulázzuk úgy, hogy keressük a MAXIMUM "Mérgezett Pontszámot": (Spread_Z) - (ER_Z)
+        poison_scores = scaled_means[:, spread_idx] - scaled_means[:, er_idx]
+        theater_state = int(np.argmax(poison_scores))
+
+        # Concrete (Betonfal): A leghatékonyabb haladás (Maximum ER, vagy Skálázott maximum)
+        concrete_state = int(np.argmax(scaled_means[:, er_idx]))
+
+        # Hibatűrés (Ha a Concrete és a Theater véletlenül ugyanaz lenne a matek szerint)
+        if concrete_state == theater_state:
+            # Akkor a Concrete legyen az a maradékból, aminek nagyobb az ER-je
+            remaining_for_concrete = [s for s in [0,1,2] if s != theater_state]
+            concrete_state = remaining_for_concrete[0] if means[remaining_for_concrete[0], er_idx] > means[remaining_for_concrete[1], er_idx] else remaining_for_concrete[1]
 
         # Quiet (Csend/Döglött): Ami kimarad
         states = set([0, 1, 2])
@@ -190,10 +206,10 @@ class Vaku3OfflineValidator:
             "Theater": theater_state
         }
 
-        logger.info(f"💡 HMM Szemantikus Térkép elkészült!")
-        logger.info(f"  -> Színház (Manipuláció) Állapot ID: {theater_state}")
-        logger.info(f"  -> Betonfal (Tiszta Trend) Állapot ID: {concrete_state}")
-        logger.info(f"  -> Csendes (Flat) Állapot ID: {quiet_state}")
+        logger.info(f"💡 HMM Szemantikus Térkép elkészült (Kijavított Standard Skálázással)!")
+        logger.info(f"  -> Színház (Manipuláció) Állapot ID: {theater_state} | Jellemzők -> LogER: {means[theater_state, er_idx]:.2f}, Spread: {means[theater_state, spread_idx]:.2f}x")
+        logger.info(f"  -> Betonfal (Tiszta Trend) Állapot ID: {concrete_state} | Jellemzők -> LogER: {means[concrete_state, er_idx]:.2f}, Spread: {means[concrete_state, spread_idx]:.2f}x")
+        logger.info(f"  -> Csendes (Flat) Állapot ID: {quiet_state} | Jellemzők -> LogER: {means[quiet_state, er_idx]:.2f}, Spread: {means[quiet_state, spread_idx]:.2f}x")
 
     def run_smoking_gun_validation(self, df):
         """
@@ -217,27 +233,47 @@ class Vaku3OfflineValidator:
             logger.warning("A fájl nincs felcímkézve! Futtasd a label_broker_reaction.py-t először!")
             return df
 
-        # Kigyűjtjük azokat az eseteket (Trade-eket), amiket tegnap 'Manipulációnak' (Target=1) ítéltünk
+        # Kigyűjtjük azokat az eseteket (Trade-eket), amiket 'Manipulációnak' (Target=1) ítélt a Címkéző (Kályha)
         manipulated_entries = df[df['Broker_Reaction_Target'] == 1].index.tolist()
+        total_manipulations = len(manipulated_entries)
 
-        # Hányszor látta előre / jelezte a HMM a "Színház" (Theater) állapotot ezekben a kritikus ablakokban?
-        hits = 0
-        misses = 0
+        if total_manipulations == 0:
+            logger.warning("Nincs Target=1 esemény a fájlban. A validáció skippelve.")
+            return df
+
+        # Minden HMM állapotra megnézzük, hányszor jelezte előre a brókeri reakciót (Hit Rate minden Állapotra!)
+        # Ezáltal kibukik, ha a HMM mást tartott "Színháznak" a nyers mátrix statisztika alapján.
+        state_hits = {0: 0, 1: 0, 2: 0}
 
         for idx in manipulated_entries:
-            # Megnézzük a trade előtti/alatti pillanatban a HMM állapotát
-            if df.loc[idx, 'Vaku3_HMM_State'] == self.state_map["Theater"]:
-                hits += 1
-            else:
-                misses += 1
+            # A trade pillanatában (illetve egy nagyon picit előtte lévő) HMM állapot
+            hmm_state_at_trade = df.loc[idx, 'Vaku3_HMM_State']
+            state_hits[hmm_state_at_trade] += 1
 
-        total_manipulations = hits + misses
-        if total_manipulations > 0:
+        logger.info(f"\n--- SMOKING GUN BIZONYÍTÉK (Offline Causal Validation) ---")
+        logger.info(f"Összes megjelölt Brókeri Reakció (Target=1): {total_manipulations} db")
+
+        for state_id, hits in state_hits.items():
             hit_rate = (hits / total_manipulations) * 100
-            logger.info(f"\n--- SMOKING GUN BIZONYÍTÉK (Offline Causal Validation) ---")
-            logger.info(f"Összes megjelölt Brókeri Reakció (Target=1): {total_manipulations}")
-            logger.info(f"A HMM 'Theater' (Színház) állapot egyezése (Hit): {hits} ({hit_rate:.1f}%)")
-            logger.info(f"Mindezt VAKON (Unsupervised) találta meg a CUSUM/ER segítségével!")
+            state_name = state_names[state_id]
+            is_theater = " <--- (Ez a mi kijelölt 'Theater' állapotunk)" if state_name == "Theater" else ""
+            logger.info(f"  -> {state_name} (Állapot ID: {state_id}) találati aránya a trükkök előtt: {hits} db ({hit_rate:.1f}%){is_theater}")
+
+        # Most csekkoljuk le a TISZTA trade-eket is (Target=0), nehogy kiderüljön, hogy az 1.8% csak véletlen!
+        clean_entries = df[(df['Broker_Reaction_Target'] == 0) & ((df['PosCount'] > df['PosCount'].shift(1)) | (df['PosCount'] < df['PosCount'].shift(1)))].index.tolist()
+        total_clean = len(clean_entries)
+        if total_clean > 0:
+            clean_state_hits = {0: 0, 1: 0, 2: 0}
+            for idx in clean_entries:
+                hmm_state_at_trade = df.loc[idx, 'Vaku3_HMM_State']
+                clean_state_hits[hmm_state_at_trade] += 1
+
+            logger.info(f"\n--- KONTROLL CSOPORT (Target=0 Tiszta Piac, Trade Nyitás/Zárás) ---")
+            logger.info(f"Összes megjelölt Tiszta Trade: {total_clean} db")
+            for state_id, hits in clean_state_hits.items():
+                hit_rate = (hits / total_clean) * 100
+                state_name = state_names[state_id]
+                logger.info(f"  -> {state_name} (Állapot ID: {state_id}) jelenléte tiszta piacon: {hits} db ({hit_rate:.1f}%)")
 
         return df
 

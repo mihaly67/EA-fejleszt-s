@@ -237,7 +237,13 @@ class BrokerReactionLabeler:
                 time_cols = [c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
                 if time_cols:
                     time_col = time_cols[0]
-                    max_latency = future_window[time_col].diff().max()
+                    # Időbélyeg (string) datetime konverzió diff előtt a NaN/hiba elkerülésére (ami 0.0-t okozott)
+                    try:
+                        time_series = pd.to_datetime(future_window[time_col], format='mixed', errors='coerce')
+                        latencies = time_series.diff().dt.total_seconds() * 1000.0
+                        max_latency = latencies.max()
+                    except Exception:
+                        pass
                 elif 'Time_Delta_MS' in df.columns:
                     max_latency = future_window['Time_Delta_MS'].max()
 
