@@ -29,24 +29,24 @@ class LabelerConfig:
     FORWARD_WINDOW = 10
 
     # 📉 ADVERSE EXCURSION (Rám Ugrás / Lassú Kivéreztetés)
-    # Minimális ellentétes elmozdulás pontban. Mivel 0.5 túl érzékeny volt (rengeteg Fals Pozitív "Concrete" bukó),
-    # egy szigorúbb (pl. 1.5 - 2.0) érték kiszűri a sima piaci zajt/visszahúzódást.
-    EXCURSION_THRESHOLD = 1.5
+    # A bróker valójában mikroszkopikusan (0.040 - 0.210 között) csorog az ügyfél ellen!
+    # Állítsuk a küszöböt a P50 feletti, de a P90 alatti, releváns értékre: 0.150
+    EXCURSION_THRESHOLD = 0.150
 
     # ↔️ SPREAD MANIPULÁCIÓ
-    # Hányszorosára kell tágulnia a Spreadnek a helyi átlaghoz képest?
-    # (A bróker profit zárásnál gyakran agresszívebb. Pl. 2.0 = duplázódás, 1.5 = 50% tágulás)
-    SPREAD_MULTIPLIER_OPEN = 2.0
-    SPREAD_MULTIPLIER_CLOSE = 2.5
+    # A nyitások P90 értéke 1.36x, a zárásoké 1.30x. Vegyünk egy picit szigorúbb, de reális 1.4-et:
+    SPREAD_MULTIPLIER_OPEN = 1.4
+    SPREAD_MULTIPLIER_CLOSE = 1.4
 
     # ⏱️ TICK LEFAGYASZTÁS / KÉSLELTETÉS (LATENCY)
-    # Milyen Time_Delta_MS (milliszekundum) számít "lefagyasztásnak"?
+    # A zárás P50-je 2000ms. Maradhat 2000, ez remek baseline.
     LATENCY_THRESHOLD_MS = 2000
 
     # ⚡ SL VADÁSZAT / RÁNGATÁS (WHIPSAW)
-    # Hányszorosa legyen a 10-tickes jövőbeli volatilitás (Max-Min) az előző 50 tick átlagának?
-    # Szigorítottuk 1.5-ről 2.0-ra, hogy csak az igazi "Színház" (Theater) rángatások akadjanak fenn.
-    WHIPSAW_THRESHOLD = 2.0
+    # A BRÓKER NEM RÁNGAT! Lassít! (Max: 1.50x, P90: 0.71x)
+    # Tehát a rángatásra való szűrés (Whipsaw > 2.0) SOHA nem teljesült.
+    # Írjuk át a Whipsaw küszöböt a bróker valós Max értékére (1.5), vagy vegyük ki, mint fő indok!
+    WHIPSAW_THRESHOLD = 1.2
 
 # ==============================================================================
 
