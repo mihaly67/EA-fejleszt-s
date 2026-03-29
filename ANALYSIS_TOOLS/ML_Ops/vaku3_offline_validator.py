@@ -179,20 +179,18 @@ class Vaku3OfflineValidator:
         scaler = StandardScaler()
         scaled_means = scaler.fit_transform(means)
 
-        # A "Theater" az, ahol az (Inverz) Hatékonyság a legmagasabb (azaz Log-ER a legkisebb -> Z-score negatív),
-        # ÉS a Spread Elasticity (z-score) a legnagyobb.
-        # Formulázzuk úgy, hogy keressük a MAXIMUM "Mérgezett Pontszámot": (Spread_Z) - (ER_Z)
-        poison_scores = scaled_means[:, spread_idx] - scaled_means[:, er_idx]
-        theater_state = int(np.argmax(poison_scores))
+        # A HMM a Spread apró (0.99x - 1.01x) mozgásait a StandardScaler (Z-score) miatt aránytalanul felnagyítja,
+        # ami elnyomja a brutális Log-ER (Hatékonyság) különbségeket (-1.21 vs -13.82).
+        # A "Színház" (Manipulált) állapot elsődleges ismérve a ZAJ (a legalacsonyabb / legnegatívabb Log-ER).
+        # Ezért a "Theater" kiválasztását TISZTÁN a legalacsonyabb nyers Log-ER értékre kell bízni!
+        theater_state = int(np.argmin(means[:, er_idx]))
 
-        # Concrete (Betonfal): A leghatékonyabb haladás (Maximum ER, vagy Skálázott maximum)
-        concrete_state = int(np.argmax(scaled_means[:, er_idx]))
+        # Concrete (Betonfal): A leghatékonyabb, legtisztább haladás (Maximum ER, azaz Legkevésbé Negatív, pl. -1.21).
+        concrete_state = int(np.argmax(means[:, er_idx]))
 
-        # Hibatűrés (Ha a Concrete és a Theater véletlenül ugyanaz lenne a matek szerint)
+        # Biztonsági ellenőrzés (ha a gép valamiért nem 3, hanem csak 2 érdemi állapotot talált)
         if concrete_state == theater_state:
-            # Akkor a Concrete legyen az a maradékból, aminek nagyobb az ER-je
-            remaining_for_concrete = [s for s in [0,1,2] if s != theater_state]
-            concrete_state = remaining_for_concrete[0] if means[remaining_for_concrete[0], er_idx] > means[remaining_for_concrete[1], er_idx] else remaining_for_concrete[1]
+            logger.warning("Figyelem: A HMM nem tudta elszeparálni a Színházat a Betonfaltól!")
 
         # Quiet (Csend/Döglött): Ami kimarad
         states = set([0, 1, 2])
@@ -206,7 +204,7 @@ class Vaku3OfflineValidator:
             "Theater": theater_state
         }
 
-        logger.info(f"💡 HMM Szemantikus Térkép elkészült (Kijavított Standard Skálázással)!")
+        logger.info(f"💡 HMM Szemantikus Térkép elkészült (Tiszta Log-ER alapján)!")
         logger.info(f"  -> Színház (Manipuláció) Állapot ID: {theater_state} | Jellemzők -> LogER: {means[theater_state, er_idx]:.2f}, Spread: {means[theater_state, spread_idx]:.2f}x")
         logger.info(f"  -> Betonfal (Tiszta Trend) Állapot ID: {concrete_state} | Jellemzők -> LogER: {means[concrete_state, er_idx]:.2f}, Spread: {means[concrete_state, spread_idx]:.2f}x")
         logger.info(f"  -> Csendes (Flat) Állapot ID: {quiet_state} | Jellemzők -> LogER: {means[quiet_state, er_idx]:.2f}, Spread: {means[quiet_state, spread_idx]:.2f}x")
