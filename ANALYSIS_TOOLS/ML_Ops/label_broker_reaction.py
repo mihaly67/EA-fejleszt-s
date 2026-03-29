@@ -231,23 +231,26 @@ class BrokerReactionLabeler:
                             reaction_reasons.append(f"Spread Tágítás {event_type} ({max_future_spread:.1f})")
 
                 # 5. TICK LEFAGYASZTÁS / LATENCY (Kiegészítő fegyver)
-                # A felhasználó panasza: "mennyi ideig nem jelentkezik újabb tick".
+                # Mennyi ideig nem jelentkezik újabb tick? (MAX ugrás két egymást követő tick között)
                 max_latency = 0.0
-                # Kisbetűs-nagybetűs rugalmas oszlopkeresés (TimeMsc, Time_msc, TickMSC)
-                time_cols = [c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
-                if time_cols:
-                    time_col = time_cols[0]
-                    # Időbélyeg (string) datetime konverzió diff előtt a NaN/hiba elkerülésére (ami 0.0-t okozott)
-                    try:
-                        time_series = pd.to_datetime(future_window[time_col], format='mixed', errors='coerce')
-                        latencies = time_series.diff().dt.total_seconds() * 1000.0
-                        max_latency = latencies.max()
-                    except Exception:
-                        pass
-                elif 'Time_Delta_MS' in df.columns:
-                    max_latency = future_window['Time_Delta_MS'].max()
 
-                if pd.isna(max_latency):
+                # Ha van Time_Delta_MS (két tick közötti diff MS-ban), az eleve a válasz.
+                if 'Time_Delta_MS' in df.columns:
+                    max_latency = future_window['Time_Delta_MS'].max()
+                else:
+                    # Második kör: Ha nincs Time_Delta, megkeressük a nyers TickMSC / TimeMsc oszlopot.
+                    time_cols = [c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
+                    if time_cols:
+                        time_col = time_cols[0]
+                        # Az MT5 TimeMsc / TickMSC valójában egy gigantikus int64 Unix Timestamp (1767258001136).
+                        # Nincs szükség Date/Time konverzióra! A sima numerikus kivonás (diff) megadja a késleltetést MS-ban:
+                        try:
+                            latencies = future_window[time_col].astype(float).diff()
+                            max_latency = latencies.max()
+                        except Exception:
+                            pass
+
+                if pd.isna(max_latency) or max_latency < 0:
                     max_latency = 0.0
 
                 if max_latency > self.config.LATENCY_THRESHOLD_MS:

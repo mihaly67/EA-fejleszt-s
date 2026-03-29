@@ -105,26 +105,27 @@ class BrokerParameterScanner:
                     spread_multiplier = max_spread / local_avg_spread
 
             # 2. Tick Lefagyasztás (Max Latency)
-            # A felhasználó panasza: "mennyi ideig nem jelentkezik újabb tick".
-            # Ez NEM az ablak hossza, hanem az egymást követő tickek közötti MAXIMÁLIS ugrás (diff) a future_window-ban!
+            # Mennyi ideig nem jelentkezett újabb tick az ablakon belül? (MAX ugrás két egymást követő tick között)
             max_latency = 0.0
-            # Kisbetűs-nagybetűs rugalmas oszlopkeresés (TimeMsc, Time_msc, TickMSC)
-            time_cols = [c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
-            if time_cols:
-                time_col = time_cols[0]
-                # Mivel az MT5 időbélyegek gyakran stringek ("2026.01.01 09:00:01.136"), a diff() előtt
-                # kötelező átkonvertálni datetime formátumra, különben NaN-t / string kivonási hibát kapunk (ez okozta a nullát)!
-                try:
-                    time_series = pd.to_datetime(future_window[time_col], format='mixed', errors='coerce')
-                    # A diff() timedelta formátumot ad (pl. '0 days 00:00:01.500000'), ezt milliszekundumra váltjuk (.dt.total_seconds() * 1000)
-                    latencies = time_series.diff().dt.total_seconds() * 1000.0
-                    max_latency = latencies.max()
-                except Exception:
-                    pass
-            elif 'Time_Delta_MS' in df.columns:
-                max_latency = future_window['Time_Delta_MS'].max() # Ez már eleve a diff
 
-            if pd.isna(max_latency):
+            # Első kör: Ha van előre számolt Time_Delta_MS, az eleve az eltelt milliszekundum (diff), annak a maxa a válasz.
+            if 'Time_Delta_MS' in df.columns:
+                max_latency = future_window['Time_Delta_MS'].max()
+            else:
+                # Második kör: Ha nincs Time_Delta, megkeressük a nyers TickMSC / TimeMsc oszlopot.
+                time_cols = [c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
+                if time_cols:
+                    time_col = time_cols[0]
+                    # A TickMSC / TimeMsc valójában már eleve Unix Milliszekundum (pl. 1767258001136), int64 formátumban!
+                    # Nincs szükség pd.to_datetime konverzióra, a sima numerikus kivonás (diff) azonnal MS-t ad:
+                    try:
+                        # A float() konverzió biztosítja, hogy ha mégis string "1767258001136" lenne, számként vonja ki.
+                        latencies = future_window[time_col].astype(float).diff()
+                        max_latency = latencies.max()
+                    except Exception as e:
+                        logger.debug(f"Hiba a Latency számításakor: {e}")
+
+            if pd.isna(max_latency) or max_latency < 0:
                 max_latency = 0.0
 
             # 3. Adverse Excursion (Rám Ugrás maximuma)
