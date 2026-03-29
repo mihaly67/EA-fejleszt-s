@@ -29,14 +29,15 @@ class LabelerConfig:
     FORWARD_WINDOW = 10
 
     # 📉 ADVERSE EXCURSION (Rám Ugrás / Lassú Kivéreztetés)
-    # Minimális ellentétes elmozdulás pontban. (pl. 0.5 vagy 1.0)
-    EXCURSION_THRESHOLD = 0.5
+    # Minimális ellentétes elmozdulás pontban. Mivel 0.5 túl érzékeny volt (rengeteg Fals Pozitív "Concrete" bukó),
+    # egy szigorúbb (pl. 1.5 - 2.0) érték kiszűri a sima piaci zajt/visszahúzódást.
+    EXCURSION_THRESHOLD = 1.5
 
     # ↔️ SPREAD MANIPULÁCIÓ
     # Hányszorosára kell tágulnia a Spreadnek a helyi átlaghoz képest?
     # (A bróker profit zárásnál gyakran agresszívebb. Pl. 2.0 = duplázódás, 1.5 = 50% tágulás)
-    SPREAD_MULTIPLIER_OPEN = 1.5
-    SPREAD_MULTIPLIER_CLOSE = 2.0
+    SPREAD_MULTIPLIER_OPEN = 2.0
+    SPREAD_MULTIPLIER_CLOSE = 2.5
 
     # ⏱️ TICK LEFAGYASZTÁS / KÉSLELTETÉS (LATENCY)
     # Milyen Time_Delta_MS (milliszekundum) számít "lefagyasztásnak"?
@@ -44,7 +45,8 @@ class LabelerConfig:
 
     # ⚡ SL VADÁSZAT / RÁNGATÁS (WHIPSAW)
     # Hányszorosa legyen a 10-tickes jövőbeli volatilitás (Max-Min) az előző 50 tick átlagának?
-    WHIPSAW_THRESHOLD = 1.5
+    # Szigorítottuk 1.5-ről 2.0-ra, hogy csak az igazi "Színház" (Theater) rángatások akadjanak fenn.
+    WHIPSAW_THRESHOLD = 2.0
 
 # ==============================================================================
 
@@ -275,8 +277,20 @@ class BrokerReactionLabeler:
                     report_lines.append(msg)
                     trade_events_for_plot.append({'index': i, 'type': event_type, 'target': 0})
 
+        # --- RÉSZLETES DIAGNOSZTIKA A CÍMKÉZÉS ÖSSZETÉTELÉRŐL (A HMM VAKU 3.0 MIATT) ---
+        reaction_types = df[df['Broker_Reaction_Target'] == 1]['Reaction_Type'].tolist()
+        whipsaw_count = sum(1 for r in reaction_types if "Rángatás" in r or "Trükk" in r)
+        slow_bleed_count = sum(1 for r in reaction_types if "Lassú Kivéreztetés" in r)
+        spread_count = sum(1 for r in reaction_types if "Spread Tágítás" in r)
+        latency_count = sum(1 for r in reaction_types if "Lefagyás" in r)
+
         # Összegzés a Riportba
-        summary = f"\n--- ÖSSZEGZÉS: {file_name} ---\nÖsszes Esemény (Trade Nyitás/Zárás): {trade_count}\nEbből Brókeri Reakció (Target=1): {reaction_count} ({(reaction_count/max(1, trade_count))*100:.1f}%)"
+        summary = f"\n--- ÖSSZEGZÉS: {file_name} ---\nÖsszes Esemény (Trade Nyitás/Zárás): {trade_count}\nEbből Brókeri Reakció (Target=1): {reaction_count} ({(reaction_count/max(1, trade_count))*100:.1f}%)\n"
+        summary += f"  -> Ebből 'Színház / Whipsaw / Trükk': {whipsaw_count} db\n"
+        summary += f"  -> Ebből 'Lassú Kivéreztetés' (Adverse Excursion): {slow_bleed_count} db\n"
+        summary += f"  -> Ebből 'Spread Tágítás': {spread_count} db\n"
+        summary += f"  -> Ebből 'Tick Lefagyás': {latency_count} db\n"
+
         report_lines.append(summary)
 
         # Fájlok Mentése
