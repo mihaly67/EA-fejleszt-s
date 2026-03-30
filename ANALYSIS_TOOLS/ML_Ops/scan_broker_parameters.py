@@ -190,13 +190,13 @@ class BrokerParameterScanner:
         # RÉSZLETES LISTA - NYITÁSOK
         report_lines.append(f"--- [ 1. NYITÁSOK ({len(open_events)} db) - ESEMÉNY LISTA ] ---")
         for i, ev in enumerate(open_events, 1):
-            line = f"#{i:03d} | Idő: {ev['Time']} | Irány: {ev['Dir']} | Spread Tágulás: {ev['Spread_Mult']:.2f}x (Max: {ev['Max_Spread']:.1f}) | Adverse Rám Ugrás: {ev['Adverse_Exc']:.3f} | Rángatás (Whipsaw): {ev['Whipsaw_Mult']:.2f}x | Max Lefagyás: {ev['Latency_MS']:.0f}ms"
+            line = f"#{i:03d} | Idő: {ev['Time']} | Irány: {ev['Dir']} | Spread Tágulás: {ev['Spread_Mult']:.2f}x (Max: {ev['Max_Spread']:.2f}) | Adverse Rám Ugrás: {ev['Adverse_Exc']:.5f} | Rángatás (Whipsaw): {ev['Whipsaw_Mult']:.2f}x | Max Lefagyás: {ev['Latency_MS']:.0f}ms"
             report_lines.append(line)
 
         # RÉSZLETES LISTA - ZÁRÁSOK
         report_lines.append(f"\n--- [ 2. ZÁRÁSOK ({len(close_events)} db) - ESEMÉNY LISTA ] ---")
         for i, ev in enumerate(close_events, 1):
-            line = f"#{i:03d} | Idő: {ev['Time']} | Típus: {ev['Profit_Status']} | Spread Tágulás: {ev['Spread_Mult']:.2f}x (Max: {ev['Max_Spread']:.1f}) | Rángatás (Whipsaw): {ev['Whipsaw_Mult']:.2f}x | Max Lefagyás: {ev['Latency_MS']:.0f}ms"
+            line = f"#{i:03d} | Idő: {ev['Time']} | Típus: {ev['Profit_Status']} | Spread Tágulás: {ev['Spread_Mult']:.2f}x (Max: {ev['Max_Spread']:.2f}) | Rángatás (Whipsaw): {ev['Whipsaw_Mult']:.2f}x | Max Lefagyás: {ev['Latency_MS']:.0f}ms"
             report_lines.append(line)
 
         # --- ÖSSZESÍTŐ STATISZTIKA ---
@@ -215,7 +215,7 @@ class BrokerParameterScanner:
             lines.append(f"Spread Tágulás Szorzó:   Átlag: {df_ev['Spread_Mult'].mean():.2f}x  |  Medián (P50): {df_ev['Spread_Mult'].median():.2f}x  |  Extrém (P90): {df_ev['Spread_Mult'].quantile(0.90):.2f}x  |  Max: {df_ev['Spread_Mult'].max():.2f}x")
             # Adverse Excursion (Csak nyitásnál van értelme)
             if name == "NYITÁS":
-                lines.append(f"Adverse Excursion (pont):Átlag: {df_ev['Adverse_Exc'].mean():.3f}   |  Medián (P50): {df_ev['Adverse_Exc'].median():.3f}   |  Extrém (P90): {df_ev['Adverse_Exc'].quantile(0.90):.3f}   |  Max: {df_ev['Adverse_Exc'].max():.3f}")
+                lines.append(f"Adverse Excursion (pont):Átlag: {df_ev['Adverse_Exc'].mean():.5f}   |  Medián (P50): {df_ev['Adverse_Exc'].median():.5f}   |  Extrém (P90): {df_ev['Adverse_Exc'].quantile(0.90):.5f}   |  Max: {df_ev['Adverse_Exc'].max():.5f}")
             # Latency
             lines.append(f"Max Lefagyás (Latency):  Átlag: {df_ev['Latency_MS'].mean():.0f}ms  |  Medián (P50): {df_ev['Latency_MS'].median():.0f}ms  |  Extrém (P90): {df_ev['Latency_MS'].quantile(0.90):.0f}ms  |  Max: {df_ev['Latency_MS'].max():.0f}ms")
             # Whipsaw
