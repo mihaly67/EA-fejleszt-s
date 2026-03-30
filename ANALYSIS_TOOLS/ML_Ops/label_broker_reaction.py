@@ -194,12 +194,25 @@ class BrokerReactionLabeler:
         # Dinamikus Küszöbök Kiszámítása (A szkenner eredményei alapján)
         if open_events:
             df_open = pd.DataFrame(open_events)
-            # EXCURSION_THRESHOLD: P50 (Medián) érték nyitáskor (hogy csak az átlagnál rosszabbak kerüljenek be)
-            p50_exc = df_open['Adverse_Exc'].median()
+
+            # --- ADVERSE EXCURSION KÜSZÖB SZÁMÍTÁSA ---
+            # Instrumentum osztályozása (Forex vs. Index/Metal) az átlagár alapján.
+            # Egy EURUSD árfolyam pl. 1.05000, egy XAUUSD pl. 2300.00.
+            avg_price = df['Bid'].mean()
+            is_forex = avg_price < 5.0 # Ha az ár 5 alatt van, biztosan Forex pár.
+
+            # Az extrém kilengések (P90) keresése
             p90_exc = df_open['Adverse_Exc'].quantile(0.90)
 
-            # Ha P50 = 0 (tehát nagyon ritka az adverse), de van P90, akkor azt vesszük, különben marad az alap.
-            dyn_excursion = p50_exc if p50_exc > 0 else (p90_exc if p90_exc > 0 else self.config.EXCURSION_THRESHOLD)
+            # Abszolút minimum küszöbök (Noise Floor), hogy az 1 tickes mikrozajokat (0.00001) ne büntessük.
+            # Forex esetén minimum 5 pont (0.00005), fémeknél/indexeknél minimum 0.05.
+            min_floor = 0.00005 if is_forex else 0.05
+
+            if pd.isna(p90_exc) or p90_exc <= 0:
+                dyn_excursion = self.config.EXCURSION_THRESHOLD
+            else:
+                # A P90-et használjuk, de csak akkor, ha meghaladja az abszolút minimum küszöböt!
+                dyn_excursion = max(p90_exc, min_floor)
 
             # SPREAD_MULTIPLIER_OPEN: P90 érték nyitáskor
             dyn_spread_open = df_open['Spread_Mult'].quantile(0.90)
