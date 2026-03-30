@@ -226,14 +226,14 @@ class BrokerReactionLabeler:
             dyn_spread_close = self.config.SPREAD_MULTIPLIER_CLOSE
 
         logger.info(f"   [DINAMIKUS KÜSZÖBÖK] Szkenner által számolt értékek a {file_name} fájlra:")
-        logger.info(f"   -> EXCURSION_THRESHOLD: {dyn_excursion:.3f}")
+        logger.info(f"   -> EXCURSION_THRESHOLD: {dyn_excursion:.5f}")
         logger.info(f"   -> SPREAD_MULTIPLIER_OPEN: {dyn_spread_open:.2f}")
         logger.info(f"   -> SPREAD_MULTIPLIER_CLOSE: {dyn_spread_close:.2f}")
         logger.info(f"   -> WHIPSAW_THRESHOLD: {dyn_whipsaw:.2f}")
         logger.info(f"   -> LATENCY_THRESHOLD_MS: {dyn_latency:.0f}ms")
 
         report_lines.append(f"\n--- [ DINAMIKUS CÍMKÉZÉSI KÜSZÖBÖK (SZKENNER ALAPJÁN) ] ---")
-        report_lines.append(f"EXCURSION_THRESHOLD: {dyn_excursion:.3f}")
+        report_lines.append(f"EXCURSION_THRESHOLD: {dyn_excursion:.5f}")
         report_lines.append(f"SPREAD_MULTIPLIER_OPEN: {dyn_spread_open:.2f}")
         report_lines.append(f"SPREAD_MULTIPLIER_CLOSE: {dyn_spread_close:.2f}")
         report_lines.append(f"WHIPSAW_THRESHOLD: {dyn_whipsaw:.2f}")
@@ -307,13 +307,13 @@ class BrokerReactionLabeler:
                         min_rest = rest_ticks['Bid'].min()
                         if max_first > entry_price and min_rest < entry_price:
                             is_reaction = True
-                            reaction_reasons.append(f"Trükk/Visszafordulás (Fake: +{max_first-entry_price:.2f}, Rev: -{entry_price-min_rest:.2f})")
+                            reaction_reasons.append(f"Trükk/Visszafordulás (Fake: +{max_first-entry_price:.5f}, Rev: -{entry_price-min_rest:.5f})")
                     elif trade_dir == -1: # Sell
                         min_first = first_ticks['Bid'].min()
                         max_rest = rest_ticks['Bid'].max()
                         if min_first < entry_price and max_rest > entry_price:
                             is_reaction = True
-                            reaction_reasons.append(f"Trükk/Visszafordulás (Fake: -{entry_price-min_first:.2f}, Rev: +{max_rest-entry_price:.2f})")
+                            reaction_reasons.append(f"Trükk/Visszafordulás (Fake: -{entry_price-min_first:.5f}, Rev: +{max_rest-entry_price:.5f})")
 
                 # MINTÁZAT 2: "SL Hunting / Whipsaw" (Agresszív Rángatás / Le-Felszúrás) - CSAK NYITÁSKOR
                 start_lookback = max(0, i - 50)
@@ -322,7 +322,7 @@ class BrokerReactionLabeler:
 
                 if is_open and local_volatility > 0 and future_volatility > (local_volatility * dyn_whipsaw):
                     is_reaction = True
-                    reaction_reasons.append(f"SL Vadászat/Rángatás (Vol: {future_volatility:.2f})")
+                    reaction_reasons.append(f"SL Vadászat/Rángatás (Vol: {future_volatility:.5f})")
 
                 # MIKRO-TREND MEGHATÁROZÁSA (Az Attribúciós Hiba kiszűrése Counter-Trend belépéseknél) - CSAK NYITÁSKOR
                 # Ha eső piacon veszel (Buy), az árfolyam normális, természetes (Target=0) viselkedése, hogy tovább esik ellened.
@@ -349,13 +349,13 @@ class BrokerReactionLabeler:
                             excursion = entry_price - lowest_bid
                             if excursion > dyn_excursion and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
                                 is_reaction = True
-                                reaction_reasons.append(f"Lassú Kivéreztetés (-{excursion:.2f})")
+                                reaction_reasons.append(f"Lassú Kivéreztetés (-{excursion:.5f})")
                         elif trade_dir == -1: # Sell (Az árfolyam növekedése az ellenség)
                             highest_bid = future_window['Bid'].max()
                             excursion = highest_bid - entry_price
                             if excursion > dyn_excursion and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
                                 is_reaction = True
-                                reaction_reasons.append(f"Lassú Kivéreztetés (+{excursion:.2f})")
+                                reaction_reasons.append(f"Lassú Kivéreztetés (+{excursion:.5f})")
                     else:
                         # MINTÁZAT 3B (COUNTER-TREND): A bróker algoritmusa "rácsatlakozik" a Counter-Trade-re.
                         if trade_dir == 1: # Buy eső piacon
@@ -363,13 +363,13 @@ class BrokerReactionLabeler:
                             counter_excursion = highest_bid - entry_price
                             if counter_excursion > dyn_excursion and not any("Vadászat" in r for r in reaction_reasons):
                                 is_reaction = True
-                                reaction_reasons.append(f"Természetellenes Azonnali Fordulat (Counter: +{counter_excursion:.2f})")
+                                reaction_reasons.append(f"Természetellenes Azonnali Fordulat (Counter: +{counter_excursion:.5f})")
                         elif trade_dir == -1: # Sell emelkedő piacon
                             lowest_bid = future_window['Bid'].min()
                             counter_excursion = entry_price - lowest_bid
                             if counter_excursion > dyn_excursion and not any("Vadászat" in r for r in reaction_reasons):
                                 is_reaction = True
-                                reaction_reasons.append(f"Természetellenes Azonnali Fordulat (Counter: -{counter_excursion:.2f})")
+                                reaction_reasons.append(f"Természetellenes Azonnali Fordulat (Counter: -{counter_excursion:.5f})")
 
                 # 4. SPREAD MANIPULÁCIÓ (Nyitáskor és Záráskor is!)
                 if 'Spread' in df.columns:
@@ -445,7 +445,7 @@ class BrokerReactionLabeler:
 
         # Tegyük bele a használt paramétereket a summary-ba is
         summary += f"\n  [HASZNÁLT KÜSZÖBÖK]\n"
-        summary += f"  -> EXCURSION_THRESHOLD: {dyn_excursion:.3f}\n"
+        summary += f"  -> EXCURSION_THRESHOLD: {dyn_excursion:.5f}\n"
         summary += f"  -> SPREAD_MULTIPLIER_OPEN: {dyn_spread_open:.2f}\n"
         summary += f"  -> SPREAD_MULTIPLIER_CLOSE: {dyn_spread_close:.2f}\n"
         summary += f"  -> WHIPSAW_THRESHOLD: {dyn_whipsaw:.2f}\n"
