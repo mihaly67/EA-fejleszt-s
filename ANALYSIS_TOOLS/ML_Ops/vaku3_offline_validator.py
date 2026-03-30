@@ -204,10 +204,14 @@ class Vaku3OfflineValidator:
             "Theater": theater_state
         }
 
-        logger.info(f"💡 HMM Szemantikus Térkép elkészült (Tiszta Log-ER alapján)!")
-        logger.info(f"  -> Színház (Manipuláció) Állapot ID: {theater_state} | Jellemzők -> LogER: {means[theater_state, er_idx]:.2f}, Spread: {means[theater_state, spread_idx]:.2f}x")
-        logger.info(f"  -> Betonfal (Tiszta Trend) Állapot ID: {concrete_state} | Jellemzők -> LogER: {means[concrete_state, er_idx]:.2f}, Spread: {means[concrete_state, spread_idx]:.2f}x")
-        logger.info(f"  -> Csendes (Flat) Állapot ID: {quiet_state} | Jellemzők -> LogER: {means[quiet_state, er_idx]:.2f}, Spread: {means[quiet_state, spread_idx]:.2f}x")
+        self.semantic_map_report = []
+        self.semantic_map_report.append("💡 HMM Szemantikus Térkép elkészült (Tiszta Log-ER alapján)!")
+        self.semantic_map_report.append(f"  -> Színház (Manipuláció) Állapot ID: {theater_state} | Jellemzők -> LogER: {means[theater_state, er_idx]:.2f}, Spread: {means[theater_state, spread_idx]:.2f}x")
+        self.semantic_map_report.append(f"  -> Betonfal (Tiszta Trend) Állapot ID: {concrete_state} | Jellemzők -> LogER: {means[concrete_state, er_idx]:.2f}, Spread: {means[concrete_state, spread_idx]:.2f}x")
+        self.semantic_map_report.append(f"  -> Csendes (Flat) Állapot ID: {quiet_state} | Jellemzők -> LogER: {means[quiet_state, er_idx]:.2f}, Spread: {means[quiet_state, spread_idx]:.2f}x")
+
+        for line in self.semantic_map_report:
+            logger.info(line)
 
     def run_smoking_gun_validation(self, df):
         """
@@ -215,8 +219,16 @@ class Vaku3OfflineValidator:
         Összeveti a HMM 'Theater' jelzéseit az Adatbázisban lévő (előre felcímkézett)
         Broker_Reaction_Target = 1 (Rám Ugrás/SL Vadászat) eseményekkel.
         """
+        report_lines = []
+        report_lines.append("=========================================================================")
+        report_lines.append("🔍 VAKU 3.0 OFFLINE VALIDÁTOR (HMM) RIPORT")
+        report_lines.append("=========================================================================\n")
+
         if not self.is_fitted:
             self.fit_and_map_states()
+
+        report_lines.extend(self.semantic_map_report)
+        report_lines.append("")
 
         logger.info("HMM Állapotok visszafejtése a teljes adatsoron (Viterbi dekódolás)...")
         hidden_states = self.model.predict(self.observation_space)
@@ -237,7 +249,7 @@ class Vaku3OfflineValidator:
 
         if total_manipulations == 0:
             logger.warning("Nincs Target=1 esemény a fájlban. A validáció skippelve.")
-            return df
+            return df, report_lines
 
         # Minden HMM állapotra megnézzük, hányszor jelezte előre a brókeri reakciót (Hit Rate minden Állapotra!)
         # Ezáltal kibukik, ha a HMM mást tartott "Színháznak" a nyers mátrix statisztika alapján.
@@ -248,6 +260,8 @@ class Vaku3OfflineValidator:
             hmm_state_at_trade = df.loc[idx, 'Vaku3_HMM_State']
             state_hits[hmm_state_at_trade] += 1
 
+        report_lines.append("--- SMOKING GUN BIZONYÍTÉK (Offline Causal Validation) ---")
+        report_lines.append(f"Összes megjelölt Brókeri Reakció (Target=1): {total_manipulations} db")
         logger.info(f"\n--- SMOKING GUN BIZONYÍTÉK (Offline Causal Validation) ---")
         logger.info(f"Összes megjelölt Brókeri Reakció (Target=1): {total_manipulations} db")
 
@@ -255,7 +269,10 @@ class Vaku3OfflineValidator:
             hit_rate = (hits / total_manipulations) * 100
             state_name = state_names[state_id]
             is_theater = " <--- (Ez a mi kijelölt 'Theater' állapotunk)" if state_name == "Theater" else ""
-            logger.info(f"  -> {state_name} (Állapot ID: {state_id}) találati aránya a trükkök előtt: {hits} db ({hit_rate:.1f}%){is_theater}")
+
+            line = f"  -> {state_name} (Állapot ID: {state_id}) találati aránya a trükkök előtt: {hits} db ({hit_rate:.1f}%){is_theater}"
+            logger.info(line)
+            report_lines.append(line)
 
         # Most csekkoljuk le a TISZTA trade-eket is (Target=0), nehogy kiderüljön, hogy az 1.8% csak véletlen!
         clean_entries = df[(df['Broker_Reaction_Target'] == 0) & ((df['PosCount'] > df['PosCount'].shift(1)) | (df['PosCount'] < df['PosCount'].shift(1)))].index.tolist()
@@ -266,14 +283,20 @@ class Vaku3OfflineValidator:
                 hmm_state_at_trade = df.loc[idx, 'Vaku3_HMM_State']
                 clean_state_hits[hmm_state_at_trade] += 1
 
+            report_lines.append("\n--- KONTROLL CSOPORT (Target=0 Tiszta Piac, Trade Nyitás/Zárás) ---")
+            report_lines.append(f"Összes megjelölt Tiszta Trade: {total_clean} db")
             logger.info(f"\n--- KONTROLL CSOPORT (Target=0 Tiszta Piac, Trade Nyitás/Zárás) ---")
             logger.info(f"Összes megjelölt Tiszta Trade: {total_clean} db")
+
             for state_id, hits in clean_state_hits.items():
                 hit_rate = (hits / total_clean) * 100
                 state_name = state_names[state_id]
-                logger.info(f"  -> {state_name} (Állapot ID: {state_id}) jelenléte tiszta piacon: {hits} db ({hit_rate:.1f}%)")
 
-        return df
+                line = f"  -> {state_name} (Állapot ID: {state_id}) jelenléte tiszta piacon: {hits} db ({hit_rate:.1f}%)"
+                logger.info(line)
+                report_lines.append(line)
+
+        return df, report_lines
 
 def run_validator():
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -296,12 +319,20 @@ def run_validator():
         validator.extract_features(df)
 
         # 2. HMM Betanítás és Szemantikus Térképezés + Validáció
-        df_validated = validator.run_smoking_gun_validation(df)
+        df_validated, report_lines = validator.run_smoking_gun_validation(df)
 
         # Kimentjük a HMM állapotokkal bővített fájlt
         output_file = os.path.join(labeled_dir, f"VAKU3_VALIDATED_{file_name}")
         df_validated.to_csv(output_file, index=False)
         logger.info(f"Bizonyíték kimentve: {output_file}")
+
+        # Kimentjük a TXT riportot is
+        report_dir = os.path.join(base_dir, 'reports_tmp')
+        os.makedirs(report_dir, exist_ok=True)
+        report_file = os.path.join(report_dir, f"VAKU3_REPORT_{file_name.replace('.csv', '')}.txt")
+        with open(report_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(report_lines))
+        logger.info(f"Riport kimentve: {report_file}")
 
 if __name__ == '__main__':
     run_validator()
