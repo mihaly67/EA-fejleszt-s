@@ -1,6 +1,7 @@
 import os
 import glob
 import pandas as pd
+from scan_broker_parameters import BrokerParameterScanner
 import numpy as np
 import logging
 import warnings
@@ -87,6 +88,157 @@ class BrokerReactionLabeler:
             logger.warning(f"Hiányoznak a kritikus oszlopok (PosCount, LotDir, Bid) a {file_name} fájlból!")
             return
 
+        # --- 0. LÉPÉS: SZKENNER FUTTATÁSA ÉS PARAMÉTEREK DINAMIKUS BEÁLLÍTÁSA ---
+        logger.info("   -> Kereskedési statisztikák beolvasása (Szkenner indítása)...")
+        scanner = BrokerParameterScanner(forward_window=self.config.FORWARD_WINDOW, lookback_window=50)
+
+        # Mivel a scanner alapértelmezetten a fájlrendszerbe ír, de mi be akarjuk tölteni
+        # Módosítsuk a logikát, hogy az eseményeket egy listában dolgozzuk fel.
+        open_events = []
+        close_events = []
+
+        # Scanner logikája manuálisan beépítve a memória szintű feldolgozáshoz:
+        for i in range(1, len(df)):
+            is_open = df.loc[i, 'PosCount'] > df.loc[i-1, 'PosCount']
+            is_close = df.loc[i, 'PosCount'] < df.loc[i-1, 'PosCount']
+
+            if not (is_open or is_close):
+                continue
+
+            raw_dir = 0
+            if 'LotDir' in df.columns:
+                raw_dir = df.loc[i, 'LotDir']
+            elif 'Trade_Dir' in df.columns:
+                raw_dir = df.loc[i, 'Trade_Dir']
+
+            trade_dir = 0
+            if isinstance(raw_dir, str):
+                raw_str = raw_dir.strip().lower()
+                if raw_str in ['1', 'buy', 'long']: trade_dir = 1
+                elif raw_str in ['-1', 'sell', 'short', '0']: trade_dir = -1
+            else:
+                if raw_dir == 0:
+                    trade_dir = 1
+                elif raw_dir == 1:
+                    trade_dir = -1 if 'Order_Type' in df.columns else 1
+                elif raw_dir == -1:
+                    trade_dir = -1
+                elif raw_dir > 0:
+                    trade_dir = 1
+                elif raw_dir < 0:
+                    trade_dir = -1
+
+            entry_price = df.loc[i, 'Bid']
+
+            end_idx = min(i + self.config.FORWARD_WINDOW, len(df))
+            start_idx = max(0, i - 50)
+
+            future_window = df.iloc[i:end_idx]
+            past_window = df.iloc[start_idx:i]
+
+            if future_window.empty or past_window.empty:
+                continue
+
+            # Spread
+            spread_multiplier = 1.0
+            if 'Spread' in df.columns:
+                local_avg_spread = past_window['Spread'].mean()
+                if local_avg_spread > 0:
+                    spread_multiplier = future_window['Spread'].max() / local_avg_spread
+
+            # Latency
+            max_latency = 0.0
+            if 'Time_Delta_MS' in df.columns:
+                max_latency = future_window['Time_Delta_MS'].max()
+            else:
+                time_cols = [c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
+                if time_cols:
+                    time_col = time_cols[0]
+                    try:
+                        latencies = future_window[time_col].astype(float).diff()
+                        max_latency = latencies.max()
+                    except Exception:
+                        pass
+            if pd.isna(max_latency) or max_latency < 0:
+                max_latency = 0.0
+
+            # Excursion
+            adverse_excursion = 0.0
+            if is_open and trade_dir != 0:
+                if trade_dir == 1:
+                    min_future = future_window['Bid'].min()
+                    adverse_excursion = entry_price - min_future if min_future < entry_price else 0.0
+                elif trade_dir == -1:
+                    max_future = future_window['Bid'].max()
+                    adverse_excursion = max_future - entry_price if max_future > entry_price else 0.0
+
+            # Whipsaw
+            whipsaw_multiplier = 1.0
+            local_volatility = past_window['Bid'].max() - past_window['Bid'].min()
+            future_volatility = future_window['Bid'].max() - future_window['Bid'].min()
+            if local_volatility > 0:
+                whipsaw_multiplier = future_volatility / local_volatility
+
+            event_data = {
+                "Spread_Mult": spread_multiplier,
+                "Latency_MS": max_latency,
+                "Adverse_Exc": adverse_excursion,
+                "Whipsaw_Mult": whipsaw_multiplier
+            }
+
+            if is_open:
+                open_events.append(event_data)
+            else:
+                close_events.append(event_data)
+
+        # Dinamikus Küszöbök Kiszámítása (A szkenner eredményei alapján)
+        if open_events:
+            df_open = pd.DataFrame(open_events)
+            # EXCURSION_THRESHOLD: P50 (Medián) érték nyitáskor (hogy csak az átlagnál rosszabbak kerüljenek be)
+            p50_exc = df_open['Adverse_Exc'].median()
+            p90_exc = df_open['Adverse_Exc'].quantile(0.90)
+
+            # Ha P50 = 0 (tehát nagyon ritka az adverse), de van P90, akkor azt vesszük, különben marad az alap.
+            dyn_excursion = p50_exc if p50_exc > 0 else (p90_exc if p90_exc > 0 else self.config.EXCURSION_THRESHOLD)
+
+            # SPREAD_MULTIPLIER_OPEN: P90 érték nyitáskor
+            dyn_spread_open = df_open['Spread_Mult'].quantile(0.90)
+            if pd.isna(dyn_spread_open) or dyn_spread_open < 1.0: dyn_spread_open = self.config.SPREAD_MULTIPLIER_OPEN
+
+            # WHIPSAW_THRESHOLD: P90 érték
+            dyn_whipsaw = df_open['Whipsaw_Mult'].quantile(0.90)
+            if pd.isna(dyn_whipsaw) or dyn_whipsaw < 1.0: dyn_whipsaw = self.config.WHIPSAW_THRESHOLD
+
+            # LATENCY (maradhat a P50 feletti, de a latency nagyon eltérhet. P50 a jó alap)
+            dyn_latency = df_open['Latency_MS'].median()
+            if pd.isna(dyn_latency) or dyn_latency < 500: dyn_latency = self.config.LATENCY_THRESHOLD_MS
+        else:
+            dyn_excursion = self.config.EXCURSION_THRESHOLD
+            dyn_spread_open = self.config.SPREAD_MULTIPLIER_OPEN
+            dyn_whipsaw = self.config.WHIPSAW_THRESHOLD
+            dyn_latency = self.config.LATENCY_THRESHOLD_MS
+
+        if close_events:
+            df_close = pd.DataFrame(close_events)
+            dyn_spread_close = df_close['Spread_Mult'].quantile(0.90)
+            if pd.isna(dyn_spread_close) or dyn_spread_close < 1.0: dyn_spread_close = self.config.SPREAD_MULTIPLIER_CLOSE
+        else:
+            dyn_spread_close = self.config.SPREAD_MULTIPLIER_CLOSE
+
+        logger.info(f"   [DINAMIKUS KÜSZÖBÖK] Szkenner által számolt értékek a {file_name} fájlra:")
+        logger.info(f"   -> EXCURSION_THRESHOLD: {dyn_excursion:.3f}")
+        logger.info(f"   -> SPREAD_MULTIPLIER_OPEN: {dyn_spread_open:.2f}")
+        logger.info(f"   -> SPREAD_MULTIPLIER_CLOSE: {dyn_spread_close:.2f}")
+        logger.info(f"   -> WHIPSAW_THRESHOLD: {dyn_whipsaw:.2f}")
+        logger.info(f"   -> LATENCY_THRESHOLD_MS: {dyn_latency:.0f}ms")
+
+        report_lines.append(f"\n--- [ DINAMIKUS CÍMKÉZÉSI KÜSZÖBÖK (SZKENNER ALAPJÁN) ] ---")
+        report_lines.append(f"EXCURSION_THRESHOLD: {dyn_excursion:.3f}")
+        report_lines.append(f"SPREAD_MULTIPLIER_OPEN: {dyn_spread_open:.2f}")
+        report_lines.append(f"SPREAD_MULTIPLIER_CLOSE: {dyn_spread_close:.2f}")
+        report_lines.append(f"WHIPSAW_THRESHOLD: {dyn_whipsaw:.2f}")
+        report_lines.append(f"LATENCY_THRESHOLD_MS: {dyn_latency:.0f}ms\n")
+
         # Létrehozzuk az új Target oszlopot (Alapértelmezett: 0, azaz Nincs Reakció)
         df['Broker_Reaction_Target'] = 0
         df['Reaction_Type'] = "None" # Szöveges magyarázat a címke okáról
@@ -168,7 +320,7 @@ class BrokerReactionLabeler:
                 local_volatility = df.iloc[start_lookback:i]['Bid'].max() - df.iloc[start_lookback:i]['Bid'].min()
                 future_volatility = future_window['Bid'].max() - future_window['Bid'].min()
 
-                if is_open and local_volatility > 0 and future_volatility > (local_volatility * self.config.WHIPSAW_THRESHOLD):
+                if is_open and local_volatility > 0 and future_volatility > (local_volatility * dyn_whipsaw):
                     is_reaction = True
                     reaction_reasons.append(f"SL Vadászat/Rángatás (Vol: {future_volatility:.2f})")
 
@@ -195,13 +347,13 @@ class BrokerReactionLabeler:
                         if trade_dir == 1: # Buy (Az árfolyam esése az ellenség)
                             lowest_bid = future_window['Bid'].min()
                             excursion = entry_price - lowest_bid
-                            if excursion > self.config.EXCURSION_THRESHOLD and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
+                            if excursion > dyn_excursion and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
                                 is_reaction = True
                                 reaction_reasons.append(f"Lassú Kivéreztetés (-{excursion:.2f})")
                         elif trade_dir == -1: # Sell (Az árfolyam növekedése az ellenség)
                             highest_bid = future_window['Bid'].max()
                             excursion = highest_bid - entry_price
-                            if excursion > self.config.EXCURSION_THRESHOLD and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
+                            if excursion > dyn_excursion and not any("Vadászat" in r for r in reaction_reasons) and not any("Trükk" in r for r in reaction_reasons):
                                 is_reaction = True
                                 reaction_reasons.append(f"Lassú Kivéreztetés (+{excursion:.2f})")
                     else:
@@ -209,13 +361,13 @@ class BrokerReactionLabeler:
                         if trade_dir == 1: # Buy eső piacon
                             highest_bid = future_window['Bid'].max()
                             counter_excursion = highest_bid - entry_price
-                            if counter_excursion > self.config.EXCURSION_THRESHOLD and not any("Vadászat" in r for r in reaction_reasons):
+                            if counter_excursion > dyn_excursion and not any("Vadászat" in r for r in reaction_reasons):
                                 is_reaction = True
                                 reaction_reasons.append(f"Természetellenes Azonnali Fordulat (Counter: +{counter_excursion:.2f})")
                         elif trade_dir == -1: # Sell emelkedő piacon
                             lowest_bid = future_window['Bid'].min()
                             counter_excursion = entry_price - lowest_bid
-                            if counter_excursion > self.config.EXCURSION_THRESHOLD and not any("Vadászat" in r for r in reaction_reasons):
+                            if counter_excursion > dyn_excursion and not any("Vadászat" in r for r in reaction_reasons):
                                 is_reaction = True
                                 reaction_reasons.append(f"Természetellenes Azonnali Fordulat (Counter: -{counter_excursion:.2f})")
 
@@ -226,7 +378,7 @@ class BrokerReactionLabeler:
                         max_future_spread = future_window['Spread'].max()
 
                         # Külön szorzó nyitásra és zárásra (profit védelme)
-                        active_multiplier = self.config.SPREAD_MULTIPLIER_OPEN if is_open else self.config.SPREAD_MULTIPLIER_CLOSE
+                        active_multiplier = dyn_spread_open if is_open else dyn_spread_close
 
                         if max_future_spread > (local_avg_spread * active_multiplier):
                             is_reaction = True
@@ -255,7 +407,7 @@ class BrokerReactionLabeler:
                 if pd.isna(max_latency) or max_latency < 0:
                     max_latency = 0.0
 
-                if max_latency > self.config.LATENCY_THRESHOLD_MS:
+                if max_latency > dyn_latency:
                     is_reaction = True
                     reaction_reasons.append(f"Lefagyás/Késleltetés {event_type} ({max_latency:.0f}ms)")
 
@@ -290,6 +442,14 @@ class BrokerReactionLabeler:
         summary += f"  -> Ebből 'Lassú Kivéreztetés' (Adverse Excursion): {slow_bleed_count} db\n"
         summary += f"  -> Ebből 'Spread Tágítás': {spread_count} db\n"
         summary += f"  -> Ebből 'Tick Lefagyás': {latency_count} db\n"
+
+        # Tegyük bele a használt paramétereket a summary-ba is
+        summary += f"\n  [HASZNÁLT KÜSZÖBÖK]\n"
+        summary += f"  -> EXCURSION_THRESHOLD: {dyn_excursion:.3f}\n"
+        summary += f"  -> SPREAD_MULTIPLIER_OPEN: {dyn_spread_open:.2f}\n"
+        summary += f"  -> SPREAD_MULTIPLIER_CLOSE: {dyn_spread_close:.2f}\n"
+        summary += f"  -> WHIPSAW_THRESHOLD: {dyn_whipsaw:.2f}\n"
+        summary += f"  -> LATENCY_THRESHOLD_MS: {dyn_latency:.0f}ms\n"
 
         report_lines.append(summary)
 
