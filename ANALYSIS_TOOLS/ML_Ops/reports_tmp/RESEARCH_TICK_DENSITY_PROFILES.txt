@@ -1,0 +1,16 @@
+=========================================================================
+⏱️ KUTATÁSI RIPORT: NAPSZAKOS TICK SŰRŰSÉG (TICK DENSITY PROFILER)
+=========================================================================
+
+Ezek az adatok szolgálnak alapul a jövőbeli dinamikus ablakméret (Window Size)
+szabályrendszerének felépítéséhez, hogy a nappali (HFT) és éjszakai (Lassú)
+piacokat az AI egyformán fizikai időben (pl. 3 másodperc) tudja vizsgálni.
+
+--- [ 1. mock_tick_data.csv ] ---
+  Időtartam: 63.4 perc | Összes Tick: 5000
+  Makro Átlagos Sebesség: 1.3 Tick/Másodperc
+  Jellemző Pillanatnyi Sebesség (P50): 1.3 Tick/Másodperc
+  Csúcssebesség (P90): 6.2 Tick/Másodperc
+  Abszolút Maximum Sebesség: 100.0 Tick/Másodperc
+
+  [AI JAVASLAT] Ideális 3-másodperces HMM Ablakméret erre a fájlra: ~10 tick
