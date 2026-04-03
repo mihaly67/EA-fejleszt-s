@@ -36,15 +36,28 @@ A mai elemzések (EURUSD és XAUUSD tesztek alapján) megcáfoltak korábbi felt
 
 ---
 
-## 3. A Következő Lépések (A Felhasználó Feladatai)
+## 3. Gemini Konzultáció: A "Scale-Dependency" Hiba és a Dinamikus Szeletelés (Slicing)
+
+A nap végén Geminivel (a "Laborral") folytatott magas szintű matematikai és építészeti vita során feltártuk az online architektúra legkritikusabb problémáit, és kidolgoztuk az implementálandó tervet a következő Agent számára:
+
+*   **A Szoftveres Hardver-Optimalizáció (O(1) Sebesség):**
+    *   Az online rendszerben **tilos** a tick puffert menet közben újraallokálni (realloc), mert az laggot és jittert okoz (megöli az MT5 kommunikációt).
+    *   **Megoldás:** Előre le kell foglalni egy fix, maximum 1000 tickes Numpy tömböt (`buffer = np.zeros(1000)`). Amikor a HMM vizsgálni akar, a pillanatnyi Tick Sűrűség (Tick Density) alapján csak egy dinamikus szeletet olvas ki belőle (pl. `buffer[-150:]` nappal, vagy `buffer[-15:]` éjjel).
+*   **Az "Optikai Csalódás" (Fraktális Normalizáció):**
+    *   A HMM Log-Efficiency Ratio (LogER) kalkulációja eltorzul, ha a szelet hossza ($N$) változik (mivel a bruttó zaj gyorsabban nő, mint a nettó elmozdulás). Ezt hívják Scale-Dependency hibának (Fractional Brownian Motion drift).
+    *   **Megoldás:** A következő Agentnek be kell építenie egy előre kiszámolt statikus *Lookup Table*-t (Skála-Faktor Mátrix), ami O(1) sebességgel kompenzálja a LogER-t az $N$ hossza alapján (Vektorizált Broadcastinggal), mielőtt odaadná azt a HMM-nek és a Welford Scalernek.
+
+---
+
+## 4. A Következő Lépések (A Felhasználó Feladatai)
 
 Az Agent munkája befejeződött, a kód tökéletesen, dinamikusan alkalmazkodik az instrumentumokhoz és a bróker valós statisztikáihoz.
 
 A **Felhasználónak a következőket kell tennie a VPS-en vagy a lokális MX Linux+Wine környezetén:**
-1.  **Adatgyűjtés (Kötések Nélkül):** Indítsd el a BlackBox adatbányászt egy demó számlán úgy, hogy NE kössön. Gyűjts 1-1 órás adatokat délelőtt (Londoni nyitás), délután (NY), este (20:00) és éjszaka (02:00).
+1.  **Adatgyűjtés (Kötések Nélkül) - Hétfői Stressz Teszt:** Indítsd el a BlackBox adatbányászt egy demó számlán úgy, hogy NE kössön. Gyűjts 1-1 órás adatokat délelőtt (Londoni nyitás), délután (NY), este (20:00) és éjszaka (02:00).
 2.  **Tick Sűrűség Profilozás:** Futtasd le ezeken az üres fájlokon a `python3 profile_tick_density.py` scriptet.
-3.  **Az Eredmény Elemzése:** A script meg fogja mondani (egy TXT riportban), hogy a különböző napszakokban átlagosan mennyi volt a Tick/sec, és mi az ajánlott `window_size` (Ablakméret) a HMM és a Címkéző számára.
-4.  Ezekkel az információkkal felfegyverkezve a következő Agent képes lesz a Fix `FORWARD_WINDOW=10`-et egy Dinamikus Időablakká (Dynamic Time-Bucket) alakítani a Címkézőben és a HMM Vaku 3.0-ban!
+3.  **Az Eredmény Elemzése:** A script meg fogja mondani (egy TXT riportban), hogy a különböző napszakokban átlagosan mennyi volt a Max Tick/sec.
+4.  Ezekkel a Stressz Teszt adatokkal felfegyverkezve a következő Agent meg fogja írni az O(1) komplexitású **Online TickBufferManager**-t és a **Length-Normalized LogER Lookup Table**-t a Vaku 3.0-hoz!
 
 ---
 
