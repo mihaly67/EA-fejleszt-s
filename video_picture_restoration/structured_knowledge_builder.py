@@ -18,12 +18,14 @@ VALID_EXTENSIONS = {
     '.py', '.pyx', '.pxd', '.ipynb',
     # C/C++ / CUDA (Gyorsítás, VapourSynth, MMCV, PyTorch)
     '.c', '.cpp', '.h', '.hpp', '.cc', '.cxx', '.cu', '.cuh',
+    # C# / GUI (Pl. Waifu2x-Extension-GUI)
+    '.cs', '.xaml',
     # Config és strukturált adatok
     '.json', '.yaml', '.yml', '.toml', '.ini', '.cfg',
     # Dokumentáció és leírások
     '.md', '.rst', '.txt',
-    # Web / Interfész
-    '.js', '.ts', '.html', '.css',
+    # Web / Frontend Interfész (Gradio, React, Vue stb.)
+    '.js', '.ts', '.jsx', '.tsx', '.vue', '.svelte', '.html', '.css', '.scss',
     # Shell / Scripting
     '.sh', '.bash', '.zsh', '.bat', '.ps1'
 }
@@ -74,6 +76,9 @@ def get_programming_language(ext):
     mapping = {
         '.py': 'Python', '.ipynb': 'Jupyter',
         '.c': 'C', '.cpp': 'C++', '.cu': 'CUDA', '.h': 'C/C++ Header',
+        '.cs': 'C#', '.xaml': 'XAML',
+        '.js': 'JavaScript', '.ts': 'TypeScript', '.jsx': 'React JSX', '.tsx': 'React TSX',
+        '.vue': 'Vue', '.svelte': 'Svelte', '.html': 'HTML', '.css': 'CSS', '.scss': 'SCSS',
         '.json': 'JSON', '.yaml': 'YAML', '.yml': 'YAML', '.toml': 'TOML',
         '.md': 'Markdown', '.txt': 'Text',
         '.sh': 'Shell', '.bat': 'Batch'
