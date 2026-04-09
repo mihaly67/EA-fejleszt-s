@@ -10,7 +10,7 @@ def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 def main():
-    parser = argparse.ArgumentParser(description="VIDEO DOWNLOADER - RAG Query")
+    parser = argparse.ArgumentParser(description="EA FEJLESZTÉS & ML-OPS - RAG Query")
     parser.add_argument("--query", type=str, required=True, help="A koncepcionális kérdés (pl. 'How to upsample video frames')")
     parser.add_argument("--repo", type=str, default="", help="Szűrés forrás repóra (pl. 'BasicSR-master')")
     parser.add_argument("--lang", type=str, default="", help="Szűrés programnyelvre (pl. 'Python', 'C++', 'Vue')")
@@ -22,13 +22,13 @@ def main():
     work_dir = get_script_dir()
     db_dir = os.path.join(work_dir, "Knowledge_Base", "RAG_DB")
 
-    index_path = os.path.join(db_dir, "video_downloader_compressed.index")
-    sqlite_path = os.path.join(db_dir, "video_downloader_knowledge.db")
+    index_path = os.path.join(db_dir, "ea_fejlesztes_compressed.index")
+    sqlite_path = os.path.join(db_dir, "ea_fejlesztes_knowledge.db")
     model_name = "all-MiniLM-L6-v2"
 
     if not os.path.exists(index_path) or not os.path.exists(sqlite_path):
         print(f"❌ Error: A RAG adatbázis fájlok nem találhatóak a {db_dir} mappában.")
-        print("💡 Próbáld meg lefuttatni a 'python3 restore_env_vd.py' scriptet!")
+        print("💡 Próbáld meg lefuttatni a 'python3 restore_env_ea.py' scriptet!")
         sys.exit(1)
 
     print(f"🧠 Modell betöltése: {model_name}...")
