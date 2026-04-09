@@ -16,8 +16,8 @@ except ImportError:
 os.environ["OMP_NUM_THREADS"] = "2"
 os.environ["MKL_NUM_THREADS"] = "2"
 
-DB_FILE = "ai_restoration_knowledge.db"
-INDEX_FILE = "ai_restoration_compressed.index"
+DB_FILE = "video_picture_restoration_knowledge.db"
+INDEX_FILE = "video_picture_restoration_compressed.index"
 REPORT_FILE = "rag_build_report.txt"
 BATCH_SIZE = 100
 
