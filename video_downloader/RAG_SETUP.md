@@ -1,59 +1,72 @@
 # Video Downloader RAG Rendszer
 
-Ez a könyvtár tartalmazza a Video Downloader projekthez tartozó FAISS + SQLite RAG (Retrieval-Augmented Generation) adatbázis telepítéséhez és lekérdezéséhez szükséges eszközöket. Ez a megközelítés a SWAT RAG rendszer adaptációja.
+Ez a mappa tartalmazza a gépi látáshoz, kép- és videó-helyreállításhoz kapcsolódó összes AI backend (pl. video feldolgozási) és Frontend GUI (pl. yt-dlp, aria2c) eszközének integrált RAG (Retrieval-Augmented Generation) rendszerét.
 
-## Telepítés és Környezet Visszaállítása
+A RAG rendszer segítségével vektorosan (jelentés alapján) kereshetsz a 49+ különböző open-source repó kódjában és dokumentációjában.
 
-Minden környezet telepítése automatikusan történik a `restore_env_vd.py` script segítségével. A script gondoskodik a szükséges Python függőségek telepítéséről, majd letölti és kicsomagolja a RAG adatbázist a Google Drive-ról.
+---
 
-### Függőségek (A script automatikusan telepíti őket)
-- `gdown`
-- `faiss-cpu`
-- `sentence-transformers`
-- `numpy`
-- `pandas`
-- `colorama`
+## 1. Környezet Visszaállítása (Telepítés)
 
-### Végrehajtás
-Futtasd a következő parancsot a projekt gyökeréből (vagy ebből a mappából, ha átmásoltad):
+A rendszer és az ahhoz tartozó hatalmas adatbázis beállítása teljesen automatizált.
+Lépj be a könyvtárba, majd futtasd a telepítő scriptet:
 
 ```bash
 python3 restore_env_vd.py
 ```
 
-**Eredmény:**
-A script létrehoz egy `Knowledge_Base/RAG_DB` mappát, ahová kicsomagolja a `video_downloader_github_compressed.index` és a `video_downloader_github.db` fájlokat.
-*(Megjegyzés: A RAG adatbázis mappája automatikusan a `.gitignore` fájlhoz adódik, így nem kerül a Git tárolóba.)*
+**Mit csinál a script?**
+- Feltelepíti a vektorizáláshoz szükséges Python könyvtárakat (`faiss-cpu`, `sentence-transformers`, `gdown` stb.).
+- Letölti a becsomagolt RAG adatbázist a Google Drive-ról.
+- Kicsomagolja a `Knowledge_Base/RAG_DB` mappába a `video_downloader_compressed.index` és a `.db` fájlokat.
+
+*(A RAG DB mappa és a nagy letöltött fájlok `.gitignore`-ban vannak, így véletlenül sem kerülnek be a verziókezelőbe).*
 
 ---
 
-## RAG Keresés (Kihallgatási Protokoll)
+## 2. RAG Keresés (Kihallgatási Protokoll)
 
-A kódbázis megértéséhez és specifikus funkciók kereséséhez **kötelező** a `rag_interrogator.py` parancssori eszközt használni. Mivel ez vektoros keresést (szemantikai keresést) használ, nem a pontos kódszintaxist kell megadni, hanem a keresett funkció vagy probléma leírását (lehetőleg angolul).
+A kódbázis megértéséhez **KÖTELEZŐ** a `rag_interrogator.py` eszközt használni. Mivel ez a RAG adatbázis strukturált (külön metaadat oszlopokat tartalmaz), a keresést nagyon pontosan tudod szűrni nyelvre, kiterjesztésre vagy a származási repóra.
 
-### Használati Példák
+### Alapvető használat:
+Nem a konkrét kódot, hanem a **koncepciót vagy problémát** kell angolul megfogalmazni.
 
-**1. Alap keresés (top 5 találat):**
 ```bash
-python3 rag_interrogator.py --query "How to download video using aria2c"
+python3 rag_interrogator.py --query "How to upscale an image using Real-ESRGAN"
 ```
 
-**2. Keresés forrás szerinti szűréssel (Hibrid Szűrő Taktika):**
-A `--source` paraméterrel szűrhetsz adott fájltípusokra vagy fájlnevekre, hogy csökkentsd a hamis pozitív találatok számát.
+### 💡 Haladó Szűrések (Ajánlott)
+
+**1. Szűrés Programnyelvre (`--lang`):**
+Ha csak a C++ motor érdekel, vagy csak a frontend (Vue/React):
 ```bash
-python3 rag_interrogator.py --query "download initialization" --source ".py" --limit 10
+python3 rag_interrogator.py --query "initialize video capture" --lang "C++"
+python3 rag_interrogator.py --query "upload image to server" --lang "Vue"
 ```
 
-**3. Szomszédság lekérdezése (Teljes Kontextus):**
-Ha a kapott kódrészlet nem tartalmazza például a szükséges `import` nyilatkozatokat vagy a kontextust, a `--neighborhood` jelzővel a script visszaadja a RAG adatbázis előző és következő blokkját is.
+**2. Szűrés Repóra (`--repo`):**
+Ha egy adott projekt belsejében keresel (pl. VapourSynth pluginek):
 ```bash
-python3 rag_interrogator.py --query "config loader class" --neighborhood
+python3 rag_interrogator.py --query "rife model inference" --repo "vs-rife"
 ```
 
-## További Információk
+**3. Szűrés Fájltípusra (`--type`):**
+Kereshetsz csak a dokumentációkban (Markdown, txt) vagy csak a konfigurációkban (JSON, YAML):
+```bash
+python3 rag_interrogator.py --query "learning rate scheduler" --type "Configuration"
+python3 rag_interrogator.py --query "setup instructions" --type "Documentation"
+```
 
-A jelenlegi index és adatbázis nevei amikre a rendszer támaszkodik:
-- Index fájl: `video_downloader_github_compressed.index`
-- Adatbázis fájl: `video_downloader_github.db`
+**4. Szomszédság (Kontextus) betöltése (`--neighborhood`):**
+Ha a kapott kódrészlet csonka (pl. lemaradt az import rész), a `--neighborhood` bekapcsolásával megkapod a RAG DB előző és következő darabkáját is.
+```bash
+python3 rag_interrogator.py --query "load VRT model" --neighborhood
+```
 
-Ezek a `Knowledge_Base/RAG_DB/` mappában lesznek elhelyezve a telepítés után.
+---
+
+## [Opcionális] Saját RAG adatbázis újraépítése
+
+Ha a jövőben frissülnek a repók, a következő módon generálhatod újra az adatbázist a saját gépeden:
+1. Futtasd a `structured_knowledge_builder.py` scriptet a letöltött repók mellett (ez létrehoz egy `jsonl` fájlt).
+2. Futtasd a `build_rag_db.py` scriptet, ami beolvassa a `jsonl`-t és legenerálja az új SQLite és FAISS index fájlokat.
