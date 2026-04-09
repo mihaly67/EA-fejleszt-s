@@ -6,30 +6,29 @@ import sys
 import argparse
 from sentence_transformers import SentenceTransformer
 
+def get_script_dir():
+    return os.path.dirname(os.path.abspath(__file__))
+
 def main():
-    parser = argparse.ArgumentParser(description="VIDEO DOWNLOADER RAG Query")
-    parser.add_argument("--query", type=str, required=True, help="A koncepcionális kérdés (funkció leírása, nem szintaxis)")
-    parser.add_argument("--source", type=str, default="", help="SQL Szűrés a 'source' oszlopra (pl. '.py', 'models')")
+    parser = argparse.ArgumentParser(description="VIDEO DOWNLOADER - RAG Query")
+    parser.add_argument("--query", type=str, required=True, help="A koncepcionális kérdés (pl. 'How to upsample video frames')")
+    parser.add_argument("--repo", type=str, default="", help="Szűrés forrás repóra (pl. 'BasicSR-master')")
+    parser.add_argument("--lang", type=str, default="", help="Szűrés programnyelvre (pl. 'Python', 'C++', 'Vue')")
+    parser.add_argument("--type", type=str, default="", help="Szűrés fájltípusra (pl. 'Code', 'Documentation')")
     parser.add_argument("--limit", type=int, default=5, help="Hány találatot adjon vissza")
-    parser.add_argument("--neighborhood", action="store_true", help="Keresse ki a megelőző és következő ROWID-t is a teljes kontextushoz")
+    parser.add_argument("--neighborhood", action="store_true", help="Keresse ki a megelőző és következő ROWID-t is")
     args = parser.parse_args()
 
-    # Itt mondjuk meg, hol van a kicsomagolt adatbázis (ezt a restore_env_vd.py hozza létre)
-    db_dir = "Knowledge_Base/RAG_DB"
+    work_dir = get_script_dir()
+    db_dir = os.path.join(work_dir, "Knowledge_Base", "RAG_DB")
 
-    # A fájlnevek a ZIP fájl tartalmának megfelelően
-    index_path = os.path.join(db_dir, "video_downloader_github_compressed.index")
-    sqlite_path = os.path.join(db_dir, "video_downloader_github.db")
+    index_path = os.path.join(db_dir, "video_downloader_compressed.index")
+    sqlite_path = os.path.join(db_dir, "video_downloader_knowledge.db")
     model_name = "all-MiniLM-L6-v2"
 
-    # Ha a fájlok nincsenek a helyükön, szólunk a felhasználónak
-    if not os.path.exists(index_path):
-        print(f"❌ Error: Index file nem található: {index_path}")
-        print("💡 Próbáld meg lefuttatni a 'python3 restore_env_vd.py' scriptet!")
-        sys.exit(1)
-    if not os.path.exists(sqlite_path):
-        print(f"❌ Error: SQLite DB nem található: {sqlite_path}")
-        print("💡 Próbáld meg lefuttatni a 'python3 restore_env_vd.py' scriptet!")
+    if not os.path.exists(index_path) or not os.path.exists(sqlite_path):
+        print(f"❌ Error: A RAG adatbázis fájlok nem találhatóak a {db_dir} mappában.")
+        print("💡 Próbáld meg lefuttatni a 'python3 restore_env_pv.py' scriptet!")
         sys.exit(1)
 
     print(f"🧠 Modell betöltése: {model_name}...")
@@ -45,12 +44,25 @@ def main():
     print(f"🎯 Query kódolása: '{args.query}'")
     query_vector = model.encode([args.query]).astype('float32')
 
-    # FAISS Keresés
-    k_search = max(500, args.limit * 10)
+    k_search = max(1000, args.limit * 20) # Nagyobb merítés kell a sok metadata szűrés miatt
     print(f"🔍 Vektoros keresés top {k_search} jelöltre...")
     distances, indices = index.search(query_vector, k_search)
 
     results = []
+
+    # Dinamikus SQL felépítése a szűrőkhöz
+    sql_base = "SELECT id, source_repo, filepath, language, file_type, content FROM rag_data WHERE id=?"
+    sql_params = []
+
+    if args.repo:
+        sql_base += " AND source_repo LIKE ?"
+        sql_params.append(f"%{args.repo}%")
+    if args.lang:
+        sql_base += " AND language LIKE ?"
+        sql_params.append(f"%{args.lang}%")
+    if args.type:
+        sql_base += " AND file_type LIKE ?"
+        sql_params.append(f"%{args.type}%")
 
     for i in range(k_search):
         idx = int(indices[0][i])
@@ -58,98 +70,52 @@ def main():
 
         if idx == -1: continue
 
-        # Metaadat szűrés SQL-ben. A Video Downloader adatbázisnál is feltételezzük a 'source' és 'content' oszlopokat a 'swat_data' táblában.
-        # Ha esetleg más lenne a táblanév (pl. 'rag_data'), akkor ezt itt át kell írni.
-        # Jelenleg a korábbi swat_data struktúrát feltételezzük.
-        try:
-            if args.source:
-                cursor.execute("SELECT id, source, content FROM swat_data WHERE id=? AND source LIKE ?", (idx, f"%{args.source}%"))
-            else:
-                cursor.execute("SELECT id, source, content FROM swat_data WHERE id=?", (idx,))
+        cursor.execute(sql_base, [idx] + sql_params)
+        row = cursor.fetchone()
 
-            row = cursor.fetchone()
-            if row:
-                db_id, source, content = row
-                results.append({
-                    "id": db_id,
-                    "distance": dist,
-                    "source": source,
-                    "content": content
-                })
-                if len(results) >= args.limit:
-                    break
-        except sqlite3.OperationalError:
-            # Fallback, ha a tábla neve nem swat_data
-             print("⚠️ Hiba az adatbázis lekérdezésekor. Ellenőrzöm a tábla nevét...")
-             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-             tables = cursor.fetchall()
-             if tables:
-                 table_name = tables[0][0]
-                 print(f"✅ Használt tábla neve: {table_name}")
-                 if args.source:
-                    cursor.execute(f"SELECT id, source, content FROM {table_name} WHERE id=? AND source LIKE ?", (idx, f"%{args.source}%"))
-                 else:
-                    cursor.execute(f"SELECT id, source, content FROM {table_name} WHERE id=?", (idx,))
+        if row:
+            db_id, source_repo, filepath, language, file_type, content = row
+            results.append({
+                "id": db_id,
+                "distance": dist,
+                "repo": source_repo,
+                "filepath": filepath,
+                "language": language,
+                "type": file_type,
+                "content": content
+            })
+            if len(results) >= args.limit:
+                break
 
-                 row = cursor.fetchone()
-                 if row:
-                     db_id, source, content = row
-                     results.append({
-                         "id": db_id,
-                         "distance": dist,
-                         "source": source,
-                         "content": content
-                     })
-                     if len(results) >= args.limit:
-                         break
-             else:
-                 print("❌ Üres az adatbázis!")
-                 break
-
-
-    print("\n" + "="*50)
+    print("\n" + "="*70)
     print("=== 🎯 RAG INTEL REPORT ===")
-    print("="*50 + "\n")
+    print("="*70 + "\n")
 
     if not results:
-        print("⚠️ Nem találtam egyezést a megadott szűrőkkel.")
+        print("⚠️ Nem találtam egyezést a megadott (metaadat) szűrőkkel.")
     else:
         for i, res in enumerate(results):
-            print(f"\n[{i+1}] 📄 SOURCE: {res['source']} | DISTANCE: {res['distance']:.4f} | ROWID: {res['id']}")
-            print("-" * 40)
+            print(f"[{i+1}] 📄 FÁJL: {res['filepath']}")
+            print(f"    📦 REPO: {res['repo']} | 🔤 NYELV: {res['language']} | 📋 TÍPUS: {res['type']}")
+            print(f"    📏 TÁVOLSÁG: {res['distance']:.4f} | 🔑 ROWID: {res['id']}")
+            print("-" * 70)
 
             if args.neighborhood:
                 print("--- [ELŐZŐ KONTEXTUS (ROWID-1)] ---")
-                try:
-                    cursor.execute("SELECT content FROM swat_data WHERE id=?", (res['id'] - 1,))
-                    prev_row = cursor.fetchone()
-                    if prev_row:
-                        print(prev_row[0][:300] + "...\n")
-                except sqlite3.OperationalError:
-                     # Fallback table_name
-                     cursor.execute(f"SELECT content FROM {table_name} WHERE id=?", (res['id'] - 1,))
-                     prev_row = cursor.fetchone()
-                     if prev_row:
-                         print(prev_row[0][:300] + "...\n")
+                cursor.execute("SELECT content FROM rag_data WHERE id=?", (res['id'] - 1,))
+                prev_row = cursor.fetchone()
+                if prev_row: print(prev_row[0][:300] + "...\n")
 
             print("--- [CÉL KONTEXTUS] ---")
             print(res['content'] + "\n")
 
             if args.neighborhood:
                 print("--- [KÖVETKEZŐ KONTEXTUS (ROWID+1)] ---")
-                try:
-                    cursor.execute("SELECT content FROM swat_data WHERE id=?", (res['id'] + 1,))
-                    next_row = cursor.fetchone()
-                    if next_row:
-                        print(next_row[0][:300] + "...\n")
-                except sqlite3.OperationalError:
-                    # Fallback table_name
-                     cursor.execute(f"SELECT content FROM {table_name} WHERE id=?", (res['id'] + 1,))
-                     next_row = cursor.fetchone()
-                     if next_row:
-                         print(next_row[0][:300] + "...\n")
+                cursor.execute("SELECT content FROM rag_data WHERE id=?", (res['id'] + 1,))
+                next_row = cursor.fetchone()
+                if next_row: print(next_row[0][:300] + "...\n")
 
-            print("="*50)
+            print("="*70 + "\n")
 
     conn.close()
 

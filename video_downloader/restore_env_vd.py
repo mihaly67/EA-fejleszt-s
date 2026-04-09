@@ -51,7 +51,7 @@ ENVIRONMENT_RESOURCES = {
         "id": "1tcUZPbhnL4zMyTple4I5Nsc9A5Yl3xYq",
         "file": "video_downloader_RAG.zip",
         "extract_to": "Knowledge_Base/RAG_DB",
-        "check_file": "video_downloader_github.db",
+        "check_file": "video_downloader_knowledge.db",
         "type": "zip",
         "preserve_dir": False
     }
