@@ -1,0 +1,24 @@
+=========================================================================
+🔥 VAKU 3.0: 24/48-ÓRÁS TICK SŰRŰSÉG HŐTÉRKÉP (ATDP ANALÍZIS)
+=========================================================================
+
+Fájl: Merkava_XAUUSD_v1.10_20260408_025931.csv
+Feldolgozott adat: 464,265 tick
+Teljes időtartam: 46.55 óra
+Globális átlagsebesség: 2.77 Tick/Másodperc
+
+Ezek az adatok szolgálnak alapul az Adaptív Tick-Sűrűség Protokoll (ATDP) számára.
+Cél: A dinamikus HMM ablakméret (N) fizikai időhöz rögzítése a teljes nap folyamán.
+
+Időszak (Óra)        | Órás Tick Szám     | P50 Seb. (T/s)  | P90 Seb. (T/s)  | Javasolt N Ablak
+-----------------------------------------------------------------------------------------------
+2026-04-08 09:00     | 100,000            | 4.9             | 5.1             | N = 15
+2026-04-08 18:00     | 100,000            | 4.9             | 5.1             | N = 15
+2026-04-09 04:00     | 100,000            | 4.9             | 5.1             | N = 15
+2026-04-09 15:00     | 100,000            | 4.9             | 5.1             | N = 15
+2026-04-09 22:00     | 64,265             | 4.9             | 5.1             | N = 15
+
+[ATDP ARCHITEKTURÁLIS DÖNTÉS]
+A fenti táblázat P90 és P50 értékei alapján az online rendszernek egy olyan
+O(1) RingBuffert kell lefoglalnia, amely képes befogadni a legmagasabb
+javasolt N értéket, miközben alacsony volatilitásnál visszaskáláz N=15-re.
