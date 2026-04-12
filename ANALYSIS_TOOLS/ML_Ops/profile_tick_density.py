@@ -89,7 +89,10 @@ class MRI_DensityProfiler:
                     speeds = 1000.0 / valid_diffs # Tick/Sec
 
                     if global_min_msc > 1000000000000:
-                        dt_series = pd.to_datetime(valid_times, unit='ms')
+                        # EET (IC Markets GMT+2/3) -> CET (Magyar idő) korrekció (-1 óra)
+                        # A nyers unix milliszekundumból kivonunk 1 órát (3,600,000 ms)
+                        cet_times_ms = valid_times - 3600000.0
+                        dt_series = pd.to_datetime(cet_times_ms, unit='ms')
 
                         # 5 perces kulcsok az alap nézethez
                         keys_5m = dt_series.floor('5min').strftime('%Y-%m-%d %H:%M').values
@@ -188,7 +191,8 @@ class MRI_DensityProfiler:
 
         report_lines.append("SZABÁLY: A rendszer 5 perces időszeleteket listáz ki. Ha egy 5 perces szakaszban anomália")
         report_lines.append("történik (Fagyás > 5s VAGY Bármilyen HFT Burst), az algoritmus rázoomol (Deep Dive),")
-        report_lines.append("és alatta 1-perces felbontásban is kilistázza a kritikus esemény pontos helyét.\n")
+        report_lines.append("és alatta 1-perces felbontásban is kilistázza a kritikus esemény pontos helyét.")
+        report_lines.append("IDŐZÓNA: EET (IC Markets) szerveridő -1 óra korrekcióval Magyar Időre (CET) konvertálva!\n")
 
         header = (f"{'Időszak':<18} | {'Tickek':<8} | {'P50(T/s)':<8} | {'P90(T/s)':<8} | "
                   f"{'Max Fagyás(s)':<13} | {'>2s Fagyások':<12} | {'HFT Burst(>20T)':<18}")
