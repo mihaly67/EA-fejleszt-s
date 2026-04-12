@@ -15,6 +15,7 @@ except ImportError:
         def __init__(self, *args, **kwargs): pass
         def update(self, *args, **kwargs): pass
         def close(self, *args, **kwargs): pass
+        def set_postfix_str(self, *args, **kwargs): pass
 
 try:
     from colorama import Fore, Style, init
@@ -22,7 +23,7 @@ try:
 except ImportError:
     print("⚠️ 'colorama' module hiányzik! (Telepítés: pip install colorama)")
     class Fore: GREEN=""; RED=""; YELLOW=""; CYAN=""; RESET=""
-    class Style: BRIGHT=""
+    class Style: BRIGHT=""; RESET_ALL=""
 
 os.environ["OMP_NUM_THREADS"] = "2"
 os.environ["MKL_NUM_THREADS"] = "2"
@@ -198,12 +199,19 @@ def main():
             batch_count = 0
 
             def read_lines_safe(path):
+                f_utf8 = None
                 try:
-                    with open(path, 'r', encoding='utf-8') as f:
-                        for line in f: yield line
+                    f_utf8 = open(path, 'r', encoding='utf-8')
+                    for line in f_utf8:
+                        yield line
                 except UnicodeDecodeError:
+                    if f_utf8: f_utf8.close()
+                    # Ha már olvastunk, akkor sajnos elölről kell kezdenünk, de ez a JSONL-nél ritka
                     with open(path, 'r', encoding='latin-1') as f:
                         for line in f: yield line
+                finally:
+                    if f_utf8 and not f_utf8.closed:
+                        f_utf8.close()
 
             batch_lines = []
 
@@ -290,6 +298,14 @@ def main():
                                 "global_lines_processed": global_lines_processed
                             }
                             json.dump(progress_data, pf)
+
+                        # Vizuális visszajelzés a folyamatjelzőn
+                        global_pbar.set_postfix_str(f"{Fore.YELLOW}[AUTO-SAVE: OK]{Style.RESET_ALL}")
+                    else:
+                        # Ha nem most mentettünk, töröljük az üzenetet a következő batch-nél,
+                        # hogy csak "villanjon" a felirat
+                        if batch_count % SAVE_INTERVAL == 1:
+                            global_pbar.set_postfix_str("")
 
             # Végleges batch feldolgozása a fájl végén, ha maradt még benne valami
             if batch_lines:

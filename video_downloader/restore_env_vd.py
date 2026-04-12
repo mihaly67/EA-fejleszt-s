@@ -43,7 +43,7 @@ try:
     init(autoreset=True)
 except ImportError:
     class Fore: GREEN=""; RED=""; YELLOW=""; CYAN=""; RESET=""
-    class Style: BRIGHT=""
+    class Style: BRIGHT=""; RESET_ALL=""
 
 # --- KONFIGURÁCIÓ ---
 ENVIRONMENT_RESOURCES = {
