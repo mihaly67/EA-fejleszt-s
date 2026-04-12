@@ -94,21 +94,30 @@ def process_single_file(filepath):
     if ext not in VALID_EXTENSIONS:
         return None
 
-    if os.path.getsize(filepath) > MAX_FILE_SIZE:
-        return None
-
-    if not is_text_file(filepath):
-        return None
-
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            content = f.read()
-    except UnicodeDecodeError:
-        try:
-            with open(filepath, 'r', encoding='latin-1') as f:
-                content = f.read()
-        except:
+        if not os.path.exists(filepath):
             return None
+
+        if os.path.getsize(filepath) > MAX_FILE_SIZE:
+            return None
+
+        if not is_text_file(filepath):
+            return None
+
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except UnicodeDecodeError:
+            try:
+                with open(filepath, 'r', encoding='latin-1') as f:
+                    content = f.read()
+            except Exception:
+                return None
+    except OSError:
+        # Ha a fájl útközben törlődött, jogosultsági hiba van, vagy hibás symlink
+        return None
+    except Exception:
+        return None
 
     if not content.strip():
         return None
