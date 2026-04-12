@@ -3,6 +3,7 @@ import glob
 import pandas as pd
 import numpy as np
 import logging
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -10,99 +11,174 @@ logger = logging.getLogger(__name__)
 class TickDensityProfiler:
     """
     Kutatási Eszköz (Napszakok és Volatilitás Profilozására):
-    A célja, hogy felmérje a különböző időpontokban (pl. 20:00 vs 22:00) exportált
-    CSV fájlok 'Tick Sűrűségét' (Tick Density = Ticks / Second).
+    A célja, hogy felmérje a különböző időpontokban exportált CSV fájlok
+    'Tick Sűrűségét' (Tick Density = Ticks / Second).
 
-    A kapott statisztikák (Min, Max, Átlag, P50, P90 tick/sec) alapján később
-    biztonságosan meghatározható egy dinamikus HMM/Labeler Ablakméret (Window Size)
-    képlet az online működéshez.
+    A script 'chunkolt' (memóriakímélő) módszerrel olvassa a gigantikus (akár több GB-os)
+    fájlokat, hogy a 8GB RAM-os VPS-en se fusson OOM hibára.
+    Létrehoz egy Órás Felbontású Sűrűség-Térképet.
     """
 
-    def process_file(self, file_path, output_dir):
+    def __init__(self, chunksize=100000):
+        self.chunksize = chunksize
+
+    def process_file_chunked(self, file_path, output_dir):
         file_name = os.path.basename(file_path)
-        logger.info(f"📊 Tick Sűrűség Profilozása: {file_name}")
+        logger.info(f"📊 Chunkolt Tick Sűrűség Profilozása indítása: {file_name}")
+
+        hourly_stats = {} # Kulcs: YYYY-MM-DD HH, Érték: {ticks, total_time_ms, max_speed}
+
+        total_ticks_processed = 0
+        last_time_msc = None
+        global_min_msc = float('inf')
+        global_max_msc = 0.0
+
+        time_col = None
 
         try:
-            df = pd.read_csv(file_path)
+            # Csak azokat az oszlopokat olvassuk be, amik kellenek a sebességhez
+            # Az első chunk alapján határozzuk meg a time_col-t
+            first_chunk = next(pd.read_csv(file_path, chunksize=10))
+            time_cols = [c for c in first_chunk.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
+            if not time_cols:
+                logger.warning(f"Nem található milliszekundumos időbélyeg (TimeMsc) a {file_name} fájlban!")
+                return None
+            time_col = time_cols[0]
+
+            # Use columns filtering to save memory
+            usecols = [time_col]
+
+            for chunk_idx, chunk in enumerate(pd.read_csv(file_path, chunksize=self.chunksize, usecols=usecols)):
+
+                # Biztosítjuk, hogy float legyen az int64 túlcsordulás miatt
+                times_ms = chunk[time_col].astype(float)
+
+                if times_ms.empty:
+                    continue
+
+                global_min_msc = min(global_min_msc, times_ms.min())
+                global_max_msc = max(global_max_msc, times_ms.max())
+                total_ticks_processed += len(chunk)
+
+                # Ha volt előző chunk, hozzáfűzzük az utolsó elemet a diff számításhoz a határon
+                if last_time_msc is not None:
+                    times_with_prev = pd.concat([pd.Series([last_time_msc]), times_ms])
+                    diffs_ms = times_with_prev.diff().dropna().values
+                else:
+                    diffs_ms = times_ms.diff().dropna().values
+
+                last_time_msc = times_ms.iloc[-1]
+
+                # Szűrjük a 0 vagy negatív értékeket
+                valid_diffs = diffs_ms[diffs_ms > 0]
+
+                if len(valid_diffs) > 0:
+                    # Számítjuk a pillanatnyi tick sebességet (tick/sec)
+                    speeds = 1000.0 / valid_diffs
+
+                    # Órás bontáshoz időbélyegek generálása
+                    # Itt közelítést alkalmazunk a memóriatakarékosság miatt: a chunk átlagos idejét használjuk
+                    # MT5 TimeMsc általában Unix timestamp ezredmásodpercben
+                    chunk_mean_msc = times_ms.mean()
+                    try:
+                        # Próbáljuk Unix timestampként értelmezni
+                        hour_key = datetime.fromtimestamp(chunk_mean_msc / 1000.0).strftime('%Y-%m-%d %H:00')
+                    except:
+                        # Ha nem Unix, csak relatív idő a kezdettől
+                        hours_from_start = int((chunk_mean_msc - global_min_msc) / (1000 * 60 * 60))
+                        hour_key = f"Hour_{hours_from_start:03d}"
+
+                    if hour_key not in hourly_stats:
+                        hourly_stats[hour_key] = {
+                            "ticks": 0,
+                            "speeds_sample": [] # Csak mintát tárolunk, hogy ne egye meg a RAM-ot
+                        }
+
+                    hourly_stats[hour_key]["ticks"] += len(chunk)
+
+                    # Csak minden N-edik sebességet mentjük el a mintába (downsampling), hogy ne teljen be a RAM 24 óra alatt
+                    sample_size = min(len(speeds), 1000)
+                    if sample_size > 0:
+                        sampled = np.random.choice(speeds, sample_size, replace=False)
+                        hourly_stats[hour_key]["speeds_sample"].extend(sampled.tolist())
+
+                if chunk_idx % 10 == 0:
+                    logger.info(f"  ... {total_ticks_processed:,} tick feldolgozva a memóriában.")
+
         except Exception as e:
-            logger.error(f"Hiba a beolvasáskor: {e}")
+            logger.error(f"Hiba a fájl chunkolt beolvasásakor: {e}")
             return None
 
-        # Időbélyeg (Msc) keresése
-        time_cols = [c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
-        if not time_cols:
-            logger.warning(f"Nem található milliszekundumos időbélyeg (TimeMsc) a {file_name} fájlban!")
+        if total_ticks_processed == 0:
             return None
 
-        time_col = time_cols[0]
+        # Globális statisztika számítása
+        total_time_sec = (global_max_msc - global_min_msc) / 1000.0
+        global_avg_speed = total_ticks_processed / total_time_sec if total_time_sec > 0 else 0
 
-        # 1. Kiszámoljuk az inter-arrival time-ot (két tick közötti idő MS-ban)
-        # float konverzió a biztonság kedvéért, ha stringként érkezne a hatalmas int64.
-        iat_ms = df[time_col].astype(float).diff().dropna()
+        logger.info(f"✅ Chunkolt elemzés kész! Összes tick: {total_ticks_processed:,}, Futtatási idő: {total_time_sec/3600:.1f} óra.")
 
-        # Kiszűrjük az irreális (negatív vagy 0) időugrásokat, amik MT5 export hibák lehetnek
-        iat_ms = iat_ms[iat_ms > 0]
-
-        if len(iat_ms) == 0:
-            logger.warning(f"Nincs elegendő érvényes tick sebesség adat a {file_name} fájlban.")
-            return None
-
-        # 2. Átszámítjuk másodpercenkénti tick sebességre (Tick / Sec)
-        # Ha a két tick között 50ms telt el -> 1000 / 50 = 20 tick/sec sebesség abban a pillanatban.
-        tick_speed_sec = 1000.0 / iat_ms
-
-        # 3. Kiszámoljuk a teljes fájl "Makro" sebességét (Total Ticks / Total Seconds)
-        total_time_ms = df[time_col].astype(float).max() - df[time_col].astype(float).min()
-        total_time_sec = total_time_ms / 1000.0
-        macro_avg_speed = len(df) / total_time_sec if total_time_sec > 0 else 0
-
-        # 4. Statisztikák kinyerése
-        stats = {
+        return {
             "File": file_name,
-            "Total_Ticks": len(df),
-            "Duration_Min": total_time_sec / 60.0,
-            "Macro_Avg_Tick_Per_Sec": macro_avg_speed,
-            "Micro_Speed_P50": tick_speed_sec.median(), # Jellemző pillanatnyi sebesség
-            "Micro_Speed_P90": tick_speed_sec.quantile(0.90), # Sűrűsödési csúcsok (pl. hír vagy manipuláció)
-            "Micro_Speed_Max": tick_speed_sec.max()
+            "Total_Ticks": total_ticks_processed,
+            "Duration_Hours": total_time_sec / 3600.0,
+            "Global_Avg_Tick_Per_Sec": global_avg_speed,
+            "Hourly_Stats": hourly_stats
         }
 
-        return stats
-
-    def generate_global_report(self, all_stats, output_dir):
-        if not all_stats:
-            logger.warning("Nincs mit riportálni.")
+    def generate_report(self, stats, output_dir):
+        if not stats:
             return
+
+        file_name = stats['File']
 
         report_lines = []
         report_lines.append("=========================================================================")
-        report_lines.append("⏱️ KUTATÁSI RIPORT: NAPSZAKOS TICK SŰRŰSÉG (TICK DENSITY PROFILER)")
+        report_lines.append("🔥 VAKU 3.0: 24/48-ÓRÁS TICK SŰRŰSÉG HŐTÉRKÉP (ATDP ANALÍZIS)")
         report_lines.append("=========================================================================\n")
-        report_lines.append("Ezek az adatok szolgálnak alapul a jövőbeli dinamikus ablakméret (Window Size)")
-        report_lines.append("szabályrendszerének felépítéséhez, hogy a nappali (HFT) és éjszakai (Lassú)")
-        report_lines.append("piacokat az AI egyformán fizikai időben (pl. 3 másodperc) tudja vizsgálni.\n")
+        report_lines.append(f"Fájl: {file_name}")
+        report_lines.append(f"Feldolgozott adat: {stats['Total_Ticks']:,} tick")
+        report_lines.append(f"Teljes időtartam: {stats['Duration_Hours']:.2f} óra")
+        report_lines.append(f"Globális átlagsebesség: {stats['Global_Avg_Tick_Per_Sec']:.2f} Tick/Másodperc\n")
 
-        # Sort by Macro Avg Speed (descending) to easily see Active vs Quiet sessions
-        all_stats_sorted = sorted(all_stats, key=lambda x: x["Macro_Avg_Tick_Per_Sec"], reverse=True)
+        report_lines.append("Ezek az adatok szolgálnak alapul az Adaptív Tick-Sűrűség Protokoll (ATDP) számára.")
+        report_lines.append("Cél: A dinamikus HMM ablakméret (N) fizikai időhöz rögzítése a teljes nap folyamán.\n")
 
-        for i, s in enumerate(all_stats_sorted, 1):
-            report_lines.append(f"--- [ {i}. {s['File']} ] ---")
-            report_lines.append(f"  Időtartam: {s['Duration_Min']:.1f} perc | Összes Tick: {s['Total_Ticks']}")
-            report_lines.append(f"  Makro Átlagos Sebesség: {s['Macro_Avg_Tick_Per_Sec']:.1f} Tick/Másodperc")
-            report_lines.append(f"  Jellemző Pillanatnyi Sebesség (P50): {s['Micro_Speed_P50']:.1f} Tick/Másodperc")
-            report_lines.append(f"  Csúcssebesség (P90): {s['Micro_Speed_P90']:.1f} Tick/Másodperc")
-            report_lines.append(f"  Abszolút Maximum Sebesség: {s['Micro_Speed_Max']:.1f} Tick/Másodperc\n")
+        report_lines.append(f"{'Időszak (Óra)':<20} | {'Órás Tick Szám':<18} | {'P50 Seb. (T/s)':<15} | {'P90 Seb. (T/s)':<15} | {'Javasolt N Ablak'}")
+        report_lines.append("-" * 95)
 
-            # Dinamikus Ablakméret javaslat (Pl. 3 másodperces fizikai fókuszhoz)
-            suggested_window = int(s['Macro_Avg_Tick_Per_Sec'] * 3.0)
-            suggested_window = max(10, min(150, suggested_window)) # Bounded between 10 and 150
-            report_lines.append(f"  [AI JAVASLAT] Ideális 3-másodperces HMM Ablakméret erre a fájlra: ~{suggested_window} tick\n")
+        # Rendezzük időrendbe
+        sorted_hours = sorted(stats['Hourly_Stats'].keys())
 
-        output_file = os.path.join(output_dir, "RESEARCH_TICK_DENSITY_PROFILES.txt")
+        for h in sorted_hours:
+            h_data = stats['Hourly_Stats'][h]
+            ticks = h_data['ticks']
+
+            samples = h_data['speeds_sample']
+            if samples:
+                p50 = np.median(samples)
+                p90 = np.percentile(samples, 90)
+            else:
+                p50 = 0
+                p90 = 0
+
+            # Javasolt Ablakméret egy 3 másodperces fókuszhoz (a P50 átlagos sebesség alapján)
+            suggested_window = int(p50 * 3.0)
+            # Capping based on our Inference Latency Scanner results (Safe up to 300)
+            suggested_window = max(15, min(300, suggested_window))
+
+            report_lines.append(f"{h:<20} | {ticks:<18,} | {p50:<15.1f} | {p90:<15.1f} | N = {suggested_window}")
+
+        report_lines.append("\n[ATDP ARCHITEKTURÁLIS DÖNTÉS]")
+        report_lines.append("A fenti táblázat P90 és P50 értékei alapján az online rendszernek egy olyan")
+        report_lines.append("O(1) RingBuffert kell lefoglalnia, amely képes befogadni a legmagasabb")
+        report_lines.append("javasolt N értéket, miközben alacsony volatilitásnál visszaskáláz N=15-re.")
+
+        output_file = os.path.join(output_dir, f"DENSITY_HEATMAP_{file_name.replace('.csv', '')}.txt")
         with open(output_file, "w", encoding="utf-8") as f:
             f.write("\n".join(report_lines))
 
-        logger.info(f"✅ Kutatási Riport Kimentve: {output_file}")
+        logger.info(f"✅ Hőtérkép Riport Kimentve: {output_file}")
 
 
 def run_profiler():
@@ -113,25 +189,28 @@ def run_profiler():
     os.makedirs(output_dir, exist_ok=True)
 
     csv_files = glob.glob(os.path.join(input_dir, '*.csv'))
-    # Szűrjük a már feldolgozott/címkézett fájlokat, csak az eredetieket akarjuk
+
+    # Ha nincs a data mappában, keressünk az analysis_input-ban is (VPS szerkezet miatt)
+    if not csv_files:
+        alt_dir = os.path.join(os.path.dirname(base_dir), 'analysis_input')
+        csv_files = glob.glob(os.path.join(alt_dir, '*.csv'))
+
+    # Szűrjük a már feldolgozott/címkézett fájlokat
     csv_files = [f for f in csv_files if "ANALYZED" not in os.path.basename(f) and "LABELED" not in os.path.basename(f)]
 
     if not csv_files:
-        logger.warning(f"Nem találtam eredeti CSV fájlokat a {input_dir} könyvtárban a sűrűségméréshez!")
+        logger.warning("Nem találtam elemezhető CSV fájlokat!")
         return
 
-    logger.info(f"Összesen {len(csv_files)} fájl vár Tick Sűrűség (Napszak) Profilozásra...")
+    logger.info(f"Megtalált fájlok száma: {len(csv_files)}. Gigantikus Chunkolt elemzés indítása...")
 
-    profiler = TickDensityProfiler()
-    all_stats = []
+    # Memóriakímélő 100k soros chunkok
+    profiler = TickDensityProfiler(chunksize=100000)
 
     for file in csv_files:
-        stats = profiler.process_file(file, output_dir)
+        stats = profiler.process_file_chunked(file, output_dir)
         if stats:
-            all_stats.append(stats)
-
-    if all_stats:
-        profiler.generate_global_report(all_stats, output_dir)
+            profiler.generate_report(stats, output_dir)
 
 if __name__ == '__main__':
     run_profiler()
