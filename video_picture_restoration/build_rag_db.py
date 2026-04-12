@@ -71,9 +71,13 @@ def main():
     if not jsonl_files:
         return
 
-    db_path = os.path.join(work_dir, DB_FILE)
-    index_path = os.path.join(work_dir, INDEX_FILE)
-    report_path = os.path.join(work_dir, REPORT_FILE)
+    # A kimeneti mappát automatikusan létrehozzuk a RAG adatbázisoknak, ahogy a dokumentáció is írja
+    output_dir = os.path.join(work_dir, "Knowledge_Base", "RAG_DB")
+    os.makedirs(output_dir, exist_ok=True)
+
+    db_path = os.path.join(output_dir, DB_FILE)
+    index_path = os.path.join(output_dir, INDEX_FILE)
+    report_path = os.path.join(output_dir, REPORT_FILE)
 
     print("\n⏳ Adatbázis inicializálása...")
     conn, cursor = init_database(db_path)

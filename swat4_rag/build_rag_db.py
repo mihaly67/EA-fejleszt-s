@@ -19,10 +19,27 @@ os.environ["MKL_NUM_THREADS"] = "2"
 DB_FILE = "swat4_unified_knowledge.db"
 INDEX_FILE = "swat4_unified_compressed.index"
 REPORT_FILE = "rag_build_report.txt"
-BATCH_SIZE = 100
+BATCH_SIZE = 100 # Fájlok (illetve chunk batch-ek) feldolgozási mérete
 
 def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
+
+def chunk_text(text, chunk_size=1000, overlap=200):
+    """Feldarabolja a hosszú szövegeket fix méretű blokkokra átfedéssel a FAISS token limit miatt."""
+    if not text:
+        return []
+
+    chunks = []
+    start = 0
+    text_length = len(text)
+
+    while start < text_length:
+        end = start + chunk_size
+        chunk = text[start:end]
+        chunks.append(chunk)
+        start += (chunk_size - overlap)
+
+    return chunks
 
 def init_database(db_path):
     """Létrehozza a strukturált SQLite adatbázist."""
@@ -39,6 +56,7 @@ def init_database(db_path):
             category TEXT,
             source_repo TEXT,
             filepath TEXT,
+            chunk_index INTEGER,
             language TEXT,
             file_type TEXT,
             content TEXT
@@ -48,6 +66,7 @@ def init_database(db_path):
     # Indexek a gyorsabb kereséshez
     cursor.execute('CREATE INDEX idx_category ON rag_data (category)')
     cursor.execute('CREATE INDEX idx_source_repo ON rag_data (source_repo)')
+    cursor.execute('CREATE INDEX idx_filepath ON rag_data (filepath)')
     cursor.execute('CREATE INDEX idx_language ON rag_data (language)')
     conn.commit()
     return conn, cursor
@@ -73,9 +92,13 @@ def main():
     if not jsonl_files:
         return
 
-    db_path = os.path.join(work_dir, DB_FILE)
-    index_path = os.path.join(work_dir, INDEX_FILE)
-    report_path = os.path.join(work_dir, REPORT_FILE)
+    # A kimeneti mappát automatikusan létrehozzuk a RAG adatbázisoknak, ahogy a dokumentáció is írja
+    output_dir = os.path.join(work_dir, "Knowledge_Base", "RAG_DB")
+    os.makedirs(output_dir, exist_ok=True)
+
+    db_path = os.path.join(output_dir, DB_FILE)
+    index_path = os.path.join(output_dir, INDEX_FILE)
+    report_path = os.path.join(output_dir, REPORT_FILE)
 
     print("\n⏳ Adatbázis inicializálása...")
     conn, cursor = init_database(db_path)
@@ -140,8 +163,11 @@ def main():
                             f_type = "Unknown"
 
                         if text:
-                            batch_texts.append(text)
-                            batch_metadata.append((category, source_repo, f_path, lang, f_type, text))
+                            # 10.7 GB adat feldolgozása darabolással (Context Window megoldás)
+                            chunks = chunk_text(text, chunk_size=1000, overlap=200)
+                            for c_idx, chunk in enumerate(chunks):
+                                batch_texts.append(chunk)
+                                batch_metadata.append((category, source_repo, f_path, c_idx, lang, f_type, chunk))
 
                     except json.JSONDecodeError:
                         continue # Hibás sor kihagyása
@@ -149,22 +175,22 @@ def main():
                 if not batch_texts: continue
 
                 db_ids = []
-                # SQL beszúrás
+                # SQL beszúrás a darabolt szövegekre
                 for meta_row in batch_metadata:
                     cursor.execute('''
-                        INSERT INTO rag_data (category, source_repo, filepath, language, file_type, content)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        INSERT INTO rag_data (category, source_repo, filepath, chunk_index, language, file_type, content)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                     ''', meta_row)
                     db_ids.append(cursor.lastrowid)
                 conn.commit()
 
-                # FAISS vektorizálás
+                # FAISS vektorizálás a chunk-okra (MiniLM max 256 token/vektor)
                 embeddings = model.encode(batch_texts)
                 index.add_with_ids(np.array(embeddings).astype('float32'), np.array(db_ids).astype('int64'))
                 file_inserted += len(batch_texts)
 
             total_inserted += file_inserted
-            rf.write(f"  -> Sikeresen indexelve: {file_inserted} rekord.\n\n")
+            rf.write(f"  -> Sikeresen indexelve: {file_inserted} CHUNK.\n\n")
 
     print("\n💾 Index mentése lemezre...")
     faiss.write_index(index, index_path)
