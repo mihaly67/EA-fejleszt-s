@@ -11,7 +11,11 @@ try:
     from tqdm import tqdm
 except ImportError:
     print("⚠️ 'tqdm' module not found. Futtatás anélkül...")
-    def tqdm(iterable, **kwargs): return iterable
+    class tqdm:
+        def __init__(self, *args, **kwargs): pass
+        def update(self, *args, **kwargs): pass
+        def close(self, *args, **kwargs): pass
+        def set_postfix_str(self, *args, **kwargs): pass
 
 os.environ["OMP_NUM_THREADS"] = "2"
 os.environ["MKL_NUM_THREADS"] = "2"
