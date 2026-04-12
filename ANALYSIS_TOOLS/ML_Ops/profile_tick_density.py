@@ -14,19 +14,18 @@ class TickDensityProfiler:
     A célja, hogy felmérje a különböző időpontokban exportált CSV fájlok
     'Tick Sűrűségét' (Tick Density = Ticks / Second).
 
-    A script 'chunkolt' (memóriakímélő) módszerrel olvassa a gigantikus (akár több GB-os)
-    fájlokat, hogy a 8GB RAM-os VPS-en se fusson OOM hibára.
-    Létrehoz egy Órás Felbontású Sűrűség-Térképet.
+    A script 'chunkolt' (memóriakímélő) módszerrel olvassa a fájlokat,
+    de az időbélyegek alapján szigorú és pontos ÓRÁNKÉNTI felbontást készít.
     """
 
-    def __init__(self, chunksize=100000):
+    def __init__(self, chunksize=250000):
         self.chunksize = chunksize
 
     def process_file_chunked(self, file_path, output_dir):
         file_name = os.path.basename(file_path)
-        logger.info(f"📊 Chunkolt Tick Sűrűség Profilozása indítása: {file_name}")
+        logger.info(f"📊 Pontos Órás Tick Sűrűség Profilozása indítása: {file_name}")
 
-        hourly_stats = {} # Kulcs: YYYY-MM-DD HH, Érték: {ticks, total_time_ms, max_speed}
+        hourly_stats = {} # Kulcs: YYYY-MM-DD HH:00, Érték: {ticks, speeds_sample}
 
         total_ticks_processed = 0
         last_time_msc = None
@@ -36,7 +35,6 @@ class TickDensityProfiler:
         time_col = None
 
         try:
-            # Csak azokat az oszlopokat olvassuk be, amik kellenek a sebességhez
             # Az első chunk alapján határozzuk meg a time_col-t
             first_chunk = next(pd.read_csv(file_path, chunksize=10))
             time_cols = [c for c in first_chunk.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
@@ -45,12 +43,10 @@ class TickDensityProfiler:
                 return None
             time_col = time_cols[0]
 
-            # Use columns filtering to save memory
             usecols = [time_col]
 
             for chunk_idx, chunk in enumerate(pd.read_csv(file_path, chunksize=self.chunksize, usecols=usecols)):
 
-                # Biztosítjuk, hogy float legyen az int64 túlcsordulás miatt
                 times_ms = chunk[time_col].astype(float)
 
                 if times_ms.empty:
@@ -60,49 +56,60 @@ class TickDensityProfiler:
                 global_max_msc = max(global_max_msc, times_ms.max())
                 total_ticks_processed += len(chunk)
 
-                # Ha volt előző chunk, hozzáfűzzük az utolsó elemet a diff számításhoz a határon
+                # Inter-arrival times számítása
                 if last_time_msc is not None:
+                    # Ha volt előző chunk, a diff hossza egyezni fog a times_ms hosszával, mert hozzáadjuk a last_time_msc-t az elejére
                     times_with_prev = pd.concat([pd.Series([last_time_msc]), times_ms])
                     diffs_ms = times_with_prev.diff().dropna().values
+                    valid_times = times_ms.values
                 else:
+                    # Ha ez az első chunk, a diff az első elemnél NaN lesz, amit a dropna() kidob
                     diffs_ms = times_ms.diff().dropna().values
+                    valid_times = times_ms.values[1:] # Az első elemhez nincs diff
 
                 last_time_msc = times_ms.iloc[-1]
 
-                # Szűrjük a 0 vagy negatív értékeket
-                valid_diffs = diffs_ms[diffs_ms > 0]
+                # Biztosítjuk, hogy a diffs_ms és a valid_times ugyanolyan hosszúak
+                if len(diffs_ms) != len(valid_times):
+                    logger.warning(f"Dimenzió hiba a chunkban: diffs({len(diffs_ms)}) != times({len(valid_times)})")
+                    continue
+
+                valid_mask = diffs_ms > 0
+                valid_diffs = diffs_ms[valid_mask]
+                valid_times = valid_times[valid_mask]
 
                 if len(valid_diffs) > 0:
-                    # Számítjuk a pillanatnyi tick sebességet (tick/sec)
                     speeds = 1000.0 / valid_diffs
 
-                    # Órás bontáshoz időbélyegek generálása
-                    # Itt közelítést alkalmazunk a memóriatakarékosság miatt: a chunk átlagos idejét használjuk
-                    # MT5 TimeMsc általában Unix timestamp ezredmásodpercben
-                    chunk_mean_msc = times_ms.mean()
-                    try:
-                        # Próbáljuk Unix timestampként értelmezni
-                        hour_key = datetime.fromtimestamp(chunk_mean_msc / 1000.0).strftime('%Y-%m-%d %H:00')
-                    except:
-                        # Ha nem Unix, csak relatív idő a kezdettől
-                        hours_from_start = int((chunk_mean_msc - global_min_msc) / (1000 * 60 * 60))
-                        hour_key = f"Hour_{hours_from_start:03d}"
+                    # --- PONTOS 15-PERCES BONTÁS A CHUNKON BELÜL ---
+                    if global_min_msc > 1000000000000: # 2001 utáni dátum MS-ban
+                        dt_series = pd.to_datetime(valid_times, unit='ms')
+                        # A 15 perces kerekítés trükkje: a perceket leosztjuk 15-tel, majd visszaszorozzuk
+                        # Ezzel kapjuk meg a :00, :15, :30, :45 időablakokat
+                        rounded_dt = dt_series.floor('15min')
+                        hour_keys = rounded_dt.strftime('%Y-%m-%d %H:%M').values
+                    else:
+                        # Ha relatív idő, akkor negyedórákban (15 perc = 900,000 ms) számolunk
+                        quarters_from_start = ((valid_times - global_min_msc) / (1000 * 60 * 15)).astype(int)
+                        hour_keys = np.array([f"Q_{q:04d}" for q in quarters_from_start])
 
-                    if hour_key not in hourly_stats:
-                        hourly_stats[hour_key] = {
-                            "ticks": 0,
-                            "speeds_sample": [] # Csak mintát tárolunk, hogy ne egye meg a RAM-ot
-                        }
+                    df_chunk_speeds = pd.DataFrame({'Interval': hour_keys, 'Speed': speeds})
 
-                    hourly_stats[hour_key]["ticks"] += len(chunk)
+                    for interval_key, group in df_chunk_speeds.groupby('Interval'):
+                        if interval_key not in hourly_stats:
+                            hourly_stats[interval_key] = {
+                                "ticks": 0,
+                                "speeds_sample": []
+                            }
 
-                    # Csak minden N-edik sebességet mentjük el a mintába (downsampling), hogy ne teljen be a RAM 24 óra alatt
-                    sample_size = min(len(speeds), 1000)
-                    if sample_size > 0:
-                        sampled = np.random.choice(speeds, sample_size, replace=False)
-                        hourly_stats[hour_key]["speeds_sample"].extend(sampled.tolist())
+                        hourly_stats[interval_key]["ticks"] += len(group)
 
-                if chunk_idx % 10 == 0:
+                        sample_size = min(len(group), 1000)
+                        if sample_size > 0:
+                            sampled = np.random.choice(group['Speed'].values, sample_size, replace=False)
+                            hourly_stats[interval_key]["speeds_sample"].extend(sampled.tolist())
+
+                if chunk_idx % 5 == 0:
                     logger.info(f"  ... {total_ticks_processed:,} tick feldolgozva a memóriában.")
 
         except Exception as e:
@@ -112,7 +119,6 @@ class TickDensityProfiler:
         if total_ticks_processed == 0:
             return None
 
-        # Globális statisztika számítása
         total_time_sec = (global_max_msc - global_min_msc) / 1000.0
         global_avg_speed = total_ticks_processed / total_time_sec if total_time_sec > 0 else 0
 
@@ -134,20 +140,16 @@ class TickDensityProfiler:
 
         report_lines = []
         report_lines.append("=========================================================================")
-        report_lines.append("🔥 VAKU 3.0: 24/48-ÓRÁS TICK SŰRŰSÉG HŐTÉRKÉP (ATDP ANALÍZIS)")
+        report_lines.append("🔥 VAKU 3.0: 24/48-ÓRÁS PONTOSÍTOTT TICK SŰRŰSÉG HŐTÉRKÉP (15-PERCES SKALPOLÓ NÉZET)")
         report_lines.append("=========================================================================\n")
         report_lines.append(f"Fájl: {file_name}")
         report_lines.append(f"Feldolgozott adat: {stats['Total_Ticks']:,} tick")
         report_lines.append(f"Teljes időtartam: {stats['Duration_Hours']:.2f} óra")
         report_lines.append(f"Globális átlagsebesség: {stats['Global_Avg_Tick_Per_Sec']:.2f} Tick/Másodperc\n")
 
-        report_lines.append("Ezek az adatok szolgálnak alapul az Adaptív Tick-Sűrűség Protokoll (ATDP) számára.")
-        report_lines.append("Cél: A dinamikus HMM ablakméret (N) fizikai időhöz rögzítése a teljes nap folyamán.\n")
-
-        report_lines.append(f"{'Időszak (Óra)':<20} | {'Órás Tick Szám':<18} | {'P50 Seb. (T/s)':<15} | {'P90 Seb. (T/s)':<15} | {'Javasolt N Ablak'}")
+        report_lines.append(f"{'Időszak (15-Perc)':<20} | {'Időszaki Tick Szám':<18} | {'P50 Seb. (T/s)':<15} | {'P90 Seb. (T/s)':<15} | {'Javasolt N Ablak'}")
         report_lines.append("-" * 95)
 
-        # Rendezzük időrendbe
         sorted_hours = sorted(stats['Hourly_Stats'].keys())
 
         for h in sorted_hours:
@@ -162,17 +164,10 @@ class TickDensityProfiler:
                 p50 = 0
                 p90 = 0
 
-            # Javasolt Ablakméret egy 3 másodperces fókuszhoz (a P50 átlagos sebesség alapján)
             suggested_window = int(p50 * 3.0)
-            # Capping based on our Inference Latency Scanner results (Safe up to 300)
             suggested_window = max(15, min(300, suggested_window))
 
             report_lines.append(f"{h:<20} | {ticks:<18,} | {p50:<15.1f} | {p90:<15.1f} | N = {suggested_window}")
-
-        report_lines.append("\n[ATDP ARCHITEKTURÁLIS DÖNTÉS]")
-        report_lines.append("A fenti táblázat P90 és P50 értékei alapján az online rendszernek egy olyan")
-        report_lines.append("O(1) RingBuffert kell lefoglalnia, amely képes befogadni a legmagasabb")
-        report_lines.append("javasolt N értéket, miközben alacsony volatilitásnál visszaskáláz N=15-re.")
 
         output_file = os.path.join(output_dir, f"DENSITY_HEATMAP_{file_name.replace('.csv', '')}.txt")
         with open(output_file, "w", encoding="utf-8") as f:
@@ -190,12 +185,10 @@ def run_profiler():
 
     csv_files = glob.glob(os.path.join(input_dir, '*.csv'))
 
-    # Ha nincs a data mappában, keressünk az analysis_input-ban is (VPS szerkezet miatt)
     if not csv_files:
         alt_dir = os.path.join(os.path.dirname(base_dir), 'analysis_input')
         csv_files = glob.glob(os.path.join(alt_dir, '*.csv'))
 
-    # Szűrjük a már feldolgozott/címkézett fájlokat
     csv_files = [f for f in csv_files if "ANALYZED" not in os.path.basename(f) and "LABELED" not in os.path.basename(f)]
 
     if not csv_files:
@@ -204,8 +197,7 @@ def run_profiler():
 
     logger.info(f"Megtalált fájlok száma: {len(csv_files)}. Gigantikus Chunkolt elemzés indítása...")
 
-    # Memóriakímélő 100k soros chunkok
-    profiler = TickDensityProfiler(chunksize=100000)
+    profiler = TickDensityProfiler(chunksize=250000)
 
     for file in csv_files:
         stats = profiler.process_file_chunked(file, output_dir)
