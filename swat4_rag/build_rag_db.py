@@ -6,6 +6,7 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 import time
+import shutil
 
 try:
     from tqdm import tqdm
@@ -32,8 +33,9 @@ DB_FILE = "swat4_unified_knowledge.db"
 INDEX_FILE = "swat4_unified_compressed.index"
 REPORT_FILE = "rag_build_report.txt"
 PROGRESS_FILE = "rag_build_progress.json" # Utolsó feldolgozott sor mentésére
-BATCH_SIZE = 100 # Fájlok (illetve chunk batch-ek) feldolgozási mérete
-SAVE_INTERVAL = 500 # Hány batch után mentsük ki a FAISS-t és a haladást a lemezre (ha megszakadna)
+BATCH_SIZE = 200 # Egyszerre beolvasott JSONL sorok (gyorsabb memória/adatbázis rotáció)
+ENCODE_BATCH_SIZE = 64 # Pytorch / SIMD optimalizált batch méret a SentenceTransformer-hez
+SAVE_INTERVAL = 250 # 250 batch (250*200 = 50,000) utánmentsük ki a FAISS-t és a haladást a lemezre
 
 def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -56,11 +58,18 @@ def chunk_text(text, chunk_size=1000, overlap=200):
     return chunks
 
 def init_database(db_path, resume=False):
-    """Létrehozza vagy megnyitja a strukturált SQLite adatbázist."""
+    """Létrehozza vagy megnyitja a strukturált SQLite adatbázist Turbo sebességre hangolva."""
     if not resume and os.path.exists(db_path):
         os.remove(db_path)
 
     conn = sqlite3.connect(db_path)
+
+    # ⚡ SQLITE TURBO TUNING (10-100x gyorsabb Insert sebesség) ⚡
+    # Kikapcsoljuk az OS szintű szinkronizálást és átállunk Write-Ahead-Log memóriába
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA synchronous = OFF;")
+    conn.execute("PRAGMA cache_size = 10000;")
+
     cursor = conn.cursor()
 
     if not resume:
@@ -85,6 +94,25 @@ def init_database(db_path, resume=False):
         cursor.execute('CREATE INDEX idx_language ON rag_data (language)')
         conn.commit()
     return conn, cursor
+
+def atomic_save(index, index_path, progress_data, progress_path, db_path):
+    """Biztonságosan menti a FAISS indexet, a JSON progress-t és csinál egy DB Backupot a lemezre ideiglenes (TMP) fájlokkal."""
+    tmp_index = index_path + ".tmp"
+    tmp_prog = progress_path + ".tmp"
+    db_backup = db_path + ".bak"
+
+    # 1. Mentés az ideiglenes fájlokba
+    faiss.write_index(index, tmp_index)
+    with open(tmp_prog, 'w', encoding='utf-8') as pf:
+        json.dump(progress_data, pf)
+
+    # 2. Biztonsági másolat az SQLite-ról (PRAGMA synchronous=OFF miatt kötelező)
+    if os.path.exists(db_path):
+        shutil.copy2(db_path, db_backup)
+
+    # 3. Villámgyors (atomikus) átnevezés a végleges fájlokra
+    shutil.move(tmp_index, index_path)
+    shutil.move(tmp_prog, progress_path)
 
 def process_jsonl_files(work_dir):
     jsonl_files = sorted(glob.glob(os.path.join(work_dir, "*.jsonl")))
@@ -268,42 +296,47 @@ def main():
                             continue # Hibás sor kihagyása
 
                     if batch_texts:
+                        # ⚡ Párhuzamos CPU Vektorizálás + Batch Limitálás ⚡
+                        # Az ENCODE_BATCH_SIZE beállítása aktiválja a SIMD utasításokat (pl. AVX2 a Ryzen-en)
+                        embeddings = model.encode(batch_texts, batch_size=ENCODE_BATCH_SIZE, show_progress_bar=False)
+
+                        # SQL beszúrás a darabolt szövegekre (sokkal gyorsabb a WAL mode miatt)
+                        # Bár az executemany gyorsabb lenne, a sqlite3 python modulban a lastrowid
+                        # nem adja vissza az összes beszúrt ID-t megbízhatóan.
+                        # Mivel a tranzakció (commit) a ciklus végén van, a sima execute is villámgyors!
                         db_ids = []
-                        # SQL beszúrás a darabolt szövegekre
                         for meta_row in batch_metadata:
                             cursor.execute('''
                                 INSERT INTO rag_data (category, source_repo, filepath, chunk_index, language, file_type, content)
                                 VALUES (?, ?, ?, ?, ?, ?, ?)
                             ''', meta_row)
                             db_ids.append(cursor.lastrowid)
+
                         conn.commit()
 
-                        # FAISS vektorizálás a chunk-okra (MiniLM max 256 token/vektor)
-                        embeddings = model.encode(batch_texts)
+                        # FAISS vektorok hozzáadása
                         index.add_with_ids(np.array(embeddings).astype('float32'), np.array(db_ids).astype('int64'))
+
                         file_inserted += len(batch_texts)
                         total_inserted += len(batch_texts)
 
                     batch_lines = [] # Batch ürítése
                     batch_count += 1
 
-                    # Automatikus Mentés Biztonsági Okokból (Checkpoint)
+                    # ⚡ ATOMIC CHECKPOINT (A "Soha Ne Kezdjük Elölről" 2.0 Szabály) ⚡
                     if batch_count % SAVE_INTERVAL == 0:
-                        faiss.write_index(index, index_path)
-                        with open(progress_path, 'w', encoding='utf-8') as pf:
-                            progress_data = {
-                                "current_file": file_name,
-                                "current_line": current_line_idx,
-                                "total_inserted": total_inserted,
-                                "global_lines_processed": global_lines_processed
-                            }
-                            json.dump(progress_data, pf)
+                        prog_data = {
+                            "current_file": file_name,
+                            "current_line": current_line_idx,
+                            "total_inserted": total_inserted,
+                            "global_lines_processed": global_lines_processed
+                        }
+                        # Használjuk az Atomic Save-et, hogy megszakítás esetén se sérüljön a GB-os index!
+                        atomic_save(index, index_path, prog_data, progress_path, db_path)
 
                         # Vizuális visszajelzés a folyamatjelzőn
-                        global_pbar.set_postfix_str(f"{Fore.YELLOW}[AUTO-SAVE: OK]{Style.RESET_ALL}")
+                        global_pbar.set_postfix_str(f"{Fore.YELLOW}[TURBO CHECKPOINT MENTVE]{Style.RESET_ALL}")
                     else:
-                        # Ha nem most mentettünk, töröljük az üzenetet a következő batch-nél,
-                        # hogy csak "villanjon" a felirat
                         if batch_count % SAVE_INTERVAL == 1:
                             global_pbar.set_postfix_str("")
 
@@ -338,6 +371,9 @@ def main():
                         pass
 
                 if batch_texts:
+                    # Turbo Batch Pytorch
+                    embeddings = model.encode(batch_texts, batch_size=ENCODE_BATCH_SIZE, show_progress_bar=False)
+
                     db_ids = []
                     for meta_row in batch_metadata:
                         cursor.execute('''
@@ -345,23 +381,23 @@ def main():
                             VALUES (?, ?, ?, ?, ?, ?, ?)
                         ''', meta_row)
                         db_ids.append(cursor.lastrowid)
+
                     conn.commit()
-                    embeddings = model.encode(batch_texts)
+
                     index.add_with_ids(np.array(embeddings).astype('float32'), np.array(db_ids).astype('int64'))
                     file_inserted += len(batch_texts)
                     total_inserted += len(batch_texts)
 
             rf.write(f"  -> Sikeresen indexelve: {file_inserted} CHUNK ebben a fájlban.\n\n")
 
-            # Fájl végi mentés a következő fájl előtt (Checkpoint)
-            faiss.write_index(index, index_path)
-            with open(progress_path, 'w', encoding='utf-8') as pf:
-                json.dump({
-                    "current_file": file_name,
-                    "current_line": current_line_idx,
-                    "total_inserted": total_inserted,
-                    "global_lines_processed": global_lines_processed
-                }, pf)
+            # ⚡ Fájl végi ATOMIC mentés a következő fájl előtt (Checkpoint) ⚡
+            prog_data = {
+                "current_file": file_name,
+                "current_line": current_line_idx,
+                "total_inserted": total_inserted,
+                "global_lines_processed": global_lines_processed
+            }
+            atomic_save(index, index_path, prog_data, progress_path, db_path)
 
             # Tiszta lappal indul a következő fájlra (ha van több)
             resume_file = None
