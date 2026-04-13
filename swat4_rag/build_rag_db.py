@@ -13,19 +13,19 @@ except ImportError:
     print("⚠️ 'tqdm' module not found. Futtatás anélkül...")
     def tqdm(iterable, **kwargs): return iterable
 
-os.environ["OMP_NUM_THREADS"] = "2"
-os.environ["MKL_NUM_THREADS"] = "2"
+# A szálak számát 3-ra emeljük a Ryzen 3 processzor jobb kihasználása érdekében (egy mag marad a rendszernek)
+os.environ["OMP_NUM_THREADS"] = "3"
+os.environ["MKL_NUM_THREADS"] = "3"
 
 DB_FILE = "swat4_unified_knowledge.db"
 INDEX_FILE = "swat4_unified_compressed.index"
 REPORT_FILE = "rag_build_report.txt"
 PROGRESS_FILE = "rag_build_progress.json"
 
-# Visszavettük a batch size-t 100-ra, mert a 8GB-os VPS-en 100 sor vektorizálása is percekig tarthat CPU-n.
-BATCH_SIZE = 100
-# Milyen gyakran mentsük a haladást és flush-oljuk lemezre a DB/FAISS indexet.
-# Pl. 5 batch = 500 feldolgozott JSONL sor után (kb 30-40 perc) -> Checkpoint!
-CHECKPOINT_INTERVAL_BATCHES = 5
+# A RAM terhére gyorsítjuk a CPU mátrixszorzásait. BATCH_SIZE 500 több RAM-ot (PyTorch tensork) és cache-t használ.
+BATCH_SIZE = 500
+# Checkpoint ritkítása: 10 batch * 500 = 5000 sorként ment lemezre, kímélve az I/O-t
+CHECKPOINT_INTERVAL_BATCHES = 10
 
 def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -37,9 +37,10 @@ def init_database(db_path, resume=False):
 
     conn = sqlite3.connect(db_path)
 
-    # SQLite sebesség optimalizálás
+    # SQLite sebesség és RAM optimalizálás
     conn.execute("PRAGMA synchronous = NORMAL")
     conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA cache_size = -500000") # ~500 MB dedikált RAM gyorsítótár
 
     cursor = conn.cursor()
 
