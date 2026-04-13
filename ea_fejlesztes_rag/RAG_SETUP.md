@@ -6,19 +6,12 @@ A RAG rendszer segítségével vektorosan (jelentés alapján) kereshetsz a proj
 
 ---
 
-## 1. Környezet Visszaállítása (Telepítés)
+## 1. Saját RAG adatbázis építése (Környezet Visszaállítása)
 
-A rendszer és az ahhoz tartozó RAG adatbázis beállítása automatizált.
-Futtasd a telepítő scriptet a mappa gyökeréből:
+Mivel ehhez a repóhoz jelenleg nincs előre elkészített, Google Drive-ról letölthető adatbázis, a helyi kódbázisodból kell generálnod egyet:
 
-```bash
-python3 restore_env_ea.py
-```
-
-**Mit csinál a script?**
-- Feltelepíti a vektorizáláshoz szükséges Python könyvtárakat (`faiss-cpu`, `sentence-transformers`, `gdown` stb.).
-- Letölti a becsomagolt RAG adatbázist a Google Drive-ról.
-- Kicsomagolja a `Knowledge_Base/RAG_DB` mappába a `ea_fejlesztes_compressed.index` és a `ea_fejlesztes_knowledge.db` fájlokat.
+1. Futtasd a `structured_knowledge_builder.py` scriptet a letöltött forráskódok mellett (ez létrehoz egy `ea_fejlesztes_data.jsonl` fájlt).
+2. Futtasd a `build_rag_db.py` scriptet, ami beolvassa a `jsonl`-t és legenerálja az új SQLite DB-t és FAISS indexet a `Knowledge_Base/RAG_DB` alá.
 
 *(A RAG DB mappa automatikusan bekerül a `.gitignore` fájlba, így nem szemeteli tele a Git tárolót).*
 
@@ -62,11 +55,3 @@ Ha a kapott kódrészlet csonka (pl. lemaradt a függvény fejléce vagy egy fon
 ```bash
 python3 rag_interrogator.py --query "initialize GaussianHMM diag matrix" --neighborhood
 ```
-
----
-
-## [Opcionális] Saját RAG adatbázis újraépítése
-
-Ha a jövőben frissül a repó kódja, a következő módon generálhatod újra a helyi adatbázisod:
-1. Futtasd a `structured_knowledge_builder.py` scriptet a letöltött forráskódok mellett (ez létrehoz egy `ea_fejlesztes_data.jsonl` fájlt).
-2. Futtasd a `build_rag_db.py` scriptet, ami beolvassa a `jsonl`-t és legenerálja az új SQLite DB-t és FAISS indexet a `Knowledge_Base/RAG_DB` alá.
