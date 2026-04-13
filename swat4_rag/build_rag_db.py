@@ -22,10 +22,10 @@ INDEX_FILE = "swat4_unified_compressed.index"
 REPORT_FILE = "rag_build_report.txt"
 PROGRESS_FILE = "rag_build_progress.json"
 
-# A RAM terhére gyorsítjuk a CPU mátrixszorzásait. BATCH_SIZE 500 több RAM-ot (PyTorch tensork) és cache-t használ.
-BATCH_SIZE = 500
-# Checkpoint ritkítása: 10 batch * 500 = 5000 sorként ment lemezre, kímélve az I/O-t
-CHECKPOINT_INTERVAL_BATCHES = 10
+# A RAM terhére gyorsítjuk a CPU mátrixszorzásait. BATCH_SIZE 1024 több RAM-ot használ és a 2 hatványai miatt optimális a PyTorch-nak.
+BATCH_SIZE = 1024
+# Checkpoint ritkítása: 5 batch * 1024 = 5120 sorként ment lemezre, kímélve az I/O-t
+CHECKPOINT_INTERVAL_BATCHES = 5
 
 def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
