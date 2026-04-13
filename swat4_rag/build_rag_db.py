@@ -41,21 +41,28 @@ ENCODE_BATCH_SIZE = 64 # Pytorch / SIMD optimalizált batch méret a SentenceTra
 SAVE_INTERVAL = 250 # 250 batch (250*200 = 50,000) utánmentsük ki a FAISS-t és a haladást a lemezre
 
 # WORKER FOLYAMATOKHOZ GLOBÁLIS VÁLTOZÓK
-# Mivel a ProcessPoolExecutor új processzeket indít, a memóriában új modell töltődik be nekik
+# A ProcessPoolExecutor új processzeket indít, és a Python néha "újrahasznosítja" a workereket (bezárja és újat nyit),
+# ami a 100 MB-os PyTorch modell állandó és felesleges újratöltéséhez vezet.
+# Hogy ezt elkerüljük, egy robusztus, "Singleton" mintájú globális változóval védjük a modellt:
 WORKER_MODEL = None
 
 def _init_worker():
-    """Minden egyes processzor magnak (Workernek) betölti a saját független AI modelljét a memóriába (Process Inicializáció)."""
+    """Minden egyes processzor magnak (Workernek) betölti a saját független AI modelljét a memóriába (EGYSZER!)."""
     global WORKER_MODEL
-    # A HuggingFace figyelmeztetés elkerülése végett (Tokenizers parallelism)
-    os.environ["TOKENIZERS_PARALLELISM"] = "false"
-    WORKER_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
+    if WORKER_MODEL is None:
+        # A HuggingFace figyelmeztetés elkerülése végett (Tokenizers parallelism)
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+        # Letiltjuk a logger üzeneteket ("Loading weights... BertModel LOAD REPORT"), ami telerondította a folyamatjelzőt
+        import logging
+        logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+
+        WORKER_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
 
 def _worker_encode_batch(batch_data):
     """
     Ez a függvény a Worker Process-ben fut!
-    Megkapja a nyers szövegeket és a metaadatokat, legenerálja a vektorokat az adott magon (100% CPU),
-    majd visszadobja a főfolyamatnak.
+    Megkapja a nyers szövegeket és a metaadatokat, legenerálja a vektorokat az adott magon (100% CPU).
+    Mivel a WORKER_MODEL globális, nem kell minden batch-nél betölteni!
     """
     batch_metadata = batch_data["metadata"]
     last_line_idx = batch_data["last_line_idx"]
@@ -256,9 +263,10 @@ def main():
 
             # ⚡ A MULTIPROCESSING POOL INDÍTÁSA ⚡
             # Indítunk maximum 2 (vagy ha van több mag, CPU_COUNT-1) dedikált workert, amik párhuzamosan ontják a vektorokat.
-            # A max_workers=2 biztonságos a 8 GB RAM miatt (minden worker kb. 500-800 MB-ot fog enni a PyTorch modellel).
+            # A max_workers=2 biztonságos a 8 GB RAM miatt (2.5 GB tesztelt foglalás 2 workernél).
             max_cores = max(1, mp.cpu_count() - 1)
 
+            # Hogy ne omoljon össze és ne generáljon újra workereket a memóriában, megnöveljük az élettartamot
             with concurrent.futures.ProcessPoolExecutor(max_workers=max_cores, initializer=_init_worker) as executor:
 
                 def read_lines_safe(path):
