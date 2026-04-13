@@ -7,6 +7,8 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 import time
 import shutil
+import concurrent.futures
+import multiprocessing as mp
 
 try:
     from tqdm import tqdm
@@ -26,8 +28,9 @@ except ImportError:
     class Fore: GREEN=""; RED=""; YELLOW=""; CYAN=""; RESET=""
     class Style: BRIGHT=""; RESET_ALL=""
 
-os.environ["OMP_NUM_THREADS"] = "2"
-os.environ["MKL_NUM_THREADS"] = "2"
+# CPU MAXIMALIZÁLÁS (Nincs limit a matematikai szálaknál)
+# os.environ["OMP_NUM_THREADS"] = "2" - ELTÁVOLÍTVA
+# os.environ["MKL_NUM_THREADS"] = "2" - ELTÁVOLÍTVA
 
 DB_FILE = "swat4_unified_knowledge.db"
 INDEX_FILE = "swat4_unified_compressed.index"
@@ -36,6 +39,31 @@ PROGRESS_FILE = "rag_build_progress.json" # Utolsó feldolgozott sor mentésére
 BATCH_SIZE = 200 # Egyszerre beolvasott JSONL sorok (gyorsabb memória/adatbázis rotáció)
 ENCODE_BATCH_SIZE = 64 # Pytorch / SIMD optimalizált batch méret a SentenceTransformer-hez
 SAVE_INTERVAL = 250 # 250 batch (250*200 = 50,000) utánmentsük ki a FAISS-t és a haladást a lemezre
+
+# WORKER FOLYAMATOKHOZ GLOBÁLIS VÁLTOZÓK
+# Mivel a ProcessPoolExecutor új processzeket indít, a memóriában új modell töltődik be nekik
+WORKER_MODEL = None
+
+def _init_worker():
+    """Minden egyes processzor magnak (Workernek) betölti a saját független AI modelljét a memóriába (Process Inicializáció)."""
+    global WORKER_MODEL
+    # A HuggingFace figyelmeztetés elkerülése végett (Tokenizers parallelism)
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    WORKER_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
+
+def _worker_encode_batch(batch_data):
+    """
+    Ez a függvény a Worker Process-ben fut!
+    Megkapja a nyers szövegeket és a metaadatokat, legenerálja a vektorokat az adott magon (100% CPU),
+    majd visszadobja a főfolyamatnak.
+    """
+    batch_metadata = batch_data["metadata"]
+    last_line_idx = batch_data["last_line_idx"]
+
+    global WORKER_MODEL
+    texts = [item[6] for item in batch_metadata] # A 6. index a chunk szövege
+    embeddings = WORKER_MODEL.encode(texts, batch_size=ENCODE_BATCH_SIZE, show_progress_bar=False)
+    return embeddings, batch_metadata, last_line_idx
 
 def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -184,9 +212,9 @@ def main():
 
     conn, cursor = init_database(db_path, resume=(resume_file is not None))
 
-    print(f"🧠 {Fore.CYAN}MiniLM Vektor modell betöltése (all-MiniLM-L6-v2)...{Style.RESET_ALL}")
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    dim = model.get_sentence_embedding_dimension()
+    print(f"🧠 {Fore.CYAN}A RAG FAISS paramétereinek betöltése (all-MiniLM-L6-v2)...{Style.RESET_ALL}")
+    # Itt a főfolyamatban nem töltjük be a modellt, csak a FAISS-hez szükséges dimenziót adjuk meg
+    dim = 384 # A MiniLM-L6-v2 fix dimenziója (felesleges betölteni a modellt a Main szálon)
 
     if resume_file is not None and os.path.exists(index_path):
         print(f"📂 FAISS Index betöltése: {INDEX_FILE}...")
@@ -226,167 +254,183 @@ def main():
             current_line_idx = 0
             batch_count = 0
 
-            def read_lines_safe(path):
-                f_utf8 = None
-                try:
-                    f_utf8 = open(path, 'r', encoding='utf-8')
-                    for line in f_utf8:
-                        yield line
-                except UnicodeDecodeError:
-                    if f_utf8: f_utf8.close()
-                    # Ha már olvastunk, akkor sajnos elölről kell kezdenünk, de ez a JSONL-nél ritka
-                    with open(path, 'r', encoding='latin-1') as f:
-                        for line in f: yield line
-                finally:
-                    if f_utf8 and not f_utf8.closed:
-                        f_utf8.close()
+            # ⚡ A MULTIPROCESSING POOL INDÍTÁSA ⚡
+            # Indítunk maximum 2 (vagy ha van több mag, CPU_COUNT-1) dedikált workert, amik párhuzamosan ontják a vektorokat.
+            # A max_workers=2 biztonságos a 8 GB RAM miatt (minden worker kb. 500-800 MB-ot fog enni a PyTorch modellel).
+            max_cores = max(1, mp.cpu_count() - 1)
 
-            batch_lines = []
+            with concurrent.futures.ProcessPoolExecutor(max_workers=max_cores, initializer=_init_worker) as executor:
 
-            for line in read_lines_safe(filepath):
-                current_line_idx += 1
+                def read_lines_safe(path):
+                    f_utf8 = None
+                    try:
+                        f_utf8 = open(path, 'r', encoding='utf-8')
+                        for line in f_utf8:
+                            yield line
+                    except UnicodeDecodeError:
+                        if f_utf8: f_utf8.close()
+                        # Ha már olvastunk, akkor sajnos elölről kell kezdenünk, de ez a JSONL-nél ritka
+                        with open(path, 'r', encoding='latin-1') as f:
+                            for line in f: yield line
+                    finally:
+                        if f_utf8 and not f_utf8.closed:
+                            f_utf8.close()
 
-                # Ha folytatjuk a fájlt, átugorjuk a már feldolgozott sorokat a Ciklusban (villámgyorsan)
-                if resume_file == file_name and current_line_idx <= resume_line:
-                    continue
+                batch_lines = []
+                futures = set() # Ide gyűjtjük az aszinkron feladatokat
 
-                # Ha átugrottuk a resume-t, most már számoljuk a friss sorokat a globális csúszkán
-                global_pbar.update(1)
-                global_lines_processed += 1
+                for line in read_lines_safe(filepath):
+                    current_line_idx += 1
 
-                line = line.strip()
-                if not line: continue
-                batch_lines.append(line)
+                    # Ha folytatjuk a fájlt, átugorjuk a már feldolgozott sorokat a Ciklusban (villámgyorsan)
+                    if resume_file == file_name and current_line_idx <= resume_line:
+                        continue
 
-                if len(batch_lines) >= BATCH_SIZE:
-                    batch_texts = []
+                    # Ha átugrottuk a resume-t, most már számoljuk a friss sorokat a globális csúszkán
+                    global_pbar.update(1)
+                    global_lines_processed += 1
+
+                    line = line.strip()
+                    if not line: continue
+                    batch_lines.append(line)
+
+                    # Ha összegyűlt 1 Batch, beküldjük az Executorba aszinkron módon
+                    if len(batch_lines) >= BATCH_SIZE:
+                        batch_metadata = []
+
+                        for bline in batch_lines:
+                            try:
+                                data = json.loads(bline)
+                                if "metadata" in data and "content" in data:
+                                    meta = data["metadata"]
+                                    text = data["content"]
+                                    category = meta.get("category", "Uncategorized")
+                                    source_repo = meta.get("source_repo", "Unknown")
+                                    f_path = meta.get("filepath", "Unknown")
+                                    lang = meta.get("language", "Unknown")
+                                    f_type = meta.get("file_type", "Unknown")
+                                else:
+                                    text = data.get("code", "") or data.get("content", "")
+                                    category = "Uncategorized"
+                                    source_repo = data.get("source", "Unknown")
+                                    f_path = data.get("filename", "Unknown")
+                                    lang = "Unknown"
+                                    f_type = "Unknown"
+
+                                if text:
+                                    # Main Thread darabol és előkészít
+                                    chunks = chunk_text(text, chunk_size=1000, overlap=200)
+                                    for c_idx, chunk in enumerate(chunks):
+                                        batch_metadata.append((category, source_repo, f_path, c_idx, lang, f_type, chunk))
+                            except json.JSONDecodeError:
+                                continue # Hibás sor kihagyása
+
+                        if batch_metadata:
+                            # ⚡ Párhuzamos CPU Vektorizálás Aszinkron Beküldése ⚡
+                            batch_payload = {
+                                "metadata": batch_metadata,
+                                "last_line_idx": current_line_idx # Eltároljuk, hol tartott a fájl olvasása ezen batch végén
+                            }
+                            future = executor.submit(_worker_encode_batch, batch_payload)
+                            futures.add(future)
+
+                        batch_lines = [] # Batch ürítése
+
+                        # --- FELDOLGOZÁS & VÁRAKOZÁS ---
+                        # Ha a várólista túl nagy (pl. több mint 4-5 batch van kint a queue-ban),
+                        # akkor a Main szál megvárja és beírja az eredményeket az SQLite/FAISS-be.
+                        if len(futures) >= max_cores * 2:
+                            # Végigmegyünk a KÉSZ aszinkron feladatokon
+                            done_futures, futures = concurrent.futures.wait(futures, return_when=concurrent.futures.FIRST_COMPLETED)
+
+                            for f in done_futures:
+                                try:
+                                    embeddings, r_metadata, processed_line_idx = f.result()
+
+                                    # SQLite írás (Nagyon gyors, 1 szálon a Main-ben)
+                                    db_ids = []
+                                    for meta_row in r_metadata:
+                                        cursor.execute('''
+                                            INSERT INTO rag_data (category, source_repo, filepath, chunk_index, language, file_type, content)
+                                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                                        ''', meta_row)
+                                        db_ids.append(cursor.lastrowid)
+                                    conn.commit()
+
+                                    # FAISS vektorok hozzáadása
+                                    index.add_with_ids(np.array(embeddings).astype('float32'), np.array(db_ids).astype('int64'))
+
+                                    file_inserted += len(r_metadata)
+                                    total_inserted += len(r_metadata)
+                                    batch_count += 1
+
+                                    # ⚡ ATOMIC CHECKPOINT ⚡
+                                    if batch_count % SAVE_INTERVAL == 0:
+                                        prog_data = {
+                                            "current_file": file_name,
+                                            "current_line": processed_line_idx, # A TÉNYLEGESEN feldolgozott utolsó sor a Workerből!
+                                            "total_inserted": total_inserted,
+                                            "global_lines_processed": global_lines_processed
+                                        }
+                                        atomic_save(index, index_path, prog_data, progress_path, db_path)
+                                        global_pbar.set_postfix_str(f"{Fore.YELLOW}[TURBO CHECKPOINT MENTVE]{Style.RESET_ALL}")
+                                    elif batch_count % SAVE_INTERVAL == 1:
+                                        global_pbar.set_postfix_str("")
+                                except Exception as e:
+                                    print(f"Hiba egy Worker Process-ben: {e}")
+
+                # CIKLUS VÉGE: Maradék batchek és futures feldolgozása
+                if batch_lines:
                     batch_metadata = []
-
                     for bline in batch_lines:
                         try:
                             data = json.loads(bline)
-
                             if "metadata" in data and "content" in data:
                                 meta = data["metadata"]
                                 text = data["content"]
-
                                 category = meta.get("category", "Uncategorized")
                                 source_repo = meta.get("source_repo", "Unknown")
                                 f_path = meta.get("filepath", "Unknown")
                                 lang = meta.get("language", "Unknown")
                                 f_type = meta.get("file_type", "Unknown")
-
                             else:
-                                # Visszafelé kompatibilitás a régi formátummal
                                 text = data.get("code", "") or data.get("content", "")
                                 category = "Uncategorized"
                                 source_repo = data.get("source", "Unknown")
                                 f_path = data.get("filename", "Unknown")
                                 lang = "Unknown"
                                 f_type = "Unknown"
-
                             if text:
-                                # 10.7 GB adat feldolgozása darabolással (Context Window megoldás)
                                 chunks = chunk_text(text, chunk_size=1000, overlap=200)
                                 for c_idx, chunk in enumerate(chunks):
-                                    batch_texts.append(chunk)
                                     batch_metadata.append((category, source_repo, f_path, c_idx, lang, f_type, chunk))
-
                         except json.JSONDecodeError:
-                            continue # Hibás sor kihagyása
+                            pass
 
-                    if batch_texts:
-                        # ⚡ Párhuzamos CPU Vektorizálás + Batch Limitálás ⚡
-                        # Az ENCODE_BATCH_SIZE beállítása aktiválja a SIMD utasításokat (pl. AVX2 a Ryzen-en)
-                        embeddings = model.encode(batch_texts, batch_size=ENCODE_BATCH_SIZE, show_progress_bar=False)
+                    if batch_metadata:
+                        batch_payload = {
+                            "metadata": batch_metadata,
+                            "last_line_idx": current_line_idx
+                        }
+                        futures.add(executor.submit(_worker_encode_batch, batch_payload))
 
-                        # SQL beszúrás a darabolt szövegekre (sokkal gyorsabb a WAL mode miatt)
-                        # Bár az executemany gyorsabb lenne, a sqlite3 python modulban a lastrowid
-                        # nem adja vissza az összes beszúrt ID-t megbízhatóan.
-                        # Mivel a tranzakció (commit) a ciklus végén van, a sima execute is villámgyors!
+                # Várakozás az ÖSSZES megmaradt aszinkron feladatra a fájl végén
+                for f in concurrent.futures.as_completed(futures):
+                    try:
+                        embeddings, r_metadata, _ = f.result()
                         db_ids = []
-                        for meta_row in batch_metadata:
+                        for meta_row in r_metadata:
                             cursor.execute('''
                                 INSERT INTO rag_data (category, source_repo, filepath, chunk_index, language, file_type, content)
                                 VALUES (?, ?, ?, ?, ?, ?, ?)
                             ''', meta_row)
                             db_ids.append(cursor.lastrowid)
-
                         conn.commit()
-
-                        # FAISS vektorok hozzáadása
                         index.add_with_ids(np.array(embeddings).astype('float32'), np.array(db_ids).astype('int64'))
-
-                        file_inserted += len(batch_texts)
-                        total_inserted += len(batch_texts)
-
-                    batch_lines = [] # Batch ürítése
-                    batch_count += 1
-
-                    # ⚡ ATOMIC CHECKPOINT (A "Soha Ne Kezdjük Elölről" 2.0 Szabály) ⚡
-                    if batch_count % SAVE_INTERVAL == 0:
-                        prog_data = {
-                            "current_file": file_name,
-                            "current_line": current_line_idx,
-                            "total_inserted": total_inserted,
-                            "global_lines_processed": global_lines_processed
-                        }
-                        # Használjuk az Atomic Save-et, hogy megszakítás esetén se sérüljön a GB-os index!
-                        atomic_save(index, index_path, prog_data, progress_path, db_path)
-
-                        # Vizuális visszajelzés a folyamatjelzőn
-                        global_pbar.set_postfix_str(f"{Fore.YELLOW}[TURBO CHECKPOINT MENTVE]{Style.RESET_ALL}")
-                    else:
-                        if batch_count % SAVE_INTERVAL == 1:
-                            global_pbar.set_postfix_str("")
-
-            # Végleges batch feldolgozása a fájl végén, ha maradt még benne valami
-            if batch_lines:
-                batch_texts = []
-                batch_metadata = []
-                for bline in batch_lines:
-                    try:
-                        data = json.loads(bline)
-                        if "metadata" in data and "content" in data:
-                            meta = data["metadata"]
-                            text = data["content"]
-                            category = meta.get("category", "Uncategorized")
-                            source_repo = meta.get("source_repo", "Unknown")
-                            f_path = meta.get("filepath", "Unknown")
-                            lang = meta.get("language", "Unknown")
-                            f_type = meta.get("file_type", "Unknown")
-                        else:
-                            text = data.get("code", "") or data.get("content", "")
-                            category = "Uncategorized"
-                            source_repo = data.get("source", "Unknown")
-                            f_path = data.get("filename", "Unknown")
-                            lang = "Unknown"
-                            f_type = "Unknown"
-                        if text:
-                            chunks = chunk_text(text, chunk_size=1000, overlap=200)
-                            for c_idx, chunk in enumerate(chunks):
-                                batch_texts.append(chunk)
-                                batch_metadata.append((category, source_repo, f_path, c_idx, lang, f_type, chunk))
-                    except json.JSONDecodeError:
-                        pass
-
-                if batch_texts:
-                    # Turbo Batch Pytorch
-                    embeddings = model.encode(batch_texts, batch_size=ENCODE_BATCH_SIZE, show_progress_bar=False)
-
-                    db_ids = []
-                    for meta_row in batch_metadata:
-                        cursor.execute('''
-                            INSERT INTO rag_data (category, source_repo, filepath, chunk_index, language, file_type, content)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                        ''', meta_row)
-                        db_ids.append(cursor.lastrowid)
-
-                    conn.commit()
-
-                    index.add_with_ids(np.array(embeddings).astype('float32'), np.array(db_ids).astype('int64'))
-                    file_inserted += len(batch_texts)
-                    total_inserted += len(batch_texts)
+                        file_inserted += len(r_metadata)
+                        total_inserted += len(r_metadata)
+                    except Exception as e:
+                        print(f"Hiba a záró Worker Process-ben: {e}")
 
             rf.write(f"  -> Sikeresen indexelve: {file_inserted} CHUNK ebben a fájlban.\n\n")
 
