@@ -11,11 +11,7 @@ try:
     from tqdm import tqdm
 except ImportError:
     print("⚠️ 'tqdm' module not found. Futtatás anélkül...")
-    class tqdm:
-        def __init__(self, *args, **kwargs): pass
-        def update(self, *args, **kwargs): pass
-        def close(self, *args, **kwargs): pass
-        def set_postfix_str(self, *args, **kwargs): pass
+    def tqdm(iterable, **kwargs): return iterable
 
 os.environ["OMP_NUM_THREADS"] = "2"
 os.environ["MKL_NUM_THREADS"] = "2"
@@ -54,6 +50,23 @@ def init_database(db_path):
     conn.commit()
     return conn, cursor
 
+def chunk_text(text, chunk_size=1000, overlap=200):
+    """Feldarabolja a hosszú szövegeket fix méretű blokkokra átfedéssel a FAISS token limit miatt."""
+    if not text:
+        return []
+
+    chunks = []
+    start = 0
+    text_length = len(text)
+
+    while start < text_length:
+        end = start + chunk_size
+        chunk = text[start:end]
+        chunks.append(chunk)
+        start += (chunk_size - overlap)
+
+    return chunks
+
 def process_jsonl_files(work_dir):
     jsonl_files = glob.glob(os.path.join(work_dir, "*.jsonl"))
 
@@ -70,18 +83,15 @@ def process_jsonl_files(work_dir):
 def main():
     print("=== 🧠 AI PICTURE & VIDEO RESTORATION - FAISS/SQLITE RAG BUILDER ===")
 
+    # Mindig abban a mappában pásztáz, ahol a script van
     work_dir = get_script_dir()
     jsonl_files = process_jsonl_files(work_dir)
     if not jsonl_files:
         return
 
-    # A kimeneti mappát automatikusan létrehozzuk a RAG adatbázisoknak, ahogy a dokumentáció is írja
-    output_dir = os.path.join(work_dir, "Knowledge_Base", "RAG_DB")
-    os.makedirs(output_dir, exist_ok=True)
-
-    db_path = os.path.join(output_dir, DB_FILE)
-    index_path = os.path.join(output_dir, INDEX_FILE)
-    report_path = os.path.join(output_dir, REPORT_FILE)
+    db_path = os.path.join(work_dir, DB_FILE)
+    index_path = os.path.join(work_dir, INDEX_FILE)
+    report_path = os.path.join(work_dir, REPORT_FILE)
 
     print("\n⏳ Adatbázis inicializálása...")
     conn, cursor = init_database(db_path)
@@ -144,8 +154,10 @@ def main():
                             f_type = "Unknown"
 
                         if text:
-                            batch_texts.append(text)
-                            batch_metadata.append((source_repo, f_path, lang, f_type, text))
+                            chunks = chunk_text(text, chunk_size=1000, overlap=200)
+                            for chunk in chunks:
+                                batch_texts.append(chunk)
+                                batch_metadata.append((source_repo, f_path, lang, f_type, chunk))
 
                     except json.JSONDecodeError:
                         continue # Hibás sor kihagyása
@@ -162,7 +174,7 @@ def main():
                     db_ids.append(cursor.lastrowid)
                 conn.commit()
 
-                # FAISS vektorizálás
+                # FAISS vektorizálás a chunk-okra
                 embeddings = model.encode(batch_texts)
                 index.add_with_ids(np.array(embeddings).astype('float32'), np.array(db_ids).astype('int64'))
                 file_inserted += len(batch_texts)
