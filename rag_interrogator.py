@@ -127,11 +127,16 @@ def main():
             # ---------------------------------------------------------
             # 1. KASZKÁD / EXPAND_FILE MÓD (A teljes fájl visszaállítása)
             # ---------------------------------------------------------
-            if args.expand_file and is_new_schema and res['filepath'] != 'Unknown':
+            if args.expand_file and res['filepath'] != 'Unknown':
                 print(f"🔄 KASZKÁD FÚRÁS AKTÍV: A teljes '{res['filepath']}' fájl rekonstruálása...")
                 # Kiszedjük az adott fájlhoz tartozó összes rekordot ROWID szerint sorbarendezve
-                cursor.execute(f"SELECT content FROM {table_name} WHERE filepath = ? AND source_repo = ? ORDER BY id ASC",
-                               (res['filepath'], res['repo']))
+                if is_new_schema:
+                    cursor.execute(f"SELECT content FROM {table_name} WHERE filepath = ? AND source_repo = ? ORDER BY id ASC",
+                                   (res['filepath'], res['repo']))
+                else:
+                    cursor.execute(f"SELECT content FROM {table_name} WHERE source = ? ORDER BY id ASC",
+                                   (res['filepath'],))
+
                 all_chunks = cursor.fetchall()
 
                 if all_chunks:
