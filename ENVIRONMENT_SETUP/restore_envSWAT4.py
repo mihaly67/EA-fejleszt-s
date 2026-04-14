@@ -35,6 +35,8 @@ def install_dependencies():
             try:
                 subprocess.check_call([sys.executable, "-m", "pip", "install", pkg], stdout=subprocess.DEVNULL)
                 print(f"   ✅ '{pkg}' telepítve.")
+                if pkg == "playwright":
+                    subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium", "--quiet"])
             except Exception as e:
                 print(f"   ❌ Hiba a(z) '{pkg}' telepítésekor: {e}")
 
@@ -42,7 +44,9 @@ install_dependencies()
 
 try:
     import gdown
+    import asyncio
     from colorama import Fore, Style, init
+    from playwright.async_api import async_playwright
     init(autoreset=True)
 except ImportError:
     # Fallback ha a telepítés sikertelen volt (de nem kéne)
@@ -180,6 +184,38 @@ def check_jsonl_integrity(jsonl_path):
     except (json.JSONDecodeError, UnicodeDecodeError):
         return False
 
+async def playwright_download_fallback(drive_id, output_path):
+    """Playwright alapú letöltés (a Google Drive 'Virus scan warning' oldalának megkerüléséhez)."""
+    url = f"https://drive.google.com/uc?export=download&id={drive_id}"
+    dest_path = os.path.abspath(output_path)
+
+    log(f"   🤖 Playwright böngésző indítása a Google Drive limitációinak megkerülésére...", Fore.YELLOW)
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+
+            async with page.expect_download(timeout=120000) as download_info:
+                await page.goto(url)
+
+                try:
+                    await page.click("input[type='submit']", timeout=5000)
+                    log("   🖱️ 'Download anyway' gomb lekattintva.", Fore.CYAN)
+                except Exception:
+                    pass # Nincs gomb, a letöltés automatikusan indult
+
+            download = await download_info.value
+            await download.save_as(dest_path)
+            await browser.close()
+
+            if os.path.exists(dest_path) and os.path.getsize(dest_path) > 1024:
+                return True
+            return False
+    except Exception as e:
+        log(f"   ❌ Playwright hiba: {e}", Fore.RED)
+        return False
+
 def process_resource(key, config):
     print(f"\n🔧 Feldolgozás: {key}...")
 
@@ -200,10 +236,20 @@ def process_resource(key, config):
 
         log(f"   📥 Letöltés: {zip_name} (ID: {drive_id})...", Fore.CYAN)
         try:
-            gdown.download(id=drive_id, output=target_path, quiet=False, fuzzy=True)
+            res = gdown.download(id=drive_id, output=target_path, quiet=False, fuzzy=True)
+            if res is None:
+                raise Exception("A gdown nem kapott érvényes fájlt (valószínűleg Virus scan warning).")
             log(f"   ✨ {key} Sikeresen telepítve.", Fore.GREEN)
         except Exception as e:
-            log(f"   ❌ Letöltési hiba: {e}", Fore.RED)
+            log(f"   ⚠️ Hagyományos letöltés sikertelen ({e}).", Fore.YELLOW)
+            try:
+                success = asyncio.run(playwright_download_fallback(drive_id, target_path))
+                if success:
+                    log(f"   ✨ {key} Sikeresen telepítve Playwright segítségével.", Fore.GREEN)
+                else:
+                    log(f"   ❌ Végleges letöltési hiba.", Fore.RED)
+            except NameError:
+                log(f"   ❌ Playwright nincs telepítve, letöltés megszakítva.", Fore.RED)
         return
 
     # --- ZIP fájlok esetén a korábbi logika, kiegészítve ---
@@ -244,10 +290,19 @@ def process_resource(key, config):
     if not os.path.exists(zip_name):
         log(f"   📥 Letöltés: {zip_name} (ID: {drive_id})...", Fore.CYAN)
         try:
-            gdown.download(id=drive_id, output=zip_name, quiet=False, fuzzy=True)
+            res = gdown.download(id=drive_id, output=zip_name, quiet=False, fuzzy=True)
+            if res is None:
+                raise Exception("A gdown nem kapott érvényes fájlt (valószínűleg Virus scan warning).")
         except Exception as e:
-            log(f"   ❌ Letöltési hiba: {e}", Fore.RED)
-            return
+            log(f"   ⚠️ Hagyományos letöltés sikertelen ({e}).", Fore.YELLOW)
+            try:
+                success = asyncio.run(playwright_download_fallback(drive_id, zip_name))
+                if not success:
+                    log(f"   ❌ Végleges letöltési hiba.", Fore.RED)
+                    return
+            except NameError:
+                log(f"   ❌ Playwright nincs telepítve, letöltés megszakítva.", Fore.RED)
+                return
 
     # 3. Kicsomagolás
     if target_dir:
