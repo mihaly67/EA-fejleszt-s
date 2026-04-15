@@ -52,3 +52,7 @@ Mivel az ügynök (MiniLM / LLM alapú rendszer) a nyers kód szintaxisánál so
 
 ---
 *Ez a protokoll kötelező érvényű minden jövőbeli munkamenetre.*
+
+## 0.4. HOSSZÚTÁVÚ AGENT MEMÓRIA (STATE HYDRATION)
+*   **KÖTELEZŐ MEMÓRIA OLVASÁS:** A session elején (közvetlenül a handover fájl elolvasása után) az Agentnek kötelező lefuttatnia a `python3 ENVIRONMENT_SETUP/agent_memory_manager.py --action read --limit 5` parancsot, hogy betöltse a korábbi sessionök releváns architekturális megállapodásait.
+*   **KÖTELEZŐ MEMÓRIA ÍRÁS:** Ha a session során a Felhasználóval egy fontos architekturális, kódolási, vagy stratégiai döntés születik (pl. elvetünk egy technológiát), azt a session végén (a Pre-commit előtt) kötelező beírni a memóriába: `python3 ENVIRONMENT_SETUP/agent_memory_manager.py --action write --category "Téma" --content "Döntés leírása"`
