@@ -54,5 +54,7 @@ Mivel az ügynök (MiniLM / LLM alapú rendszer) a nyers kód szintaxisánál so
 *Ez a protokoll kötelező érvényű minden jövőbeli munkamenetre.*
 
 ## 0.4. HOSSZÚTÁVÚ AGENT MEMÓRIA (STATE HYDRATION)
-*   **KÖTELEZŐ MEMÓRIA OLVASÁS:** A session elején (közvetlenül a handover fájl elolvasása után) az Agentnek kötelező lefuttatnia a `python3 ENVIRONMENT_SETUP/agent_memory_manager.py --action read --limit 5` parancsot, hogy betöltse a korábbi sessionök releváns architekturális megállapodásait.
-*   **KÖTELEZŐ MEMÓRIA ÍRÁS:** Ha a session során a Felhasználóval egy fontos architekturális, kódolási, vagy stratégiai döntés születik (pl. elvetünk egy technológiát), azt a session végén (a Pre-commit előtt) kötelező beírni a memóriába: `python3 ENVIRONMENT_SETUP/agent_memory_manager.py --action write --category "Téma" --content "Döntés leírása"`
+*   **KÖTELEZŐ MEMÓRIA OLVASÁS ÉS SESSION START:** A session elején a környezet helyreállítása (`restore_envSWAT4.py`) automatikusan lerakja a `[SESSION_START]` markert és beolvassa a múltat.
+*   **KÖTELEZŐ SŰRÍTÉS (CONDENSE):** A munkamenet hosszának növelése (Context Extension) érdekében az Agentnek **minden 5. fordulóban (turn) VAGY egy komplex logikai szakasz lezárásakor** kötelező egy tömör összefoglalót írnia a memóriába: `python3 ENVIRONMENT_SETUP/agent_memory_manager.py --action write --category "Context_Summary" --content "..."`
+*   **KÖTELEZŐ SESSION LEZÁRÁS:** A feladat véglegesítése (submit) előtt, a pre-commit lépés részeként kötelező lefuttatni a `python3 ENVIRONMENT_SETUP/agent_memory_manager.py --action end_session` parancsot a szeparáció biztosítására.
+*   **ÖN-SZABÁLYOZÁS (HALLUCINÁCIÓ ELKERÜLÉSE):** Ha az Agent memória olvasáskor a token riasztó `VESZÉLY`-t jelez (>8000 token), az Agentnek tilos a `--limit` növelésével újabb adatokat beolvasnia, és a rákövetkező turnökben proaktív sűrítést kell végrehajtania.
