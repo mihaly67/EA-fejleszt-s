@@ -79,55 +79,81 @@ def create_repo_map(db_path: str, output_file: str):
 
     print(f"✅ RAG Katalógus sikeresen legenerálva ide: {output_file}")
 
-def extract_signatures(db_path: str, output_file: str, target_repo: str = None):
+def extract_signatures(db_path: str, output_file: str, target_repo: str = None, repo_list: list = None):
     """
     Speciális "Mélyfúrás" de memóriakímélő módon:
-    Csak a Python class és def definíciókat húzza ki a kódokból (AST nélkül, Regex-szel a sebességért).
-    Ezzel az LLM megérti, MILYEN funkciók vannak a fájlban, de nem kapja meg a kódtestet (body).
+    Csak a Python class és def definíciókat húzza ki a kódokból.
+    Buktató (OOM) elkerülése: LIMIT/OFFSET (Batch) iterátor használata a fetchall() helyett!
     """
     if not os.path.exists(db_path):
         return
 
-    print(f"🔍 Python Szignatúra (Class/Def) kinyerése. Repó: {target_repo if target_repo else 'MINDEN'}")
+    print(f"🔍 Python Szignatúra kinyerése (BATCH MÓD, OOM VÉDELEMMEL). Repó: {target_repo if target_repo else 'Kijelöltek/Minden'}")
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    query = "SELECT source_repo, filepath, content FROM rag_data WHERE filepath LIKE '%.py'"
+    # Építjük az alapszűrést
+    base_query = "SELECT source_repo, filepath, content FROM rag_data WHERE filepath LIKE '%.py'"
     params = []
-    if target_repo:
-        query += " AND source_repo = ?"
-        params.append(target_repo)
 
-    try:
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-    except Exception as e:
-        print(f"Hiba a lekérdezésnél: {e}")
-        return
-    finally:
-        conn.close()
+    if target_repo:
+        base_query += " AND source_repo = ?"
+        params.append(target_repo)
+    elif repo_list:
+        placeholders = ','.join(['?'] * len(repo_list))
+        base_query += f" AND source_repo IN ({placeholders})"
+        params.extend(repo_list)
+
+    # Szigorú rendezés az OFFSET/LIMIT determinisztikus működéséért!
+    base_query += " ORDER BY rowid"
 
     signature_map = defaultdict(list)
     class_pattern = re.compile(r"^\s*class\s+([A-Za-z0-9_]+)[\(:]")
     def_pattern = re.compile(r"^\s*def\s+([A-Za-z0-9_]+)\s*\(")
 
-    for repo, filepath, content in rows:
-        if not content: continue
+    batch_size = 500
+    offset = 0
+    total_processed = 0
 
-        found_signatures = []
-        for line in content.splitlines():
-            class_match = class_pattern.match(line)
-            if class_match:
-                found_signatures.append(f"Class: {class_match.group(1)}")
+    try:
+        while True:
+            # Szigorú kötegelés (LIMIT és OFFSET) a VPS RAM megóvása érdekében
+            query = f"{base_query} LIMIT ? OFFSET ?"
+            batch_params = params + [batch_size, offset]
 
-            def_match = def_pattern.match(line)
-            if def_match:
-                found_signatures.append(f"  Method/Func: {def_match.group(1)}")
+            cursor.execute(query, batch_params)
+            rows = cursor.fetchall()
 
-        if found_signatures:
-             signature_map[filepath] = found_signatures
+            if not rows:
+                break # Nincs több sor
 
+            for repo, filepath, content in rows:
+                if not content: continue
+
+                found_signatures = []
+                for line in content.splitlines():
+                    class_match = class_pattern.match(line)
+                    if class_match:
+                        found_signatures.append(f"Class: {class_match.group(1)}")
+
+                    def_match = def_pattern.match(line)
+                    if def_match:
+                        found_signatures.append(f"  Method/Func: {def_match.group(1)}")
+
+                if found_signatures:
+                     signature_map[filepath] = found_signatures
+
+            total_processed += len(rows)
+            offset += batch_size
+            print(f"   ⏳ Feldolgozva: {total_processed} fájl...")
+
+    except Exception as e:
+        print(f"Hiba a kötegelt lekérdezésnél: {e}")
+    finally:
+        conn.close()
+
+    # Eredmények kiírása fájlba
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write("# 🧩 PYTHON SZIGNATÚRA TÉRKÉP (Mélyfúrás test nélkül)\n\n")
         for filepath in sorted(signature_map.keys()):
@@ -136,7 +162,7 @@ def extract_signatures(db_path: str, output_file: str, target_repo: str = None):
                 f.write(f"    {sig}\n")
             f.write("\n")
 
-    print(f"✅ Szignatúra térkép sikeresen legenerálva ide: {output_file}")
+    print(f"✅ Szignatúra térkép sikeresen legenerálva ide: {output_file} ({total_processed} fájl alapján)")
 
 
 if __name__ == "__main__":
@@ -146,11 +172,17 @@ if __name__ == "__main__":
     parser.add_argument("--out_map", default="knowledge_map.txt", help="Kimeneti fájl a katalógushoz")
     parser.add_argument("--out_sig", default="knowledge_signatures.txt", help="Kimeneti fájl a szignatúrákhoz")
     parser.add_argument("--repo", default=None, help="Speciális szignatúra keresés egy adott repóra")
+    parser.add_argument("--repo_list_file", default=None, help="Egy TXT fájl, ami soronként tartalmazza a keresendő repók nevét")
 
     args = parser.parse_args()
+
+    repo_list = None
+    if args.repo_list_file and os.path.exists(args.repo_list_file):
+        with open(args.repo_list_file, 'r', encoding='utf-8') as f:
+            repo_list = [line.strip() for line in f if line.strip()]
 
     if args.mode in ["map", "both"]:
         create_repo_map(args.db, args.out_map)
 
     if args.mode in ["signatures", "both"]:
-        extract_signatures(args.db, args.out_sig, args.repo)
+        extract_signatures(args.db, args.out_sig, args.repo, repo_list)
