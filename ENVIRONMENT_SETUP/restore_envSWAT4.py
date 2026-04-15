@@ -236,7 +236,7 @@ def process_resource(key, config):
 
         log(f"   📥 Letöltés: {zip_name} (ID: {drive_id})...", Fore.CYAN)
         try:
-            res = gdown.download(id=drive_id, output=target_path, quiet=False, fuzzy=True)
+            res = gdown.download(id=drive_id, output=target_path, quiet=False)
             if res is None:
                 raise Exception("A gdown nem kapott érvényes fájlt (valószínűleg Virus scan warning).")
             log(f"   ✨ {key} Sikeresen telepítve.", Fore.GREEN)
@@ -290,7 +290,7 @@ def process_resource(key, config):
     if not os.path.exists(zip_name):
         log(f"   📥 Letöltés: {zip_name} (ID: {drive_id})...", Fore.CYAN)
         try:
-            res = gdown.download(id=drive_id, output=zip_name, quiet=False, fuzzy=True)
+            res = gdown.download(id=drive_id, output=zip_name, quiet=False)
             if res is None:
                 raise Exception("A gdown nem kapott érvényes fájlt (valószínűleg Virus scan warning).")
         except Exception as e:
