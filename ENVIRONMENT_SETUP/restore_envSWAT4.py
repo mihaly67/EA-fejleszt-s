@@ -382,5 +382,16 @@ def main():
     # 4. Végső Üzenet
     print(f"\n{Fore.GREEN}✅ SWAT4 KÖRNYEZET KÉSZ. RAG RENDSZER (FAISS) AKTÍV. (HMM/Encoders Ready){Style.RESET_ALL}")
 
+    # 5. Agent Long-Term Memory (Context Extension) Betöltése
+    print(f"\n{Fore.MAGENTA}🧠 TÖRTÉNELMI KONTEXTUS BETÖLTÉSE (LONG-TERM MEMORY)...{Style.RESET_ALL}")
+    memory_script = os.path.join(os.path.dirname(__file__), "agent_memory_manager.py")
+    if os.path.exists(memory_script):
+        try:
+            subprocess.run([sys.executable, memory_script, "--action", "read", "--limit", "10"])
+        except Exception as e:
+            print(f"⚠️ Hiba a memória betöltésekor: {e}")
+    else:
+        print("⚠️ agent_memory_manager.py nem található. Memória inicializálás átugorva.")
+
 if __name__ == "__main__":
     main()
