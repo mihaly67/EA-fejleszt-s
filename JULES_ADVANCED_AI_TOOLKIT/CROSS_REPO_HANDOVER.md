@@ -17,3 +17,9 @@
    - Ha a te jelenlegi (Videorestauráló) repo-dban is fel kell térképezni a fájlokat, használd a mellékelt Scout szkripteket! A `rag_scout.py` végigmegy a repository-n (vagy egy adott mappán), és kimenti az osztályokat, függvényeket a `signatures.txt`-be, míg a `map.txt`-be csak a struktúrát. Így nem kell a teljes fájlokat beolvasnod a Promptba, csak azokat, amikre épp szükséged van.
 
 Jó munkát és sikeres OOM-biztos videofeldolgozást!
+
+## 4. Kontextus és Dokumentáció Frissítés (Anti-Hallucináció)
+A memória manager (`agent_memory_manager.py`) a *saját* belső állapotod fenntartására szolgál, de mi van a külső könyvtárak friss dokumentációjával?
+- Az `autonomous_tool_builder.py` tartalmazza a `generate_context_updater_skill()` funkciót.
+- Ez létrehoz neked egy `doc_updater.py` parancssori eszközt (Context7 API Wrapper).
+- **Hogyan használd?** Mielőtt nekiállsz egy új vagy ismeretlen könyvtár (pl. videorestauráló FFmpeg pluginok) hívásainak, használd a scriptet: `python3 skills/doc_updater.py --library <könyvtár> --query <keresés>`. Ezzel azonnal friss kontextust hozhatsz a promptodba, elkerülve, hogy az elavult LLM tudásbázisod miatt hibás (hallucinált) kódot írj.
