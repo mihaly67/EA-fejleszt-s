@@ -442,6 +442,175 @@ if __name__ == "__main__":
     with open(skill_file, "w", encoding="utf-8") as f:
         f.write(code)
 
+
+def generate_data_analytics_skill():
+    """
+    Legenerál egy memóriabiztos Data Analytics eszközt.
+    Nagy CSV-ken végez statisztikai gyorselemzést, például eloszlásokat
+    vagy korrelációt úgy, hogy az Agent a parancssoron keresztül lássa az eredményt.
+    (Itt használjuk a chunkolást a Describe / Analytics futtatásához).
+    """
+    import os
+    skill_dir = os.path.join(os.path.dirname(__file__), "skills")
+    os.makedirs(skill_dir, exist_ok=True)
+    skill_file = os.path.join(skill_dir, "data_analytics_mri.py")
+
+    code = """# Autonomous Agent Skill: MLOps Data Analytics (OOM-Safe Agent-to-Bot)
+# Gyors statisztikai elemzés nagy adathalmazokon (pl. EA teszt eredmények, tickek)
+import argparse
+import pandas as pd
+import numpy as np
+import os
+import time
+
+def run_analytics(filepath: str, column: str, chunksize: int = 10000):
+    if not os.path.exists(filepath):
+        print(f"❌ Hiba: A fájl nem található: {filepath}")
+        return
+
+    print(f"🔬 [Data Analytics] Fájl: {filepath}")
+    print(f"🔬 [Data Analytics] Cél oszlop: {column}")
+
+    total_rows = 0
+    running_sum = 0.0
+    running_min = float('inf')
+    running_max = float('-inf')
+
+    try:
+        for chunk in pd.read_csv(filepath, chunksize=chunksize):
+            if column not in chunk.columns:
+                print(f"❌ [Data Analytics] Az oszlop '{column}' nem létezik az adatban!")
+                return
+
+            # Numerikus konverzió hibatűréssel
+            col_data = pd.to_numeric(chunk[column], errors='coerce').dropna()
+
+            if not col_data.empty:
+                total_rows += len(col_data)
+                running_sum += col_data.sum()
+                running_min = min(running_min, col_data.min())
+                running_max = max(running_max, col_data.max())
+
+            print(f"⏳ [Data Analytics] Feldolgozva: {total_rows} rekord...", flush=True)
+            time.sleep(0.01) # CPU tehermentesítés
+
+        if total_rows > 0:
+            mean_val = running_sum / total_rows
+            print(f"\\n✅ [Data Analytics Válasz] Statisztikai Gyorselemzés:")
+            print(f"   - Vizsgált rekordok (Valid): {total_rows}")
+            print(f"   - Minimum: {running_min}")
+            print(f"   - Maximum: {running_max}")
+            print(f"   - Átlag (Mean): {mean_val:.4f}")
+            print("🧠 [Agent Prompt] Az adatok eloszlása felmérve, jöhet a ML stratégia.")
+        else:
+            print("⚠️ [Data Analytics] Nem találtam érvényes numerikus adatot ebben az oszlopban.")
+
+    except MemoryError:
+        print("❌ [Data Analytics] MEMORY ERROR! Chunk méret csökkentése javasolt!")
+    except Exception as e:
+        print(f"❌ [Data Analytics] Hiba történt: {e}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="OOM-Safe Data Analytics Tool")
+    parser.add_argument("--file", required=True, help="A CSV fájl elérési útja")
+    parser.add_argument("--col", required=True, help="A vizsgálandó oszlop neve")
+    parser.add_argument("--chunk", type=int, default=10000, help="Chunk méret")
+    args = parser.parse_args()
+
+    run_analytics(args.file, args.col, args.chunk)
+"""
+    with open(skill_file, "w", encoding="utf-8") as f:
+        f.write(code)
+
+def generate_correlation_analyzer_skill():
+    """
+    Két oszlop közötti korreláció (pl. Spread és Tick Density) vizsgáló eszköz.
+    Szigorúan memóriavédett környezetben (chunkinggel szimulálva).
+    """
+    import os
+    skill_dir = os.path.join(os.path.dirname(__file__), "skills")
+    os.makedirs(skill_dir, exist_ok=True)
+    skill_file = os.path.join(skill_dir, "correlation_analyzer_ea.py")
+
+    code = """# Autonomous Agent Skill: MT5 Correlation Analyzer
+import argparse
+import pandas as pd
+import numpy as np
+import os
+import time
+
+def run_correlation(filepath: str, col1: str, col2: str, chunksize: int = 10000):
+    if not os.path.exists(filepath):
+        print(f"❌ Hiba: A fájl nem található: {filepath}")
+        return
+
+    print(f"🔗 [Correlation Analyzer] Fájl: {filepath}")
+    print(f"🔗 [Correlation Analyzer] Változók: {col1} vs {col2}")
+
+    # O(1) memóriás korrelációhoz sumx, sumy, sumxy, sumx2, sumy2 kell
+    sum_x = 0.0; sum_y = 0.0; sum_xy = 0.0; sum_x2 = 0.0; sum_y2 = 0.0
+    n = 0
+
+    try:
+        for chunk in pd.read_csv(filepath, chunksize=chunksize):
+            if col1 not in chunk.columns or col2 not in chunk.columns:
+                print(f"❌ Oszlophiba: {col1} vagy {col2} hiányzik!")
+                return
+
+            df_clean = chunk[[col1, col2]].apply(pd.to_numeric, errors='coerce').dropna()
+
+            if not df_clean.empty:
+                x = df_clean[col1].values
+                y = df_clean[col2].values
+
+                n += len(x)
+                sum_x += np.sum(x)
+                sum_y += np.sum(y)
+                sum_xy += np.sum(x * y)
+                sum_x2 += np.sum(x**2)
+                sum_y2 += np.sum(y**2)
+
+            print(f"⏳ [Correlation Analyzer] Feldolgozva: {n} pár...", flush=True)
+            time.sleep(0.01)
+
+        if n > 1:
+            # Pearson korrelációs együttható képlete chunkolt adatokra
+            numerator = n * sum_xy - sum_x * sum_y
+            denominator = np.sqrt((n * sum_x2 - sum_x**2) * (n * sum_y2 - sum_y**2))
+
+            if denominator == 0:
+                corr = 0.0
+            else:
+                corr = numerator / denominator
+
+            print(f"\\n✅ [Correlation Válasz] Pearson Korreláció ({col1} - {col2}):")
+            print(f"   - Együttható (R): {corr:.4f}")
+            if abs(corr) > 0.7:
+                print("   - Értékelés: ERŐS kapcsolat.")
+            elif abs(corr) > 0.3:
+                print("   - Értékelés: KÖZEPES kapcsolat.")
+            else:
+                print("   - Értékelés: GYENGE / NINCS kapcsolat.")
+        else:
+            print("⚠️ [Correlation] Nincs elég adat a számításhoz.")
+
+    except Exception as e:
+        print(f"❌ [Correlation] Hiba történt: {e}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="OOM-Safe Correlation Analyzer")
+    parser.add_argument("--file", required=True)
+    parser.add_argument("--col1", required=True)
+    parser.add_argument("--col2", required=True)
+    parser.add_argument("--chunk", type=int, default=10000)
+    args = parser.parse_args()
+
+    run_correlation(args.file, args.col1, args.col2, args.chunk)
+"""
+    with open(skill_file, "w", encoding="utf-8") as f:
+        f.write(code)
+
+
 def main():
     print("🤖 Agent Skill Factory (Autonomous Tool Builder) indítása...")
 
@@ -461,7 +630,9 @@ def main():
     generate_chart_builder_skill()
     generate_gui_builder_skill()
 
-    print("✨ Skillek (Web, Doc, Stitch, Reflection, CSV Bot, DB Bot, Chart, GUI) sikeresen elkészítve az Agent számára!")
+    generate_data_analytics_skill()
+    generate_correlation_analyzer_skill()
+    print("✨ Skillek (Web, Doc, Stitch, Reflection, CSV Bot, DB Bot, Chart, GUI, Analytics, Correlation) sikeresen elkészítve az Agent számára!")
 
 if __name__ == "__main__":
     main()
