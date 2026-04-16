@@ -18,7 +18,7 @@ def run_autonomous_scout():
     """
     print("🤖 AUTONÓM FELDERÍTŐ INDÍTÁSA (Scheduled Task Szimuláció)...")
 
-    db_path = "KUTATO_FEJLESZTES/Ultimate_RAG/RAG_CHATBOT_CSV_DATA_LLM_github.db"
+    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Knowledge_Base", "AI_TOOLS_DB", "RAG_CHATBOT_CSV_DATA_LLM_github.db")
 
     if not os.path.exists(db_path):
         print(f"❌ Adatbázis nem található: {db_path}")

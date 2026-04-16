@@ -98,6 +98,25 @@ ENVIRONMENT_RESOURCES = {
         "preserve_dir": True
     },
 
+    # --- KITERJESZTETT AI/MCP TUDÁSBÁZIS (ULTIMATE RAG) ---
+    "SWAT4_AI_TOOLS_RAG": {
+        "id": "1hNl4JYrms427u94H48kpkb39OJ5C5AhN",
+        "file": "rag.zip",
+        "extract_to": "Knowledge_Base/AI_TOOLS_DB",
+        "check_file": "RAG_CHATBOT_CSV_DATA_LLM_github.db",
+        "type": "zip",
+        "preserve_dir": True
+    },
+
+    "SWAT4_AI_TOOLS_REPOS": {
+        "id": "19ScN_Kfih1wNo2Ih7iAPYA4xilC4eX18",
+        "file": "repo_lista.zip",
+        "extract_to": "Knowledge_Base/AI_TOOLS_DB",
+        "check_file": "repo_lista.txt",
+        "type": "zip",
+        "preserve_dir": True
+    },
+
     # --- GEMINI KUTATÁSOK ---
     "GEMINI_RESEARCH_1": {
         "id": "1gJ-79ea1k62x57w8UpkkHZlacqfve5B6",
@@ -379,7 +398,18 @@ def main():
     # 3. .gitignore frissítése
     update_gitignore()
 
-    # 4. Végső Üzenet
+    # 4. Agent Autonóm Eszközépítő (Skill Factory) Futtatása
+    print(f"\n{Fore.MAGENTA}🤖 AGENT ESZKÖZÉPÍTŐ (SKILL FACTORY) INDÍTÁSA...{Style.RESET_ALL}")
+    builder_script = os.path.join(os.path.dirname(__file__), "autonomous_tool_builder.py")
+    if os.path.exists(builder_script):
+        try:
+            # Csak csendben lefut a háttérben, felépíti a web_browser.py-t, MCP klienseket stb.
+            subprocess.run([sys.executable, builder_script])
+            print(f"   ✅ Agent eszközök frissítve.")
+        except Exception as e:
+            print(f"   ⚠️ Hiba az eszközépítő futtatásakor: {e}")
+
+    # 5. Végső Üzenet
     print(f"\n{Fore.GREEN}✅ SWAT4 KÖRNYEZET KÉSZ. RAG RENDSZER (FAISS) AKTÍV. (HMM/Encoders Ready){Style.RESET_ALL}")
 
     # 5. Agent Long-Term Memory (Context Extension) Betöltése
