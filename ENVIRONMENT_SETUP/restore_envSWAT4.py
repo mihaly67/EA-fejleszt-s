@@ -426,3 +426,19 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# --- STEP 7: AUTO-START KEEPALIVE DAEMON ---
+print("\n[STEP 7] Indítom a Keep-Alive Daemont az I/O fagyás ellen...")
+try:
+    import subprocess
+    # Ellenőrizzük, hogy fut-e már
+    check = subprocess.run(["pgrep", "-af", "agent_keepalive"], capture_output=True, text=True)
+    if "agent_keepalive.py" not in check.stdout:
+        subprocess.Popen(["python3", "ENVIRONMENT_SETUP/skills/agent_keepalive.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print("✅ Keep-Alive Daemon elindítva.")
+    else:
+        print("✅ Keep-Alive Daemon már fut.")
+except Exception as e:
+    print(f"⚠️ Hiba a Daemon indításakor: {e}")
+
+print("\n🚀 Környezet helyreállítása befejeződött.")
