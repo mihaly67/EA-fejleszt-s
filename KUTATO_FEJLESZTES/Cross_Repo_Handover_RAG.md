@@ -14,6 +14,7 @@ A megoldás a **Fractal-Memory Meta-RAG architektúra**.
 - Eredmény: A teljes RAG adatbázis feltérképezhető 50MB RAM alatt, és generál egy `repo_lista.txt` és `knowledge_signatures.txt` "térképet", amiből az LLM célzott lekérdezéseket indíthat (`rag_interrogator.py`).
 
 ## 3. Long-Term Agent Memory (JSONL Archival Memory)
+- **Szemantikus Kontextus Kezelés (Új):** Ha egy ágens elveszti a fonalat egy régi döntéssel kapcsolatban, a találgatás helyett kötelező futtatnia a `python3 ENVIRONMENT_SETUP/skills/semantic_memory_search.py --keyword "Téma"` parancsot. Ez Regex keresést végez a JSONL fájlban.
 - Az ágensek kontextusablaka (Context Window) korlátozott. Hogy elkerüljük a "felejtést" és a hallucinációt, létrehoztuk az `agent_memory_manager.py`-t.
 - **Működése:** Nem használ nehézkes keretrendszereket (Mem0, Letta, MemOS), hanem egy egyszerű `Knowledge_Base/agent_memory.jsonl` fájlba appendál.
 - **Agent Behavior Protocol (Szabály):** Minden ágensnek **Tilos** új tervet (set_plan) készítenie, amíg le nem futtatta a memóriát beolvasó parancsot:
