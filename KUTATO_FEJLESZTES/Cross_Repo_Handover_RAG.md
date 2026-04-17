@@ -31,3 +31,9 @@ A megoldás a **Fractal-Memory Meta-RAG architektúra**.
 1. Futtasd az ottani env setup fájlt, és ellenőrizd az `agent_memory.jsonl` állapotát.
 2. Ha hatalmas RAG adatbázist kell feldolgoznod, **soha ne próbáld meg egyben**. Használd a `rag_scout.py` mintájára a chunking és LIMIT/OFFSET módszert.
 3. Minden nagyobb logikai szakasz végén használj `--action write` akciót a `agent_memory_manager.py`-vel, hogy a tudásod átmenjen a következő sessionre!
+
+## 6. Plusz Képességek (Anti-Timeout és Anti-Hallucination)
+A legújabb importált scriptek (`ENVIRONMENT_SETUP/skills/` mappában) további védelmet nyújtanak:
+- **`agent_keepalive.py`**: Hosszú (több órás) RAG generálásoknál futtasd a háttérben, hogy a DevBox/Sandbox network ne dobjon timeoutot (`nohup python3 agent_keepalive.py &`).
+- **`semantic_memory_search.py`**: Ha elvesztetted a kontextust egy régi funkcióról (pl. "Mi volt a döntés 3 héttel ezelőtt az MQL5 fájloknál?"), ez a script képes Regex kulcsszavas keresést végezni a JSONL memóriádban!
+- **`self_healing_executor.py`**: Ha autonóm módon kell scripteket futtatnod és debugolnod (Self-Reflection), ezzel a futtatóval kapd el a hibákat az LLM számára, ahelyett hogy közvetlenül Bash-ből omlana össze a kód.
