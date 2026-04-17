@@ -442,3 +442,12 @@ except Exception as e:
     print(f"⚠️ Hiba a Daemon indításakor: {e}")
 
 print("\n🚀 Környezet helyreállítása befejeződött.")
+
+# --- STEP 8: AUTO-READ AGENT MEMORY ---
+print("\n[STEP 8] Kinyerem az Agent utolsó memóriáit (Context Hydration)...")
+try:
+    subprocess.run(["python3", "ENVIRONMENT_SETUP/agent_memory_manager.py", "--action", "read", "--limit", "3"])
+except Exception as e:
+    print(f"⚠️ Hiba a memória beolvasásakor: {e}")
+
+print("\n🚀 KÖRNYEZET BEÁLLÍTÁSA ÉS VÉDELME (DAEMON + MEMÓRIA) SIKERESEN BEFEJEZŐDÖTT.")
