@@ -35,6 +35,8 @@ def install_dependencies():
             try:
                 subprocess.check_call([sys.executable, "-m", "pip", "install", pkg], stdout=subprocess.DEVNULL)
                 print(f"   ✅ '{pkg}' telepítve.")
+                if pkg == "playwright":
+                    subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium", "--quiet"])
             except Exception as e:
                 print(f"   ❌ Hiba a(z) '{pkg}' telepítésekor: {e}")
 
@@ -42,7 +44,9 @@ install_dependencies()
 
 try:
     import gdown
+    import asyncio
     from colorama import Fore, Style, init
+    from playwright.async_api import async_playwright
     init(autoreset=True)
 except ImportError:
     # Fallback ha a telepítés sikertelen volt (de nem kéne)
@@ -91,6 +95,25 @@ ENVIRONMENT_RESOURCES = {
         "extract_to": "ENVIRONMENT_SETUP",
         "check_file": "repos.zip", # Nem zip kicsomagolású DB, hanem nyers extract
         "type": "zip_no_check",
+        "preserve_dir": True
+    },
+
+    # --- KITERJESZTETT AI/MCP TUDÁSBÁZIS (ULTIMATE RAG) ---
+    "SWAT4_AI_TOOLS_RAG": {
+        "id": "1hNl4JYrms427u94H48kpkb39OJ5C5AhN",
+        "file": "rag.zip",
+        "extract_to": "Knowledge_Base/AI_TOOLS_DB",
+        "check_file": "RAG_CHATBOT_CSV_DATA_LLM_github.db",
+        "type": "zip",
+        "preserve_dir": True
+    },
+
+    "SWAT4_AI_TOOLS_REPOS": {
+        "id": "19ScN_Kfih1wNo2Ih7iAPYA4xilC4eX18",
+        "file": "repo_lista.zip",
+        "extract_to": "Knowledge_Base/AI_TOOLS_DB",
+        "check_file": "repo_lista.txt",
+        "type": "zip",
         "preserve_dir": True
     },
 
@@ -180,6 +203,38 @@ def check_jsonl_integrity(jsonl_path):
     except (json.JSONDecodeError, UnicodeDecodeError):
         return False
 
+async def playwright_download_fallback(drive_id, output_path):
+    """Playwright alapú letöltés (a Google Drive 'Virus scan warning' oldalának megkerüléséhez)."""
+    url = f"https://drive.google.com/uc?export=download&id={drive_id}"
+    dest_path = os.path.abspath(output_path)
+
+    log(f"   🤖 Playwright böngésző indítása a Google Drive limitációinak megkerülésére...", Fore.YELLOW)
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+
+            async with page.expect_download(timeout=120000) as download_info:
+                await page.goto(url)
+
+                try:
+                    await page.click("input[type='submit']", timeout=5000)
+                    log("   🖱️ 'Download anyway' gomb lekattintva.", Fore.CYAN)
+                except Exception:
+                    pass # Nincs gomb, a letöltés automatikusan indult
+
+            download = await download_info.value
+            await download.save_as(dest_path)
+            await browser.close()
+
+            if os.path.exists(dest_path) and os.path.getsize(dest_path) > 1024:
+                return True
+            return False
+    except Exception as e:
+        log(f"   ❌ Playwright hiba: {e}", Fore.RED)
+        return False
+
 def process_resource(key, config):
     print(f"\n🔧 Feldolgozás: {key}...")
 
@@ -200,10 +255,20 @@ def process_resource(key, config):
 
         log(f"   📥 Letöltés: {zip_name} (ID: {drive_id})...", Fore.CYAN)
         try:
-            gdown.download(id=drive_id, output=target_path, quiet=False, fuzzy=True)
+            res = gdown.download(id=drive_id, output=target_path, quiet=False)
+            if res is None:
+                raise Exception("A gdown nem kapott érvényes fájlt (valószínűleg Virus scan warning).")
             log(f"   ✨ {key} Sikeresen telepítve.", Fore.GREEN)
         except Exception as e:
-            log(f"   ❌ Letöltési hiba: {e}", Fore.RED)
+            log(f"   ⚠️ Hagyományos letöltés sikertelen ({e}).", Fore.YELLOW)
+            try:
+                success = asyncio.run(playwright_download_fallback(drive_id, target_path))
+                if success:
+                    log(f"   ✨ {key} Sikeresen telepítve Playwright segítségével.", Fore.GREEN)
+                else:
+                    log(f"   ❌ Végleges letöltési hiba.", Fore.RED)
+            except NameError:
+                log(f"   ❌ Playwright nincs telepítve, letöltés megszakítva.", Fore.RED)
         return
 
     # --- ZIP fájlok esetén a korábbi logika, kiegészítve ---
@@ -244,10 +309,19 @@ def process_resource(key, config):
     if not os.path.exists(zip_name):
         log(f"   📥 Letöltés: {zip_name} (ID: {drive_id})...", Fore.CYAN)
         try:
-            gdown.download(id=drive_id, output=zip_name, quiet=False, fuzzy=True)
+            res = gdown.download(id=drive_id, output=zip_name, quiet=False)
+            if res is None:
+                raise Exception("A gdown nem kapott érvényes fájlt (valószínűleg Virus scan warning).")
         except Exception as e:
-            log(f"   ❌ Letöltési hiba: {e}", Fore.RED)
-            return
+            log(f"   ⚠️ Hagyományos letöltés sikertelen ({e}).", Fore.YELLOW)
+            try:
+                success = asyncio.run(playwright_download_fallback(drive_id, zip_name))
+                if not success:
+                    log(f"   ❌ Végleges letöltési hiba.", Fore.RED)
+                    return
+            except NameError:
+                log(f"   ❌ Playwright nincs telepítve, letöltés megszakítva.", Fore.RED)
+                return
 
     # 3. Kicsomagolás
     if target_dir:
@@ -324,8 +398,56 @@ def main():
     # 3. .gitignore frissítése
     update_gitignore()
 
-    # 4. Végső Üzenet
+    # 4. Agent Autonóm Eszközépítő (Skill Factory) Futtatása
+    print(f"\n{Fore.MAGENTA}🤖 AGENT ESZKÖZÉPÍTŐ (SKILL FACTORY) INDÍTÁSA...{Style.RESET_ALL}")
+    builder_script = os.path.join(os.path.dirname(__file__), "autonomous_tool_builder.py")
+    if os.path.exists(builder_script):
+        try:
+            # Csak csendben lefut a háttérben, felépíti a web_browser.py-t, MCP klienseket stb.
+            subprocess.run([sys.executable, builder_script])
+            print(f"   ✅ Agent eszközök frissítve.")
+        except Exception as e:
+            print(f"   ⚠️ Hiba az eszközépítő futtatásakor: {e}")
+
+    # 5. Végső Üzenet
     print(f"\n{Fore.GREEN}✅ SWAT4 KÖRNYEZET KÉSZ. RAG RENDSZER (FAISS) AKTÍV. (HMM/Encoders Ready){Style.RESET_ALL}")
+
+    # 5. Agent Long-Term Memory (Context Extension) Betöltése
+    print(f"\n{Fore.MAGENTA}🧠 TÖRTÉNELMI KONTEXTUS BETÖLTÉSE ÉS SESSION START (LONG-TERM MEMORY)...{Style.RESET_ALL}")
+    memory_script = os.path.join(os.path.dirname(__file__), "agent_memory_manager.py")
+    if os.path.exists(memory_script):
+        try:
+            subprocess.run([sys.executable, memory_script, "--action", "start_session"])
+            subprocess.run([sys.executable, memory_script, "--action", "read", "--limit", "10"])
+        except Exception as e:
+            print(f"⚠️ Hiba a memória betöltésekor: {e}")
+    else:
+        print("⚠️ agent_memory_manager.py nem található. Memória inicializálás átugorva.")
 
 if __name__ == "__main__":
     main()
+
+# --- STEP 7: AUTO-START KEEPALIVE DAEMON ---
+print("\n[STEP 7] Indítom a Keep-Alive Daemont az I/O fagyás ellen...")
+try:
+    import subprocess
+    # Ellenőrizzük, hogy fut-e már
+    check = subprocess.run(["pgrep", "-af", "agent_keepalive"], capture_output=True, text=True)
+    if "agent_keepalive.py" not in check.stdout:
+        subprocess.Popen(["python3", "ENVIRONMENT_SETUP/skills/agent_keepalive.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print("✅ Keep-Alive Daemon elindítva.")
+    else:
+        print("✅ Keep-Alive Daemon már fut.")
+except Exception as e:
+    print(f"⚠️ Hiba a Daemon indításakor: {e}")
+
+print("\n🚀 Környezet helyreállítása befejeződött.")
+
+# --- STEP 8: AUTO-READ AGENT MEMORY ---
+print("\n[STEP 8] Kinyerem az Agent utolsó memóriáit (Context Hydration)...")
+try:
+    subprocess.run(["python3", "ENVIRONMENT_SETUP/agent_memory_manager.py", "--action", "read", "--limit", "3"])
+except Exception as e:
+    print(f"⚠️ Hiba a memória beolvasásakor: {e}")
+
+print("\n🚀 KÖRNYEZET BEÁLLÍTÁSA ÉS VÉDELME (DAEMON + MEMÓRIA) SIKERESEN BEFEJEZŐDÖTT.")
