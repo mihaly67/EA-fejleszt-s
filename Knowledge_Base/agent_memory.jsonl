@@ -43,3 +43,6 @@
 {"timestamp": "2026-04-16T11:23:06.954497", "category": "General", "content": "Epic Session Closed: RAG Exploration, LIMIT/OFFSET memory optimization, Cross-Repo Handover created. Awaiting specific MLOps or MT5 task."}
 {"timestamp": "2026-04-17T15:31:14.685332", "category": "General", "content": "Epic Session Final Update: Integr\u00e1ltuk a k\u00fcls\u0151 rep\u00f3b\u00f3l kapott anti-hallucin\u00e1ci\u00f3s eszk\u00f6zt (semantic_memory_search.py), a self-healing k\u00f3d futtat\u00f3t, \u00e9s a Timeout/I-O fagy\u00e1s elleni (agent_keepalive.py) daemon-t. Tov\u00e1bb\u00e1 r\u00f6gz\u00edtett\u00fck a szab\u00e1lyt: a Daemon fut\u00e1s\u00e1t \u00e9s az Agent mem\u00f3ria beolvas\u00e1s\u00e1t minden k\u00f6rnyezetind\u00edt\u00e1skor \u00e9s a hossz\u00fa session\u00f6k alatt szakaszosan is ellen\u0151rizni kell."}
 {"timestamp": "2026-04-18T02:22:58.442857", "category": "SESSION_MARKER", "content": "[SESSION_START]"}
+{"timestamp": "2026-04-18T03:16:11.081700", "category": "SESSION_MARKER", "content": "[SESSION_START]"}
+{"timestamp": "2026-04-18T03:28:49.849538", "category": "SESSION_MARKER", "content": "[SESSION_START]"}
+{"timestamp": "2026-04-18T03:32:36.425979", "category": "SESSION_MARKER", "content": "[SESSION_START]"}
