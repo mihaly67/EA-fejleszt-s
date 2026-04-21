@@ -81,9 +81,9 @@ ENVIRONMENT_RESOURCES = {
     # --- ÚJ SWAT4 RAG ADATBÁZIS (FAISS + SQLITE) ---
     "SWAT4_RAG": {
         "id": "1BH6jT-59VMlDALmQ4hTKHKvPzP61pcFG",
-        "file": "SWAT4_New.zip",
+        "file": "SWAT4.zip",
         "extract_to": "Knowledge_Base/SWAT_DB",
-        "check_file": "SWAT4_RAG_compressed.index", # Később dinamikusan keresi ha változott a név
+        "check_file": "swat_unified_compressed.index", # Később dinamikusan keresi ha változott a név
         "type": "zip",
         "preserve_dir": True # Ne törölje a teljes könyvtárat a kicsomagolás előtt (hogy a SWAT3 megmaradjon)
     },
@@ -400,7 +400,6 @@ def main():
 
     # 4. Agent Autonóm Eszközépítő (Skill Factory) Futtatása
     print(f"\n{Fore.MAGENTA}🤖 AGENT ESZKÖZÉPÍTŐ (SKILL FACTORY) INDÍTÁSA...{Style.RESET_ALL}")
-    import subprocess
     builder_script = os.path.join(os.path.dirname(__file__), "autonomous_tool_builder.py")
     if os.path.exists(builder_script):
         try:
@@ -413,53 +412,17 @@ def main():
     # 5. Végső Üzenet
     print(f"\n{Fore.GREEN}✅ SWAT4 KÖRNYEZET KÉSZ. RAG RENDSZER (FAISS) AKTÍV. (HMM/Encoders Ready){Style.RESET_ALL}")
 
-    # --- STEP 7: AUTO-START KEEPALIVE DAEMON ---
-    print("\n[STEP 7] Indítom a Keep-Alive Daemont az I/O fagyás ellen...")
-    try:
-        import subprocess
-        # Ellenőrizzük, hogy fut-e már
-        check = subprocess.run(["pgrep", "-af", "agent_keepalive"], capture_output=True, text=True)
-        if "agent_keepalive.py" not in check.stdout:
-            subprocess.Popen([sys.executable, "ENVIRONMENT_SETUP/skills/agent_keepalive.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print("   ✅ Keep-Alive Daemon elindítva.")
-        else:
-            print("   ✅ Keep-Alive Daemon már fut.")
-    except Exception as e:
-        print(f"   ⚠️ Hiba a Daemon indításakor: {e}")
-
-    # --- STEP 8: SYSTEM HEALTH CHECK ---
-    print("\n[STEP 8] Rendszer Egészségügyi Ellenőrzés (Daemon és Memória Műszerfal)...")
-    try:
-        health_check_script = os.path.join(os.path.dirname(__file__), "system_health_monitor.py")
-        if os.path.exists(health_check_script):
-            subprocess.run([sys.executable, health_check_script])
-        else:
-            print(f"   ⚠️ {health_check_script} nem található, kihagyva.")
-    except Exception as e:
-        print(f"   ⚠️ Hiba a Health Check futtatásakor: {e}")
-
-    # --- STEP 9: Agent Long-Term Memory (Context Extension) Betöltése ---
-    print(f"\n{Fore.MAGENTA}[STEP 9] TÖRTÉNELMI KONTEXTUS BETÖLTÉSE ÉS SESSION START (LONG-TERM MEMORY)...{Style.RESET_ALL}")
+    # 5. Agent Long-Term Memory (Context Extension) Betöltése
+    print(f"\n{Fore.MAGENTA}🧠 TÖRTÉNELMI KONTEXTUS BETÖLTÉSE ÉS SESSION START (LONG-TERM MEMORY)...{Style.RESET_ALL}")
     memory_script = os.path.join(os.path.dirname(__file__), "agent_memory_manager.py")
     if os.path.exists(memory_script):
         try:
             subprocess.run([sys.executable, memory_script, "--action", "start_session"])
             subprocess.run([sys.executable, memory_script, "--action", "read", "--limit", "10"])
-
-            print("\n======================================================================")
-            print("🚨 AGENT PROTOCOL ENFORCEMENT: CONTEXT WINDOW EXTENSION 🚨")
-            print("======================================================================")
-            print("MINDEN 5. FORDULÓBAN (TURN) VAGY LOGIKAI SZAKASZ VÉGÉN KÖTELEZŐ ÍRNOD Ebbe a fájlba!")
-            print("Parancs: python3 ENVIRONMENT_SETUP/agent_memory_manager.py --action write --category 'Context_Summary' --content '...'")
-            print("Cél: A session hosszának drasztikus megnövelése a kontextus sűrítésével (Condense).")
-            print("A Session végén futtasd: python3 ENVIRONMENT_SETUP/agent_memory_manager.py --action end_session")
-            print("======================================================================\n")
         except Exception as e:
-            print(f"   ⚠️ Hiba a memória betöltésekor: {e}")
+            print(f"⚠️ Hiba a memória betöltésekor: {e}")
     else:
-        print("   ⚠️ agent_memory_manager.py nem található. Memória inicializálás átugorva.")
-
-    print("\n🚀 KÖRNYEZET BEÁLLÍTÁSA ÉS VÉDELME (DAEMON + MEMÓRIA) SIKERESEN BEFEJEZŐDÖTT.")
+        print("⚠️ agent_memory_manager.py nem található. Memória inicializálás átugorva.")
 
 if __name__ == "__main__":
     main()
