@@ -16,14 +16,14 @@ def run_daemon():
 
     try:
         while True:
-            # 10 másodpercenként frissítjük a fájl módosítási idejét (I/O event)
+            # 10 percenként (600mp) frissítjük a fájl módosítási idejét (erőforráskímélő mód)
             with open(keepalive_file, "w") as f:
                 f.write(str(time.time()))
 
             # Flusholjuk a standard kimenetet is, ha esetleg a logoló ezt figyeli
             sys.stdout.flush()
 
-            time.sleep(10)
+            time.sleep(600)
     except KeyboardInterrupt:
         print("💓 [Keep-Alive Daemon] Leállítva.")
 

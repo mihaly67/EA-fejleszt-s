@@ -18,11 +18,12 @@ def check_health():
     # 1. Daemon ellenőrzés
     if os.path.exists(heartbeat_file):
         hb_age = current_time - os.path.getmtime(heartbeat_file)
-        if hb_age < 30:
+        # Mivel a daemon 10 percenként (600mp) pulzál, a tűréshatárt 15 percre (900mp) állítjuk
+        if hb_age < 900:
             print(f"✅ DAEMON: A Keep-Alive Daemon aktív (Utolsó szívverés: {int(hb_age)} mp-e).")
         else:
             print(f"❌ DAEMON: A Keep-Alive Daemon HALOTT vagy LEFAGYOTT! (Utolsó szívverés: {int(hb_age)} mp-e).")
-            print("👉 Indítsd újra a `restore_env_pv.py` szkriptet!")
+            print("👉 Indítsd újra a `restore_envSWAT4.py` szkriptet!")
     else:
         print("❌ DAEMON: A `.agent_heartbeat` fájl nem létezik. A Daemon nem fut!")
 

@@ -80,10 +80,10 @@ ENVIRONMENT_RESOURCES = {
 
     # --- ÚJ SWAT4 RAG ADATBÁZIS (FAISS + SQLITE) ---
     "SWAT4_RAG": {
-        "id": "1S-jLsfuRVVNr1z1lASgnDkc0dYSF-m6I",
-        "file": "SWAT4.zip",
+        "id": "1BH6jT-59VMlDALmQ4hTKHKvPzP61pcFG",
+        "file": "SWAT4_New.zip",
         "extract_to": "Knowledge_Base/SWAT_DB",
-        "check_file": "swat_unified_compressed.index", # Később dinamikusan keresi ha változott a név
+        "check_file": "SWAT4_RAG_compressed.index", # Később dinamikusan keresi ha változott a név
         "type": "zip",
         "preserve_dir": True # Ne törölje a teljes könyvtárat a kicsomagolás előtt (hogy a SWAT3 megmaradjon)
     },

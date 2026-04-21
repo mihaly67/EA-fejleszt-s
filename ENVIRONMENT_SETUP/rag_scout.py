@@ -27,16 +27,17 @@ def create_repo_map(db_path: str, output_file: str):
         rows = cursor.fetchall()
     except sqlite3.OperationalError:
         try:
-             # Régi séma fallback (pl. swat_data)
-             cursor.execute("SELECT source, type FROM data")
+             # Régi séma fallback (pl. swat_data a SWAT4 adatbázishoz)
+             cursor.execute("SELECT source FROM swat_data")
              raw_rows = cursor.fetchall()
              rows = []
              for r in raw_rows:
                  source = r[0]
                  repo = source.split('/')[0] if '/' in source else "Unknown"
-                 rows.append((repo, source, r[1]))
+                 ext = source.split('.')[-1] if '.' in source else "txt"
+                 rows.append((repo, source, ext))
         except sqlite3.OperationalError as e:
-             print(f"❌ Ismeretlen adatbázis séma: {e}")
+             print(f"❌ Ismeretlen adatbázis séma a fájlfa építéskor: {e}")
              return
     finally:
         conn.close()
@@ -93,20 +94,34 @@ def extract_signatures(db_path: str, output_file: str, target_repo: str = None, 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Építjük az alapszűrést
-    base_query = "SELECT source_repo, filepath, content FROM rag_data WHERE filepath LIKE '%.py'"
-    params = []
+    # Megpróbáljuk eldönteni, hogy `rag_data` vagy `swat_data` a tábla
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables = [t[0] for t in cursor.fetchall()]
 
-    if target_repo:
-        base_query += " AND source_repo = ?"
-        params.append(target_repo)
-    elif repo_list:
-        placeholders = ','.join(['?'] * len(repo_list))
-        base_query += f" AND source_repo IN ({placeholders})"
-        params.extend(repo_list)
-
-    # Szigorú rendezés az OFFSET/LIMIT determinisztikus működéséért!
-    base_query += " ORDER BY rowid"
+    table_name = None
+    if "rag_data" in tables:
+        table_name = "rag_data"
+        base_query = f"SELECT source_repo, filepath, content FROM {table_name} WHERE filepath LIKE '%.py' OR filepath LIKE '%.mq%'"
+        params = []
+        if target_repo:
+            base_query += " AND source_repo = ?"
+            params.append(target_repo)
+        elif repo_list:
+            placeholders = ','.join(['?'] * len(repo_list))
+            base_query += f" AND source_repo IN ({placeholders})"
+            params.extend(repo_list)
+        base_query += " ORDER BY rowid"
+        has_repo_col = True
+    elif "swat_data" in tables:
+        table_name = "swat_data"
+        base_query = f"SELECT source, source, content FROM {table_name} WHERE source LIKE '%.py' OR source LIKE '%.mq5' OR source LIKE '%.mqh'"
+        params = []
+        base_query += " ORDER BY rowid"
+        has_repo_col = False
+    else:
+        print(f"❌ Ismeretlen táblaszerkezet a szignatúra kivonásnál: {tables}")
+        conn.close()
+        return
 
     signature_map = defaultdict(list)
     class_pattern = re.compile(r"^\s*class\s+([A-Za-z0-9_]+)[\(:]")
