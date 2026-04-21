@@ -80,7 +80,7 @@ ENVIRONMENT_RESOURCES = {
 
     # --- ÚJ SWAT4 RAG ADATBÁZIS (FAISS + SQLITE) ---
     "SWAT4_RAG": {
-        "id": "1S-jLsfuRVVNr1z1lASgnDkc0dYSF-m6I",
+        "id": "1BH6jT-59VMlDALmQ4hTKHKvPzP61pcFG",
         "file": "SWAT4.zip",
         "extract_to": "Knowledge_Base/SWAT_DB",
         "check_file": "swat_unified_compressed.index", # Később dinamikusan keresi ha változott a név
