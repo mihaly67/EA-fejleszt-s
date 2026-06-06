@@ -34,12 +34,12 @@ fit_new = """    def fit_and_map_states(self):
             return
 
         logger.info("Vaku 3.0 (GaussianHMM) betanítása az Ortogonális téren (Standardizálva, Covar=Diag)...")
-
+        
         # [ÚJÍTÁS: STANDARD SCALER ALKALMAZÁSA]
-        # Mivel a LogER (-15.0), a Spread (1.2) és a Tick Density eltérő skálán mozog, a GaussianHMM centroidjai
+        # Mivel a LogER (-15.0), a Spread (1.2) és a Tick Density eltérő skálán mozog, a GaussianHMM centroidjai 
         # aránytalanul eltolódnak a LogER irányába. StandardScaler használatával minden dimenzió azonos súlyt kap.
         self.observation_space = self.scaler.fit_transform(self.observation_space)
-
+        
         self.model.fit(self.observation_space)
         self.is_fitted = True
 
@@ -66,10 +66,10 @@ predict_new = """    def predict_state(self, log_er, elasticity, z_tick_density)
             return "Unknown", -1
 
         obs = np.array([[log_er, elasticity, z_tick_density]])
-
+        
         # [ÚJÍTÁS: BEMENET TRANZFORMÁLÁSA A PREDICT ELŐTT]
         obs_scaled = self.scaler.transform(obs)
-
+        
         hidden_state_idx = self.model.predict(obs_scaled)[0]"""
 
 content = content.replace(predict_old, predict_new)

@@ -24,17 +24,17 @@ def predict_future_state(self, current_obs_sequence):
     """
     # 1. Jelenlegi Állapot Valószínűség (Posterior)
     posterior_probs = self.model.predict_proba(current_obs_sequence)[-1]
-
+    
     # 2. Átmeneti Mátrix (Transition Matrix)
     trans_mat = self.model.transmat_
-
+    
     # 3. Jövőbeli Valószínűség = Posterior (dot) Transition
     future_probs = np.dot(posterior_probs, trans_mat)
-
+    
     # Kinyerjük a 'Színház' (Manipuláció) jövőbeli esélyét (pl. State 1)
     theater_state_id = self.state_map["Theater"]
     theater_risk = future_probs[theater_state_id]
-
+    
     # Ha a rizikó > 40%, vörös jelzés az MT5-nek
     return future_probs.argmax(), theater_risk
 ```

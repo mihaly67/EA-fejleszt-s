@@ -24,7 +24,7 @@ A Python API (ZMQ Szerver) vagy a kigenerált ONNX mostantól két bemenetet (In
 - `obs_micro`: `[LogER_15, Spread_15, Density_15]`
 - `obs_macro`: `[LogER_1000, Spread_1000, Density_1000]`
 
-A Python (vagy ONNX) mindkét vektorra lefuttatja a `StandardScaler`-t és a predikciót.
+A Python (vagy ONNX) mindkét vektorra lefuttatja a `StandardScaler`-t és a predikciót. 
 - `macro_state = model_macro.predict(obs_macro)`
 - `micro_risk = predict_future_risk(obs_micro)`
 

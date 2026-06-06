@@ -162,12 +162,12 @@ class Vaku3OfflineValidator:
             return
 
         logger.info("Vaku 3.0 (GaussianHMM) betanítása az Ortogonális téren (Standardizálva, Covar=Diag)...")
-
+        
         # [ÚJÍTÁS: STANDARD SCALER ALKALMAZÁSA]
-        # Mivel a LogER (-15.0), a Spread (1.2) és a Tick Density eltérő skálán mozog, a GaussianHMM centroidjai
+        # Mivel a LogER (-15.0), a Spread (1.2) és a Tick Density eltérő skálán mozog, a GaussianHMM centroidjai 
         # aránytalanul eltolódnak a LogER irányába. StandardScaler használatával minden dimenzió azonos súlyt kap.
         self.observation_space = self.scaler.fit_transform(self.observation_space)
-
+        
         self.model.fit(self.observation_space)
         self.is_fitted = True
 
@@ -345,3 +345,4 @@ def run_validator():
 
 if __name__ == '__main__':
     run_validator()
+

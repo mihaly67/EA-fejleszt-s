@@ -10,7 +10,7 @@ A Python-ban futó HMM (Hidden Markov Model) állapotfelismerő motor és a Meta
 ### Komponens 1: Az MT5 (Kliens - REQ)
 Az MT5 minden ticknél (`OnTick()`) vagy trade szándék előtt küld egy mikroadat csomagot a Python szervernek.
 - **Payload (MQL5 -> Python):** `TimeMsc|Ask|Bid` (Nyers szöveg vagy struct formátum).
-- **Triggerek:**
+- **Triggerek:** 
   - *Heartbeat/Data feed:* Opcionálisan minden tick elküldhető a puffer frissítésére, ha az MT5 bírja (de ez blokkolhatja a szálat, így aszinkron PUB-SUB is szóba jöhet a nyers adatokra).
   - *Inference Request:* Csak akkor küldünk "Jósolj!" REQ kérést a Pythonnak, amikor az EA belépési szignált kapott, és engedélyre vár.
 

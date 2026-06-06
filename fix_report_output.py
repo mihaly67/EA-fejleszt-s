@@ -9,7 +9,7 @@ report_old = """    print("--- SMOKING GUN BIZONYÍTÉK (Offline Causal Validati
 
 report_new = """    print("--- SMOKING GUN BIZONYÍTÉK (Offline Causal Validation) ---")
     print(f"Összes megjelölt Brókeri Reakció (Target=1): {total_target_1} db")
-
+    
     # PREDICTIVE CHECK
     early_warnings = 0
     if total_target_1 > 0:
@@ -20,7 +20,7 @@ report_new = """    print("--- SMOKING GUN BIZONYÍTÉK (Offline Causal Validati
             if 'Theater_Risk_Pct' in df.columns and not df.loc[start_idx:t_idx-1, 'Theater_Risk_Pct'].empty:
                 if df.loc[start_idx:t_idx-1, 'Theater_Risk_Pct'].max() > 40.0:
                     early_warnings += 1
-
+        
         print(f"  -> 🔮 PREDIKTÍV ELŐREJELZÉS (Risk > 40% a trükk előtt 3 ticken belül): {early_warnings} db ({early_warnings/total_target_1*100:.1f}%)")"""
 
 if "PREDIKTÍV ELŐREJELZÉS" not in content:
@@ -28,3 +28,4 @@ if "PREDIKTÍV ELŐREJELZÉS" not in content:
 
 with open("vaku3_offline_validator_local_2.py", "w", encoding="utf-8") as f:
     f.write(content)
+

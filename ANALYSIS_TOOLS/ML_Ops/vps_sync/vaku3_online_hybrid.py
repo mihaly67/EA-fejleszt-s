@@ -64,7 +64,7 @@ class HybridStreamingEngine:
 
     def run_stream(self, file_path):
         try:
-            logger.info(f"▶️ HIBRID ONLINE ENGINE INDÍTÁSA: {os.path.basename(file_path)}")
+            print(f"▶️ HIBRID ONLINE ENGINE INDÍTÁSA: {os.path.basename(file_path)}")
             
             total_ticks = 0
             decisions = {'GREEN': 0, 'YELLOW': 0, 'RED': 0}
@@ -75,7 +75,7 @@ class HybridStreamingEngine:
             for chunk in chunk_iter:
                 time_cols = [c for c in chunk.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']]
                 if not time_cols:
-                    logger.error("No time column found")
+                    print("No time column found")
                     return
                 t_col = time_cols[0]
                 
@@ -109,12 +109,13 @@ class HybridStreamingEngine:
                         
             end_time = time.perf_counter()
             
-            logger.info(f"✅ VÉGE. Feldolgozott Tickek: {total_ticks:,}")
-            logger.info(f"⏱️ Sebesség: {(end_time - start_time):.2f} másodperc ({(total_ticks / (end_time - start_time)):,.0f} tick/sec)")
-            logger.info(f"📊 EA Döntések (Minden 10. ticknél): 🟢 ZÖLD: {decisions['GREEN']:,} | 🟡 SÁRGA: {decisions['YELLOW']:,} | 🔴 PIROS: {decisions['RED']:,}")
+            print(f"✅ VÉGE. Feldolgozott Tickek: {total_ticks:,}")
+            print(f"⏱️ Sebesség: {(end_time - start_time):.2f} másodperc ({(total_ticks / (end_time - start_time)):,.0f} tick/sec)")
+            print(f"📊 EA Döntések (Minden 10. ticknél): 🟢 ZÖLD: {decisions['GREEN']:,} | 🟡 SÁRGA: {decisions['YELLOW']:,} | 🔴 PIROS: {decisions['RED']:,}")
         except Exception as e:
-            logger.error(f"Hiba futás közben: {e}")
+            print(f"Hiba futás közben: {e}")
 
 if __name__ == "__main__":
     engine = HybridStreamingEngine()
     engine.run_stream("data/Merkava_XAUUSD_v1.10_20260408_025931.csv")
+

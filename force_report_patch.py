@@ -86,3 +86,4 @@ content = content.replace(file_write_old, file_write_new)
 
 with open("vaku3_offline_validator_local_final.py", "w", encoding="utf-8") as f:
     f.write(content)
+

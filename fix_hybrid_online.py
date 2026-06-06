@@ -9,3 +9,4 @@ content = content.replace("logger.info(f\"📊 EA Döntések: 🟢 ZÖLD: {decis
 
 with open("vaku3_online_hybrid_2.py", "w", encoding="utf-8") as f:
     f.write(content)
+

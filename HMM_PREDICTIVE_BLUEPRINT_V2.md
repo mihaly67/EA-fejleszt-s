@@ -18,7 +18,7 @@ Az MQL5 oldalán talált `ALGLIB.SSAAnalyzeSequence` (és incremental realtime) 
 - Mivel a HMM csak a zaj/statisztika alapján dolgozik, az SSA "trend" komponense (amit pl. az MQL5 `ssaforecastlast()` csinál) egy megbízható **Iránymutató Vektor** (Vector Direction) lesz.
 
 ### 3. Az ONNX Inference Export (Az "Időgép" áthozása MT5-be)
-A cikkekből (pl. CSignalIL_Stochastic_FrAMA) láttuk, hogy az MQL5 profi szinten támogatja az ONNX formátumot (`OnnxRun()`).
+A cikkekből (pl. CSignalIL_Stochastic_FrAMA) láttuk, hogy az MQL5 profi szinten támogatja az ONNX formátumot (`OnnxRun()`). 
 Ahelyett, hogy egy lassú (esetleg lefagyó) ZMQ hálózaton küldenénk a tickeket a Pythonnak, a HMM és az SSA normalizáló pipeline-unkat **ONNX formátumba exportáljuk** (Scikit-learn ONNX exporttal, vagy egyszerű mátrix formában).
 - Így az MT5 EA lokálisan, C++ sebességgel (mikromásodpercek alatt) hívja meg az `Infer()` metódust minden tickre: beleteszi a 6 statisztikai feature-t, és az ONNX visszaadja az Állapot ID-t (0,1,2).
 
