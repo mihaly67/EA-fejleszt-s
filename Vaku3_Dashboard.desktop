@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Vaku 3.0 Műszerfal
+Comment=Valós Idejű EA Tanácsadó (ZMQ)
+Exec=bash -c "cd /home/misi/Merkava_ML_Ops && source venv/bin/activate && export DISPLAY=:10.0 && python3 vaku3_dashboard.py"
+Icon=utilities-terminal
+Terminal=false
+Categories=Utility;
