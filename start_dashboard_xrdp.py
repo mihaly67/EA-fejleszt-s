@@ -1,0 +1,18 @@
+import subprocess
+import os
+
+# Futtatás a VPS-en úgy, hogy az XRDP (Display 10) ablakban nyíljon meg
+env = os.environ.copy()
+env['DISPLAY'] = ':10.0' # Az XRDP tipikus display-je, ahogy a .xorgxrdp.10.log is mutatja
+
+print("Műszerfal indítása az XRDP képernyőn (Display :10.0)...")
+try:
+    subprocess.Popen(
+        ["/home/misi/Merkava_ML_Ops/venv/bin/python3", "/home/misi/Merkava_ML_Ops/vaku3_dashboard.py"],
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    print("Siker! A VAKU 3.0 Műszerfal most megjelent a távoli asztalodon!")
+except Exception as e:
+    print(f"Hiba: {e}")
