@@ -402,4 +402,3 @@ if __name__ == '__main__':
     dashboard = VakuDashboard()
     dashboard.show()
     sys.exit(app.exec_())
-
