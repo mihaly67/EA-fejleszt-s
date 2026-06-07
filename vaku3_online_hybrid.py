@@ -4,8 +4,8 @@ import logging
 import time
 import os
 
-from ANALYSIS_TOOLS.ML_Ops.utils.ring_buffer import O1RingBuffer
-from ANALYSIS_TOOLS.ML_Ops.utils.log_er_scaler import LogERScaler
+from utils.ring_buffer import O1RingBuffer
+from utils.log_er_scaler import LogERScaler
 
 # Add try-except for hmmlearn to gracefully handle if it's not installed in other environments.
 try:
@@ -15,6 +15,7 @@ except ImportError:
     HMMLEARN_INSTALLED = False
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+logging.getLogger('hmmlearn').setLevel(logging.CRITICAL)
 logger = logging.getLogger(__name__)
 
 class HybridStreamingEngine:
