@@ -21,7 +21,7 @@ def main():
     db_paths = [
         ("swat4_rag", "swat4_unified_compressed.index", "swat4_unified_knowledge.db"),
         ("Knowledge_Base/RAG_DB", "swat4_unified_compressed.index", "swat4_unified_knowledge.db"),
-        ("Knowledge_Base/SWAT_DB", "swat_unified_compressed.index", "swat_unified.db")
+        ("Knowledge_Base/SWAT_DB", "SWAT4_RAG_compressed.index", "SWAT4_RAG.db")
     ]
 
     index_path = None
@@ -52,8 +52,7 @@ def main():
     cursor = conn.cursor()
 
     # Ellenőrizzük a tábla sémáját, hogy a régi vagy az új van-e (visszafelé kompatibilitás)
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='rag_data'")
-    is_new_schema = cursor.fetchone() is not None
+    is_new_schema = True
 
     print(f"🎯 Query kódolása: '{args.query}'")
     query_vector = model.encode([args.query]).astype('float32')
@@ -66,14 +65,14 @@ def main():
 
     # SQL alapok a séma függvényében
     if is_new_schema:
-        sql_base = "SELECT id, category, source_repo, filepath, content FROM rag_data WHERE id=?"
+        sql_base = "SELECT id, 'Unknown', source_repo, filepath, content FROM rag_data WHERE id=?"
     else:
         sql_base = "SELECT id, 'Unknown', source, source, content FROM swat_data WHERE id=?"
 
     sql_params = []
 
     if is_new_schema:
-        if args.category:
+        if False:
             sql_base += " AND category LIKE ?"
             sql_params.append(f"%{args.category}%")
         if args.repo:
