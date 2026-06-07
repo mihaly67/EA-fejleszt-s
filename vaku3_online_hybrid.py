@@ -29,6 +29,7 @@ class HybridStreamingEngine:
         if not HMMLEARN_INSTALLED:
              logger.warning("hmmlearn package not installed. Running in dummy mode.")
 
+             
         # HMM model (3 állapotú: Calm, Impulsive Up, Impulsive Down)
         if HMMLEARN_INSTALLED:
             self.hmm_model = GaussianHMM(n_components=3, covariance_type="diag", n_iter=100, random_state=42, init_params="")
@@ -58,6 +59,7 @@ class HybridStreamingEngine:
             time_diff = max(1.0, times[-1] - times[0])
             tick_density = len(times) / (time_diff / 1000.0) # ticks per second
 
+            
         return log_return, avg_spread, tick_density
 
     def fit_and_map_hmm(self, observations):
@@ -83,6 +85,17 @@ class HybridStreamingEngine:
 
             remaining_states = list(set([0, 1, 2]) - {calm_state})
 
+            
+            # Semantic mapping
+            er_idx = 0
+            
+            er_means = means[:, er_idx]
+            
+            # Calm state has the lowest absolute ER (prices going nowhere)
+            calm_state = int(np.argmin(np.abs(er_means)))
+            
+            remaining_states = list(set([0, 1, 2]) - {calm_state})
+            
             if len(remaining_states) == 2:
                 if er_means[remaining_states[0]] > er_means[remaining_states[1]]:
                     impulsive_up_state = int(remaining_states[0])
@@ -110,6 +123,7 @@ class HybridStreamingEngine:
         if not self.is_hmm_trained or not HMMLEARN_INSTALLED:
             return 0, 0.0, 0.0
 
+            
         try:
             import warnings
 
@@ -127,6 +141,17 @@ class HybridStreamingEngine:
             current_state = future_probs.argmax()
             confidence = future_probs[current_state] * 100.0
 
+                
+            trans_mat = self.hmm_model.transmat_
+            future_probs = np.dot(posterior_probs, trans_mat)
+            
+            calm_state_id = self.state_map["Calm"]
+            calm_risk = future_probs[calm_state_id] * 100.0
+            
+            # Find the best impulsive state if applicable
+            current_state = future_probs.argmax()
+            confidence = future_probs[current_state] * 100.0
+            
             return current_state, calm_risk, confidence
         except Exception:
             return 0, 0.0, 0.0
@@ -170,6 +195,14 @@ class HybridStreamingEngine:
                     obs = [log_return, avg_spread, tick_density]
                     self.training_buffer.append(obs)
 
+                    
+                    if total_ticks < self.micro_window:
+                        continue
+                        
+                    log_return, avg_spread, tick_density = self.get_micro_features()
+                    obs = [log_return, avg_spread, tick_density]
+                    self.training_buffer.append(obs)
+                    
                     # Keep sliding window to 300
                     if len(self.training_buffer) > 300:
                         self.training_buffer.pop(0)
@@ -183,11 +216,18 @@ class HybridStreamingEngine:
 
                     current_state, calm_risk, confidence = self.predict_future_state(np.array(self.training_buffer))
 
+                    
+                    if not self.is_hmm_trained:
+                        continue
+                        
+                    current_state, calm_risk, confidence = self.predict_future_state(np.array(self.training_buffer))
+                    
                     # Confidence rule
                     if confidence < 80.0:
                         decisions['NO_TRADE'] += 1
                         continue
 
+                        
                     # Decision logic
                     if current_state in [self.state_map["ImpulsiveUp"], self.state_map["ImpulsiveDown"]]:
                         if calm_risk < 20.0:
