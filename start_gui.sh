@@ -7,4 +7,4 @@ source venv/bin/activate
 export DISPLAY=:10.0 
 
 # Indítás, logolás a háttérben
-python3 vaku3_dashboard.py > /home/misi/Merkava_ML_Ops/gui_startup.log 2>&1
+python3 vaku3_dashboard_10.py > /home/misi/Merkava_ML_Ops/gui_startup.log 2>&1
