@@ -263,7 +263,7 @@ class Vaku3Dashboard(QMainWindow):
                 ticks_processed_this_frame += 1
                 continue
                 
-            macro_er = self.engine.update_macro_context(unix_ms, price)
+            macro_er = 0.0
             
             # Features & Training
             log_return, avg_spread, tick_density = self.engine.get_micro_features()
