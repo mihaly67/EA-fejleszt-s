@@ -175,7 +175,7 @@ class Vaku3OfflineValidator:
             logger.warning("Nincs Target=1 esemény a fájlban. A validáció skippelve.")
             return df, report_lines
 
-        state_hits = {0: 0, 1: 0, 2: 0}
+        state_hits = {0: 0, 1: 0, 2: 0, np.nan: 0}
 
         for idx in manipulated_entries:
             hmm_state_at_trade = df.loc[idx, 'Vaku3_HMM_State']
@@ -186,7 +186,7 @@ class Vaku3OfflineValidator:
 
         for state_id, hits in state_hits.items():
             hit_rate = (hits / total_manipulations) * 100
-            state_name = state_names[state_id]
+            state_name = state_names.get(state_id, "Unknown")
             is_calm = " <--- (Veszélyes 'Calm' / Oldalazó állapot)" if state_name == "Calm" else ""
 
             line = f"  -> {state_name} (Állapot ID: {state_id}) találati aránya a trükkök előtt: {hits} db ({hit_rate:.1f}%){is_calm}"

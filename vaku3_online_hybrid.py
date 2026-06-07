@@ -4,8 +4,8 @@ import logging
 import time
 import os
 
-from ANALYSIS_TOOLS.ML_Ops.utils.ring_buffer import O1RingBuffer
-from ANALYSIS_TOOLS.ML_Ops.utils.log_er_scaler import LogERScaler
+from utils.ring_buffer import O1RingBuffer
+from utils.log_er_scaler import LogERScaler
 
 # Add try-except for hmmlearn to gracefully handle if it's not installed in other environments.
 try:
@@ -66,9 +66,11 @@ class HybridStreamingEngine:
 
         try:
             import warnings
+
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 self.hmm_model.fit(observations)
+                sys.stderr = sys.__stderr__
             means = self.hmm_model.means_
 
             # Semantic mapping
@@ -100,7 +102,7 @@ class HybridStreamingEngine:
             self.is_hmm_trained = True
             return True
         except Exception as e:
-            logger.error(f"HMM Training failed: {e}")
+            # logger.error(f"HMM Training failed: {e}")
             return False
 
     def predict_future_state(self, obs_sequence):
@@ -110,6 +112,7 @@ class HybridStreamingEngine:
 
         try:
             import warnings
+
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 posterior_probs = self.hmm_model.predict_proba(obs_sequence)[-1]
@@ -206,4 +209,4 @@ class HybridStreamingEngine:
 
 if __name__ == "__main__":
     engine = HybridStreamingEngine()
-    engine.run_stream("Showcase_Indicators/GOLD_M1_1Day.csv")
+    engine.run_stream("data/Merkava_XAUUSD_v1.10_20260408_025931.csv")
