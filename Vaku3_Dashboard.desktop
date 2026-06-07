@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Vaku 3.0 Műszerfal
+Comment=Valós Idejű EA Tanácsadó (ZMQ)
+Exec=/home/misi/Merkava_ML_Ops/start_gui.sh
+Icon=utilities-terminal
+Terminal=false
+Categories=Utility;
