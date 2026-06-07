@@ -4,8 +4,8 @@ import logging
 import time
 import os
 
-from utils.ring_buffer import O1RingBuffer
-from utils.log_er_scaler import LogERScaler
+from ANALYSIS_TOOLS.ML_Ops.utils.ring_buffer import O1RingBuffer
+from ANALYSIS_TOOLS.ML_Ops.utils.log_er_scaler import LogERScaler
 
 # Add try-except for hmmlearn to gracefully handle if it's not installed in other environments.
 try:
@@ -38,7 +38,30 @@ class HybridStreamingEngine:
         # State mapping based on blueprint
         self.state_map = {"Calm": 0, "ImpulsiveUp": 1, "ImpulsiveDown": 2}
         self.is_hmm_trained = False
+        self.macro_window_minutes = macro_window_minutes
+        self.macro_times = []
+        self.macro_prices = []
         self.training_buffer = []
+
+    def update_macro_context(self, current_time_ms, price):
+        self.macro_times.append(current_time_ms)
+        self.macro_prices.append(price)
+        
+        # Tisztítjuk az ablakot (Csak az utolsó X percet tartjuk meg)
+        cutoff_ms = current_time_ms - (self.macro_window_minutes * 60 * 1000)
+        
+        while len(self.macro_times) > 0 and self.macro_times[0] < cutoff_ms:
+            self.macro_times.pop(0)
+            self.macro_prices.pop(0)
+            
+        # Makro ER számolása az aktív gyertyán
+        if len(self.macro_prices) < 2:
+            return 0.0
+            
+        net_move = abs(self.macro_prices[-1] - self.macro_prices[0])
+        gross_move = sum(abs(np.diff(self.macro_prices)))
+        
+        return net_move / gross_move if gross_move > 0 else 0.0
 
     def get_micro_features(self):
         prices = self.price_buffer.get_slice(self.micro_window)
