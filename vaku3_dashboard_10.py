@@ -266,10 +266,9 @@ class Vaku3Dashboard(QMainWindow):
                 ticks_processed_this_frame += 1
                 continue
                 
-            macro_er = abs(log_return) * 100.0 if 'log_return' in locals() else 0.0
-            
             # Features & Training
             log_return, avg_spread, tick_density = self.engine.get_micro_features()
+            macro_er = abs(log_return) * 100.0
             obs = [log_return, avg_spread, tick_density]
             self.engine.training_buffer.append(obs)
             
@@ -310,7 +309,7 @@ class Vaku3Dashboard(QMainWindow):
             self.price_data[-1] = price
             
             self.macro_data[:-1] = self.macro_data[1:]
-            self.macro_data[-1] = macro_er * 100
+            self.macro_data[-1] = macro_er
             
             self.risk_data[:-1] = self.risk_data[1:]
             self.risk_data[-1] = risk
