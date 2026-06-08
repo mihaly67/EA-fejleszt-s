@@ -52,7 +52,6 @@ class Vaku3OfflineValidator:
         else:
             self.model = None
 
-            
         self.is_fitted = False
         self.state_map = {"Calm": 0, "ImpulsiveUp": 1, "ImpulsiveDown": 2}
 
@@ -65,7 +64,6 @@ class Vaku3OfflineValidator:
             bid = df.loc[i, 'Bid'] if 'Bid' in df.columns else df.iloc[i, 1]
             spread = df.loc[i, 'Spread'] if 'Spread' in df.columns else 1.0
 
-            
             # Find time column
             t_col = next((c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']), None)
             t_ms = df.loc[i, t_col] if t_col else i * 100.0
@@ -79,7 +77,6 @@ class Vaku3OfflineValidator:
                 spreads = self.spread_buffer.get_data()
                 times = self.time_buffer.get_data()
 
-                
                 # 1. Log Return proxy
                 net_change = prices[-1] - prices[0]
                 gross_move = np.sum(np.abs(np.diff(prices)))
@@ -88,10 +85,6 @@ class Vaku3OfflineValidator:
                 # 2. Spread Elasticity
                 avg_spread = np.mean(spreads)
 
-                
-                # 2. Spread Elasticity
-                avg_spread = np.mean(spreads)
-                
                 # 3. Tick Density
                 time_diff = max(1.0, times[-1] - times[0])
                 tick_density = len(times) / (time_diff / 1000.0)
@@ -115,7 +108,6 @@ class Vaku3OfflineValidator:
             warnings.simplefilter("ignore")
             self.model.fit(self.observation_space)
 
-            
         self.is_fitted = True
 
         means = self.model.means_
@@ -128,25 +120,6 @@ class Vaku3OfflineValidator:
 
         remaining_states = list(set([0, 1, 2]) - {calm_state})
 
-        if len(remaining_states) == 2:
-            if er_means[remaining_states[0]] > er_means[remaining_states[1]]:
-                impulsive_up_state = int(remaining_states[0])
-                impulsive_down_state = int(remaining_states[1])
-            else:
-                impulsive_up_state = int(remaining_states[1])
-                impulsive_down_state = int(remaining_states[0])
-        else:
-            impulsive_up_state = 1
-            impulsive_down_state = 2
-
-        
-        er_means = means[:, er_idx]
-        
-        # Calm state has the lowest absolute ER (prices going nowhere)
-        calm_state = int(np.argmin(np.abs(er_means)))
-        
-        remaining_states = list(set([0, 1, 2]) - {calm_state})
-        
         if len(remaining_states) == 2:
             if er_means[remaining_states[0]] > er_means[remaining_states[1]]:
                 impulsive_up_state = int(remaining_states[0])
@@ -186,7 +159,6 @@ class Vaku3OfflineValidator:
             warnings.simplefilter("ignore")
             hidden_states = self.model.predict(self.observation_space)
 
-            
         df['Vaku3_HMM_State'] = hidden_states
 
         state_names = {v: k for k, v in self.state_map.items()}
