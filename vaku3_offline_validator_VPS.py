@@ -51,7 +51,7 @@ class Vaku3OfflineValidator:
             self.model = hmm.GaussianHMM(n_components=3, covariance_type="diag", n_iter=100, random_state=42, init_params="")
         else:
             self.model = None
-            
+
         self.is_fitted = False
         self.state_map = {"Calm": 0, "ImpulsiveUp": 1, "ImpulsiveDown": 2}
 
@@ -63,7 +63,7 @@ class Vaku3OfflineValidator:
         for i in range(len(df)):
             bid = df.loc[i, 'Bid'] if 'Bid' in df.columns else df.iloc[i, 1]
             spread = df.loc[i, 'Spread'] if 'Spread' in df.columns else 1.0
-            
+
             # Find time column
             t_col = next((c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']), None)
             t_ms = df.loc[i, t_col] if t_col else i * 100.0
@@ -76,15 +76,15 @@ class Vaku3OfflineValidator:
                 prices = self.price_buffer.get_data()
                 spreads = self.spread_buffer.get_data()
                 times = self.time_buffer.get_data()
-                
+
                 # 1. Log Return proxy
                 net_change = prices[-1] - prices[0]
                 gross_move = np.sum(np.abs(np.diff(prices)))
                 log_return = net_change / gross_move if gross_move > 0 else 0.0
-                
+
                 # 2. Spread Elasticity
                 avg_spread = np.mean(spreads)
-                
+
                 # 3. Tick Density
                 time_diff = max(1.0, times[-1] - times[0])
                 tick_density = len(times) / (time_diff / 1000.0)
@@ -107,19 +107,19 @@ class Vaku3OfflineValidator:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self.model.fit(self.observation_space)
-            
+
         self.is_fitted = True
 
         means = self.model.means_
         er_idx = 0
-        
+
         er_means = means[:, er_idx]
-        
+
         # Calm state has the lowest absolute ER (prices going nowhere)
         calm_state = int(np.argmin(np.abs(er_means)))
-        
+
         remaining_states = list(set([0, 1, 2]) - {calm_state})
-        
+
         if len(remaining_states) == 2:
             if er_means[remaining_states[0]] > er_means[remaining_states[1]]:
                 impulsive_up_state = int(remaining_states[0])
@@ -158,7 +158,7 @@ class Vaku3OfflineValidator:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             hidden_states = self.model.predict(self.observation_space)
-            
+
         df['Vaku3_HMM_State'] = hidden_states
 
         state_names = {v: k for k, v in self.state_map.items()}
