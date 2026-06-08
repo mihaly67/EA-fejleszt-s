@@ -249,7 +249,10 @@ class Vaku3Dashboard(QMainWindow):
                 break
                 
             row = self.stream.get_next_tick()
-            unix_ms = float(row[self.stream.t_col])
+            try:
+                unix_ms = float(row[self.stream.t_col])
+            except ValueError:
+                unix_ms = pd.to_datetime(row[self.stream.t_col]).timestamp() * 1000.0
             price = float(row['Price'])
             spread = float(row['Spread'])
             
@@ -263,7 +266,7 @@ class Vaku3Dashboard(QMainWindow):
                 ticks_processed_this_frame += 1
                 continue
                 
-            macro_er = 0.0
+            macro_er = abs(log_return) * 100.0 if 'log_return' in locals() else 0.0
             
             # Features & Training
             log_return, avg_spread, tick_density = self.engine.get_micro_features()
