@@ -1,8 +1,9 @@
 from playwright.sync_api import sync_playwright
 import time
 import os
+import shutil
 
-def record_hud_video():
+def record_hud_video(duration=180, filename="hud_diagnostics_extended.webm"):
     # Biztosítjuk, hogy a kimeneti mappa létezik
     os.makedirs("video_output", exist_ok=True)
 
@@ -15,13 +16,20 @@ def record_hud_video():
         print("Megnyitom a Streamlit HUD oldalt...")
         page.goto("http://5.189.163.88:8501")
 
-        print("Várunk 60 másodpercet, hogy a HUD működését rögzítsük...")
-        time.sleep(60) # 1 perces videó
+        print(f"Várunk {duration} másodpercet, hogy a HUD működését rögzítsük...")
+        time.sleep(duration) # hosszabb videó
 
         print("Felvétel leállítása és mentése...")
+
+        video_path = page.video.path()
+
         page.close()
         context.close()
         browser.close()
 
+        print(f"Mentés a végső helyre: {filename}")
+        shutil.move(video_path, f"HMM_Pipe_HUD/{filename}")
+
 if __name__ == "__main__":
-    record_hud_video()
+    record_hud_video(180, "hud_diagnostics_extended_1.webm")
+    record_hud_video(180, "hud_diagnostics_extended_2.webm")
