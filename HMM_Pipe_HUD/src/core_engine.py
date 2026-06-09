@@ -139,7 +139,7 @@ class HMMCoreEngine:
         # A Github Repo (H1 Swing/TrendFollow) alapján: Ha a nagy trend (Regime) beáll, és a lokális idősík egyetért, BELÉPÉS.
         # Lazítunk a küszöbön, >0.6 már megbízhatónak számít trend esetén.
 
-        if m15_state == 1 and m15_conf > 0.6:  # Trendelő Regime
+        if m15_state == 1 and m15_conf > 0.4:  # Trendelő Regime
             if m5_state == 1 and m1_state == 1:
                 return f'🟩 VÉTEL (BUY) JELZÉS: M15 Trend, M5/M1 Bullish. Csatlakozás a trendhez!'
             elif m5_state == -1 and m1_state == -1:
