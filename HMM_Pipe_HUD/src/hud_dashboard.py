@@ -41,9 +41,23 @@ elif 'GYENGÜL' in advice or 'PULLBACK' in advice:
 else:
     st.markdown(f"<div style='background-color:#e2e3e5;padding:20px;border-radius:10px'><h3>⚪ {advice}</h3></div>", unsafe_allow_html=True)
 
-# Native fast rendering line chart instead of heavy Plotly
-chart_data = df_plot[['time', 'close']].set_index('time')
-st.line_chart(chart_data, height=400)
+
+import altair as alt
+
+chart_data = df_plot[['time', 'close']].copy()
+chart_data['time'] = pd.to_datetime(chart_data['time'])
+
+# Y tengely dinamikus skálázása Altair segítségével (könnyű HTML)
+min_price = chart_data['close'].min() - 2.0
+max_price = chart_data['close'].max() + 2.0
+
+c = alt.Chart(chart_data).mark_line(color='#1f77b4', strokeWidth=3).encode(
+    x=alt.X('time:T', title='Idő'),
+    y=alt.Y('close:Q', scale=alt.Scale(domain=[min_price, max_price]), title='Ár (XAUUSD)')
+).properties(height=400)
+
+st.altair_chart(c, use_container_width=True)
 
 st.subheader("Utolsó 5 Tick Története")
-st.dataframe(df_plot.tail(5)[['time', 'close', 'advice']].set_index('time'))
+display_df = df_plot.tail(5)[['time', 'close', 'advice', 'state']].copy()
+st.table(display_df)
