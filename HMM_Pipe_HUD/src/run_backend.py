@@ -15,19 +15,7 @@ def main():
     sim = MarketSimulator(m1_df, m5_df, m15_df)
     engine = HMMCoreEngine()
 
-    # Pre-warm (gyorsított inicializálás)
-    m15_list = m15_df.head(35).to_dict('records')
-    m5_list = m5_df.head(100).to_dict('records')
-    m1_list = m1_df.head(60).to_dict('records')
-
-    for row in m15_list: engine.process_tick(None, None, None, 'dummy', row)
-    for row in m5_list: engine.process_tick(None, 'dummy', row, None, None)
-    for row in m1_list: engine.process_tick(row, None, None, None, None)
-
-    # Keresünk egy biztos pontot
-    for _ in range(300): sim.fetch_next_tick()
-
-    print("Backend készen áll, elindul a tick stream...")
+    print("Backend készen áll, elindul a tick stream...", flush=True)
 
     visible_window = 100
     history_data = []
@@ -35,7 +23,7 @@ def main():
     while True:
         tick = sim.fetch_next_tick()
         if not tick:
-            print("Nincs több tick az időgépben.")
+            print("Nincs több tick az időgépben.", flush=True)
             break
 
         m1_data = tick['m1_data']
@@ -59,14 +47,18 @@ def main():
         if len(history_data) > visible_window:
             history_data.pop(0)
 
-        # JSON mentése
-        with open('/tmp/hmm_latest_tick.json', 'w') as f:
+        with open('/tmp/hmm_latest_tick.tmp', 'w') as f:
             json.dump(tick_info, f)
+        os.replace('/tmp/hmm_latest_tick.tmp', '/tmp/hmm_latest_tick.json')
 
-        with open('/tmp/hmm_history.json', 'w') as f:
+        with open('/tmp/hmm_history.tmp', 'w') as f:
             json.dump(history_data, f)
+        os.replace('/tmp/hmm_history.tmp', '/tmp/hmm_history.json')
 
-        time.sleep(1.0) # Ez a háttér sebessége, ami hajtja a "piacot"
+        if 'INICIALIZÁLÁS' in advice:
+            time.sleep(0.01) # Gyors pörgetés, amíg a HMM fel nem tanul (alig pár másodperc)
+        else:
+            time.sleep(1.0) # Utána stabilizálódik 1 mp-re
 
 if __name__ == '__main__':
     main()

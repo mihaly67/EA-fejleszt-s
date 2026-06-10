@@ -3,158 +3,144 @@ import numpy as np
 import warnings
 from sklearn.preprocessing import StandardScaler
 import logging
+from collections import deque
+import pandas as pd
 
 warnings.filterwarnings('ignore')
 logging.getLogger('hmmlearn').setLevel(logging.CRITICAL)
 
+class SimpleRingBuffer:
+    def __init__(self, size):
+        self.size = size
+        self.data = deque(maxlen=size)
+
+    def append(self, x):
+        self.data.append(x)
+
+    def is_full(self):
+        return len(self.data) == self.size
+
+    def get_array(self):
+        return np.array(self.data)
+
 class HMMCoreEngine:
     def __init__(self):
-        # M15 (Layer 3 - Regime) - 2 states (Ranging / Trending)
-        self.hmm_m15 = GaussianHMM(n_components=2, covariance_type='full', n_iter=100, random_state=42)
-        # M5 (Layer 2 - Swing) - 3 states (Bearish, Ranging, Bullish)
-        self.hmm_m5 = GaussianHMM(n_components=3, covariance_type='full', n_iter=100, random_state=42)
-        # M1 (Layer 1 - Scalp/Entry) - 3 states
-        self.hmm_m1 = GaussianHMM(n_components=3, covariance_type='full', n_iter=100, random_state=42)
+        # Ultra-lightweight configuration
+        # Buffer needs only 30 elements to initialize the model.
+        # After initialization, we ONLY predict().
+        self.models = {
+            'm15': {'hmm': None, 'scaler': StandardScaler(), 'fitted': False, 'states': 2, 'window': SimpleRingBuffer(30)},
+            'm5':  {'hmm': None, 'scaler': StandardScaler(), 'fitted': False, 'states': 3, 'window': SimpleRingBuffer(30)},
+            'm1':  {'hmm': None, 'scaler': StandardScaler(), 'fitted': False, 'states': 3, 'window': SimpleRingBuffer(30)}
+        }
 
-        self.window_m15 = []
-        self.window_m5 = []
-        self.window_m1 = []
+        self.last_times = {'m5': None, 'm15': None}
+        self.last_states = {'m1': None, 'm5': None, 'm15': None}
+        self.last_probs = {'m1': None, 'm5': None, 'm15': None}
 
-        # Nagyobb ablakok az új idősíkokhoz, hogy elég minta legyen (a github repóból véve a logikát, 200/120 bar okés)
-        self.max_window_m15 = 200
-        self.max_window_m5 = 120
-        self.max_window_m1 = 60
+    def _train_model(self, tf_key, data_array):
+        scaler = self.models[tf_key]['scaler']
+        scaled_data = scaler.fit_transform(data_array)
+        n_states = self.models[tf_key]['states']
 
-        self.scaler_m15 = StandardScaler()
-        self.scaler_m5 = StandardScaler()
-        self.scaler_m1 = StandardScaler()
+        model = GaussianHMM(n_components=n_states, covariance_type='full', n_iter=10, random_state=42, init_params="smc")
 
-        self.last_m5_time = None
-        self.last_m15_time = None
+        off_diag = 0.1 / (n_states - 1) if n_states > 1 else 0
+        transmat = np.full((n_states, n_states), off_diag)
+        np.fill_diagonal(transmat, 0.9)
+        model.transmat_ = transmat
 
-        self.last_m5_state, self.last_m5_probs = None, None
-        self.last_m15_state, self.last_m15_probs = None, None
+        model.fit(scaled_data)
 
-        self.mapped_m5_state = None
-        self.mapped_m15_state = None
+        self.models[tf_key]['hmm'] = model
+        self.models[tf_key]['fitted'] = True
 
-    def map_states(self, hmm_model, num_states):
-        # Maps the random HMM states to logical market conditions based on the mean of the LogReturns (feature 0)
-        means = hmm_model.means_[:, 0]
+    def _predict_state(self, tf_key, features):
+        scaler = self.models[tf_key]['scaler']
+        model = self.models[tf_key]['hmm']
+        n_states = self.models[tf_key]['states']
 
-        if num_states == 2:
-            # 2 states: 0 = Ranging, 1 = Trending
+        # Predict on a single tick! No buffer needed for predict if we treat it as an independent observation
+        # or we just pass the last N elements. For pure O(1) CPU speed, we pass just the buffer's contents.
+        data_array = self.models[tf_key]['window'].get_array()
+        scaled_data = scaler.transform(data_array)
+
+        # Predict returns the state sequence, we take the last one
+        raw_state = model.predict(scaled_data)[-1]
+        probs = model.predict_proba(scaled_data)[-1]
+
+        means = model.means_[:, 0]
+        if n_states == 2:
             idx = np.argsort(np.abs(means))
             mapping = {idx[0]: 0, idx[1]: 1}
-            return mapping
-
-        elif num_states == 3:
-            # 3 states: lowest mean = Bearish (-1), middle = Ranging (0), highest = Bullish (1)
+        else:
             idx = np.argsort(means)
             mapping = {idx[0]: -1, idx[1]: 0, idx[2]: 1}
-            return mapping
 
-        return {}
+        mapped_state = mapping.get(raw_state, 0)
+
+        # Smoothing (Mode of last 3 states) to prevent flickering (like github repo)
+        if not hasattr(self, 'history'):
+            self.history = {'m1': deque(maxlen=3), 'm5': deque(maxlen=3), 'm15': deque(maxlen=3)}
+        self.history[tf_key].append(mapped_state)
+        smoothed_state = int(pd.Series(self.history[tf_key]).mode()[0])
+
+        return smoothed_state, probs
 
     def process_tick(self, m1_row, m5_time, m5_row, m15_time, m15_row):
-        m1_state, m1_probs = None, None
-        mapped_m1_state = None
-
-        # M1 számítás
+        # M1
         if m1_row is not None:
-            features_m1 = [m1_row['LogReturn'], m1_row['ATR_Proxy']]
-            self.window_m1.append(features_m1)
-            if len(self.window_m1) > self.max_window_m1:
-                self.window_m1.pop(0)
+            self.models['m1']['window'].append([m1_row['LogReturn'], m1_row['ATR_Proxy']])
+            if self.models['m1']['window'].is_full():
+                if not self.models['m1']['fitted']:
+                    self._train_model('m1', self.models['m1']['window'].get_array())
+                self.last_states['m1'], self.last_probs['m1'] = self._predict_state('m1', None)
 
-            if len(self.window_m1) >= 30:
-                X_m1 = np.array(self.window_m1)
-                if np.std(X_m1) > 0:
-                    X_m1_scaled = self.scaler_m1.fit_transform(X_m1)
-                    try:
-                        self.hmm_m1.fit(X_m1_scaled)
-                        raw_state = self.hmm_m1.predict(X_m1_scaled)[-1]
-                        m1_probs = self.hmm_m1.predict_proba(X_m1_scaled)[-1]
-                        mapping = self.map_states(self.hmm_m1, 3)
-                        mapped_m1_state = mapping.get(raw_state, 0)
-                    except Exception:
-                        pass
+        # M5
+        if m5_row is not None and m5_time != self.last_times['m5']:
+            self.last_times['m5'] = m5_time
+            self.models['m5']['window'].append([m5_row['LogReturn'], m5_row['ATR_Proxy']])
+            if self.models['m5']['window'].is_full():
+                if not self.models['m5']['fitted']:
+                    self._train_model('m5', self.models['m5']['window'].get_array())
+                self.last_states['m5'], self.last_probs['m5'] = self._predict_state('m5', None)
 
-        # M5 számítás
-        if m5_row is not None and m5_time != self.last_m5_time:
-            self.last_m5_time = m5_time
-            features_m5 = [m5_row['LogReturn'], m5_row['ATR_Proxy']]
-            self.window_m5.append(features_m5)
-            if len(self.window_m5) > self.max_window_m5:
-                self.window_m5.pop(0)
+        # M15
+        if m15_row is not None and m15_time != self.last_times['m15']:
+            self.last_times['m15'] = m15_time
+            self.models['m15']['window'].append([m15_row['LogReturn'], m15_row['ATR_Proxy']])
+            if self.models['m15']['window'].is_full():
+                if not self.models['m15']['fitted']:
+                    self._train_model('m15', self.models['m15']['window'].get_array())
+                self.last_states['m15'], self.last_probs['m15'] = self._predict_state('m15', None)
 
-            if len(self.window_m5) >= 30:
-                X_m5 = np.array(self.window_m5)
-                if np.std(X_m5) > 0:
-                    X_m5_scaled = self.scaler_m5.fit_transform(X_m5)
-                    try:
-                        self.hmm_m5.fit(X_m5_scaled)
-                        raw_state = self.hmm_m5.predict(X_m5_scaled)[-1]
-                        self.last_m5_probs = self.hmm_m5.predict_proba(X_m5_scaled)[-1]
-                        mapping = self.map_states(self.hmm_m5, 3)
-                        self.mapped_m5_state = mapping.get(raw_state, 0)
-                    except Exception:
-                        pass
+        return self._generate_advice()
 
-        # M15 számítás
-        if m15_row is not None and m15_time != self.last_m15_time:
-            self.last_m15_time = m15_time
-            features_m15 = [m15_row['LogReturn'], m15_row['ATR_Proxy']]
-            self.window_m15.append(features_m15)
-            if len(self.window_m15) > self.max_window_m15:
-                self.window_m15.pop(0)
+    def _generate_advice(self):
+        s1 = self.last_states['m1']
+        s5 = self.last_states['m5']
+        s15 = self.last_states['m15']
 
-            if len(self.window_m15) >= 30:
-                X_m15 = np.array(self.window_m15)
-                if np.std(X_m15) > 0:
-                    X_m15_scaled = self.scaler_m15.fit_transform(X_m15)
-                    try:
-                        self.hmm_m15.fit(X_m15_scaled)
-                        raw_state = self.hmm_m15.predict(X_m15_scaled)[-1]
-                        self.last_m15_probs = self.hmm_m15.predict_proba(X_m15_scaled)[-1]
-                        mapping = self.map_states(self.hmm_m15, 2)
-                        self.mapped_m15_state = mapping.get(raw_state, 0)
-                    except Exception:
-                        pass
-
-        return self._generate_advice(mapped_m1_state, m1_probs, self.mapped_m5_state, self.last_m5_probs, self.mapped_m15_state, self.last_m15_probs)
-
-    def _generate_advice(self, m1_state, m1_probs, m5_state, m5_probs, m15_state, m15_probs):
-        if m5_state is None or m15_state is None or m1_state is None:
+        if s1 is None or s5 is None or s15 is None:
             return '⚪ INICIALIZÁLÁS: Adatgyűjtés folyamatban...'
 
-        m1_conf = np.max(m1_probs) if m1_probs is not None else 0
-        m5_conf = np.max(m5_probs) if m5_probs is not None else 0
-        m15_conf = np.max(m15_probs) if m15_probs is not None else 0
+        m15_conf = np.max(self.last_probs['m15'])
 
-        # M15: 0 = Sávos (Ranging), 1 = Trendelő (Trending)
-        # M5: 0 = Oldalazó, 1 = Bika, -1 = Medve
-        # M1: 0 = Zaj/Oldalazó, 1 = Bika, -1 = Medve
+        if s15 == 1 and m15_conf > 0.4:
+            if s5 == 1 and s1 == 1:
+                return '🟩 VÉTEL (BUY) JELZÉS: M15 Trend, M5/M1 Bullish.'
+            elif s5 == -1 and s1 == -1:
+                return '🟥 ELADÁS (SELL) JELZÉS: M15 Trend, M5/M1 Bearish.'
+            elif s5 == 1 and s1 == -1:
+                return '🟨 PULLBACK LONG: M5 Bika, de M1 korrigál.'
+            elif s5 == -1 and s1 == 1:
+                return '🟨 PULLBACK SHORT: M5 Medve, de M1 korrigál.'
 
-        # A Github Repo (H1 Swing/TrendFollow) alapján: Ha a nagy trend (Regime) beáll, és a lokális idősík egyetért, BELÉPÉS.
-        # Lazítunk a küszöbön, >0.6 már megbízhatónak számít trend esetén.
-
-        if m15_state == 1 and m15_conf > 0.4:  # Trendelő Regime
-            if m5_state == 1 and m1_state == 1:
-                return f'🟩 VÉTEL (BUY) JELZÉS: M15 Trend, M5/M1 Bullish. Csatlakozás a trendhez!'
-            elif m5_state == -1 and m1_state == -1:
-                return f'🟥 ELADÁS (SELL) JELZÉS: M15 Trend, M5/M1 Bearish. Csatlakozás a trendhez!'
-            elif m5_state == 1 and m1_state == -1:
-                return f'🟨 PULLBACK LONG: M5 Bika, de M1 korrigál (Várd meg a M1 fordulást vételhez!)'
-            elif m5_state == -1 and m1_state == 1:
-                return f'🟨 PULLBACK SHORT: M5 Medve, de M1 korrigál (Várd meg a M1 fordulást eladáshoz!)'
-
-        # Ha a Regime oldalazik (Sávos piac):
-        if m15_state == 0:
-            if m5_state == 1 and m1_state == 1:
-                return '🟦 LOKÁLIS KITÖRÉS LONG: M15 Oldalazik, de lokális M5/M1 Bika. (Kockázatos skalp!)'
-            if m5_state == -1 and m1_state == -1:
-                return '🟦 LOKÁLIS KITÖRÉS SHORT: M15 Oldalazik, de lokális M5/M1 Medve. (Kockázatos skalp!)'
-            return '⬜ SÁVOS PIAC (RANGING): Várj tiszta M15 Trendre a biztonságos beszállóhoz.'
+        if s15 == 0:
+            if s5 == 1 and s1 == 1:
+                return '🟦 LOKÁLIS KITÖRÉS LONG: M15 Oldalazik, de lokális Bika.'
+            if s5 == -1 and s1 == -1:
+                return '🟦 LOKÁLIS KITÖRÉS SHORT: M15 Oldalazik, de lokális Medve.'
+            return '⬜ SÁVOS PIAC (RANGING): Várj tiszta M15 Trendre.'
 
         return '⬜ SEMLEGES: Várj a tiszta állapotváltásra.'
