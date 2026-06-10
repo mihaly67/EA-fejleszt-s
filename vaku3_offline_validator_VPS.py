@@ -196,9 +196,9 @@ class Vaku3OfflineValidator:
 
 def run_validator():
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    labeled_dir = os.path.join(base_dir, 'data', 'labeled')
+    labeled_dir = os.path.join(base_dir, 'data')
 
-    csv_files = glob.glob(os.path.join(labeled_dir, 'LABELED_*.csv'))
+    csv_files = glob.glob(os.path.join(labeled_dir, '*.csv'))
 
     if not csv_files:
         logger.warning(f"Nincsenek LABELED_ fájlok a {labeled_dir} mappában! Futtasd a címkézőt!")

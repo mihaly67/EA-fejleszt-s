@@ -7,7 +7,7 @@ def load_and_resample(csv_path):
     df = pd.read_csv(csv_path, parse_dates=['Time'])
     df.set_index('Time', inplace=True)
 
-    print('1 perces (M1), 5 perces (M5) és 15 perces (M15) gyertyák (OHLC) generálása...')
+    print('1 perces (M1) és 2 perces (M2) gyertyák (OHLC) generálása...')
 
     # Készítünk tiszta M1 OHLCV adatot:
     df_m1 = df['Bid'].resample('1min').ohlc()
@@ -15,14 +15,10 @@ def load_and_resample(csv_path):
     df_m1.dropna(inplace=True)
 
     # Készítünk tiszta M5 OHLCV adatot:
-    df_m5 = df['Bid'].resample('5min').ohlc()
-    df_m5['Volume'] = df['BidVol'].resample('5min').sum()
-    df_m5.dropna(inplace=True)
+
 
     # Készítünk tiszta M15 OHLCV adatot:
-    df_m15 = df['Bid'].resample('15min').ohlc()
-    df_m15['Volume'] = df['BidVol'].resample('15min').sum()
-    df_m15.dropna(inplace=True)
+
 
     print('Feature engineering: Log Return és ATR (High-Low)')
 
@@ -32,14 +28,10 @@ def load_and_resample(csv_path):
     df_m1.dropna(inplace=True)
 
     # Feature-ök M5-re
-    df_m5['LogReturn'] = np.log(df_m5['close'] / df_m5['close'].shift(1))
-    df_m5['ATR_Proxy'] = df_m5['high'] - df_m5['low']
-    df_m5.dropna(inplace=True)
+
 
     # Feature-ök M15-re
-    df_m15['LogReturn'] = np.log(df_m15['close'] / df_m15['close'].shift(1))
-    df_m15['ATR_Proxy'] = df_m15['high'] - df_m15['low']
-    df_m15.dropna(inplace=True)
+
 
     return df_m1, df_m5, df_m15
 

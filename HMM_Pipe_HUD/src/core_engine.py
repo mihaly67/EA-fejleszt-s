@@ -31,12 +31,13 @@ class HMMCoreEngine:
         self.models = {
             'm15': {'hmm': None, 'scaler': StandardScaler(), 'fitted': False, 'states': 2, 'window': SimpleRingBuffer(30)},
             'm5':  {'hmm': None, 'scaler': StandardScaler(), 'fitted': False, 'states': 3, 'window': SimpleRingBuffer(30)},
+            'm2':  {'hmm': None, 'scaler': StandardScaler(), 'fitted': False, 'states': 3, 'window': SimpleRingBuffer(30)},
             'm1':  {'hmm': None, 'scaler': StandardScaler(), 'fitted': False, 'states': 3, 'window': SimpleRingBuffer(30)}
         }
 
-        self.last_times = {'m5': None, 'm15': None}
-        self.last_states = {'m1': None, 'm5': None, 'm15': None}
-        self.last_probs = {'m1': None, 'm5': None, 'm15': None}
+        self.last_times = {'m2': None, 'm5': None, 'm15': None}
+        self.last_states = {'m1': None, 'm2': None, 'm5': None, 'm15': None}
+        self.last_probs = {'m1': None, 'm2': None, 'm5': None, 'm15': None}
 
     def _train_model(self, tf_key, data_array):
         scaler = self.models[tf_key]['scaler']
@@ -47,7 +48,7 @@ class HMMCoreEngine:
 
         off_diag = 0.1 / (n_states - 1) if n_states > 1 else 0
         transmat = np.full((n_states, n_states), off_diag)
-        np.fill_diagonal(transmat, 0.9)
+        np.fill_diagonal(transmat, 0.98)
         model.transmat_ = transmat
 
         model.fit(scaled_data)
@@ -55,7 +56,7 @@ class HMMCoreEngine:
         self.models[tf_key]['hmm'] = model
         self.models[tf_key]['fitted'] = True
 
-    def _predict_state(self, tf_key, features):
+    def _predict_state(self, tf_key):
         scaler = self.models[tf_key]['scaler']
         model = self.models[tf_key]['hmm']
         n_states = self.models[tf_key]['states']
@@ -81,20 +82,29 @@ class HMMCoreEngine:
 
         # Smoothing (Mode of last 3 states) to prevent flickering (like github repo)
         if not hasattr(self, 'history'):
-            self.history = {'m1': deque(maxlen=3), 'm5': deque(maxlen=3), 'm15': deque(maxlen=3)}
+            self.history = {'m1': deque(maxlen=3), 'm2': deque(maxlen=3), 'm5': deque(maxlen=3), 'm15': deque(maxlen=3)}
         self.history[tf_key].append(mapped_state)
         smoothed_state = int(pd.Series(self.history[tf_key]).mode()[0])
 
         return smoothed_state, probs
 
-    def process_tick(self, m1_row, m5_time, m5_row, m15_time, m15_row):
+    def process_tick(self, m1_row, m2_time, m2_row, m5_time, m5_row, m15_time, m15_row):
         # M1
         if m1_row is not None:
             self.models['m1']['window'].append([m1_row['LogReturn'], m1_row['ATR_Proxy']])
             if self.models['m1']['window'].is_full():
                 if not self.models['m1']['fitted']:
                     self._train_model('m1', self.models['m1']['window'].get_array())
-                self.last_states['m1'], self.last_probs['m1'] = self._predict_state('m1', None)
+                self.last_states['m1'], self.last_probs['m1'] = self._predict_state('m1')
+
+        # M2
+        if m2_row is not None and m2_time != self.last_times['m2']:
+            self.last_times['m2'] = m2_time
+            self.models['m2']['window'].append([m2_row['LogReturn'], m2_row['ATR_Proxy']])
+            if self.models['m2']['window'].is_full():
+                if not self.models['m2']['fitted']:
+                    self._train_model('m2', self.models['m2']['window'].get_array())
+                self.last_states['m2'], self.last_probs['m2'] = self._predict_state('m2')
 
         # M5
         if m5_row is not None and m5_time != self.last_times['m5']:
@@ -103,7 +113,7 @@ class HMMCoreEngine:
             if self.models['m5']['window'].is_full():
                 if not self.models['m5']['fitted']:
                     self._train_model('m5', self.models['m5']['window'].get_array())
-                self.last_states['m5'], self.last_probs['m5'] = self._predict_state('m5', None)
+                self.last_states['m5'], self.last_probs['m5'] = self._predict_state('m5')
 
         # M15
         if m15_row is not None and m15_time != self.last_times['m15']:
@@ -112,35 +122,44 @@ class HMMCoreEngine:
             if self.models['m15']['window'].is_full():
                 if not self.models['m15']['fitted']:
                     self._train_model('m15', self.models['m15']['window'].get_array())
-                self.last_states['m15'], self.last_probs['m15'] = self._predict_state('m15', None)
+                self.last_states['m15'], self.last_probs['m15'] = self._predict_state('m15')
 
         return self._generate_advice()
 
     def _generate_advice(self):
         s1 = self.last_states['m1']
+        s2 = self.last_states['m2']
         s5 = self.last_states['m5']
         s15 = self.last_states['m15']
 
-        if s1 is None or s5 is None or s15 is None:
+        if s1 is None or s2 is None or s5 is None or s15 is None:
             return '⚪ INICIALIZÁLÁS: Adatgyűjtés folyamatban...'
 
-        m15_conf = np.max(self.last_probs['m15'])
+        vote_score = s1 + s2 + s5
 
-        if s15 == 1 and m15_conf > 0.4:
-            if s5 == 1 and s1 == 1:
-                return '🟩 VÉTEL (BUY) JELZÉS: M15 Trend, M5/M1 Bullish.'
-            elif s5 == -1 and s1 == -1:
-                return '🟥 ELADÁS (SELL) JELZÉS: M15 Trend, M5/M1 Bearish.'
-            elif s5 == 1 and s1 == -1:
-                return '🟨 PULLBACK LONG: M5 Bika, de M1 korrigál.'
-            elif s5 == -1 and s1 == 1:
-                return '🟨 PULLBACK SHORT: M5 Medve, de M1 korrigál.'
+        if vote_score >= 2:
+            macro_trend = 1
+        elif vote_score <= -2:
+            macro_trend = -1
+        else:
+            macro_trend = 0
 
-        if s15 == 0:
-            if s5 == 1 and s1 == 1:
-                return '🟦 LOKÁLIS KITÖRÉS LONG: M15 Oldalazik, de lokális Bika.'
-            if s5 == -1 and s1 == -1:
-                return '🟦 LOKÁLIS KITÖRÉS SHORT: M15 Oldalazik, de lokális Medve.'
-            return '⬜ SÁVOS PIAC (RANGING): Várj tiszta M15 Trendre.'
+        if macro_trend == 1:
+            if s15 == 1:
+                return '🟩 ERŐS VÉTEL (BUY): Többségi mikro-trend fel (M15 megerősítve)'
+            else:
+                return '🟩 VÉTEL (BUY): Rövid távú mikro-trend fel. Gyors skalp.'
 
-        return '⬜ SEMLEGES: Várj a tiszta állapotváltásra.'
+        elif macro_trend == -1:
+            if s15 == 1:
+                return '🟥 ERŐS ELADÁS (SELL): Többségi mikro-trend le (M15 megerősítve)'
+            else:
+                return '🟥 ELADÁS (SELL): Rövid távú mikro-trend le. Gyors skalp.'
+
+        elif macro_trend == 0:
+            if s5 == 1 and s2 == -1:
+                return '🟨 PULLBACK LONG: M5 bika, de rövidtáv lefelé húz. Ne vegyél!'
+            if s5 == -1 and s2 == 1:
+                return '🟨 PULLBACK SHORT: M5 medve, de rövidtáv felfelé húz. Ne adj el!'
+
+        return '⬜ SEMLEGES: Divergens jelzések (Többségi szavazat = 0).'
