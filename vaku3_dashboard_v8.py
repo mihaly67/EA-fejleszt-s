@@ -70,7 +70,7 @@ class VakuDashboard(QMainWindow):
         # A 2 napos, kereskedés nélküli fájl betöltése
         self.stream = RealDataStream("data/Merkava_XAUUSD_v1.10_20260408_025931.csv")
         
-        self.setWindowTitle(f"VAKU 3.0 Műszerfal V8 - ZAJMENTESÍTETT (Smoothed) ÉLŐ SZIMULÁCIÓ ({self.stream.instrument_name})")
+        self.setWindowTitle(f"VAKU 3.0 Műszerfal V8.01 - ZAJMENTESÍTETT (Smoothed) ÉLŐ SZIMULÁCIÓ ({self.stream.instrument_name})")
         self.resize(1600, 950)
         self.setStyleSheet("background-color: #0b0e14; color: #FFFFFF;")
         
@@ -86,9 +86,9 @@ class VakuDashboard(QMainWindow):
         self.history_prices = []
         
         # Időablakok mérete milliszekundumban (Kérés: Micro=5m, Medium=15m, Macro=60m)
-        self.micro_window_ms = 5 * 60 * 1000
-        self.medium_window_ms = 15 * 60 * 1000
-        self.macro_window_ms = 60 * 60 * 1000
+        self.micro_window_ms = 1 * 60 * 1000
+        self.medium_window_ms = 5 * 60 * 1000
+        self.macro_window_ms = 15 * 60 * 1000
         
         self.playback_speed_multiplier = 1.0 
         self.is_paused = False
@@ -274,13 +274,13 @@ class VakuDashboard(QMainWindow):
             regime_str += "H1 (Makro): ➡️ FLAT\n"
             overall_color = "#444444"
             
-        if med_slope > 0.2: regime_str += "M15 (Közép): 🔼 UP\n"
-        elif med_slope < -0.2: regime_str += "M15 (Közép): 🔽 DOWN\n"
-        else: regime_str += "M15 (Közép): ➡️ FLAT\n"
+        if med_slope > 0.2: regime_str += "M5 (Közép): 🔼 UP\n"
+        elif med_slope < -0.2: regime_str += "M5 (Közép): 🔽 DOWN\n"
+        else: regime_str += "M5 (Közép): ➡️ FLAT\n"
         
-        if micro_slope > 0.1: regime_str += "M5 (Mikro): 🔼 UP"
-        elif micro_slope < -0.1: regime_str += "M5 (Mikro): 🔽 DOWN"
-        else: regime_str += "M5 (Mikro): ➡️ FLAT"
+        if micro_slope > 0.1: regime_str += "M1 (Mikro): 🔼 UP"
+        elif micro_slope < -0.1: regime_str += "M1 (Mikro): 🔽 DOWN"
+        else: regime_str += "M1 (Mikro): ➡️ FLAT"
 
         # --- 2. FORDULÓ PREDIKCIÓ ---
         predict_str = "NINCS JELZÉS"

@@ -8,8 +8,6 @@ export DISPLAY=:10.0
 
 # Biztonsági törlés hogy ne keveredjen össze a régi hibákkal
 rm -f /home/misi/Merkava_ML_Ops/gui_startup.log
-rm -f /home/misi/Merkava_ML_Ops/vaku3_dashboard.py
-rm -f /home/misi/Merkava_ML_Ops/vaku3_dashboard_v*.py
 
 # Indítás, logolás a háttérben
-python3 vaku3_dashboard_10.py > /home/misi/Merkava_ML_Ops/gui_startup.log 2>&1
+python3 vaku3_dashboard_v8.py > /home/misi/Merkava_ML_Ops/gui_startup.log 2>&1
