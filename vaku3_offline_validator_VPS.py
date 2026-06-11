@@ -48,7 +48,7 @@ class Vaku3OfflineValidator:
         self.observation_space = []
 
         if HMMLEARN_INSTALLED:
-            self.model = hmm.GaussianHMM(n_components=3, covariance_type="diag", n_iter=100, random_state=42, init_params="")
+            self.model = hmm.GaussianHMM(n_components=3, covariance_type="diag", n_iter=100, random_state=42, init_params="stmc")
         else:
             self.model = None
 

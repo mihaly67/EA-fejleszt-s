@@ -32,7 +32,7 @@ class HybridStreamingEngine:
 
         # HMM model (3 állapotú: Calm, Impulsive Up, Impulsive Down)
         if HMMLEARN_INSTALLED:
-            self.hmm_model = GaussianHMM(n_components=3, covariance_type="diag", n_iter=100, random_state=42, init_params="")
+            self.hmm_model = GaussianHMM(n_components=3, covariance_type="diag", n_iter=100, random_state=42, init_params="stmc")
         else:
             self.hmm_model = None
 
@@ -233,4 +233,4 @@ class HybridStreamingEngine:
 
 if __name__ == "__main__":
     engine = HybridStreamingEngine()
-    engine.run_stream("data/Merkava_XAUUSD_v1.10_20260408_025931.csv")
+    engine.run_stream("/home/misi/Merkava_ML_Ops/data/Merkava_XAUUSD_v1.10_20260408_025931.csv")
