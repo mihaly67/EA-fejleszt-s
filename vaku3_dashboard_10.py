@@ -237,7 +237,7 @@ class Vaku3Dashboard(QMainWindow):
         self.last_update_wall_time = current_wall_time
 
         self.virtual_clock_ms += (delta_wall_time * 1000.0) * self.playback_speed_multiplier
-        self.lbl_clock.setText(f"SZIMULÁLT ÓRA: {pd.to_datetime(self.virtual_clock_ms, unit='ms').strftime('%H:%M:%S.%f')[:-3]}")
+        self.lbl_clock.setText(f"SZIMULÁLT ÓRA: {pd.to_datetime(self.virtual_clock_ms, unit='ms').strftime('%Y-%m-%d %H:%M:%S')}")
 
         ticks_processed_this_frame = 0
         has_new_data = False
@@ -303,7 +303,7 @@ class Vaku3Dashboard(QMainWindow):
 
             # Adatok frissítése GUI-hoz
             self.x_data[:-1] = self.x_data[1:]
-            self.x_data[-1] = unix_ms
+            self.x_data[-1] = unix_ms / 1000.0
 
             self.price_data[:-1] = self.price_data[1:]
             self.price_data[-1] = price
