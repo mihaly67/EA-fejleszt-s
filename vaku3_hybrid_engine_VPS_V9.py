@@ -123,10 +123,10 @@ class VakuHybridEngine:
         print("-" * 50)
 
 def main():
-    file_path = "reports_tmp/VAKU3_VALIDATED_LABELED_Merkava_EURUSD_v1.10_20260323_215749.csv"
+    file_path = "/home/misi/Merkava_ML_Ops/data/Merkava_XAUUSD_v1.10_20260408_025931.csv"
     if not os.path.exists(file_path):
         # Fallback a data/labeled -re
-        file_path = "data/labeled/VAKU3_VALIDATED_LABELED_Merkava_EURUSD_v1.10_20260323_215749.csv"
+        file_path = "/home/misi/Merkava_ML_Ops/data/Merkava_XAUUSD_v1.10_20260408_025931.csv"
         
     logger.info(f"Fájl betöltése: {file_path}")
     
@@ -144,7 +144,7 @@ def main():
         engine.evaluate_performance(hybrid_df)
         
         # Save output for visualization
-        out_path = "reports_tmp/HYBRID_EVAL_EURUSD.csv"
+        out_path = "/home/misi/Merkava_ML_Ops/reports_tmp/HYBRID_EVAL_XAUUSD.csv"
         hybrid_df.to_csv(out_path, index=False)
         logger.info(f"Hibrid Dataframe kimentve: {out_path}")
 
