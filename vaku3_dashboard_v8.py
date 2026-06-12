@@ -297,7 +297,7 @@ class VakuDashboard(QMainWindow):
         if decision == 'GREEN': return "OK:\nKiszámítható Makro Trend.\nNincs Brókeri Manipuláció."
         if decision == 'YELLOW': return f"OK:\nA Makro Trend Erős (ER={macro_er:.2f}), DE a HMM \nvalószínűsít egy Whipsaw-t (Kockázat={risk:.1f}%).\nVárj a belépéssel!"
         if decision == 'RED':
-            if macro_er < 0.15: return f"OK (KÁOSZ / OLDALAZÁS):\nA Makro ER nagyon alacsony ({macro_er:.2f}).\nA piac zajos, iránytalan (Oldalazás).\nA robottal ilyenkor belépni orosz rulett."
+            if macro_er < 0.05: return f"OK (KÁOSZ / OLDALAZÁS):\nA Makro ER nagyon alacsony ({macro_er:.2f}).\nA piac zajos, iránytalan (Oldalazás).\nA robottal ilyenkor belépni orosz rulett."
             else: return f"OK (TÖKÉLETES VIHAR):\nExtrém magas Brókeri Kockázat ({risk:.1f}%).\nSpread tágítás vagy azonnali fordulat várható."
 
     def update_dashboard(self):
@@ -362,7 +362,7 @@ class VakuDashboard(QMainWindow):
             macro_er = self.smoothed_er
             risk = self.smoothed_risk
             
-            decision = 'RED' if macro_er < 0.15 else ('YELLOW' if risk >= 40 else 'GREEN')
+            decision = 'RED' if macro_er < 0.05 else ('YELLOW' if risk >= 60 else 'GREEN')
             
             self.history_times.append(unix_ms)
             self.history_prices.append(price)
