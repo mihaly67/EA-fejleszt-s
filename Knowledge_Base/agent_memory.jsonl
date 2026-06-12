@@ -53,3 +53,5 @@
 {"timestamp": "2026-06-12T10:41:57.556142", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
 {"timestamp": "2026-06-12T16:53:25.501955", "category": "Configuration", "content": "Mivel a M\u0171szerfal id\u0151ablakait lecs\u00f6kkentett\u00fck S30 \u00e9s M1 szintre, az eredeti trend \u00e9s volatilit\u00e1s (K\u00e1osz) sk\u00e1l\u00e1z\u00e1s t\u00fal szigor\u00fa volt (100%-ra kiakadt). A vaku3_dashboard_v8.py f\u00e1jlban a risk szorz\u00f3 tized\u00e9re cs\u00f6kkent, a Macro ER k\u00fcsz\u00f6b 0.3-r\u00f3l 0.15-re lazult, a slope elmozdul\u00e1s k\u00fcsz\u00f6b pedig ar\u00e1nyos\u00edtva lett."}
 {"timestamp": "2026-06-12T17:01:15.019517", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
+{"timestamp": "2026-06-12T18:49:25.927124", "category": "Bugfix", "content": "A V8.03-as m\u0171szerfalon a Risk (piros vonal) 100%-os kiakad\u00e1sa jav\u00edtva lett egy dinamikus volatilit\u00e1s normaliz\u00e1ci\u00f3val (recent_volatility / max_volatility), megsz\u00fcntetve a hib\u00e1s konstans szorz\u00f3s sz\u00e1m\u00edt\u00e1st."}
+{"timestamp": "2026-06-12T18:56:42.248480", "category": "SESSION_MARKER", "content": "[SESSION_END]"}

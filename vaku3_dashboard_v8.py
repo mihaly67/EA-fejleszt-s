@@ -339,9 +339,12 @@ class VakuDashboard(QMainWindow):
                 
             # HMM Kockázat (Fake helyett most egy simított volatilitás indexet használunk vizuális helyettesítőként, 
             # ami nem "zajos", hanem ténylegesen a piac ugrásait követi, amíg a valódi ONNX be nem kerül)
-            if len(self.history_prices) > 10:
+            if len(self.history_prices) > 100:
                 recent_volatility = np.std(self.history_prices[-10:])
-                risk = min(100.0, recent_volatility * 10000) # Csökkentve a szenzitivitás # Skálázás vizualizációhoz
+                max_volatility = np.max([np.std(self.history_prices[max(0, i-10):i]) for i in range(10, len(self.history_prices), 5)])
+                if max_volatility == 0: max_volatility = 0.001
+                risk = (recent_volatility / max_volatility) * 100.0
+                risk = min(100.0, risk)
             else:
                 risk = 0.0
                 
