@@ -52,7 +52,7 @@ def main():
     cursor = conn.cursor()
 
     # Ellenőrizzük a tábla sémáját, hogy a régi vagy az új van-e (visszafelé kompatibilitás)
-    is_new_schema = True
+    is_new_schema = ('filepath' in columns)
 
     print(f"🎯 Query kódolása: '{args.query}'")
     query_vector = model.encode([args.query]).astype('float32')
@@ -72,7 +72,7 @@ def main():
     sql_params = []
 
     if is_new_schema:
-        if False:
+        if args.category:
             sql_base += " AND category LIKE ?"
             sql_params.append(f"%{args.category}%")
         if args.repo:
