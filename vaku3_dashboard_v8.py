@@ -261,27 +261,27 @@ class VakuDashboard(QMainWindow):
         regime_str = ""
         overall_color = "#333"
         
-        if mac_slope > 0.5: # Arany esetén (XAUUSD) 0.5 dollár egy erős elmozdulás 1 óra alatt
-            regime_str += "H1 (Makro): 🔼 UP\n"
+        if mac_slope > 0.1:
+            regime_str += "M1 (Makro): 🔼 UP\n"
             overall_color = "#004400"
-        elif mac_slope < -0.5: 
-            regime_str += "H1 (Makro): 🔽 DOWN\n"
+        elif mac_slope < -0.1:
+            regime_str += "M1 (Makro): 🔽 DOWN\n"
             overall_color = "#440000"
         else: 
-            regime_str += "H1 (Makro): ➡️ FLAT\n"
+            regime_str += "M1 (Makro): ➡️ FLAT\n"
             overall_color = "#444444"
-        if micro_slope > 0.1: regime_str += "S30 (Mikro): 🔼 UP"
-        elif micro_slope < -0.1: regime_str += "S30 (Mikro): 🔽 DOWN"
+        if micro_slope > 0.05: regime_str += "S30 (Mikro): 🔼 UP"
+        elif micro_slope < -0.05: regime_str += "S30 (Mikro): 🔽 DOWN"
         else: regime_str += "S30 (Mikro): ➡️ FLAT"
 
         # --- 2. FORDULÓ PREDIKCIÓ ---
         predict_str = "NINCS JELZÉS"
         predict_color = "#333"
         
-        if mac_slope > 0.5 and micro_slope < -0.2:
+        if mac_slope > 0.1 and micro_slope < -0.05:
             predict_str = "⚠️ MEDVE FORDULÓ VÁRHATÓ!\n(A mikro trend divergál lefelé)"
             predict_color = "#880000"
-        elif mac_slope < -0.5 and micro_slope > 0.2:
+        elif mac_slope < -0.1 and micro_slope > 0.05:
             predict_str = "⚠️ BIKA FORDULÓ VÁRHATÓ!\n(A mikro trend divergál felfelé)"
             predict_color = "#008800"
         elif (mac_slope > 0 and micro_slope < 0) or (mac_slope < 0 and micro_slope > 0):
@@ -297,7 +297,7 @@ class VakuDashboard(QMainWindow):
         if decision == 'GREEN': return "OK:\nKiszámítható Makro Trend.\nNincs Brókeri Manipuláció."
         if decision == 'YELLOW': return f"OK:\nA Makro Trend Erős (ER={macro_er:.2f}), DE a HMM \nvalószínűsít egy Whipsaw-t (Kockázat={risk:.1f}%).\nVárj a belépéssel!"
         if decision == 'RED':
-            if macro_er < 0.3: return f"OK (LÁTSZÓLAG BIZTONSÁGOS, DE TILTOTT):\nA görbe laposnak tűnhet, de a Makro ER nagyon\nalacsony ({macro_er:.2f}). A piac zajos (Oldalazás).\nA robottal ilyenkor belépni orosz rulett."
+            if macro_er < 0.15: return f"OK (KÁOSZ / OLDALAZÁS):\nA Makro ER nagyon alacsony ({macro_er:.2f}).\nA piac zajos, iránytalan (Oldalazás).\nA robottal ilyenkor belépni orosz rulett."
             else: return f"OK (TÖKÉLETES VIHAR):\nExtrém magas Brókeri Kockázat ({risk:.1f}%).\nSpread tágítás vagy azonnali fordulat várható."
 
     def update_dashboard(self):
@@ -341,7 +341,7 @@ class VakuDashboard(QMainWindow):
             # ami nem "zajos", hanem ténylegesen a piac ugrásait követi, amíg a valódi ONNX be nem kerül)
             if len(self.history_prices) > 10:
                 recent_volatility = np.std(self.history_prices[-10:])
-                risk = min(100.0, recent_volatility * 100000) # Skálázás vizualizációhoz
+                risk = min(100.0, recent_volatility * 10000) # Csökkentve a szenzitivitás # Skálázás vizualizációhoz
             else:
                 risk = 0.0
                 
@@ -359,7 +359,7 @@ class VakuDashboard(QMainWindow):
             macro_er = self.smoothed_er
             risk = self.smoothed_risk
             
-            decision = 'RED' if macro_er < 0.3 else ('YELLOW' if risk >= 20 else 'GREEN')
+            decision = 'RED' if macro_er < 0.15 else ('YELLOW' if risk >= 40 else 'GREEN')
             
             self.history_times.append(unix_ms)
             self.history_prices.append(price)
