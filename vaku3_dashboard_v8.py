@@ -70,7 +70,7 @@ class VakuDashboard(QMainWindow):
         # A 2 napos, kereskedés nélküli fájl betöltése
         self.stream = RealDataStream("data/Merkava_XAUUSD_v1.10_20260408_025931.csv")
         
-        self.setWindowTitle(f"VAKU 3.0 Műszerfal V8.02 - ZAJMENTESÍTETT (Smoothed) ÉLŐ SZIMULÁCIÓ ({self.stream.instrument_name})")
+        self.setWindowTitle(f"VAKU 3.0 Műszerfal V8.03 - ZAJMENTESÍTETT (Smoothed) ÉLŐ SZIMULÁCIÓ ({self.stream.instrument_name})")
         self.resize(1600, 950)
         self.setStyleSheet("background-color: #0b0e14; color: #FFFFFF;")
         
@@ -87,8 +87,7 @@ class VakuDashboard(QMainWindow):
         
         # Időablakok mérete milliszekundumban (Kérés: Micro=5m, Medium=15m, Macro=60m)
         self.micro_window_ms = 30 * 1000      # S30
-        self.medium_window_ms = 1 * 60 * 1000 # M1
-        self.macro_window_ms = 5 * 60 * 1000  # M5
+        self.macro_window_ms = 1 * 60 * 1000  # M1
         
         self.playback_speed_multiplier = 1.0 
         self.is_paused = False
@@ -249,7 +248,6 @@ class VakuDashboard(QMainWindow):
     def analyze_time_based_trend(self, current_time, current_price):
         """Idő alapú (Valódi Micro, Medium, Macro) trend számolás"""
         micro_start_price = self.get_price_at_time(current_time, self.micro_window_ms)
-        med_start_price = self.get_price_at_time(current_time, self.medium_window_ms)
         mac_start_price = self.get_price_at_time(current_time, self.macro_window_ms)
         
         if mac_start_price is None:
@@ -257,7 +255,6 @@ class VakuDashboard(QMainWindow):
             
         # Árfolyam különbség az adott idősíkon
         micro_slope = current_price - micro_start_price
-        med_slope = current_price - med_start_price
         mac_slope = current_price - mac_start_price
         
         # --- 1. PIACI REZSIM (3 TIER IDŐ ALAPON) ---
@@ -274,9 +271,7 @@ class VakuDashboard(QMainWindow):
             regime_str += "H1 (Makro): ➡️ FLAT\n"
             overall_color = "#444444"
             
-        if med_slope > 0.2: regime_str += "M1 (Közép): 🔼 UP\n"
-        elif med_slope < -0.2: regime_str += "M1 (Közép): 🔽 DOWN\n"
-        else: regime_str += "M1 (Közép): ➡️ FLAT\n"
+
         
         if micro_slope > 0.1: regime_str += "S30 (Mikro): 🔼 UP"
         elif micro_slope < -0.1: regime_str += "S30 (Mikro): 🔽 DOWN"
@@ -286,13 +281,13 @@ class VakuDashboard(QMainWindow):
         predict_str = "NINCS JELZÉS"
         predict_color = "#333"
         
-        if mac_slope > 0.5 and med_slope < 0 and micro_slope < -0.2:
+        if mac_slope > 0.5 and micro_slope < -0.2:
             predict_str = "⚠️ MEDVE FORDULÓ VÁRHATÓ!\n(A mikro trend divergál lefelé)"
             predict_color = "#880000"
-        elif mac_slope < -0.5 and med_slope > 0 and micro_slope > 0.2:
+        elif mac_slope < -0.5 and micro_slope > 0.2:
             predict_str = "⚠️ BIKA FORDULÓ VÁRHATÓ!\n(A mikro trend divergál felfelé)"
             predict_color = "#008800"
-        elif (mac_slope > 0 and med_slope < 0 and micro_slope > 0) or (mac_slope < 0 and med_slope > 0 and micro_slope < 0):
+        elif (mac_slope > 0 and micro_slope < 0) or (mac_slope < 0 and micro_slope > 0):
             predict_str = "⚡ WHIPSAW VESZÉLY!\n(Konfliktus az idősíkok között)"
             predict_color = "#888800"
         else:
