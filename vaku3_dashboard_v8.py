@@ -270,9 +270,6 @@ class VakuDashboard(QMainWindow):
         else: 
             regime_str += "H1 (Makro): ➡️ FLAT\n"
             overall_color = "#444444"
-            
-
-        
         if micro_slope > 0.1: regime_str += "S30 (Mikro): 🔼 UP"
         elif micro_slope < -0.1: regime_str += "S30 (Mikro): 🔽 DOWN"
         else: regime_str += "S30 (Mikro): ➡️ FLAT"
