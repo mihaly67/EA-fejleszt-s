@@ -55,3 +55,5 @@
 {"timestamp": "2026-06-12T17:01:15.019517", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
 {"timestamp": "2026-06-12T18:49:25.927124", "category": "Bugfix", "content": "A V8.03-as m\u0171szerfalon a Risk (piros vonal) 100%-os kiakad\u00e1sa jav\u00edtva lett egy dinamikus volatilit\u00e1s normaliz\u00e1ci\u00f3val (recent_volatility / max_volatility), megsz\u00fcntetve a hib\u00e1s konstans szorz\u00f3s sz\u00e1m\u00edt\u00e1st."}
 {"timestamp": "2026-06-12T18:56:42.248480", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
+{"timestamp": "2026-06-12T19:58:24.358032", "category": "Configuration", "content": "A V8.03-as m\u0171szerfalon a felhaszn\u00e1l\u00f3 k\u00e9r\u00e9s\u00e9re az \u00e9rz\u00e9kenys\u00e9gi k\u00fcsz\u00f6b\u00f6k tov\u00e1bb lettek laz\u00edtva. A K\u00e1osz/Oldalaz\u00e1s tilt\u00f3 ER k\u00fcsz\u00f6be 0.15-r\u0151l 0.05-re cs\u00f6kkent, a Manipul\u00e1ci\u00f3 (S\u00e1rga) rizik\u00f3 t\u0171r\u00e9se pedig 40%-r\u00f3l 60%-ra emelkedett."}
+{"timestamp": "2026-06-12T20:03:21.225951", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
