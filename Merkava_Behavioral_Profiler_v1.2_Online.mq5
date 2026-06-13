@@ -217,7 +217,7 @@ void SendHistoryToPython() {
         }
         payload += "HISTORY_END\n";
 
-        char buffer[];
+        uchar buffer[];
         StringToCharArray(payload, buffer);
         if(SocketSend(g_socket, buffer, ArraySize(buffer) - 1) < 0) {
             Print("❌ Failed to send History. Error: ", GetLastError());
@@ -232,7 +232,7 @@ void SendTickToPython(long time_msc, double bid, double ask) {
     if(!g_socket_connected) return;
 
     string payload = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "\n";
-    char buffer[];
+    uchar buffer[];
     StringToCharArray(payload, buffer);
 
     if(SocketSend(g_socket, buffer, ArraySize(buffer) - 1) < 0) {
