@@ -10,7 +10,7 @@ import pyqtgraph as pg
 
 # --- MT5 ONLINE SOCKET RECEIVER (ZMQ/RAW TCP BRIDGE) ---
 class MT5SocketBridge(threading.Thread):
-    def __init__(self, host='0.0.0.0', port=5555, dashboard=None):
+    def __init__(self, host='127.0.0.1', port=5555, dashboard=None):
         super().__init__()
         self.host = host
         self.port = port
@@ -26,7 +26,7 @@ class MT5SocketBridge(threading.Thread):
         print(f"[BRIDGE] Vaku 3.0 MT5 Bridge indul ezen: {self.host}:{self.port}")
         while self.running:
             try:
-                self.server_socket.settimeout(1.0)
+                self.server_socket.settimeout(2.0)
                 try:
                     client, addr = self.server_socket.accept()
                     self.client_socket = client

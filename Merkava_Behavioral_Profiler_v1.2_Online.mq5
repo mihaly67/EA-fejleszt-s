@@ -191,7 +191,9 @@ bool ConnectToPython() {
         return false;
     }
 
-    if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 1000)) {
+
+    if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 5000)) {
+
         g_socket_connected = true;
         Print("✅ Successfully connected to Python HMM Engine on ", InpBridgeHost, ":", InpBridgePort);
         return true;
