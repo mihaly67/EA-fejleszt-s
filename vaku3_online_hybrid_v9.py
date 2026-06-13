@@ -146,58 +146,60 @@ class VakuDashboardOnline(QMainWindow):
         self.setCentralWidget(main_widget)
         layout = QVBoxLayout(main_widget)
 
-        # Top Panel
+        # Top Panel (Clock)
         top_panel = QHBoxLayout()
         self.lbl_clock = QLabel("MT5 TICK IDŐ: VÁRAKOZÁS...")
         self.lbl_clock.setStyleSheet("font-size: 16px; font-weight: bold; color: #E0E0E0;")
         top_panel.addWidget(self.lbl_clock)
         layout.addLayout(top_panel)
 
-        # Graph
-        self.graph_widget = pg.GraphicsLayoutWidget()
-        layout.addWidget(self.graph_widget, stretch=3)
-
-        self.p1 = self.graph_widget.addPlot(title="ÉLŐ TICK ÁRFOLYAM", axisItems={'bottom': TimeAxisItem(orientation='bottom')})
-        self.p1.showGrid(x=True, y=True, alpha=0.3)
-        self.curve_price = self.p1.plot(pen=pg.mkPen('w', width=2))
-
-        self.graph_widget.nextRow()
-        self.p2 = self.graph_widget.addPlot(title="PIACI REZSIM (Makro ER & HMM Kockázat)", axisItems={'bottom': TimeAxisItem(orientation='bottom')})
-        self.p2.showGrid(x=True, y=True, alpha=0.3)
-        self.p2.setYRange(0, 100)
-        self.curve_macro = self.p2.plot(pen=pg.mkPen('c', width=2), name="Makro ER")
-        self.curve_risk = self.p2.plot(pen=pg.mkPen('r', width=2), name="HMM Rizikó")
-        self.p1.setXLink(self.p2)
-
-        # Status Panel
+        # Status Panel (Moved to TOP, Fixed Heights)
         status_panel = QHBoxLayout()
 
         self.lbl_regime = QLabel("PIACI REZSIM: VÁRAKOZÁS")
         self.lbl_regime.setStyleSheet("background-color: #333; border: 1px solid #555; padding: 5px; color: white;")
         self.lbl_regime.setWordWrap(True)
-        self.lbl_regime.setMinimumHeight(60)
+        self.lbl_regime.setFixedHeight(120)
         status_panel.addWidget(self.lbl_regime, stretch=2)
 
         self.lbl_predict = QLabel("PREDIKCIÓ: VÁRAKOZÁS")
         self.lbl_predict.setStyleSheet("background-color: #333; border: 1px solid #555; padding: 5px; color: white;")
         self.lbl_predict.setWordWrap(True)
-        self.lbl_predict.setMinimumHeight(60)
+        self.lbl_predict.setFixedHeight(120)
         status_panel.addWidget(self.lbl_predict, stretch=2)
 
         self.lbl_reason = QLabel("INDIKÁCIÓ:")
         self.lbl_reason.setStyleSheet("background-color: #222; border: 1px solid #555; padding: 5px; color: #AAA;")
         self.lbl_reason.setWordWrap(True)
-        self.lbl_reason.setMinimumHeight(60)
+        self.lbl_reason.setFixedHeight(120)
         status_panel.addWidget(self.lbl_reason, stretch=3)
 
         self.lbl_status = QLabel("🔴 OFFLINE")
         self.lbl_status.setStyleSheet("background-color: #330000; border: 2px solid #FF0000; color: #FF0000; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
         self.lbl_status.setAlignment(Qt.AlignCenter)
         self.lbl_status.setWordWrap(True)
-        self.lbl_status.setMinimumHeight(60)
+        self.lbl_status.setFixedHeight(120)
         status_panel.addWidget(self.lbl_status, stretch=2)
 
         layout.addLayout(status_panel, stretch=0)
+
+        # Graph (Moved below the status panel)
+        self.graph_widget = pg.GraphicsLayoutWidget()
+        layout.addWidget(self.graph_widget, stretch=3)
+
+        self.p1 = self.graph_widget.addPlot(title="ÉLŐ TICK ÁRFOLYAM", axisItems={'bottom': TimeAxisItem(orientation='bottom')})
+        self.p1.showGrid(x=True, y=True, alpha=0.3)
+        self.p1.setMenuEnabled(False)
+        self.curve_price = self.p1.plot(pen=pg.mkPen('w', width=2))
+
+        self.graph_widget.nextRow()
+        self.p2 = self.graph_widget.addPlot(title="PIACI REZSIM (Makro ER & HMM Kockázat)", axisItems={'bottom': TimeAxisItem(orientation='bottom')})
+        self.p2.showGrid(x=True, y=True, alpha=0.3)
+        self.p2.setMenuEnabled(False)
+        self.p2.setYRange(0, 100)
+        self.curve_macro = self.p2.plot(pen=pg.mkPen('c', width=2), name="Makro ER")
+        self.curve_risk = self.p2.plot(pen=pg.mkPen('r', width=2), name="HMM Rizikó")
+        self.p1.setXLink(self.p2)
 
     def get_price_at_time(self, current_time, window_ms):
         target_time = current_time - window_ms
