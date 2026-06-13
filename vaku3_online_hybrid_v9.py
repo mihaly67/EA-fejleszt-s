@@ -109,6 +109,7 @@ class VakuDashboardOnline(QMainWindow):
         super().__init__()
         self.setWindowTitle("Vaku 3.0 ONLINE MT5 Bridge (HMM Scalping Dashboard)")
         self.setGeometry(100, 100, 1200, 800)
+        self.setMinimumSize(800, 600)
 
         # Core data buffers
         self.max_points = 1800 # ~30 perc M1
@@ -156,7 +157,7 @@ class VakuDashboardOnline(QMainWindow):
         self.graph_widget = pg.GraphicsLayoutWidget()
         layout.addWidget(self.graph_widget, stretch=3)
 
-        self.p1 = self.graph_widget.addPlot(title="ÉLŐ TICK ÁRFOLYAM (BTCUSD)", axisItems={'bottom': TimeAxisItem(orientation='bottom')})
+        self.p1 = self.graph_widget.addPlot(title="ÉLŐ TICK ÁRFOLYAM", axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.p1.showGrid(x=True, y=True, alpha=0.3)
         self.curve_price = self.p1.plot(pen=pg.mkPen('w', width=2))
 
@@ -173,21 +174,30 @@ class VakuDashboardOnline(QMainWindow):
 
         self.lbl_regime = QLabel("PIACI REZSIM: VÁRAKOZÁS")
         self.lbl_regime.setStyleSheet("background-color: #333; border: 1px solid #555; padding: 5px; color: white;")
-        status_panel.addWidget(self.lbl_regime)
+        self.lbl_regime.setWordWrap(True)
+        self.lbl_regime.setMinimumHeight(60)
+        status_panel.addWidget(self.lbl_regime, stretch=2)
 
         self.lbl_predict = QLabel("PREDIKCIÓ: VÁRAKOZÁS")
         self.lbl_predict.setStyleSheet("background-color: #333; border: 1px solid #555; padding: 5px; color: white;")
-        status_panel.addWidget(self.lbl_predict)
+        self.lbl_predict.setWordWrap(True)
+        self.lbl_predict.setMinimumHeight(60)
+        status_panel.addWidget(self.lbl_predict, stretch=2)
 
         self.lbl_reason = QLabel("INDIKÁCIÓ:")
         self.lbl_reason.setStyleSheet("background-color: #222; border: 1px solid #555; padding: 5px; color: #AAA;")
-        status_panel.addWidget(self.lbl_reason)
+        self.lbl_reason.setWordWrap(True)
+        self.lbl_reason.setMinimumHeight(60)
+        status_panel.addWidget(self.lbl_reason, stretch=3)
 
         self.lbl_status = QLabel("🔴 OFFLINE")
         self.lbl_status.setStyleSheet("background-color: #330000; border: 2px solid #FF0000; color: #FF0000; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
-        status_panel.addWidget(self.lbl_status)
+        self.lbl_status.setAlignment(Qt.AlignCenter)
+        self.lbl_status.setWordWrap(True)
+        self.lbl_status.setMinimumHeight(60)
+        status_panel.addWidget(self.lbl_status, stretch=2)
 
-        layout.addLayout(status_panel, stretch=1)
+        layout.addLayout(status_panel, stretch=0)
 
     def get_price_at_time(self, current_time, window_ms):
         target_time = current_time - window_ms
