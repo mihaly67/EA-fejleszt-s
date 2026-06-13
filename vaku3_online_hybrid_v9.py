@@ -10,7 +10,7 @@ import pyqtgraph as pg
 
 # --- MT5 ONLINE SOCKET RECEIVER (ZMQ/RAW TCP BRIDGE) ---
 class MT5SocketBridge(threading.Thread):
-    def __init__(self, host='0.0.0.0', port=5555, dashboard=None):
+    def __init__(self, host='127.0.0.1', port=5555, dashboard=None):
         super().__init__()
         self.host = host
         self.port = port
