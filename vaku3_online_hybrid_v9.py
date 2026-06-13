@@ -26,7 +26,7 @@ class MT5SocketBridge(threading.Thread):
         print(f"[BRIDGE] Vaku 3.0 MT5 Bridge indul ezen: {self.host}:{self.port}")
         while self.running:
             try:
-                self.server_socket.settimeout(1.0)
+                self.server_socket.settimeout(2.0)
                 try:
                     client, addr = self.server_socket.accept()
                     self.client_socket = client
