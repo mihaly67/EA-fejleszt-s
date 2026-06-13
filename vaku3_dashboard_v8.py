@@ -5,6 +5,9 @@ import time
 import os
 import bisect
 
+import sys
+import zmq
+import json
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
                              QWidget, QLabel, QGridLayout, QPushButton, QComboBox, QSlider)
 from PyQt5.QtCore import QTimer, Qt
@@ -16,86 +19,102 @@ class TimeAxisItem(pg.AxisItem):
     def tickStrings(self, values, scale, spacing):
         return [pd.to_datetime(value, unit='ms').strftime('%H:%M:%S') for value in values]
 
-class RealDataStream:
-    def __init__(self, file_path):
-        self.file_path = file_path
-        self.df = None
-        self.current_idx = 0
-        self.instrument_name = "ISMERETLEN"
-        
-        # A fájlnévből kinyerjük a devizapárt (pl. Merkava_XAUUSD_v1.10 -> XAUUSD)
-        filename = os.path.basename(file_path)
-        if "XAUUSD" in filename: self.instrument_name = "XAUUSD"
-        elif "EURUSD" in filename: self.instrument_name = "EURUSD"
-        elif "SPY" in filename: self.instrument_name = "SPY"
-        
-        try:
-            print(f"BEOVASÁS: {file_path} (Ez eltarthat egy darabig a nagy méret miatt...)")
-            # Ne töltsünk be mindent egyszerre a memóriába, ha nagyon nagy
-            self.df = pd.read_csv(file_path, nrows=100000) # Demóhoz 100k tick
-            
-            # Időoszlop normalizálása
-            if 'TickMSC' not in self.df.columns and 'TimeMsc' in self.df.columns:
-                self.df['TickMSC'] = self.df['TimeMsc']
-                
-            # Árfolyam normalizálása
-            if 'Price' not in self.df.columns:
-                if 'Ask' in self.df.columns and 'Bid' in self.df.columns:
-                    self.df['Price'] = (self.df['Ask'] + self.df['Bid']) / 2.0
-                elif 'Last' in self.df.columns:
-                    self.df['Price'] = self.df['Last']
-                else:
-                    self.df['Price'] = self.df.iloc[:, 1]
-                    
-            print(f"Sikeresen betöltve: {len(self.df)} tick.")
-        except Exception as e:
-            print(f"Hiba a fájl betöltésekor: {e}")
-            sys.exit(1)
+class ZMQDataStream:
+    def __init__(self, port=5555):
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.REP)
+        self.socket.bind(f"tcp://127.0.0.1:{port}")
+        self.instrument_name = "MT5 ZMQ Stream"
+        self.last_tick_time = 0.0
+        print(f"ZMQ Szerver elindult a {port} porton. Várakozás az MT5-re...")
 
     def peek_next_tick_time(self):
-        if self.current_idx >= len(self.df):
-            return None
-        return float(self.df.iloc[self.current_idx]['TickMSC'])
+        # Mivel ez request-reply, a peek fuggvenynek nem szabad blokkolnia, inkabb True-t adunk vissza, vagy varunk egy uzenetet non-blocking modon.
+        # Itt trukkos a PyQt timer-el szinkronba hozni. A legegyszerubb ha blocking recv() van a get_next_tick-ben, vagy timer timeout-al hivogatjuk a pollt.
+        pass
 
     def get_next_tick(self):
-        if self.current_idx >= len(self.df):
-            self.current_idx = 0
-        row = self.df.iloc[self.current_idx]
-        self.current_idx += 1
-        return row
+        try:
+            # Várjuk az MT5 üzenetét (non-blocking módban hogy a GUI ne fagyjon le, vagy rövid timeout-al)
+            # A biztonság kedvéért itt most 1ms-ot várunk
+            if self.socket.poll(1) == 0:
+                return None # Nincs uzenet
+                
+            message = self.socket.recv_string()
+            # MQL5 formatum: "TimeMsc|Ask|Bid" vagy JSON
+            try:
+                data = json.loads(message)
+                # Kuldunk egy nyugtazast
+                self.socket.send_string("ACK")
+                return data
+            except json.JSONDecodeError:
+                parts = message.split('|')
+                if len(parts) >= 3:
+                    data = {
+                        'TickMSC': float(parts[0]),
+                        'Ask': float(parts[1]),
+                        'Bid': float(parts[2])
+                    }
+                    self.socket.send_string("ACK")
+                    return data
+        except Exception as e:
+            print(f"ZMQ Hiba: {e}")
+            return None
+        return None
+
+class ZMQDataStream:
+    def __init__(self, port=5555):
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.REP)
+        self.socket.bind(f"tcp://127.0.0.1:{port}")
+        self.instrument_name = "MT5 ZMQ Live Stream"
+        self.last_tick_time = 0.0
+        print(f"ZMQ Szerver elindult a {port} porton. Várakozás az MT5-re...")
+
+    def get_start_time_ms(self):
+        return time.time() * 1000.0
+
+    def peek_next_tick_time(self):
+        # We always want the dashboard to process if there's data, so we return a time in the past to trigger an update if poll is true
+        if self.socket.poll(1) != 0:
+            return 0.0
+        return None
+
+    def get_next_tick(self):
+        try:
+            # Non-blocking poll so GUI doesn't freeze
+            if self.socket.poll(1) == 0:
+                return None
+
+            message = self.socket.recv_string()
+
+            # Parse message: expected format is either JSON or "TimeMsc|Ask|Bid"
+            try:
+                data = json.loads(message)
+                self.socket.send_string("ACK")
+                return data
+            except json.JSONDecodeError:
+                parts = message.split('|')
+                if len(parts) >= 3:
+                    # Construct pseudo-row matching what RealDataStream outputted
+                    data = {
+                        'TickMSC': float(parts[0]),
+                        'Price': (float(parts[1]) + float(parts[2])) / 2.0,
+                        'Spread': (float(parts[1]) - float(parts[2]))
+                    }
+                    self.socket.send_string("ACK")
+                    return data
+        except Exception as e:
+            print(f"ZMQ Hiba: {e}")
+            return None
+        return None
 
 class VakuDashboard(QMainWindow):
     def __init__(self):
         super().__init__()
         # A 2 napos, kereskedés nélküli fájl betöltése
-        
-        # MT5 Élő Fájl Betöltése (ha létezik)
-        # MT5 Élő Fájl Betöltése (ha létezik)
-        mt5_path = "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/Merkava_XAUUSD_MINER_v1.01_20260611_021755.csv"
-
-        # A Vaku műszerfal pre-warm logikája: Ugrás az élő fájl végére.
-        try:
-            # Ha BTCUSD futna MT5-ben, azt is ide lehetne állítani
-            import os
-            import glob
-            mt5_dir = "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/"
-            miner_files = glob.glob(os.path.join(mt5_dir, "Merkava_*_MINER*.csv"))
-
-            if miner_files:
-                latest_mt5_file = max(miner_files, key=os.path.getmtime)
-                self.stream = RealDataStream(latest_mt5_file)
-            elif os.path.exists(mt5_path):
-                self.stream = RealDataStream(mt5_path)
-            else:
-                self.stream = RealDataStream("data/Merkava_XAUUSD_v1.10_20260408_025931.csv")
-
-            # Pre-warm: Beolvasunk előre historikus tickeket, hogy a "bemelegedés" láthatatlanul és azonnal lezajlódjon!
-            for _ in range(600):
-                if self.stream.peek_next_tick_time() is not None:
-                    # Csak áthúzzuk a memóriába a streamet rajzolás nélkül
-                    self.stream.get_next_tick()
-        except:
-            self.stream = RealDataStream("data/Merkava_XAUUSD_v1.10_20260408_025931.csv")
+        # MT5 ZMQ Élő Stream Betöltése
+        self.stream = ZMQDataStream(port=5555)
 
 
 

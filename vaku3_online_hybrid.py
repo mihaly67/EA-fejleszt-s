@@ -155,7 +155,7 @@ class HybridStreamingEngine:
         except Exception:
             return 0, 0.0, 0.0
 
-    def run_stream(self, file_path, prewarm_ticks=0):
+    def run_stream(self, file_path):
         logger.info(f"▶️ HIBRID ONLINE ENGINE INDÍTÁSA: {os.path.basename(file_path)}")
         
         total_ticks = 0

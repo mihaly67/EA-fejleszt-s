@@ -81,49 +81,8 @@ class Vaku3Dashboard(QMainWindow):
         self.setWindowTitle("Vaku 3.0 ML Pipeline - 3-State HMM (CT-HMM/Rolling) Dashboard")
         self.setGeometry(100, 100, 1400, 900)
         self.setStyleSheet("background-color: #121212; color: #FFFFFF;")
-        # --- MT5 ELO BEKOTES (BTCUSD) ---
-        import os
-        import glob
-        mt5_dir = "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/"
-        miner_files = glob.glob(os.path.join(mt5_dir, "Merkava_*_MINER*.csv"))
 
-        if miner_files:
-            latest_mt5_file = max(miner_files, key=os.path.getmtime)
-            print(f"MT5 Fájl megtalálva: {latest_mt5_file}")
-            self.stream = RealDataStream(latest_mt5_file)
-        else:
-            self.stream = RealDataStream(file_path)
-
-        # PREWARM LOGIKA (600 Tick gyors betöltése)
-        print("Pre-warming HMM engine...")
-        for _ in range(600):
-            if self.stream.peek_next_tick_time() is not None:
-                # Olyan mintha eltelne az ido
-                row = self.stream.get_next_tick()
-                try:
-                    unix_ms = float(row[self.stream.t_col])
-                except ValueError:
-                    unix_ms = pd.to_datetime(row[self.stream.t_col]).timestamp() * 1000.0 if not pd.isna(pd.to_datetime(row[self.stream.t_col])) else 0
-                price = float(row['Price'])
-                spread = float(row['Spread'])
-
-                self.engine.time_buffer.push(unix_ms)
-                self.engine.price_buffer.push(price)
-                self.engine.spread_buffer.push(spread)
-                self.total_ticks += 1
-
-                if self.total_ticks < self.engine.micro_window:
-                    continue
-
-                log_return, avg_spread, tick_density = self.engine.get_micro_features()
-                obs = [log_return, avg_spread, tick_density]
-                self.engine.training_buffer.append(obs)
-                if len(self.engine.training_buffer) > 300:
-                    self.engine.training_buffer.pop(0)
-                if self.total_ticks % 50 == 0 and len(self.engine.training_buffer) == 300:
-                    self.engine.fit_and_map_hmm(np.array(self.engine.training_buffer))
-        print("Pre-warm complete!")
-
+        self.stream = RealDataStream(file_path)
         self.stream.load_data()
 
         self.engine = HybridStreamingEngine()
