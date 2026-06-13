@@ -68,8 +68,37 @@ class VakuDashboard(QMainWindow):
     def __init__(self):
         super().__init__()
         # A 2 napos, kereskedés nélküli fájl betöltése
-        self.stream = RealDataStream("data/Merkava_XAUUSD_v1.10_20260408_025931.csv")
         
+        # MT5 Élő Fájl Betöltése (ha létezik)
+        # MT5 Élő Fájl Betöltése (ha létezik)
+        mt5_path = "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/Merkava_XAUUSD_MINER_v1.01_20260611_021755.csv"
+
+        # A Vaku műszerfal pre-warm logikája: Ugrás az élő fájl végére.
+        try:
+            # Ha BTCUSD futna MT5-ben, azt is ide lehetne állítani
+            import os
+            import glob
+            mt5_dir = "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/"
+            miner_files = glob.glob(os.path.join(mt5_dir, "Merkava_*_MINER*.csv"))
+
+            if miner_files:
+                latest_mt5_file = max(miner_files, key=os.path.getmtime)
+                self.stream = RealDataStream(latest_mt5_file)
+            elif os.path.exists(mt5_path):
+                self.stream = RealDataStream(mt5_path)
+            else:
+                self.stream = RealDataStream("data/Merkava_XAUUSD_v1.10_20260408_025931.csv")
+
+            # Pre-warm: Beolvasunk előre historikus tickeket, hogy a "bemelegedés" láthatatlanul és azonnal lezajlódjon!
+            for _ in range(600):
+                if self.stream.peek_next_tick_time() is not None:
+                    # Csak áthúzzuk a memóriába a streamet rajzolás nélkül
+                    self.stream.get_next_tick()
+        except:
+            self.stream = RealDataStream("data/Merkava_XAUUSD_v1.10_20260408_025931.csv")
+
+
+
         self.setWindowTitle(f"VAKU 3.0 Műszerfal V8.03 - ZAJMENTESÍTETT (Smoothed) ÉLŐ SZIMULÁCIÓ ({self.stream.instrument_name})")
         self.resize(1600, 950)
         self.setStyleSheet("background-color: #0b0e14; color: #FFFFFF;")
