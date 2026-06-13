@@ -1,0 +1,7 @@
+[Desktop Entry]
+Version=1.0
+Name=Vaku 3.0 Online Bridge
+Comment=Launch Vaku 3.0 MT5 Bridge
+Exec=/home/misi/Merkava_ML_Ops/start_vaku3_online.sh
+Terminal=false
+Type=Application
