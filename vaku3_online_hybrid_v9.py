@@ -161,17 +161,21 @@ class VakuDashboardOnline(QMainWindow):
         # Left side: Windows
         form_windows = QFormLayout()
         self.inp_micro_win = QLineEdit("30")
+        self.inp_med_win = QLineEdit("0")
         self.inp_macro_win = QLineEdit("60")
-        form_windows.addRow("Mikro Időablak (mp):", self.inp_micro_win)
-        form_windows.addRow("Makro Időablak (mp):", self.inp_macro_win)
+        form_windows.addRow("Mikro Ablak (mp):", self.inp_micro_win)
+        form_windows.addRow("Közép Ablak (mp):", self.inp_med_win)
+        form_windows.addRow("Makro Ablak (mp):", self.inp_macro_win)
         settings_layout.addLayout(form_windows)
 
         # Middle: Sensitivities
         form_sens = QFormLayout()
         self.inp_micro_sens = QLineEdit("0.02")
+        self.inp_med_sens = QLineEdit("0.03")
         self.inp_macro_sens = QLineEdit("0.05")
-        form_sens.addRow("Mikro Érzékenység (%):", self.inp_micro_sens)
-        form_sens.addRow("Makro Érzékenység (%):", self.inp_macro_sens)
+        form_sens.addRow("Mikro Érzékeny (%):", self.inp_micro_sens)
+        form_sens.addRow("Közép Érzékeny (%):", self.inp_med_sens)
+        form_sens.addRow("Makro Érzékeny (%):", self.inp_macro_sens)
         settings_layout.addLayout(form_sens)
 
         # Right: Thresholds
@@ -265,15 +269,18 @@ class VakuDashboardOnline(QMainWindow):
 
     def analyze_time_based_trend(self, current_time, current_price):
         micro_window_ms = self.get_safe_float(self.inp_micro_win, 30.0) * 1000.0
+        med_window_ms = self.get_safe_float(self.inp_med_win, 0.0) * 1000.0
         macro_window_ms = self.get_safe_float(self.inp_macro_win, 60.0) * 1000.0
+
         micro_sens = self.get_safe_float(self.inp_micro_sens, 0.02)
+        med_sens = self.get_safe_float(self.inp_med_sens, 0.03)
         macro_sens = self.get_safe_float(self.inp_macro_sens, 0.05)
 
         micro_start_price = self.get_price_at_time(current_time, micro_window_ms)
         mac_start_price = self.get_price_at_time(current_time, macro_window_ms)
 
         if mac_start_price is None:
-            return "Adatgyűjtés...\\n(Várakozás)", "#333", "NINCS JELZÉS", "#333"
+            return "Adatgyűjtés...<br>(Várakozás)", "#333", "NINCS JELZÉS", "#333"
 
         micro_slope = current_price - micro_start_price
         mac_slope = current_price - mac_start_price
@@ -283,20 +290,33 @@ class VakuDashboardOnline(QMainWindow):
         mac_pct = (mac_slope / mac_start_price) * 100
         mic_pct = (micro_slope / micro_start_price) * 100
 
+        # Makro
         if mac_pct > macro_sens:
-            regime_str += "M1 (Makro): UP<br>"
+            regime_str += "Makro: UP<br>"
             overall_color = "#004400"
         elif mac_pct < -macro_sens:
-            regime_str += "M1 (Makro): DOWN<br>"
+            regime_str += "Makro: DOWN<br>"
             overall_color = "#440000"
         else:
-            regime_str += "M1 (Makro): FLAT<br>"
+            regime_str += "Makro: FLAT<br>"
             overall_color = "#444444"
 
-        if mic_pct > micro_sens: regime_str += "S30 (Mikro): UP"
-        elif mic_pct < -micro_sens: regime_str += "S30 (Mikro): DOWN"
-        else: regime_str += "S30 (Mikro): FLAT"
+        # Medium (Optional)
+        if med_window_ms > 0:
+            med_start_price = self.get_price_at_time(current_time, med_window_ms)
+            if med_start_price is not None:
+                med_slope = current_price - med_start_price
+                med_pct = (med_slope / med_start_price) * 100
+                if med_pct > med_sens: regime_str += "Közép: UP<br>"
+                elif med_pct < -med_sens: regime_str += "Közép: DOWN<br>"
+                else: regime_str += "Közép: FLAT<br>"
 
+        # Mikro
+        if mic_pct > micro_sens: regime_str += "Mikro: UP"
+        elif mic_pct < -micro_sens: regime_str += "Mikro: DOWN"
+        else: regime_str += "Mikro: FLAT"
+
+        # Predikció logikája marad a végleteken (Makro vs Mikro)
         predict_str = "NINCS JELZÉS"
         predict_color = "#333"
 
