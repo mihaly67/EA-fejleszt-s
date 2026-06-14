@@ -72,15 +72,21 @@ class MT5SocketBridge(threading.Thread):
         elif cmd == "HISTORY_END":
             print(f"[BRIDGE] Történelmi adatok (HISTORY) vége. Betöltve: {len(self.dashboard.history_times)} tick.")
         elif cmd == "TICK":
-            if len(parts) == 4:
+            if len(parts) >= 4:
                 try:
                     time_msc = float(parts[1])
                     bid = float(parts[2])
                     ask = float(parts[3])
                     price = (bid + ask) / 2.0
 
+                    pos_type = 0
+                    pos_price = 0.0
+                    if len(parts) == 6:
+                        pos_type = int(parts[4])
+                        pos_price = float(parts[5])
+
                     if self.dashboard:
-                        self.dashboard.add_live_tick(time_msc, price)
+                        self.dashboard.add_live_tick(time_msc, price, pos_type, pos_price)
                 except ValueError:
                     pass
         else:
@@ -121,6 +127,8 @@ class VakuDashboardOnline(QMainWindow):
         self.macro_data = np.zeros(self.max_points)
         self.risk_data = np.zeros(self.max_points)
         self.ptr = 0
+        self.pos_type = 0
+        self.pos_price = 0.0
 
         # Windows
         # Settings variables managed by UI inputs now
@@ -223,6 +231,11 @@ class VakuDashboardOnline(QMainWindow):
         self.p1.setMenuEnabled(True)
         self.curve_price = self.p1.plot(pen=pg.mkPen('w', width=2))
 
+        # Infinite line for open position
+        self.pos_line = pg.InfiniteLine(angle=0, movable=False)
+        self.pos_line.setVisible(False)
+        self.p1.addItem(self.pos_line)
+
         self.graph_widget.nextRow()
         self.p2 = self.graph_widget.addPlot(title="PIACI REZSIM (Makro ER & HMM Kockázat)", axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.p2.showGrid(x=True, y=True, alpha=0.3)
@@ -310,7 +323,9 @@ class VakuDashboardOnline(QMainWindow):
             if macro_er < chaos_lim: return f"OK (KÁOSZ / OLDALAZÁS):<br>A Makro ER nagyon alacsony ({macro_er:.2f}).<br>A piac zajos, iránytalan (Oldalazás).<br>A robottal ilyenkor belépni orosz rulett."
             else: return f"OK (TÖKÉLETES VIHAR):<br>Extrém magas Brókeri Kockázat ({risk:.1f}%).<br>Spread tágítás vagy azonnali fordulat várható."
 
-    def add_live_tick(self, unix_ms, price):
+    def add_live_tick(self, unix_ms, price, pos_type=0, pos_price=0.0):
+        self.pos_type = pos_type
+        self.pos_price = pos_price
         # Update raw buffers
         self.history_times.append(unix_ms)
         self.history_prices.append(price)
@@ -374,6 +389,16 @@ class VakuDashboardOnline(QMainWindow):
         self.curve_price.setData(x_draw, self.price_data[-draw_len:])
         self.curve_macro.setData(x_draw, self.macro_data[-draw_len:])
         self.curve_risk.setData(x_draw, self.risk_data[-draw_len:])
+
+        if self.pos_type != 0:
+            if self.pos_type == 1:
+                self.pos_line.setPen(pg.mkPen('#00FF00', width=2, style=Qt.DashLine))
+            else:
+                self.pos_line.setPen(pg.mkPen('#FF0000', width=2, style=Qt.DashLine))
+            self.pos_line.setValue(self.pos_price)
+            self.pos_line.setVisible(True)
+        else:
+            self.pos_line.setVisible(False)
 
 
 
