@@ -229,13 +229,13 @@ class VakuDashboardOnline(QMainWindow):
         mic_pct = (micro_slope / micro_start_price) * 100
 
         if mac_pct > 0.05:
-            regime_str += "M1 (Makro): UP\\n"
+            regime_str += "M1 (Makro): UP<br>"
             overall_color = "#004400"
         elif mac_pct < -0.05:
-            regime_str += "M1 (Makro): DOWN\\n"
+            regime_str += "M1 (Makro): DOWN<br>"
             overall_color = "#440000"
         else:
-            regime_str += "M1 (Makro): FLAT\\n"
+            regime_str += "M1 (Makro): FLAT<br>"
             overall_color = "#444444"
 
         if mic_pct > 0.02: regime_str += "S30 (Mikro): UP"
@@ -246,26 +246,26 @@ class VakuDashboardOnline(QMainWindow):
         predict_color = "#333"
 
         if mac_pct > 0.05 and mic_pct < -0.02:
-            predict_str = "MEDVE FORDULÓ VÁRHATÓ!\\n(A mikro trend divergál lefelé)"
+            predict_str = "MEDVE FORDULÓ VÁRHATÓ!<br>(A mikro trend divergál lefelé)"
             predict_color = "#880000"
         elif mac_pct < -0.05 and mic_pct > 0.02:
-            predict_str = "BIKA FORDULÓ VÁRHATÓ!\\n(A mikro trend divergál felfelé)"
+            predict_str = "BIKA FORDULÓ VÁRHATÓ!<br>(A mikro trend divergál felfelé)"
             predict_color = "#008800"
         elif (mac_pct > 0 and mic_pct < 0) or (mac_pct < 0 and mic_pct > 0):
-            predict_str = "WHIPSAW VESZÉLY!\\n(Konfliktus az idősíkok között)"
+            predict_str = "WHIPSAW VESZÉLY!<br>(Konfliktus az idősíkok között)"
             predict_color = "#888800"
         else:
-            predict_str = "TREND STABIL\\n(Az idősíkok egyetértenek)"
+            predict_str = "TREND STABIL<br>(Az idősíkok egyetértenek)"
             predict_color = "#1a1a2e"
 
         return regime_str, overall_color, predict_str, predict_color
 
     def get_reason(self, decision, macro_er, risk):
-        if decision == 'GREEN': return "OK:\\nKiszámítható Makro Trend.\\nNincs Brókeri Manipuláció."
-        if decision == 'YELLOW': return f"OK:\\nA Makro Trend Erős (ER={macro_er:.2f}), DE a HMM\\nvalószínűsít egy Whipsaw-t (Kockázat={risk:.1f}%).\\nVárj a belépéssel!"
+        if decision == 'GREEN': return "OK:<br>Kiszámítható Makro Trend.<br>Nincs Brókeri Manipuláció."
+        if decision == 'YELLOW': return f"OK:<br>A Makro Trend Erős (ER={macro_er:.2f}), DE a HMM<br>valószínűsít egy Whipsaw-t (Kockázat={risk:.1f}%).<br>Várj a belépéssel!"
         if decision == 'RED':
-            if macro_er < 0.05: return f"OK (KÁOSZ / OLDALAZÁS):\\nA Makro ER nagyon alacsony ({macro_er:.2f}).\\nA piac zajos, iránytalan (Oldalazás).\\nA robottal ilyenkor belépni orosz rulett."
-            else: return f"OK (TÖKÉLETES VIHAR):\\nExtrém magas Brókeri Kockázat ({risk:.1f}%).\\nSpread tágítás vagy azonnali fordulat várható."
+            if macro_er < 0.05: return f"OK (KÁOSZ / OLDALAZÁS):<br>A Makro ER nagyon alacsony ({macro_er:.2f}).<br>A piac zajos, iránytalan (Oldalazás).<br>A robottal ilyenkor belépni orosz rulett."
+            else: return f"OK (TÖKÉLETES VIHAR):<br>Extrém magas Brókeri Kockázat ({risk:.1f}%).<br>Spread tágítás vagy azonnali fordulat várható."
 
     def add_live_tick(self, unix_ms, price):
         # Update raw buffers
