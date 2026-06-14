@@ -178,13 +178,25 @@ class VakuDashboardOnline(QMainWindow):
         form_sens.addRow("Makro Érzékeny (%):", self.inp_macro_sens)
         settings_layout.addLayout(form_sens)
 
-        # Right: Thresholds
-        form_thresh = QFormLayout()
-        self.inp_chaos_lim = QLineEdit("0.05")
-        self.inp_risk_lim = QLineEdit("60.0")
-        form_thresh.addRow("Káosz Küszöb (Makro ER <):", self.inp_chaos_lim)
-        form_thresh.addRow("Whipsaw Kockázat (% >):", self.inp_risk_lim)
-        settings_layout.addLayout(form_thresh)
+        # Right 1: Chaos (ER Limit)
+        form_chaos = QFormLayout()
+        self.inp_micro_chaos = QLineEdit("0.02")
+        self.inp_med_chaos = QLineEdit("0.03")
+        self.inp_macro_chaos = QLineEdit("0.05")
+        form_chaos.addRow("Mikro Káosz (ER <):", self.inp_micro_chaos)
+        form_chaos.addRow("Közép Káosz (ER <):", self.inp_med_chaos)
+        form_chaos.addRow("Makro Káosz (ER <):", self.inp_macro_chaos)
+        settings_layout.addLayout(form_chaos)
+
+        # Right 2: Whipsaw (Risk Limit)
+        form_risk = QFormLayout()
+        self.inp_micro_risk = QLineEdit("40.0")
+        self.inp_med_risk = QLineEdit("50.0")
+        self.inp_macro_risk = QLineEdit("60.0")
+        form_risk.addRow("Mikro Whipsaw (% >):", self.inp_micro_risk)
+        form_risk.addRow("Közép Whipsaw (% >):", self.inp_med_risk)
+        form_risk.addRow("Makro Whipsaw (% >):", self.inp_macro_risk)
+        settings_layout.addLayout(form_risk)
 
         settings_group.setLayout(settings_layout)
         layout.addWidget(settings_group)
@@ -356,30 +368,64 @@ class VakuDashboardOnline(QMainWindow):
             self.history_times.pop(0)
             self.history_prices.pop(0)
 
-        # Stats Calc (Same as Offline V8.03)
-        if len(self.history_prices) > 100:
-            net_move = abs(self.history_prices[-1] - self.history_prices[-100])
-            gross_move = sum(abs(np.diff(self.history_prices[-100:])))
-            macro_er = net_move / gross_move if gross_move > 0 else 0.0
+        # V9: Calculate Risk and ER dynamically for all 3 timeframes inside analyze_time_based_trend instead of globally here,
+        # or calculate globally here but use the specific window lengths from the UI.
 
-            recent_volatility = np.std(self.history_prices[-10:])
-            max_volatility = np.max([np.std(self.history_prices[max(0, i-10):i]) for i in range(10, len(self.history_prices), 5)])
-            if max_volatility == 0: max_volatility = 0.001
-            risk = (recent_volatility / max_volatility) * 100.0
-            risk = min(100.0, risk)
-        else:
-            macro_er = 0.0
-            risk = 0.0
+        micro_window_ms = self.get_safe_float(self.inp_micro_win, 30.0) * 1000.0
+        med_window_ms = self.get_safe_float(self.inp_med_win, 0.0) * 1000.0
+        macro_window_ms = self.get_safe_float(self.inp_macro_win, 60.0) * 1000.0
+
+        # Convert ms to rough tick counts (assume ~1 tick per sec for crypto average, but we must use actual time filtering)
+        # For performance, we'll calculate the unified "Macro" ER and Risk for the bottom plot,
+        # but the decision logic will now be handled inside update_gui_charts directly using the window slicing.
+
+        def calc_er_risk(window_ms):
+            if window_ms <= 0 or len(self.history_times) < 10: return 0.0, 0.0
+            target_time = unix_ms - window_ms
+            import bisect
+            idx = bisect.bisect_left(self.history_times, target_time)
+            if idx >= len(self.history_times): idx = len(self.history_times) - 1
+
+            slice_prices = self.history_prices[idx:]
+            if len(slice_prices) < 5: return 0.0, 0.0
+
+            net_move = abs(slice_prices[-1] - slice_prices[0])
+            gross_move = sum(abs(np.diff(slice_prices)))
+            er = net_move / gross_move if gross_move > 0 else 0.0
+
+            recent_vol = np.std(slice_prices[-min(10, len(slice_prices)):])
+
+            # Sub-window standard deviations for max vol
+            step = max(5, len(slice_prices) // 10)
+            vols = []
+            for i in range(step, len(slice_prices), step):
+                vols.append(np.std(slice_prices[max(0, i-step):i]))
+
+            max_vol = np.max(vols) if len(vols) > 0 else 0.001
+            if max_vol == 0: max_vol = 0.001
+
+            risk = (recent_vol / max_vol) * 100.0
+            return er, min(100.0, risk)
+
+        mic_er, mic_risk = calc_er_risk(micro_window_ms)
+        med_er, med_risk = calc_er_risk(med_window_ms)
+        mac_er, mac_risk = calc_er_risk(macro_window_ms)
+
+        # Save to instance for GUI reading
+        self.current_mic_er = mic_er
+        self.current_mic_risk = mic_risk
+        self.current_med_er = med_er
+        self.current_med_risk = med_risk
 
         alpha_er = 0.05
         alpha_risk = 0.1
 
         if self.ptr == 0:
-            self.smoothed_er = macro_er
-            self.smoothed_risk = risk
+            self.smoothed_er = mac_er
+            self.smoothed_risk = mac_risk
         else:
-            self.smoothed_er = (alpha_er * macro_er) + ((1 - alpha_er) * self.smoothed_er)
-            self.smoothed_risk = (alpha_risk * risk) + ((1 - alpha_risk) * self.smoothed_risk)
+            self.smoothed_er = (alpha_er * mac_er) + ((1 - alpha_er) * self.smoothed_er)
+            self.smoothed_risk = (alpha_risk * mac_risk) + ((1 - alpha_risk) * self.smoothed_risk)
 
         # Push to plot arrays
         self.x_data[:-1] = self.x_data[1:]
@@ -457,7 +503,7 @@ class VakuDashboardOnline(QMainWindow):
 
 
         regime_str, regime_color, predict_str, predict_color = self.analyze_time_based_trend(latest_time, self.price_data[-1])
-        reason_text = self.get_reason(decision, macro_er, risk)
+        reason_text = self.get_reason(decision, state_str)
 
         # HTML formatting for Regime
         regime_html = f"<div style='text-align: center;'><strong style='font-size: 14px;'>PIACI REZSIM</strong><br><br><span style='font-size: 15px;'>{regime_str}</span></div>"
