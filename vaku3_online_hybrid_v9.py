@@ -329,19 +329,23 @@ class VakuDashboardOnline(QMainWindow):
         self.curve_macro.setData(x_draw, self.macro_data[-draw_len:])
         self.curve_risk.setData(x_draw, self.risk_data[-draw_len:])
 
-        # Auto-scrolling X-Axis with a 15% right margin (so the "current line" isn't glued to the absolute right edge)
+
+        # Get the CURRENT view range the user has set with the mouse
+        view_rect = self.p1.viewRect()
+        current_view_width = view_rect.width()
+
+        # Calculate where the right edge of the view should be to keep the latest tick in view with a small margin
         latest_time = x_draw[-1]
-        earliest_time = x_draw[0]
-        time_span = latest_time - earliest_time
 
-        # Prevent zero span issues early on
-        if time_span == 0: time_span = 1000
+        # We only force the view to scroll if the new tick is approaching or outside the right edge.
+        # This keeps the user's manual zoom level intact (current_view_width).
+        ideal_max_x = latest_time + (current_view_width * 0.15)
+        ideal_min_x = ideal_max_x - current_view_width
 
-        # Auto-pan: Keep current time near the right, but leave 15% empty space ahead
-        x_min = earliest_time
-        x_max = latest_time + (time_span * 0.15)
+        # If the user hasn't explicitly panned far away to the past (e.g. they are watching the live edge)
+        if view_rect.right() < latest_time or view_rect.right() > (latest_time + current_view_width):
+             self.p1.setXRange(ideal_min_x, ideal_max_x, padding=0)
 
-        self.p1.setXRange(x_min, x_max, padding=0)
 
 
         latest_time = x_draw[-1]
