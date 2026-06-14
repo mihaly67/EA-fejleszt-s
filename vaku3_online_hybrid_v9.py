@@ -4,7 +4,7 @@ import socket
 import threading
 import pandas as pd
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QLabel, QPushButton, QComboBox, QSplitter
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QLabel, QPushButton, QComboBox, QSplitter, QLineEdit, QFormLayout, QGroupBox
 from PyQt5.QtCore import QTimer, Qt
 import pyqtgraph as pg
 
@@ -123,8 +123,7 @@ class VakuDashboardOnline(QMainWindow):
         self.ptr = 0
 
         # Windows
-        self.micro_window_ms = 30 * 1000
-        self.macro_window_ms = 60 * 1000
+        # Settings variables managed by UI inputs now
 
         # Stats Smoothing
         self.smoothed_er = 0.0
@@ -145,6 +144,38 @@ class VakuDashboardOnline(QMainWindow):
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         layout = QVBoxLayout(main_widget)
+
+                # --- PARAMETER SETTINGS PANEL ---
+        settings_group = QGroupBox("HMM & Piaci Rezsim Paraméterek (Élőben szerkeszthető)")
+        settings_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }")
+        settings_layout = QHBoxLayout()
+
+        # Left side: Windows
+        form_windows = QFormLayout()
+        self.inp_micro_win = QLineEdit("30")
+        self.inp_macro_win = QLineEdit("60")
+        form_windows.addRow("Mikro Időablak (mp):", self.inp_micro_win)
+        form_windows.addRow("Makro Időablak (mp):", self.inp_macro_win)
+        settings_layout.addLayout(form_windows)
+
+        # Middle: Sensitivities
+        form_sens = QFormLayout()
+        self.inp_micro_sens = QLineEdit("0.02")
+        self.inp_macro_sens = QLineEdit("0.05")
+        form_sens.addRow("Mikro Érzékenység (%):", self.inp_micro_sens)
+        form_sens.addRow("Makro Érzékenység (%):", self.inp_macro_sens)
+        settings_layout.addLayout(form_sens)
+
+        # Right: Thresholds
+        form_thresh = QFormLayout()
+        self.inp_chaos_lim = QLineEdit("0.05")
+        self.inp_risk_lim = QLineEdit("60.0")
+        form_thresh.addRow("Káosz Küszöb (Makro ER <):", self.inp_chaos_lim)
+        form_thresh.addRow("Whipsaw Kockázat (% >):", self.inp_risk_lim)
+        settings_layout.addLayout(form_thresh)
+
+        settings_group.setLayout(settings_layout)
+        layout.addWidget(settings_group)
 
         # Top Panel (Clock)
         top_panel = QHBoxLayout()
@@ -213,9 +244,20 @@ class VakuDashboardOnline(QMainWindow):
             idx = len(self.history_times) - 1
         return self.history_prices[idx]
 
+    def get_safe_float(self, qlineedit, default_val):
+        try:
+            return float(qlineedit.text())
+        except ValueError:
+            return default_val
+
     def analyze_time_based_trend(self, current_time, current_price):
-        micro_start_price = self.get_price_at_time(current_time, self.micro_window_ms)
-        mac_start_price = self.get_price_at_time(current_time, self.macro_window_ms)
+        micro_window_ms = self.get_safe_float(self.inp_micro_win, 30.0) * 1000.0
+        macro_window_ms = self.get_safe_float(self.inp_macro_win, 60.0) * 1000.0
+        micro_sens = self.get_safe_float(self.inp_micro_sens, 0.02)
+        macro_sens = self.get_safe_float(self.inp_macro_sens, 0.05)
+
+        micro_start_price = self.get_price_at_time(current_time, micro_window_ms)
+        mac_start_price = self.get_price_at_time(current_time, macro_window_ms)
 
         if mac_start_price is None:
             return "Adatgyűjtés...\\n(Várakozás)", "#333", "NINCS JELZÉS", "#333"
@@ -228,27 +270,27 @@ class VakuDashboardOnline(QMainWindow):
         mac_pct = (mac_slope / mac_start_price) * 100
         mic_pct = (micro_slope / micro_start_price) * 100
 
-        if mac_pct > 0.05:
+        if mac_pct > macro_sens:
             regime_str += "M1 (Makro): UP<br>"
             overall_color = "#004400"
-        elif mac_pct < -0.05:
+        elif mac_pct < -macro_sens:
             regime_str += "M1 (Makro): DOWN<br>"
             overall_color = "#440000"
         else:
             regime_str += "M1 (Makro): FLAT<br>"
             overall_color = "#444444"
 
-        if mic_pct > 0.02: regime_str += "S30 (Mikro): UP"
-        elif mic_pct < -0.02: regime_str += "S30 (Mikro): DOWN"
+        if mic_pct > micro_sens: regime_str += "S30 (Mikro): UP"
+        elif mic_pct < -micro_sens: regime_str += "S30 (Mikro): DOWN"
         else: regime_str += "S30 (Mikro): FLAT"
 
         predict_str = "NINCS JELZÉS"
         predict_color = "#333"
 
-        if mac_pct > 0.05 and mic_pct < -0.02:
+        if mac_pct > macro_sens and mic_pct < -micro_sens:
             predict_str = "MEDVE FORDULÓ VÁRHATÓ!<br>(A mikro trend divergál lefelé)"
             predict_color = "#880000"
-        elif mac_pct < -0.05 and mic_pct > 0.02:
+        elif mac_pct < -macro_sens and mic_pct > micro_sens:
             predict_str = "BIKA FORDULÓ VÁRHATÓ!<br>(A mikro trend divergál felfelé)"
             predict_color = "#008800"
         elif (mac_pct > 0 and mic_pct < 0) or (mac_pct < 0 and mic_pct > 0):
@@ -261,10 +303,11 @@ class VakuDashboardOnline(QMainWindow):
         return regime_str, overall_color, predict_str, predict_color
 
     def get_reason(self, decision, macro_er, risk):
+        chaos_lim = self.get_safe_float(self.inp_chaos_lim, 0.05)
         if decision == 'GREEN': return "OK:<br>Kiszámítható Makro Trend.<br>Nincs Brókeri Manipuláció."
         if decision == 'YELLOW': return f"OK:<br>A Makro Trend Erős (ER={macro_er:.2f}), DE a HMM<br>valószínűsít egy Whipsaw-t (Kockázat={risk:.1f}%).<br>Várj a belépéssel!"
         if decision == 'RED':
-            if macro_er < 0.05: return f"OK (KÁOSZ / OLDALAZÁS):<br>A Makro ER nagyon alacsony ({macro_er:.2f}).<br>A piac zajos, iránytalan (Oldalazás).<br>A robottal ilyenkor belépni orosz rulett."
+            if macro_er < chaos_lim: return f"OK (KÁOSZ / OLDALAZÁS):<br>A Makro ER nagyon alacsony ({macro_er:.2f}).<br>A piac zajos, iránytalan (Oldalazás).<br>A robottal ilyenkor belépni orosz rulett."
             else: return f"OK (TÖKÉLETES VIHAR):<br>Extrém magas Brókeri Kockázat ({risk:.1f}%).<br>Spread tágítás vagy azonnali fordulat várható."
 
     def add_live_tick(self, unix_ms, price):
@@ -322,6 +365,9 @@ class VakuDashboardOnline(QMainWindow):
     def update_gui_charts(self):
         if self.ptr < 5: return
 
+        chaos_lim = self.get_safe_float(self.inp_chaos_lim, 0.05)
+        risk_lim = self.get_safe_float(self.inp_risk_lim, 60.0)
+
         draw_len = min(self.ptr, self.max_points)
         x_draw = self.x_data[-draw_len:]
 
@@ -352,7 +398,7 @@ class VakuDashboardOnline(QMainWindow):
 
         macro_er = self.macro_data[-1] / 100.0
         risk = self.risk_data[-1]
-        decision = 'RED' if macro_er < 0.05 else ('YELLOW' if risk >= 60 else 'GREEN')
+        decision = 'RED' if macro_er < chaos_lim else ('YELLOW' if risk >= risk_lim else 'GREEN')
 
         if decision == 'GREEN':
             self.lbl_status.setText("🟢 TISZTA PIAC (MEHET A TRADE)")
