@@ -330,21 +330,20 @@ class VakuDashboardOnline(QMainWindow):
         self.curve_risk.setData(x_draw, self.risk_data[-draw_len:])
 
 
+
         # Get the CURRENT view range the user has set with the mouse
         view_rect = self.p1.viewRect()
         current_view_width = view_rect.width()
 
-        # Calculate where the right edge of the view should be to keep the latest tick in view with a small margin
         latest_time = x_draw[-1]
 
-        # We only force the view to scroll if the new tick is approaching or outside the right edge.
-        # This keeps the user's manual zoom level intact (current_view_width).
+        # We ALWAYS update the X range to enforce a continuous slide, pushing the right boundary to exactly latest_time + margin
         ideal_max_x = latest_time + (current_view_width * 0.15)
         ideal_min_x = ideal_max_x - current_view_width
 
-        # If the user hasn't explicitly panned far away to the past (e.g. they are watching the live edge)
-        if view_rect.right() < latest_time or view_rect.right() > (latest_time + current_view_width):
-             self.p1.setXRange(ideal_min_x, ideal_max_x, padding=0)
+        # Force continuous scrolling
+        self.p1.setXRange(ideal_min_x, ideal_max_x, padding=0)
+
 
 
 
@@ -365,16 +364,24 @@ class VakuDashboardOnline(QMainWindow):
             self.lbl_status.setText("🔴 KÁOSZ / OLDALAZÁS (TILTVA)")
             self.lbl_status.setStyleSheet("background-color: #330000; border: 2px solid #FF0000; color: #FF0000; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
 
+
         regime_str, regime_color, predict_str, predict_color = self.analyze_time_based_trend(latest_time, self.price_data[-1])
         reason_text = self.get_reason(decision, macro_er, risk)
 
-        self.lbl_regime.setText("PIACI REZSIM (IDŐ ALAPÚ):\\n" + regime_str)
+        # HTML formatting for Regime
+        regime_html = f"<div style='text-align: center;'><strong style='font-size: 14px;'>PIACI REZSIM</strong><br><br><span style='font-size: 15px;'>{regime_str}</span></div>"
+        self.lbl_regime.setText(regime_html)
         self.lbl_regime.setStyleSheet(f"background-color: {regime_color}; border: 1px solid #555; padding: 5px; color: white;")
 
-        self.lbl_predict.setText("PREDIKCIÓ:\\n" + predict_str)
+        # HTML formatting for Prediction
+        predict_html = f"<div style='text-align: center;'><strong style='font-size: 14px;'>PREDIKCIÓ</strong><br><br><span style='font-size: 15px;'>{predict_str}</span></div>"
+        self.lbl_predict.setText(predict_html)
         self.lbl_predict.setStyleSheet(f"background-color: {predict_color}; border: 1px solid #555; padding: 5px; color: white;")
 
-        self.lbl_reason.setText(reason_text)
+        # HTML formatting for Reason
+        reason_html = f"<div style='text-align: center;'><strong style='font-size: 14px;'>INDIKÁCIÓ</strong><br><br><span style='font-size: 15px;'>{reason_text}</span></div>"
+        self.lbl_reason.setText(reason_html)
+
 
     def closeEvent(self, event):
         self.bridge.stop()
