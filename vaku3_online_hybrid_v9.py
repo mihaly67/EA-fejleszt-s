@@ -161,26 +161,42 @@ class VakuDashboardOnline(QMainWindow):
         # Left side: Windows
         form_windows = QFormLayout()
         self.inp_micro_win = QLineEdit("30")
+        self.inp_med_win = QLineEdit("0")
         self.inp_macro_win = QLineEdit("60")
-        form_windows.addRow("Mikro Időablak (mp):", self.inp_micro_win)
-        form_windows.addRow("Makro Időablak (mp):", self.inp_macro_win)
+        form_windows.addRow("Mikro Ablak (mp):", self.inp_micro_win)
+        form_windows.addRow("Közép Ablak (mp):", self.inp_med_win)
+        form_windows.addRow("Makro Ablak (mp):", self.inp_macro_win)
         settings_layout.addLayout(form_windows)
 
         # Middle: Sensitivities
         form_sens = QFormLayout()
         self.inp_micro_sens = QLineEdit("0.02")
+        self.inp_med_sens = QLineEdit("0.03")
         self.inp_macro_sens = QLineEdit("0.05")
-        form_sens.addRow("Mikro Érzékenység (%):", self.inp_micro_sens)
-        form_sens.addRow("Makro Érzékenység (%):", self.inp_macro_sens)
+        form_sens.addRow("Mikro Érzékeny (%):", self.inp_micro_sens)
+        form_sens.addRow("Közép Érzékeny (%):", self.inp_med_sens)
+        form_sens.addRow("Makro Érzékeny (%):", self.inp_macro_sens)
         settings_layout.addLayout(form_sens)
 
-        # Right: Thresholds
-        form_thresh = QFormLayout()
-        self.inp_chaos_lim = QLineEdit("0.05")
-        self.inp_risk_lim = QLineEdit("60.0")
-        form_thresh.addRow("Káosz Küszöb (Makro ER <):", self.inp_chaos_lim)
-        form_thresh.addRow("Whipsaw Kockázat (% >):", self.inp_risk_lim)
-        settings_layout.addLayout(form_thresh)
+        # Right 1: Chaos (ER Limit)
+        form_chaos = QFormLayout()
+        self.inp_micro_chaos = QLineEdit("0.02")
+        self.inp_med_chaos = QLineEdit("0.03")
+        self.inp_macro_chaos = QLineEdit("0.05")
+        form_chaos.addRow("Mikro Káosz (ER <):", self.inp_micro_chaos)
+        form_chaos.addRow("Közép Káosz (ER <):", self.inp_med_chaos)
+        form_chaos.addRow("Makro Káosz (ER <):", self.inp_macro_chaos)
+        settings_layout.addLayout(form_chaos)
+
+        # Right 2: Whipsaw (Risk Limit)
+        form_risk = QFormLayout()
+        self.inp_micro_risk = QLineEdit("40.0")
+        self.inp_med_risk = QLineEdit("50.0")
+        self.inp_macro_risk = QLineEdit("60.0")
+        form_risk.addRow("Mikro Whipsaw (% >):", self.inp_micro_risk)
+        form_risk.addRow("Közép Whipsaw (% >):", self.inp_med_risk)
+        form_risk.addRow("Makro Whipsaw (% >):", self.inp_macro_risk)
+        settings_layout.addLayout(form_risk)
 
         settings_group.setLayout(settings_layout)
         layout.addWidget(settings_group)
@@ -265,15 +281,18 @@ class VakuDashboardOnline(QMainWindow):
 
     def analyze_time_based_trend(self, current_time, current_price):
         micro_window_ms = self.get_safe_float(self.inp_micro_win, 30.0) * 1000.0
+        med_window_ms = self.get_safe_float(self.inp_med_win, 0.0) * 1000.0
         macro_window_ms = self.get_safe_float(self.inp_macro_win, 60.0) * 1000.0
+
         micro_sens = self.get_safe_float(self.inp_micro_sens, 0.02)
+        med_sens = self.get_safe_float(self.inp_med_sens, 0.03)
         macro_sens = self.get_safe_float(self.inp_macro_sens, 0.05)
 
         micro_start_price = self.get_price_at_time(current_time, micro_window_ms)
         mac_start_price = self.get_price_at_time(current_time, macro_window_ms)
 
         if mac_start_price is None:
-            return "Adatgyűjtés...\\n(Várakozás)", "#333", "NINCS JELZÉS", "#333"
+            return "Adatgyűjtés...<br>(Várakozás)", "#333", "NINCS JELZÉS", "#333"
 
         micro_slope = current_price - micro_start_price
         mac_slope = current_price - mac_start_price
@@ -283,20 +302,33 @@ class VakuDashboardOnline(QMainWindow):
         mac_pct = (mac_slope / mac_start_price) * 100
         mic_pct = (micro_slope / micro_start_price) * 100
 
+        # Makro
         if mac_pct > macro_sens:
-            regime_str += "M1 (Makro): UP<br>"
+            regime_str += "Makro: UP<br>"
             overall_color = "#004400"
         elif mac_pct < -macro_sens:
-            regime_str += "M1 (Makro): DOWN<br>"
+            regime_str += "Makro: DOWN<br>"
             overall_color = "#440000"
         else:
-            regime_str += "M1 (Makro): FLAT<br>"
+            regime_str += "Makro: FLAT<br>"
             overall_color = "#444444"
 
-        if mic_pct > micro_sens: regime_str += "S30 (Mikro): UP"
-        elif mic_pct < -micro_sens: regime_str += "S30 (Mikro): DOWN"
-        else: regime_str += "S30 (Mikro): FLAT"
+        # Medium (Optional)
+        if med_window_ms > 0:
+            med_start_price = self.get_price_at_time(current_time, med_window_ms)
+            if med_start_price is not None:
+                med_slope = current_price - med_start_price
+                med_pct = (med_slope / med_start_price) * 100
+                if med_pct > med_sens: regime_str += "Közép: UP<br>"
+                elif med_pct < -med_sens: regime_str += "Közép: DOWN<br>"
+                else: regime_str += "Közép: FLAT<br>"
 
+        # Mikro
+        if mic_pct > micro_sens: regime_str += "Mikro: UP"
+        elif mic_pct < -micro_sens: regime_str += "Mikro: DOWN"
+        else: regime_str += "Mikro: FLAT"
+
+        # Predikció logikája marad a végleteken (Makro vs Mikro)
         predict_str = "NINCS JELZÉS"
         predict_color = "#333"
 
@@ -315,13 +347,10 @@ class VakuDashboardOnline(QMainWindow):
 
         return regime_str, overall_color, predict_str, predict_color
 
-    def get_reason(self, decision, macro_er, risk):
-        chaos_lim = self.get_safe_float(self.inp_chaos_lim, 0.05)
-        if decision == 'GREEN': return "OK:<br>Kiszámítható Makro Trend.<br>Nincs Brókeri Manipuláció."
-        if decision == 'YELLOW': return f"OK:<br>A Makro Trend Erős (ER={macro_er:.2f}), DE a HMM<br>valószínűsít egy Whipsaw-t (Kockázat={risk:.1f}%).<br>Várj a belépéssel!"
-        if decision == 'RED':
-            if macro_er < chaos_lim: return f"OK (KÁOSZ / OLDALAZÁS):<br>A Makro ER nagyon alacsony ({macro_er:.2f}).<br>A piac zajos, iránytalan (Oldalazás).<br>A robottal ilyenkor belépni orosz rulett."
-            else: return f"OK (TÖKÉLETES VIHAR):<br>Extrém magas Brókeri Kockázat ({risk:.1f}%).<br>Spread tágítás vagy azonnali fordulat várható."
+    def get_reason(self, decision, state_str):
+        if decision == 'GREEN': return "OK:<br>Kiszámítható Piaci Trend.<br>Nincs Jelentős Manipuláció."
+        if decision == 'YELLOW': return f"FIGYELEM:<br>{state_str}<br>Whipsaw (Manipuláció) Veszély!<br>Várj a belépéssel!"
+        if decision == 'RED': return f"TILTVA (KÁOSZ):<br>{state_str}<br>A piac zajos, iránytalan (Oldalazás).<br>Belépés szigorúan tilos."
 
     def add_live_tick(self, unix_ms, price, pos_type=0, pos_price=0.0):
         self.pos_type = pos_type
@@ -336,30 +365,64 @@ class VakuDashboardOnline(QMainWindow):
             self.history_times.pop(0)
             self.history_prices.pop(0)
 
-        # Stats Calc (Same as Offline V8.03)
-        if len(self.history_prices) > 100:
-            net_move = abs(self.history_prices[-1] - self.history_prices[-100])
-            gross_move = sum(abs(np.diff(self.history_prices[-100:])))
-            macro_er = net_move / gross_move if gross_move > 0 else 0.0
+        # V9: Calculate Risk and ER dynamically for all 3 timeframes inside analyze_time_based_trend instead of globally here,
+        # or calculate globally here but use the specific window lengths from the UI.
 
-            recent_volatility = np.std(self.history_prices[-10:])
-            max_volatility = np.max([np.std(self.history_prices[max(0, i-10):i]) for i in range(10, len(self.history_prices), 5)])
-            if max_volatility == 0: max_volatility = 0.001
-            risk = (recent_volatility / max_volatility) * 100.0
-            risk = min(100.0, risk)
-        else:
-            macro_er = 0.0
-            risk = 0.0
+        micro_window_ms = self.get_safe_float(self.inp_micro_win, 30.0) * 1000.0
+        med_window_ms = self.get_safe_float(self.inp_med_win, 0.0) * 1000.0
+        macro_window_ms = self.get_safe_float(self.inp_macro_win, 60.0) * 1000.0
+
+        # Convert ms to rough tick counts (assume ~1 tick per sec for crypto average, but we must use actual time filtering)
+        # For performance, we'll calculate the unified "Macro" ER and Risk for the bottom plot,
+        # but the decision logic will now be handled inside update_gui_charts directly using the window slicing.
+
+        def calc_er_risk(window_ms):
+            if window_ms <= 0 or len(self.history_times) < 10: return 0.0, 0.0
+            target_time = unix_ms - window_ms
+            import bisect
+            idx = bisect.bisect_left(self.history_times, target_time)
+            if idx >= len(self.history_times): idx = len(self.history_times) - 1
+
+            slice_prices = self.history_prices[idx:]
+            if len(slice_prices) < 5: return 0.0, 0.0
+
+            net_move = abs(slice_prices[-1] - slice_prices[0])
+            gross_move = sum(abs(np.diff(slice_prices)))
+            er = net_move / gross_move if gross_move > 0 else 0.0
+
+            recent_vol = np.std(slice_prices[-min(10, len(slice_prices)):])
+
+            # Sub-window standard deviations for max vol
+            step = max(5, len(slice_prices) // 10)
+            vols = []
+            for i in range(step, len(slice_prices), step):
+                vols.append(np.std(slice_prices[max(0, i-step):i]))
+
+            max_vol = np.max(vols) if len(vols) > 0 else 0.001
+            if max_vol == 0: max_vol = 0.001
+
+            risk = (recent_vol / max_vol) * 100.0
+            return er, min(100.0, risk)
+
+        mic_er, mic_risk = calc_er_risk(micro_window_ms)
+        med_er, med_risk = calc_er_risk(med_window_ms)
+        mac_er, mac_risk = calc_er_risk(macro_window_ms)
+
+        # Save to instance for GUI reading
+        self.current_mic_er = mic_er
+        self.current_mic_risk = mic_risk
+        self.current_med_er = med_er
+        self.current_med_risk = med_risk
 
         alpha_er = 0.05
         alpha_risk = 0.1
 
         if self.ptr == 0:
-            self.smoothed_er = macro_er
-            self.smoothed_risk = risk
+            self.smoothed_er = mac_er
+            self.smoothed_risk = mac_risk
         else:
-            self.smoothed_er = (alpha_er * macro_er) + ((1 - alpha_er) * self.smoothed_er)
-            self.smoothed_risk = (alpha_risk * risk) + ((1 - alpha_risk) * self.smoothed_risk)
+            self.smoothed_er = (alpha_er * mac_er) + ((1 - alpha_er) * self.smoothed_er)
+            self.smoothed_risk = (alpha_risk * mac_risk) + ((1 - alpha_risk) * self.smoothed_risk)
 
         # Push to plot arrays
         self.x_data[:-1] = self.x_data[1:]
@@ -380,8 +443,15 @@ class VakuDashboardOnline(QMainWindow):
     def update_gui_charts(self):
         if self.ptr < 5: return
 
-        chaos_lim = self.get_safe_float(self.inp_chaos_lim, 0.05)
-        risk_lim = self.get_safe_float(self.inp_risk_lim, 60.0)
+        mac_chaos_lim = self.get_safe_float(self.inp_macro_chaos, 0.05)
+        med_chaos_lim = self.get_safe_float(self.inp_med_chaos, 0.03)
+        mic_chaos_lim = self.get_safe_float(self.inp_micro_chaos, 0.02)
+
+        mac_risk_lim = self.get_safe_float(self.inp_macro_risk, 60.0)
+        med_risk_lim = self.get_safe_float(self.inp_med_risk, 50.0)
+        mic_risk_lim = self.get_safe_float(self.inp_micro_risk, 40.0)
+
+        med_win = self.get_safe_float(self.inp_med_win, 0.0)
 
         draw_len = min(self.ptr, self.max_points)
         x_draw = self.x_data[-draw_len:]
@@ -400,30 +470,44 @@ class VakuDashboardOnline(QMainWindow):
         else:
             self.pos_line.setVisible(False)
 
-
-
-        # Get the CURRENT view range the user has set with the mouse
-        view_rect = self.p1.viewRect()
-        current_view_width = view_rect.width()
-
-        latest_time = x_draw[-1]
-
-        # We ALWAYS update the X range to enforce a continuous slide, pushing the right boundary to exactly latest_time + margin
-        ideal_max_x = latest_time + (current_view_width * 0.15)
-        ideal_min_x = ideal_max_x - current_view_width
-
-        # Force continuous scrolling
-        self.p1.setXRange(ideal_min_x, ideal_max_x, padding=0)
-
-
-
-
         latest_time = x_draw[-1]
         self.lbl_clock.setText(f"MT5 TICK IDŐ: {pd.to_datetime(latest_time, unit='ms').strftime('%H:%M:%S.%f')[:-3]}")
 
+        # New Decision Logic: Evaluate all active layers
         macro_er = self.macro_data[-1] / 100.0
-        risk = self.risk_data[-1]
-        decision = 'RED' if macro_er < chaos_lim else ('YELLOW' if risk >= risk_lim else 'GREEN')
+        macro_risk = self.risk_data[-1]
+
+        decision = 'GREEN'
+        state_str = ""
+
+        # Macro Level Check
+        if macro_er < mac_chaos_lim:
+            decision = 'RED'
+            state_str = f"Makro ER ({macro_er:.2f}) < Küszöb ({mac_chaos_lim})"
+        elif macro_risk >= mac_risk_lim:
+            decision = 'YELLOW' if decision != 'RED' else 'RED'
+            if state_str == "": state_str = f"Makro Kockázat ({macro_risk:.1f}%) > Küszöb"
+
+        # Medium Level Check (If active)
+        if med_win > 0:
+            med_er = getattr(self, 'current_med_er', 0.0)
+            med_risk = getattr(self, 'current_med_risk', 0.0)
+            if med_er < med_chaos_lim:
+                decision = 'RED'
+                state_str = f"Közép ER ({med_er:.2f}) < Küszöb ({med_chaos_lim})"
+            elif med_risk >= med_risk_lim:
+                decision = 'YELLOW' if decision != 'RED' else 'RED'
+                if state_str == "": state_str = f"Közép Kockázat ({med_risk:.1f}%) > Küszöb"
+
+        # Micro Level Check
+        mic_er = getattr(self, 'current_mic_er', 0.0)
+        mic_risk = getattr(self, 'current_mic_risk', 0.0)
+        if mic_er < mic_chaos_lim:
+            decision = 'RED'
+            state_str = f"Mikro ER ({mic_er:.2f}) < Küszöb ({mic_chaos_lim})"
+        elif mic_risk >= mic_risk_lim:
+            decision = 'YELLOW' if decision != 'RED' else 'RED'
+            if state_str == "": state_str = f"Mikro Kockázat ({mic_risk:.1f}%) > Küszöb"
 
         if decision == 'GREEN':
             self.lbl_status.setText("🟢 TISZTA PIAC (MEHET A TRADE)")
@@ -435,9 +519,8 @@ class VakuDashboardOnline(QMainWindow):
             self.lbl_status.setText("🔴 KÁOSZ / OLDALAZÁS (TILTVA)")
             self.lbl_status.setStyleSheet("background-color: #330000; border: 2px solid #FF0000; color: #FF0000; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
 
-
         regime_str, regime_color, predict_str, predict_color = self.analyze_time_based_trend(latest_time, self.price_data[-1])
-        reason_text = self.get_reason(decision, macro_er, risk)
+        reason_text = self.get_reason(decision, state_str)
 
         # HTML formatting for Regime
         regime_html = f"<div style='text-align: center;'><strong style='font-size: 14px;'>PIACI REZSIM</strong><br><br><span style='font-size: 15px;'>{regime_str}</span></div>"
