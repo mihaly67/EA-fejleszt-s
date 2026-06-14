@@ -34,6 +34,7 @@ class MT5SocketBridge(threading.Thread):
                 try:
                     client, addr = self.server_socket.accept()
                     self.client_socket = client
+                    self.client_socket.settimeout(None) # Prevents dropping connection during slow tick periods
                     print(f"[BRIDGE] EA Csatlakozott: {addr}")
                 except socket.timeout:
                     continue
@@ -355,7 +356,7 @@ class VakuDashboardOnline(QMainWindow):
     def add_live_tick(self, unix_ms, price, pos_type=0, pos_price=0.0):
         self.pos_type = pos_type
         self.pos_price = pos_price
-        # Update raw buffers
+        # Update raw buffers - we just store the data here, calculation happens in the GUI thread now
         self.history_times.append(unix_ms)
         self.history_prices.append(price)
 
@@ -365,16 +366,19 @@ class VakuDashboardOnline(QMainWindow):
             self.history_times.pop(0)
             self.history_prices.pop(0)
 
-        # V9: Calculate Risk and ER dynamically for all 3 timeframes inside analyze_time_based_trend instead of globally here,
-        # or calculate globally here but use the specific window lengths from the UI.
+        # Do nothing here to avoid PyQt5 thread issues, move calculation to update_gui_charts
+        pass
 
+    def update_gui_charts(self):
+        if len(self.history_times) < 10: return
+
+        unix_ms = self.history_times[-1]
+        price = self.history_prices[-1]
+
+        # Calculations moved to GUI thread to be safe with QLineEdit reads
         micro_window_ms = self.get_safe_float(self.inp_micro_win, 30.0) * 1000.0
         med_window_ms = self.get_safe_float(self.inp_med_win, 0.0) * 1000.0
         macro_window_ms = self.get_safe_float(self.inp_macro_win, 60.0) * 1000.0
-
-        # Convert ms to rough tick counts (assume ~1 tick per sec for crypto average, but we must use actual time filtering)
-        # For performance, we'll calculate the unified "Macro" ER and Risk for the bottom plot,
-        # but the decision logic will now be handled inside update_gui_charts directly using the window slicing.
 
         def calc_er_risk(window_ms):
             if window_ms <= 0 or len(self.history_times) < 10: return 0.0, 0.0
@@ -391,8 +395,6 @@ class VakuDashboardOnline(QMainWindow):
             er = net_move / gross_move if gross_move > 0 else 0.0
 
             recent_vol = np.std(slice_prices[-min(10, len(slice_prices)):])
-
-            # Sub-window standard deviations for max vol
             step = max(5, len(slice_prices) // 10)
             vols = []
             for i in range(step, len(slice_prices), step):
@@ -408,7 +410,6 @@ class VakuDashboardOnline(QMainWindow):
         med_er, med_risk = calc_er_risk(med_window_ms)
         mac_er, mac_risk = calc_er_risk(macro_window_ms)
 
-        # Save to instance for GUI reading
         self.current_mic_er = mic_er
         self.current_mic_risk = mic_risk
         self.current_med_er = med_er
@@ -424,23 +425,22 @@ class VakuDashboardOnline(QMainWindow):
             self.smoothed_er = (alpha_er * mac_er) + ((1 - alpha_er) * self.smoothed_er)
             self.smoothed_risk = (alpha_risk * mac_risk) + ((1 - alpha_risk) * self.smoothed_risk)
 
-        # Push to plot arrays
-        self.x_data[:-1] = self.x_data[1:]
-        self.x_data[-1] = unix_ms
+        if self.x_data[-1] != unix_ms:
+            self.x_data[:-1] = self.x_data[1:]
+            self.x_data[-1] = unix_ms
 
-        self.price_data[:-1] = self.price_data[1:]
-        self.price_data[-1] = price
+            self.price_data[:-1] = self.price_data[1:]
+            self.price_data[-1] = price
 
-        self.macro_data[:-1] = self.macro_data[1:]
-        self.macro_data[-1] = self.smoothed_er * 100
+            self.macro_data[:-1] = self.macro_data[1:]
+            self.macro_data[-1] = self.smoothed_er * 100
 
-        self.risk_data[:-1] = self.risk_data[1:]
-        self.risk_data[-1] = self.smoothed_risk
+            self.risk_data[:-1] = self.risk_data[1:]
+            self.risk_data[-1] = self.smoothed_risk
 
-        if self.ptr < self.max_points:
-            self.ptr += 1
+            if self.ptr < self.max_points:
+                self.ptr += 1
 
-    def update_gui_charts(self):
         if self.ptr < 5: return
 
         mac_chaos_lim = self.get_safe_float(self.inp_macro_chaos, 0.05)
@@ -459,6 +459,18 @@ class VakuDashboardOnline(QMainWindow):
         self.curve_price.setData(x_draw, self.price_data[-draw_len:])
         self.curve_macro.setData(x_draw, self.macro_data[-draw_len:])
         self.curve_risk.setData(x_draw, self.risk_data[-draw_len:])
+
+        # SMART PANNING: Smooth scroll while retaining user zoom
+        view_rect = self.p1.viewRect()
+        current_view_width = view_rect.width()
+        latest_time = x_draw[-1]
+
+        ideal_max_x = latest_time + (current_view_width * 0.15)
+        ideal_min_x = ideal_max_x - current_view_width
+
+        # Only pan if we are tracking the live edge (not browsing the past)
+        if view_rect.right() < latest_time or view_rect.right() > (latest_time + current_view_width):
+             self.p1.setXRange(ideal_min_x, ideal_max_x, padding=0)
 
         if self.pos_type != 0:
             if self.pos_type == 1:
