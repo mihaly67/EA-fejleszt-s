@@ -229,13 +229,13 @@ class VakuDashboardOnline(QMainWindow):
         mic_pct = (micro_slope / micro_start_price) * 100
 
         if mac_pct > 0.05:
-            regime_str += "M1 (Makro): UP\\n"
+            regime_str += "M1 (Makro): UP<br>"
             overall_color = "#004400"
         elif mac_pct < -0.05:
-            regime_str += "M1 (Makro): DOWN\\n"
+            regime_str += "M1 (Makro): DOWN<br>"
             overall_color = "#440000"
         else:
-            regime_str += "M1 (Makro): FLAT\\n"
+            regime_str += "M1 (Makro): FLAT<br>"
             overall_color = "#444444"
 
         if mic_pct > 0.02: regime_str += "S30 (Mikro): UP"
@@ -246,26 +246,26 @@ class VakuDashboardOnline(QMainWindow):
         predict_color = "#333"
 
         if mac_pct > 0.05 and mic_pct < -0.02:
-            predict_str = "MEDVE FORDULÓ VÁRHATÓ!\\n(A mikro trend divergál lefelé)"
+            predict_str = "MEDVE FORDULÓ VÁRHATÓ!<br>(A mikro trend divergál lefelé)"
             predict_color = "#880000"
         elif mac_pct < -0.05 and mic_pct > 0.02:
-            predict_str = "BIKA FORDULÓ VÁRHATÓ!\\n(A mikro trend divergál felfelé)"
+            predict_str = "BIKA FORDULÓ VÁRHATÓ!<br>(A mikro trend divergál felfelé)"
             predict_color = "#008800"
         elif (mac_pct > 0 and mic_pct < 0) or (mac_pct < 0 and mic_pct > 0):
-            predict_str = "WHIPSAW VESZÉLY!\\n(Konfliktus az idősíkok között)"
+            predict_str = "WHIPSAW VESZÉLY!<br>(Konfliktus az idősíkok között)"
             predict_color = "#888800"
         else:
-            predict_str = "TREND STABIL\\n(Az idősíkok egyetértenek)"
+            predict_str = "TREND STABIL<br>(Az idősíkok egyetértenek)"
             predict_color = "#1a1a2e"
 
         return regime_str, overall_color, predict_str, predict_color
 
     def get_reason(self, decision, macro_er, risk):
-        if decision == 'GREEN': return "OK:\\nKiszámítható Makro Trend.\\nNincs Brókeri Manipuláció."
-        if decision == 'YELLOW': return f"OK:\\nA Makro Trend Erős (ER={macro_er:.2f}), DE a HMM\\nvalószínűsít egy Whipsaw-t (Kockázat={risk:.1f}%).\\nVárj a belépéssel!"
+        if decision == 'GREEN': return "OK:<br>Kiszámítható Makro Trend.<br>Nincs Brókeri Manipuláció."
+        if decision == 'YELLOW': return f"OK:<br>A Makro Trend Erős (ER={macro_er:.2f}), DE a HMM<br>valószínűsít egy Whipsaw-t (Kockázat={risk:.1f}%).<br>Várj a belépéssel!"
         if decision == 'RED':
-            if macro_er < 0.05: return f"OK (KÁOSZ / OLDALAZÁS):\\nA Makro ER nagyon alacsony ({macro_er:.2f}).\\nA piac zajos, iránytalan (Oldalazás).\\nA robottal ilyenkor belépni orosz rulett."
-            else: return f"OK (TÖKÉLETES VIHAR):\\nExtrém magas Brókeri Kockázat ({risk:.1f}%).\\nSpread tágítás vagy azonnali fordulat várható."
+            if macro_er < 0.05: return f"OK (KÁOSZ / OLDALAZÁS):<br>A Makro ER nagyon alacsony ({macro_er:.2f}).<br>A piac zajos, iránytalan (Oldalazás).<br>A robottal ilyenkor belépni orosz rulett."
+            else: return f"OK (TÖKÉLETES VIHAR):<br>Extrém magas Brókeri Kockázat ({risk:.1f}%).<br>Spread tágítás vagy azonnali fordulat várható."
 
     def add_live_tick(self, unix_ms, price):
         # Update raw buffers
@@ -329,19 +329,22 @@ class VakuDashboardOnline(QMainWindow):
         self.curve_macro.setData(x_draw, self.macro_data[-draw_len:])
         self.curve_risk.setData(x_draw, self.risk_data[-draw_len:])
 
-        # Auto-scrolling X-Axis with a 15% right margin (so the "current line" isn't glued to the absolute right edge)
+
+
+        # Get the CURRENT view range the user has set with the mouse
+        view_rect = self.p1.viewRect()
+        current_view_width = view_rect.width()
+
         latest_time = x_draw[-1]
-        earliest_time = x_draw[0]
-        time_span = latest_time - earliest_time
 
-        # Prevent zero span issues early on
-        if time_span == 0: time_span = 1000
+        # We ALWAYS update the X range to enforce a continuous slide, pushing the right boundary to exactly latest_time + margin
+        ideal_max_x = latest_time + (current_view_width * 0.15)
+        ideal_min_x = ideal_max_x - current_view_width
 
-        # Auto-pan: Keep current time near the right, but leave 15% empty space ahead
-        x_min = earliest_time
-        x_max = latest_time + (time_span * 0.15)
+        # Force continuous scrolling
+        self.p1.setXRange(ideal_min_x, ideal_max_x, padding=0)
 
-        self.p1.setXRange(x_min, x_max, padding=0)
+
 
 
         latest_time = x_draw[-1]
@@ -361,16 +364,24 @@ class VakuDashboardOnline(QMainWindow):
             self.lbl_status.setText("🔴 KÁOSZ / OLDALAZÁS (TILTVA)")
             self.lbl_status.setStyleSheet("background-color: #330000; border: 2px solid #FF0000; color: #FF0000; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
 
+
         regime_str, regime_color, predict_str, predict_color = self.analyze_time_based_trend(latest_time, self.price_data[-1])
         reason_text = self.get_reason(decision, macro_er, risk)
 
-        self.lbl_regime.setText("PIACI REZSIM (IDŐ ALAPÚ):\\n" + regime_str)
+        # HTML formatting for Regime
+        regime_html = f"<div style='text-align: center;'><strong style='font-size: 14px;'>PIACI REZSIM</strong><br><br><span style='font-size: 15px;'>{regime_str}</span></div>"
+        self.lbl_regime.setText(regime_html)
         self.lbl_regime.setStyleSheet(f"background-color: {regime_color}; border: 1px solid #555; padding: 5px; color: white;")
 
-        self.lbl_predict.setText("PREDIKCIÓ:\\n" + predict_str)
+        # HTML formatting for Prediction
+        predict_html = f"<div style='text-align: center;'><strong style='font-size: 14px;'>PREDIKCIÓ</strong><br><br><span style='font-size: 15px;'>{predict_str}</span></div>"
+        self.lbl_predict.setText(predict_html)
         self.lbl_predict.setStyleSheet(f"background-color: {predict_color}; border: 1px solid #555; padding: 5px; color: white;")
 
-        self.lbl_reason.setText(reason_text)
+        # HTML formatting for Reason
+        reason_html = f"<div style='text-align: center;'><strong style='font-size: 14px;'>INDIKÁCIÓ</strong><br><br><span style='font-size: 15px;'>{reason_text}</span></div>"
+        self.lbl_reason.setText(reason_html)
+
 
     def closeEvent(self, event):
         self.bridge.stop()
