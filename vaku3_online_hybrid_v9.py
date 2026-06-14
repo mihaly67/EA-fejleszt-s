@@ -347,13 +347,10 @@ class VakuDashboardOnline(QMainWindow):
 
         return regime_str, overall_color, predict_str, predict_color
 
-    def get_reason(self, decision, macro_er, risk):
-        chaos_lim = self.get_safe_float(self.inp_chaos_lim, 0.05)
-        if decision == 'GREEN': return "OK:<br>Kiszámítható Makro Trend.<br>Nincs Brókeri Manipuláció."
-        if decision == 'YELLOW': return f"OK:<br>A Makro Trend Erős (ER={macro_er:.2f}), DE a HMM<br>valószínűsít egy Whipsaw-t (Kockázat={risk:.1f}%).<br>Várj a belépéssel!"
-        if decision == 'RED':
-            if macro_er < chaos_lim: return f"OK (KÁOSZ / OLDALAZÁS):<br>A Makro ER nagyon alacsony ({macro_er:.2f}).<br>A piac zajos, iránytalan (Oldalazás).<br>A robottal ilyenkor belépni orosz rulett."
-            else: return f"OK (TÖKÉLETES VIHAR):<br>Extrém magas Brókeri Kockázat ({risk:.1f}%).<br>Spread tágítás vagy azonnali fordulat várható."
+    def get_reason(self, decision, state_str):
+        if decision == 'GREEN': return "OK:<br>Kiszámítható Piaci Trend.<br>Nincs Jelentős Manipuláció."
+        if decision == 'YELLOW': return f"FIGYELEM:<br>{state_str}<br>Whipsaw (Manipuláció) Veszély!<br>Várj a belépéssel!"
+        if decision == 'RED': return f"TILTVA (KÁOSZ):<br>{state_str}<br>A piac zajos, iránytalan (Oldalazás).<br>Belépés szigorúan tilos."
 
     def add_live_tick(self, unix_ms, price, pos_type=0, pos_price=0.0):
         self.pos_type = pos_type
@@ -446,8 +443,15 @@ class VakuDashboardOnline(QMainWindow):
     def update_gui_charts(self):
         if self.ptr < 5: return
 
-        chaos_lim = self.get_safe_float(self.inp_chaos_lim, 0.05)
-        risk_lim = self.get_safe_float(self.inp_risk_lim, 60.0)
+        mac_chaos_lim = self.get_safe_float(self.inp_macro_chaos, 0.05)
+        med_chaos_lim = self.get_safe_float(self.inp_med_chaos, 0.03)
+        mic_chaos_lim = self.get_safe_float(self.inp_micro_chaos, 0.02)
+
+        mac_risk_lim = self.get_safe_float(self.inp_macro_risk, 60.0)
+        med_risk_lim = self.get_safe_float(self.inp_med_risk, 50.0)
+        mic_risk_lim = self.get_safe_float(self.inp_micro_risk, 40.0)
+
+        med_win = self.get_safe_float(self.inp_med_win, 0.0)
 
         draw_len = min(self.ptr, self.max_points)
         x_draw = self.x_data[-draw_len:]
@@ -466,30 +470,44 @@ class VakuDashboardOnline(QMainWindow):
         else:
             self.pos_line.setVisible(False)
 
-
-
-        # Get the CURRENT view range the user has set with the mouse
-        view_rect = self.p1.viewRect()
-        current_view_width = view_rect.width()
-
-        latest_time = x_draw[-1]
-
-        # We ALWAYS update the X range to enforce a continuous slide, pushing the right boundary to exactly latest_time + margin
-        ideal_max_x = latest_time + (current_view_width * 0.15)
-        ideal_min_x = ideal_max_x - current_view_width
-
-        # Force continuous scrolling
-        self.p1.setXRange(ideal_min_x, ideal_max_x, padding=0)
-
-
-
-
         latest_time = x_draw[-1]
         self.lbl_clock.setText(f"MT5 TICK IDŐ: {pd.to_datetime(latest_time, unit='ms').strftime('%H:%M:%S.%f')[:-3]}")
 
+        # New Decision Logic: Evaluate all active layers
         macro_er = self.macro_data[-1] / 100.0
-        risk = self.risk_data[-1]
-        decision = 'RED' if macro_er < chaos_lim else ('YELLOW' if risk >= risk_lim else 'GREEN')
+        macro_risk = self.risk_data[-1]
+
+        decision = 'GREEN'
+        state_str = ""
+
+        # Macro Level Check
+        if macro_er < mac_chaos_lim:
+            decision = 'RED'
+            state_str = f"Makro ER ({macro_er:.2f}) < Küszöb ({mac_chaos_lim})"
+        elif macro_risk >= mac_risk_lim:
+            decision = 'YELLOW' if decision != 'RED' else 'RED'
+            if state_str == "": state_str = f"Makro Kockázat ({macro_risk:.1f}%) > Küszöb"
+
+        # Medium Level Check (If active)
+        if med_win > 0:
+            med_er = getattr(self, 'current_med_er', 0.0)
+            med_risk = getattr(self, 'current_med_risk', 0.0)
+            if med_er < med_chaos_lim:
+                decision = 'RED'
+                state_str = f"Közép ER ({med_er:.2f}) < Küszöb ({med_chaos_lim})"
+            elif med_risk >= med_risk_lim:
+                decision = 'YELLOW' if decision != 'RED' else 'RED'
+                if state_str == "": state_str = f"Közép Kockázat ({med_risk:.1f}%) > Küszöb"
+
+        # Micro Level Check
+        mic_er = getattr(self, 'current_mic_er', 0.0)
+        mic_risk = getattr(self, 'current_mic_risk', 0.0)
+        if mic_er < mic_chaos_lim:
+            decision = 'RED'
+            state_str = f"Mikro ER ({mic_er:.2f}) < Küszöb ({mic_chaos_lim})"
+        elif mic_risk >= mic_risk_lim:
+            decision = 'YELLOW' if decision != 'RED' else 'RED'
+            if state_str == "": state_str = f"Mikro Kockázat ({mic_risk:.1f}%) > Küszöb"
 
         if decision == 'GREEN':
             self.lbl_status.setText("🟢 TISZTA PIAC (MEHET A TRADE)")
@@ -500,7 +518,6 @@ class VakuDashboardOnline(QMainWindow):
         else:
             self.lbl_status.setText("🔴 KÁOSZ / OLDALAZÁS (TILTVA)")
             self.lbl_status.setStyleSheet("background-color: #330000; border: 2px solid #FF0000; color: #FF0000; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
-
 
         regime_str, regime_color, predict_str, predict_color = self.analyze_time_based_trend(latest_time, self.price_data[-1])
         reason_text = self.get_reason(decision, state_str)
