@@ -230,15 +230,14 @@ void SendHistoryToPython() {
     }
 }
 
-void SendTickToPython(long time_msc, double bid, double ask) {
+void SendTickToPython(long time_msc, double bid, double ask, int pos_type, double pos_price) {
     if(!g_socket_connected) return;
 
-    string payload = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "\n";
+    string payload = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "|" + IntegerToString(pos_type) + "|" + DoubleToString(pos_price, _Digits) + "\n";
     uchar buffer[];
     StringToCharArray(payload, buffer);
 
     if(SocketSend(g_socket, buffer, ArraySize(buffer) - 1) < 0) {
-        // Silently disconnect on error to not spam log, try reconnect later
         g_socket_connected = false;
     }
 }
@@ -554,7 +553,21 @@ void OnTick()
            }
        }
        if(g_socket_connected) {
-           SendTickToPython(tick.time_msc, tick.bid, tick.ask);
+           int pos_type = 0;
+           double pos_price = 0.0;
+           if(PositionsTotal() > 0) {
+               // Megkeressük a legelső nyitott pozíciót a charton (ami ehhez az EA-hez/Symbol-hoz tartozik)
+               for(int i=0; i<PositionsTotal(); i++) {
+                   if(m_position.SelectByIndex(i)) {
+                       if(m_position.Symbol() == _Symbol) { // Itt opcionálisan szűrhetünk MagicNumber-re is
+                           pos_price = m_position.PriceOpen();
+                           pos_type = (m_position.PositionType() == POSITION_TYPE_BUY) ? 1 : -1;
+                           break;
+                       }
+                   }
+               }
+           }
+           SendTickToPython(tick.time_msc, tick.bid, tick.ask, pos_type, pos_price);
        }
    }
 
