@@ -149,7 +149,7 @@ class VakuDashboardOnline(QMainWindow):
         # Top Panel (Clock)
         top_panel = QHBoxLayout()
         self.lbl_clock = QLabel("MT5 TICK IDŐ: VÁRAKOZÁS...")
-        self.lbl_clock.setStyleSheet("font-size: 16px; font-weight: bold; color: #E0E0E0;")
+        self.lbl_clock.setStyleSheet("font-size: 18px; font-weight: bold; color: #000000; padding-bottom: 5px;")
         top_panel.addWidget(self.lbl_clock)
         layout.addLayout(top_panel)
 
@@ -189,13 +189,13 @@ class VakuDashboardOnline(QMainWindow):
 
         self.p1 = self.graph_widget.addPlot(title="ÉLŐ TICK ÁRFOLYAM", axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.p1.showGrid(x=True, y=True, alpha=0.3)
-        self.p1.setMenuEnabled(False)
+        self.p1.setMenuEnabled(True)
         self.curve_price = self.p1.plot(pen=pg.mkPen('w', width=2))
 
         self.graph_widget.nextRow()
         self.p2 = self.graph_widget.addPlot(title="PIACI REZSIM (Makro ER & HMM Kockázat)", axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.p2.showGrid(x=True, y=True, alpha=0.3)
-        self.p2.setMenuEnabled(False)
+        self.p2.setMenuEnabled(True)
         self.p2.setYRange(0, 100)
         self.curve_macro = self.p2.plot(pen=pg.mkPen('c', width=2), name="Makro ER")
         self.curve_risk = self.p2.plot(pen=pg.mkPen('r', width=2), name="HMM Rizikó")
@@ -328,6 +328,21 @@ class VakuDashboardOnline(QMainWindow):
         self.curve_price.setData(x_draw, self.price_data[-draw_len:])
         self.curve_macro.setData(x_draw, self.macro_data[-draw_len:])
         self.curve_risk.setData(x_draw, self.risk_data[-draw_len:])
+
+        # Auto-scrolling X-Axis with a 15% right margin (so the "current line" isn't glued to the absolute right edge)
+        latest_time = x_draw[-1]
+        earliest_time = x_draw[0]
+        time_span = latest_time - earliest_time
+
+        # Prevent zero span issues early on
+        if time_span == 0: time_span = 1000
+
+        # Auto-pan: Keep current time near the right, but leave 15% empty space ahead
+        x_min = earliest_time
+        x_max = latest_time + (time_span * 0.15)
+
+        self.p1.setXRange(x_min, x_max, padding=0)
+
 
         latest_time = x_draw[-1]
         self.lbl_clock.setText(f"MT5 TICK IDŐ: {pd.to_datetime(latest_time, unit='ms').strftime('%H:%M:%S.%f')[:-3]}")
