@@ -137,6 +137,7 @@ class VakuDashboardOnline(QMainWindow):
         # Stats Smoothing
         self.smoothed_er = 0.0
         self.smoothed_risk = 0.0
+        self.zoom_initialized = False
 
         self.setup_ui()
 
@@ -159,45 +160,60 @@ class VakuDashboardOnline(QMainWindow):
         settings_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }")
         settings_layout = QHBoxLayout()
 
+
+        layout_container = QVBoxLayout()
+        # Top row: Settings inputs
+        settings_inputs_layout = QHBoxLayout()
         # Left side: Windows
         form_windows = QFormLayout()
         self.inp_micro_win = QLineEdit("30")
         self.inp_med_win = QLineEdit("0")
         self.inp_macro_win = QLineEdit("60")
-        form_windows.addRow("Mikro Ablak (mp):", self.inp_micro_win)
-        form_windows.addRow("Közép Ablak (mp):", self.inp_med_win)
-        form_windows.addRow("Makro Ablak (mp):", self.inp_macro_win)
-        settings_layout.addLayout(form_windows)
+        form_windows.addRow("Mikro Ablak [Def: 30mp]:", self.inp_micro_win)
+        form_windows.addRow("Közép Ablak [Def: 0mp]:", self.inp_med_win)
+        form_windows.addRow("Makro Ablak [Def: 60mp]:", self.inp_macro_win)
+        settings_inputs_layout.addLayout(form_windows)
 
         # Middle: Sensitivities
         form_sens = QFormLayout()
         self.inp_micro_sens = QLineEdit("0.02")
         self.inp_med_sens = QLineEdit("0.03")
         self.inp_macro_sens = QLineEdit("0.05")
-        form_sens.addRow("Mikro Érzékeny (%):", self.inp_micro_sens)
-        form_sens.addRow("Közép Érzékeny (%):", self.inp_med_sens)
-        form_sens.addRow("Makro Érzékeny (%):", self.inp_macro_sens)
-        settings_layout.addLayout(form_sens)
+        form_sens.addRow("Mikro Érzékeny [Def: 0.02%]:", self.inp_micro_sens)
+        form_sens.addRow("Közép Érzékeny [Def: 0.03%]:", self.inp_med_sens)
+        form_sens.addRow("Makro Érzékeny [Def: 0.05%]:", self.inp_macro_sens)
+        settings_inputs_layout.addLayout(form_sens)
 
         # Right 1: Chaos (ER Limit)
         form_chaos = QFormLayout()
         self.inp_micro_chaos = QLineEdit("0.02")
         self.inp_med_chaos = QLineEdit("0.03")
         self.inp_macro_chaos = QLineEdit("0.05")
-        form_chaos.addRow("Mikro Káosz (ER <):", self.inp_micro_chaos)
-        form_chaos.addRow("Közép Káosz (ER <):", self.inp_med_chaos)
-        form_chaos.addRow("Makro Káosz (ER <):", self.inp_macro_chaos)
-        settings_layout.addLayout(form_chaos)
+        form_chaos.addRow("Mikro Káosz [Def: 0.02]:", self.inp_micro_chaos)
+        form_chaos.addRow("Közép Káosz [Def: 0.03]:", self.inp_med_chaos)
+        form_chaos.addRow("Makro Káosz [Def: 0.05]:", self.inp_macro_chaos)
+        settings_inputs_layout.addLayout(form_chaos)
 
         # Right 2: Whipsaw (Risk Limit)
         form_risk = QFormLayout()
         self.inp_micro_risk = QLineEdit("40.0")
         self.inp_med_risk = QLineEdit("50.0")
         self.inp_macro_risk = QLineEdit("60.0")
-        form_risk.addRow("Mikro Whipsaw (% >):", self.inp_micro_risk)
-        form_risk.addRow("Közép Whipsaw (% >):", self.inp_med_risk)
-        form_risk.addRow("Makro Whipsaw (% >):", self.inp_macro_risk)
-        settings_layout.addLayout(form_risk)
+        form_risk.addRow("Mikro Whipsaw [Def: 40%]:", self.inp_micro_risk)
+        form_risk.addRow("Közép Whipsaw [Def: 50%]:", self.inp_med_risk)
+        form_risk.addRow("Makro Whipsaw [Def: 60%]:", self.inp_macro_risk)
+        settings_inputs_layout.addLayout(form_risk)
+
+        layout_container.addLayout(settings_inputs_layout)
+
+        # Bottom row: Reset button
+        self.btn_reset = QPushButton("Alapértelmezett Értékek Visszaállítása")
+        self.btn_reset.setStyleSheet("background-color: #555; color: white; padding: 5px; font-weight: bold;")
+        self.btn_reset.clicked.connect(self.reset_default_settings)
+        layout_container.addWidget(self.btn_reset)
+
+        settings_group.setLayout(layout_container)
+
 
         settings_group.setLayout(settings_layout)
         layout.addWidget(settings_group)
@@ -246,6 +262,8 @@ class VakuDashboardOnline(QMainWindow):
         self.p1 = self.graph_widget.addPlot(title="ÉLŐ TICK ÁRFOLYAM", axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.p1.showGrid(x=True, y=True, alpha=0.3)
         self.p1.setMenuEnabled(True)
+        self.p1.setMouseEnabled(x=True, y=True)
+        self.p1.enableAutoRange(axis='y', enable=True)
         self.curve_price = self.p1.plot(pen=pg.mkPen('w', width=2))
 
         # Infinite line for open position
@@ -257,10 +275,27 @@ class VakuDashboardOnline(QMainWindow):
         self.p2 = self.graph_widget.addPlot(title="PIACI REZSIM (Makro ER & HMM Kockázat)", axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.p2.showGrid(x=True, y=True, alpha=0.3)
         self.p2.setMenuEnabled(True)
+        self.p2.setMouseEnabled(x=True, y=True)
+        self.p2.enableAutoRange(axis='y', enable=True)
         self.p2.setYRange(0, 100)
         self.curve_macro = self.p2.plot(pen=pg.mkPen('c', width=2), name="Makro ER")
         self.curve_risk = self.p2.plot(pen=pg.mkPen('r', width=2), name="HMM Rizikó")
         self.p1.setXLink(self.p2)
+
+    def reset_default_settings(self):
+        self.inp_micro_win.setText("30")
+        self.inp_med_win.setText("0")
+        self.inp_macro_win.setText("60")
+        self.inp_micro_sens.setText("0.02")
+        self.inp_med_sens.setText("0.03")
+        self.inp_macro_sens.setText("0.05")
+        self.inp_micro_chaos.setText("0.02")
+        self.inp_med_chaos.setText("0.03")
+        self.inp_macro_chaos.setText("0.05")
+        self.inp_micro_risk.setText("40.0")
+        self.inp_med_risk.setText("50.0")
+        self.inp_macro_risk.setText("60.0")
+        self.zoom_initialized = False
 
     def get_price_at_time(self, current_time, window_ms):
         target_time = current_time - window_ms
@@ -303,18 +338,12 @@ class VakuDashboardOnline(QMainWindow):
         mac_pct = (mac_slope / mac_start_price) * 100
         mic_pct = (micro_slope / micro_start_price) * 100
 
-        # Makro
-        if mac_pct > macro_sens:
-            regime_str += "Makro: UP<br>"
-            overall_color = "#004400"
-        elif mac_pct < -macro_sens:
-            regime_str += "Makro: DOWN<br>"
-            overall_color = "#440000"
-        else:
-            regime_str += "Makro: FLAT<br>"
-            overall_color = "#444444"
+        # Mikro (Top)
+        if mic_pct > micro_sens: regime_str += "Mikro: UP<br>"
+        elif mic_pct < -micro_sens: regime_str += "Mikro: DOWN<br>"
+        else: regime_str += "Mikro: FLAT<br>"
 
-        # Medium (Optional)
+        # Medium (Middle)
         if med_window_ms > 0:
             med_start_price = self.get_price_at_time(current_time, med_window_ms)
             if med_start_price is not None:
@@ -324,10 +353,16 @@ class VakuDashboardOnline(QMainWindow):
                 elif med_pct < -med_sens: regime_str += "Közép: DOWN<br>"
                 else: regime_str += "Közép: FLAT<br>"
 
-        # Mikro
-        if mic_pct > micro_sens: regime_str += "Mikro: UP"
-        elif mic_pct < -micro_sens: regime_str += "Mikro: DOWN"
-        else: regime_str += "Mikro: FLAT"
+        # Makro (Bottom)
+        if mac_pct > macro_sens:
+            regime_str += "Makro: UP"
+            overall_color = "#004400"
+        elif mac_pct < -macro_sens:
+            regime_str += "Makro: DOWN"
+            overall_color = "#440000"
+        else:
+            regime_str += "Makro: FLAT"
+            overall_color = "#444444"
 
         # Predikció logikája marad a végleteken (Makro vs Mikro)
         predict_str = "NINCS JELZÉS"
@@ -460,17 +495,26 @@ class VakuDashboardOnline(QMainWindow):
         self.curve_macro.setData(x_draw, self.macro_data[-draw_len:])
         self.curve_risk.setData(x_draw, self.risk_data[-draw_len:])
 
-        # SMART PANNING: Smooth scroll while retaining user zoom
-        view_rect = self.p1.viewRect()
-        current_view_width = view_rect.width()
         latest_time = x_draw[-1]
 
-        ideal_max_x = latest_time + (current_view_width * 0.15)
-        ideal_min_x = ideal_max_x - current_view_width
+        # If it's the very first time we have enough data (5 points), snap to a default 5-minute view (300,000 ms)
+        if not self.zoom_initialized and len(self.history_times) > 0:
+            default_window_ms = 300000.0 # 5 minutes
+            ideal_max_x = latest_time + (default_window_ms * 0.15)
+            ideal_min_x = ideal_max_x - default_window_ms
+            self.p1.setXRange(ideal_min_x, ideal_max_x, padding=0)
+            self.zoom_initialized = True
+        else:
+            # SMART PANNING: Smooth scroll while retaining user zoom
+            view_rect = self.p1.viewRect()
+            current_view_width = view_rect.width()
 
-        # Only pan if we are tracking the live edge (not browsing the past)
-        if view_rect.right() < latest_time or view_rect.right() > (latest_time + current_view_width):
-             self.p1.setXRange(ideal_min_x, ideal_max_x, padding=0)
+            ideal_max_x = latest_time + (current_view_width * 0.15)
+            ideal_min_x = ideal_max_x - current_view_width
+
+            # Only pan if we are tracking the live edge (not browsing the past)
+            if view_rect.right() < latest_time or view_rect.right() > (latest_time + current_view_width):
+                 self.p1.setXRange(ideal_min_x, ideal_max_x, padding=0)
 
         if self.pos_type != 0:
             if self.pos_type == 1:
