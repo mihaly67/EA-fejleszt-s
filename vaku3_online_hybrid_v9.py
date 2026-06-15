@@ -1,4 +1,6 @@
 import sys
+import json
+import os
 import time
 import socket
 import threading
@@ -206,11 +208,19 @@ class VakuDashboardOnline(QMainWindow):
 
         layout_container.addLayout(settings_inputs_layout)
 
-        # Bottom row: Reset button
-        self.btn_reset = QPushButton("Alapértelmezett Értékek Visszaállítása")
+        # Bottom row: Buttons
+        btn_layout = QHBoxLayout()
+        self.btn_save = QPushButton("Saját Beállítások Mentése")
+        self.btn_save.setStyleSheet("background-color: #006600; color: white; padding: 5px; font-weight: bold;")
+        self.btn_save.clicked.connect(self.save_settings)
+
+        self.btn_reset = QPushButton("Gyári Értékek Visszaállítása")
         self.btn_reset.setStyleSheet("background-color: #555; color: white; padding: 5px; font-weight: bold;")
         self.btn_reset.clicked.connect(self.reset_default_settings)
-        layout_container.addWidget(self.btn_reset)
+
+        btn_layout.addWidget(self.btn_save)
+        btn_layout.addWidget(self.btn_reset)
+        layout_container.addLayout(btn_layout)
 
         settings_group.setLayout(layout_container)
 
@@ -281,6 +291,54 @@ class VakuDashboardOnline(QMainWindow):
         self.curve_macro = self.p2.plot(pen=pg.mkPen('c', width=2), name="Makro ER")
         self.curve_risk = self.p2.plot(pen=pg.mkPen('r', width=2), name="HMM Rizikó")
         self.p1.setXLink(self.p2)
+        self.load_settings()
+
+
+    def save_settings(self):
+        config = {
+            'micro_win': self.inp_micro_win.text(),
+            'med_win': self.inp_med_win.text(),
+            'macro_win': self.inp_macro_win.text(),
+            'micro_sens': self.inp_micro_sens.text(),
+            'med_sens': self.inp_med_sens.text(),
+            'macro_sens': self.inp_macro_sens.text(),
+            'micro_chaos': self.inp_micro_chaos.text(),
+            'med_chaos': self.inp_med_chaos.text(),
+            'macro_chaos': self.inp_macro_chaos.text(),
+            'micro_risk': self.inp_micro_risk.text(),
+            'med_risk': self.inp_med_risk.text(),
+            'macro_risk': self.inp_macro_risk.text()
+        }
+        try:
+            with open('vaku3_config.json', 'w') as f:
+                json.dump(config, f)
+            print("[INFO] Beállítások sikeresen mentve!")
+        except Exception as e:
+            print(f"[HIBA] Nem sikerült menteni a beállításokat: {e}")
+
+    def load_settings(self):
+        if os.path.exists('vaku3_config.json'):
+            try:
+                with open('vaku3_config.json', 'r') as f:
+                    config = json.load(f)
+                self.inp_micro_win.setText(config.get('micro_win', "30"))
+                self.inp_med_win.setText(config.get('med_win', "0"))
+                self.inp_macro_win.setText(config.get('macro_win', "60"))
+
+                self.inp_micro_sens.setText(config.get('micro_sens', "0.02"))
+                self.inp_med_sens.setText(config.get('med_sens', "0.03"))
+                self.inp_macro_sens.setText(config.get('macro_sens', "0.05"))
+
+                self.inp_micro_chaos.setText(config.get('micro_chaos', "0.02"))
+                self.inp_med_chaos.setText(config.get('med_chaos', "0.03"))
+                self.inp_macro_chaos.setText(config.get('macro_chaos', "0.05"))
+
+                self.inp_micro_risk.setText(config.get('micro_risk', "40.0"))
+                self.inp_med_risk.setText(config.get('med_risk', "50.0"))
+                self.inp_macro_risk.setText(config.get('macro_risk', "60.0"))
+                print("[INFO] Egyedi beállítások sikeresen betöltve!")
+            except Exception as e:
+                print(f"[HIBA] Nem sikerült betölteni a beállításokat: {e}")
 
     def reset_default_settings(self):
         self.inp_micro_win.setText("30")
@@ -395,8 +453,14 @@ class VakuDashboardOnline(QMainWindow):
         self.history_times.append(unix_ms)
         self.history_prices.append(price)
 
-        # Keep window reasonable (max 1 hour history)
-        cutoff = unix_ms - (3600 * 1000)
+        # Fix flat bug: Ensure we keep AT LEAST enough history for the largest macro window set by the user, + safety buffer
+        try:
+             # Find max requested window and add 5 minutes (300,000ms) safety padding
+             max_win = float(self.inp_macro_win.text()) * 1000.0
+             cutoff = unix_ms - max_win - 300000.0
+        except:
+             cutoff = unix_ms - (3600 * 1000)
+
         while len(self.history_times) > 0 and self.history_times[0] < cutoff:
             self.history_times.pop(0)
             self.history_prices.pop(0)
