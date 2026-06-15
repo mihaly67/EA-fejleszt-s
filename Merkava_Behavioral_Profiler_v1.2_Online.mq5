@@ -213,20 +213,38 @@ void SendHistoryToPython() {
     int copied = CopyTicks(_Symbol, ticks, COPY_TICKS_ALL, 0, InpHistoryTicks);
 
     if(copied > 0) {
-        string payload = "HISTORY_START|" + IntegerToString(copied) + "\n";
-        for(int i=0; i<copied; i++) {
-            payload += IntegerToString(ticks[i].time_msc) + "|" + DoubleToString(ticks[i].bid, _Digits) + "|" + DoubleToString(ticks[i].ask, _Digits) + "\n";
-        }
-        payload += "HISTORY_END\n";
+        // Kezdő üzenet
+        string start_msg = "HISTORY_START|" + IntegerToString(copied) + "\n";
+        uchar s_buf[];
+        StringToCharArray(start_msg, s_buf);
+        SocketSend(g_socket, s_buf, ArraySize(s_buf) - 1);
 
-        uchar buffer[];
-        StringToCharArray(payload, buffer);
-        if(SocketSend(g_socket, buffer, ArraySize(buffer) - 1) < 0) {
-            Print("❌ Failed to send History. Error: ", GetLastError());
-            g_socket_connected = false;
-        } else {
-            Print("📤 History Sent (", copied, " ticks) to Python.");
+        // Csomagokban küldjük, hogy elkerüljük az MQL5 string fagyást (O(N^2) concatenation lag)
+        int chunk_size = 500;
+        string chunk_payload = "";
+
+        for(int i=0; i<copied; i++) {
+            chunk_payload += IntegerToString(ticks[i].time_msc) + "|" + DoubleToString(ticks[i].bid, _Digits) + "|" + DoubleToString(ticks[i].ask, _Digits) + "\n";
+
+            if(i % chunk_size == 0 || i == copied - 1) {
+                uchar buffer[];
+                StringToCharArray(chunk_payload, buffer);
+                if(SocketSend(g_socket, buffer, ArraySize(buffer) - 1) < 0) {
+                    Print("❌ Failed to send History Chunk. Error: ", GetLastError());
+                    g_socket_connected = false;
+                    return;
+                }
+                chunk_payload = ""; // Reset
+            }
         }
+
+        // Záró üzenet
+        string end_msg = "HISTORY_END\n";
+        uchar e_buf[];
+        StringToCharArray(end_msg, e_buf);
+        SocketSend(g_socket, e_buf, ArraySize(e_buf) - 1);
+
+        Print("📤 History Sent (", copied, " ticks) to Python in chunks.");
     }
 }
 
