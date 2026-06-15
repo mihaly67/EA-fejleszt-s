@@ -191,9 +191,9 @@ class VakuDashboardOnline(QMainWindow):
         self.inp_micro_chaos = QLineEdit("0.02")
         self.inp_med_chaos = QLineEdit("0.03")
         self.inp_macro_chaos = QLineEdit("0.05")
-        form_chaos.addRow("Mikro Káosz [Def: 0.02]:", self.inp_micro_chaos)
-        form_chaos.addRow("Közép Káosz [Def: 0.03]:", self.inp_med_chaos)
-        form_chaos.addRow("Makro Káosz [Def: 0.05]:", self.inp_macro_chaos)
+        form_chaos.addRow("Mikro Döglött ER < :", self.inp_micro_chaos)
+        form_chaos.addRow("Közép Döglött ER < :", self.inp_med_chaos)
+        form_chaos.addRow("Makro Döglött ER < :", self.inp_macro_chaos)
         settings_inputs_layout.addLayout(form_chaos)
 
         # Right 2: Whipsaw (Risk Limit)
@@ -241,26 +241,26 @@ class VakuDashboardOnline(QMainWindow):
         self.lbl_regime = QLabel("PIACI REZSIM: VÁRAKOZÁS")
         self.lbl_regime.setStyleSheet("background-color: #333; border: 1px solid #555; padding: 5px; color: white;")
         self.lbl_regime.setWordWrap(True)
-        self.lbl_regime.setFixedHeight(85)
+        self.lbl_regime.setMinimumHeight(110)
         status_panel.addWidget(self.lbl_regime, stretch=2)
 
         self.lbl_predict = QLabel("PREDIKCIÓ: VÁRAKOZÁS")
         self.lbl_predict.setStyleSheet("background-color: #333; border: 1px solid #555; padding: 5px; color: white;")
         self.lbl_predict.setWordWrap(True)
-        self.lbl_predict.setFixedHeight(85)
+        self.lbl_predict.setMinimumHeight(110)
         status_panel.addWidget(self.lbl_predict, stretch=2)
 
         self.lbl_reason = QLabel("INDIKÁCIÓ:")
         self.lbl_reason.setStyleSheet("background-color: #222; border: 1px solid #555; padding: 5px; color: #AAA;")
         self.lbl_reason.setWordWrap(True)
-        self.lbl_reason.setFixedHeight(85)
+        self.lbl_reason.setMinimumHeight(110)
         status_panel.addWidget(self.lbl_reason, stretch=3)
 
         self.lbl_status = QLabel("🔴 OFFLINE")
         self.lbl_status.setStyleSheet("background-color: #330000; border: 2px solid #FF0000; color: #FF0000; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
         self.lbl_status.setAlignment(Qt.AlignCenter)
         self.lbl_status.setWordWrap(True)
-        self.lbl_status.setFixedHeight(85)
+        self.lbl_status.setMinimumHeight(110)
         status_panel.addWidget(self.lbl_status, stretch=2)
 
         layout.addLayout(status_panel, stretch=0)
@@ -373,7 +373,7 @@ class VakuDashboardOnline(QMainWindow):
         except ValueError:
             return default_val
 
-    def analyze_time_based_trend(self, current_time, current_price):
+    def analyze_time_based_trend(self, current_time, current_price, is_dead_market=False):
         micro_window_ms = self.get_safe_float(self.inp_micro_win, 30.0) * 1000.0
         med_window_ms = self.get_safe_float(self.inp_med_win, 0.0) * 1000.0
         macro_window_ms = self.get_safe_float(self.inp_macro_win, 60.0) * 1000.0
@@ -399,7 +399,7 @@ class VakuDashboardOnline(QMainWindow):
         # Mikro (Top)
         if mic_pct > micro_sens: regime_str += "Mikro: UP<br>"
         elif mic_pct < -micro_sens: regime_str += "Mikro: DOWN<br>"
-        else: regime_str += "Mikro: FLAT<br>"
+        else: regime_str += "Mikro: FLAT" + (" (DÖGLÖTT)<br>" if is_dead_market else "<br>")
 
         # Medium (Middle)
         if med_window_ms > 0:
@@ -409,7 +409,7 @@ class VakuDashboardOnline(QMainWindow):
                 med_pct = (med_slope / med_start_price) * 100
                 if med_pct > med_sens: regime_str += "Közép: UP<br>"
                 elif med_pct < -med_sens: regime_str += "Közép: DOWN<br>"
-                else: regime_str += "Közép: FLAT<br>"
+                else: regime_str += "Közép: FLAT" + (" (DÖGLÖTT)<br>" if is_dead_market else "<br>")
 
         # Makro (Bottom)
         if mac_pct > macro_sens:
@@ -419,14 +419,17 @@ class VakuDashboardOnline(QMainWindow):
             regime_str += "Makro: DOWN"
             overall_color = "#440000"
         else:
-            regime_str += "Makro: FLAT"
-            overall_color = "#444444"
+            regime_str += "Makro: FLAT" + (" (DÖGLÖTT)" if is_dead_market else "")
+            overall_color = "#440000" if is_dead_market else "#444444"
 
-        # Predikció logikája marad a végleteken (Makro vs Mikro)
+        # Predikció
         predict_str = "NINCS JELZÉS"
         predict_color = "#333"
 
-        if mac_pct > macro_sens and mic_pct < -micro_sens:
+        if is_dead_market:
+            predict_str = "DÖGLÖTT PIAC!<br>Manipuláció / Stop-vadászat veszély"
+            predict_color = "#660000"
+        elif mac_pct > macro_sens and mic_pct < -micro_sens:
             predict_str = "MEDVE FORDULÓ VÁRHATÓ!<br>(A mikro trend divergál lefelé)"
             predict_color = "#880000"
         elif mac_pct < -macro_sens and mic_pct > micro_sens:
@@ -441,10 +444,13 @@ class VakuDashboardOnline(QMainWindow):
 
         return regime_str, overall_color, predict_str, predict_color
 
-    def get_reason(self, decision, state_str, er_str):
-        if decision == 'GREEN': return f"OK:<br>Kiszámítható Piaci Trend.<br>Nincs Jelentős Manipuláció.<br><span style='color: #4CAF50; font-size: 13px;'>{er_str}</span>"
-        if decision == 'YELLOW': return f"FIGYELEM:<br>{state_str}<br>Whipsaw (Manipuláció) Veszély!<br><span style='color: #FFC107; font-size: 13px;'>{er_str}</span>"
-        if decision == 'RED': return f"TILTVA (KÁOSZ):<br>{state_str}<br>A piac zajos, iránytalan.<br><span style='color: #F44336; font-size: 13px;'>{er_str}</span>"
+    def get_reason(self, decision, state_str, er_str, is_dead):
+        er_html = f"<br><span style='color: #DDDDDD; font-size: 12px; font-weight: normal; background-color: #111; padding: 2px;'>{er_str}</span>"
+        if is_dead:
+            return f"DÖGLÖTT PIAC VÉDELEM:<br>{state_str}<br>Kereskedés szigorúan tilos!{er_html}"
+        if decision == 'GREEN': return f"OK:<br>Kiszámítható Piaci Trend.<br>Nincs Jelentős Manipuláció.{er_html}"
+        if decision == 'YELLOW': return f"FIGYELEM:<br>{state_str}<br>Whipsaw Veszély! Várj!{er_html}"
+        if decision == 'RED': return f"TILTVA (KÁOSZ):<br>{state_str}<br>A piac zajos, iránytalan.{er_html}"
 
     def add_live_tick(self, unix_ms, price, pos_type=0, pos_price=0.0):
         self.pos_type = pos_type
@@ -600,35 +606,43 @@ class VakuDashboardOnline(QMainWindow):
         decision = 'GREEN'
         state_str = ""
 
-        # Macro Level Check
-        if macro_er < mac_chaos_lim:
-            decision = 'RED'
-            state_str = f"Makro ER ({macro_er:.2f}) < Küszöb ({mac_chaos_lim})"
-        elif macro_risk >= mac_risk_lim:
-            decision = 'YELLOW' if decision != 'RED' else 'RED'
-            if state_str == "": state_str = f"Makro Kockázat ({macro_risk:.1f}%) > Küszöb"
-
-        # Medium Level Check (If active)
-        if med_win > 0:
-            med_er = getattr(self, 'current_med_er', 0.0)
-            med_risk = getattr(self, 'current_med_risk', 0.0)
-            if med_er < med_chaos_lim:
-                decision = 'RED'
-                state_str = f"Közép ER ({med_er:.2f}) < Küszöb ({med_chaos_lim})"
-            elif med_risk >= med_risk_lim:
-                decision = 'YELLOW' if decision != 'RED' else 'RED'
-                if state_str == "": state_str = f"Közép Kockázat ({med_risk:.1f}%) > Küszöb"
-
-        # Micro Level Check
+        # Kinyerjük a változókat az ER stringhez és dead checkhez
         mic_er = getattr(self, 'current_mic_er', 0.0)
         mic_risk = getattr(self, 'current_mic_risk', 0.0)
-        if mic_er < mic_chaos_lim:
-            decision = 'RED'
-            state_str = f"Mikro ER ({mic_er:.2f}) < Küszöb ({mic_chaos_lim})"
-        elif mic_risk >= mic_risk_lim:
-            decision = 'YELLOW' if decision != 'RED' else 'RED'
-            if state_str == "": state_str = f"Mikro Kockázat ({mic_risk:.1f}%) > Küszöb"
+        med_er = getattr(self, 'current_med_er', 0.0)
+        med_risk = getattr(self, 'current_med_risk', 0.0)
 
+        # DÖGLÖTT PIAC VIZSGÁLAT (Is Dead Market)
+        # Ha bármelyik ER a saját küszöbe alá esik, az döglött piac.
+        is_dead = False
+        state_str = ""
+        decision = 'GREEN'
+
+        if macro_er < mac_chaos_lim:
+            is_dead = True
+            state_str = f"Makro ER ({macro_er:.3f}) < Küszöb ({mac_chaos_lim})"
+        elif med_win > 0 and med_er < med_chaos_lim:
+            is_dead = True
+            state_str = f"Közép ER ({med_er:.3f}) < Küszöb ({med_chaos_lim})"
+        elif mic_er < mic_chaos_lim:
+            is_dead = True
+            state_str = f"Mikro ER ({mic_er:.3f}) < Küszöb ({mic_chaos_lim})"
+
+        if is_dead:
+            decision = 'RED'
+        else:
+            # Sima Kockázat vizsgálat
+            if macro_risk >= mac_risk_lim:
+                decision = 'YELLOW'
+                state_str = f"Makro Kockázat ({macro_risk:.1f}%) > Küszöb"
+            elif med_win > 0 and med_risk >= med_risk_lim:
+                decision = 'YELLOW'
+                state_str = f"Közép Kockázat ({med_risk:.1f}%) > Küszöb"
+            elif mic_risk >= mic_risk_lim:
+                decision = 'YELLOW'
+                state_str = f"Mikro Kockázat ({mic_risk:.1f}%) > Küszöb"
+
+        # Státusz Doboz Színezése
         if decision == 'GREEN':
             self.lbl_status.setText("🟢 TISZTA PIAC (MEHET A TRADE)")
             self.lbl_status.setStyleSheet("background-color: #003300; border: 2px solid #00FF00; color: #00FF00; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
@@ -636,23 +650,21 @@ class VakuDashboardOnline(QMainWindow):
             self.lbl_status.setText("🟡 MANIPULÁCIÓ! (VÁRJ/VIGYÁZZ)")
             self.lbl_status.setStyleSheet("background-color: #333300; border: 2px solid #FFFF00; color: #FFFF00; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
         else:
-            self.lbl_status.setText("🔴 KÁOSZ / OLDALAZÁS (TILTVA)")
-            self.lbl_status.setStyleSheet("background-color: #330000; border: 2px solid #FF0000; color: #FF0000; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
+            if is_dead:
+                self.lbl_status.setText("🔴 DÖGLÖTT PIAC (TILTVA)")
+                self.lbl_status.setStyleSheet("background-color: #550000; border: 2px solid #FF5555; color: #FFFFFF; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
+            else:
+                self.lbl_status.setText("🔴 KÁOSZ / OLDALAZÁS (TILTVA)")
+                self.lbl_status.setStyleSheet("background-color: #330000; border: 2px solid #FF0000; color: #FF0000; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
 
-        regime_str, regime_color, predict_str, predict_color = self.analyze_time_based_trend(latest_time, self.price_data[-1])
-
-        # Build the ER display string
-        mic_er = getattr(self, 'current_mic_er', 0.0)
-        med_er = getattr(self, 'current_med_er', 0.0)
-        mac_er = getattr(self, 'current_mac_er', macro_er) # Make sure to capture this globally if we haven't
+        regime_str, regime_color, predict_str, predict_color = self.analyze_time_based_trend(latest_time, self.price_data[-1], is_dead_market=is_dead)
 
         er_str = f"ER Mutatók -> Mikro: {mic_er:.3f}"
         if med_win > 0:
             er_str += f" | Közép: {med_er:.3f}"
         er_str += f" | Makro: {macro_er:.3f}"
 
-        reason_text = self.get_reason(decision, state_str, er_str)
-
+        reason_text = self.get_reason(decision, state_str, er_str, is_dead)
 
         # HTML formatting for Regime
         regime_html = f"<div style='text-align: center;'><strong style='font-size: 13px; color: #FFAA00;'>PIACI REZSIM</strong><br><span style='font-size: 14px;'>{regime_str}</span></div>"
