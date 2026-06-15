@@ -441,10 +441,10 @@ class VakuDashboardOnline(QMainWindow):
 
         return regime_str, overall_color, predict_str, predict_color
 
-    def get_reason(self, decision, state_str):
-        if decision == 'GREEN': return "OK:<br>Kiszámítható Piaci Trend.<br>Nincs Jelentős Manipuláció."
-        if decision == 'YELLOW': return f"FIGYELEM:<br>{state_str}<br>Whipsaw (Manipuláció) Veszély!<br>Várj a belépéssel!"
-        if decision == 'RED': return f"TILTVA (KÁOSZ):<br>{state_str}<br>A piac zajos, iránytalan (Oldalazás).<br>Belépés szigorúan tilos."
+    def get_reason(self, decision, state_str, er_str):
+        if decision == 'GREEN': return f"OK:<br>Kiszámítható Piaci Trend.<br>Nincs Jelentős Manipuláció.<br><span style='color: #4CAF50; font-size: 13px;'>{er_str}</span>"
+        if decision == 'YELLOW': return f"FIGYELEM:<br>{state_str}<br>Whipsaw (Manipuláció) Veszély!<br><span style='color: #FFC107; font-size: 13px;'>{er_str}</span>"
+        if decision == 'RED': return f"TILTVA (KÁOSZ):<br>{state_str}<br>A piac zajos, iránytalan.<br><span style='color: #F44336; font-size: 13px;'>{er_str}</span>"
 
     def add_live_tick(self, unix_ms, price, pos_type=0, pos_price=0.0):
         self.pos_type = pos_type
@@ -640,7 +640,19 @@ class VakuDashboardOnline(QMainWindow):
             self.lbl_status.setStyleSheet("background-color: #330000; border: 2px solid #FF0000; color: #FF0000; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
 
         regime_str, regime_color, predict_str, predict_color = self.analyze_time_based_trend(latest_time, self.price_data[-1])
-        reason_text = self.get_reason(decision, state_str)
+
+        # Build the ER display string
+        mic_er = getattr(self, 'current_mic_er', 0.0)
+        med_er = getattr(self, 'current_med_er', 0.0)
+        mac_er = getattr(self, 'current_mac_er', macro_er) # Make sure to capture this globally if we haven't
+
+        er_str = f"ER Mutatók -> Mikro: {mic_er:.3f}"
+        if med_win > 0:
+            er_str += f" | Közép: {med_er:.3f}"
+        er_str += f" | Makro: {macro_er:.3f}"
+
+        reason_text = self.get_reason(decision, state_str, er_str)
+
 
         # HTML formatting for Regime
         regime_html = f"<div style='text-align: center;'><strong style='font-size: 13px; color: #FFAA00;'>PIACI REZSIM</strong><br><span style='font-size: 14px;'>{regime_str}</span></div>"
