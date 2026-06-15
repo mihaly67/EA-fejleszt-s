@@ -228,11 +228,17 @@ class VakuDashboardOnline(QMainWindow):
         settings_group.setLayout(settings_layout)
         layout.addWidget(settings_group)
 
-        # Top Panel (Clock)
+        # Top Panel (Clock & Buffer Info)
         top_panel = QHBoxLayout()
         self.lbl_clock = QLabel("MT5 TICK IDŐ: VÁRAKOZÁS...")
         self.lbl_clock.setStyleSheet("font-size: 18px; font-weight: bold; color: #000000; padding-bottom: 5px;")
         top_panel.addWidget(self.lbl_clock)
+
+        self.lbl_buffer = QLabel("Memória Puffer: 0 tick")
+        self.lbl_buffer.setStyleSheet("font-size: 14px; font-weight: normal; color: #555555; padding-bottom: 5px;")
+        self.lbl_buffer.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        top_panel.addWidget(self.lbl_buffer)
+
         layout.addLayout(top_panel)
 
         # Status Panel (Moved to TOP, Fixed Heights)
@@ -598,6 +604,7 @@ class VakuDashboardOnline(QMainWindow):
 
         latest_time = x_draw[-1]
         self.lbl_clock.setText(f"MT5 TICK IDŐ: {pd.to_datetime(latest_time, unit='ms').strftime('%H:%M:%S.%f')[:-3]}")
+        self.lbl_buffer.setText(f"HMM Puffer: {len(self.history_times)} tick betöltve")
 
         # New Decision Logic: Evaluate all active layers
         macro_er = self.macro_data[-1] / 100.0
