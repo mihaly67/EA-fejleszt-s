@@ -117,8 +117,8 @@ class VakuDashboardOnline(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Vaku 3.0 ONLINE MT5 Bridge (HMM Scalping Dashboard)")
-        self.setGeometry(100, 100, 1200, 800)
-        self.setMinimumSize(800, 600)
+        self.setGeometry(100, 100, 1200, 600)
+        self.setMinimumSize(800, 250)
 
         # Core data buffers
         self.max_points = 1800 # ~30 perc M1
@@ -241,26 +241,26 @@ class VakuDashboardOnline(QMainWindow):
         self.lbl_regime = QLabel("PIACI REZSIM: VÁRAKOZÁS")
         self.lbl_regime.setStyleSheet("background-color: #333; border: 1px solid #555; padding: 5px; color: white;")
         self.lbl_regime.setWordWrap(True)
-        self.lbl_regime.setFixedHeight(120)
+        self.lbl_regime.setFixedHeight(85)
         status_panel.addWidget(self.lbl_regime, stretch=2)
 
         self.lbl_predict = QLabel("PREDIKCIÓ: VÁRAKOZÁS")
         self.lbl_predict.setStyleSheet("background-color: #333; border: 1px solid #555; padding: 5px; color: white;")
         self.lbl_predict.setWordWrap(True)
-        self.lbl_predict.setFixedHeight(120)
+        self.lbl_predict.setFixedHeight(85)
         status_panel.addWidget(self.lbl_predict, stretch=2)
 
         self.lbl_reason = QLabel("INDIKÁCIÓ:")
         self.lbl_reason.setStyleSheet("background-color: #222; border: 1px solid #555; padding: 5px; color: #AAA;")
         self.lbl_reason.setWordWrap(True)
-        self.lbl_reason.setFixedHeight(120)
+        self.lbl_reason.setFixedHeight(85)
         status_panel.addWidget(self.lbl_reason, stretch=3)
 
         self.lbl_status = QLabel("🔴 OFFLINE")
         self.lbl_status.setStyleSheet("background-color: #330000; border: 2px solid #FF0000; color: #FF0000; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 14px;")
         self.lbl_status.setAlignment(Qt.AlignCenter)
         self.lbl_status.setWordWrap(True)
-        self.lbl_status.setFixedHeight(120)
+        self.lbl_status.setFixedHeight(85)
         status_panel.addWidget(self.lbl_status, stretch=2)
 
         layout.addLayout(status_panel, stretch=0)
@@ -643,17 +643,17 @@ class VakuDashboardOnline(QMainWindow):
         reason_text = self.get_reason(decision, state_str)
 
         # HTML formatting for Regime
-        regime_html = f"<div style='text-align: center;'><strong style='font-size: 14px;'>PIACI REZSIM</strong><br><br><span style='font-size: 15px;'>{regime_str}</span></div>"
+        regime_html = f"<div style='text-align: center;'><strong style='font-size: 13px; color: #FFAA00;'>PIACI REZSIM</strong><br><span style='font-size: 14px;'>{regime_str}</span></div>"
         self.lbl_regime.setText(regime_html)
         self.lbl_regime.setStyleSheet(f"background-color: {regime_color}; border: 1px solid #555; padding: 5px; color: white;")
 
         # HTML formatting for Prediction
-        predict_html = f"<div style='text-align: center;'><strong style='font-size: 14px;'>PREDIKCIÓ</strong><br><br><span style='font-size: 15px;'>{predict_str}</span></div>"
+        predict_html = f"<div style='text-align: center;'><strong style='font-size: 13px; color: #FFAA00;'>PREDIKCIÓ</strong><br><span style='font-size: 14px;'>{predict_str}</span></div>"
         self.lbl_predict.setText(predict_html)
         self.lbl_predict.setStyleSheet(f"background-color: {predict_color}; border: 1px solid #555; padding: 5px; color: white;")
 
         # HTML formatting for Reason
-        reason_html = f"<div style='text-align: center;'><strong style='font-size: 14px;'>INDIKÁCIÓ</strong><br><br><span style='font-size: 15px;'>{reason_text}</span></div>"
+        reason_html = f"<div style='text-align: center;'><strong style='font-size: 13px; color: #FFAA00;'>INDIKÁCIÓ</strong><br><span style='font-size: 14px;'>{reason_text}</span></div>"
         self.lbl_reason.setText(reason_html)
 
 
