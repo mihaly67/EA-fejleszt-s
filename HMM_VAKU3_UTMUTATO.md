@@ -42,7 +42,9 @@ A rendszer rendkívül moduláris, nincsenek bonyolult adatbázis (SQL/RAG) füg
 A Python Műszerfal futtatásához egy dedikált környezet javasolt. Nyiss egy parancssort/terminált a gépeden és hozz létre egy virtuális környezetet (virtual environment), majd aktiváld (pl. `venv\Scripts\activate` Windows alatt).
 
 Ezután telepítsd a szükséges csomagokat:
-`pip install numpy==1.26.4 pandas==2.2.2 pyqt5 pyqtgraph
+```bash
+pip install numpy==1.26.4 pandas==2.2.2 pyqt5 pyqtgraph
+```
 
 *(Megjegyzés: A `numpy` 2.x és `pandas` 3.x verziói újabb processzor architektúrákat - AVX utasításkészlet - követelnek meg. Régebbi hardvereken, pl. AMD Phenom II, ezek `Érvénytelen utasítás / Illegal instruction` hibát okoznak. A fenti `1.26.4`-es verzió minden környezetben stabil).*`
 
