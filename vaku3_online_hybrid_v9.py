@@ -44,7 +44,7 @@ class MT5SocketBridge(threading.Thread):
                 buffer = ""
                 while self.running and self.client_socket:
                     try:
-                        data = self.client_socket.recv(4096).decode('utf-8')
+                        data = self.client_socket.recv(1048576).decode('utf-8')
                         if not data:
                             print("[BRIDGE] EA Kapcsolat megszakadt.")
                             break
@@ -72,8 +72,19 @@ class MT5SocketBridge(threading.Thread):
             print(f"[BRIDGE] Történelmi adatok (HISTORY) letöltése indul... Várható darab: {parts[1]}")
             self.dashboard.history_times.clear()
             self.dashboard.history_prices.clear()
+            # Ideiglenes memória a Batch betöltéshez a gyorsaság érdekében
+            self.tmp_times = []
+            self.tmp_prices = []
+
         elif cmd == "HISTORY_END":
+            # Bulk extend (Nagyon gyors, O(1))
+            if hasattr(self, 'tmp_times'):
+                self.dashboard.history_times.extend(self.tmp_times)
+                self.dashboard.history_prices.extend(self.tmp_prices)
+                del self.tmp_times
+                del self.tmp_prices
             print(f"[BRIDGE] Történelmi adatok (HISTORY) vége. Betöltve: {len(self.dashboard.history_times)} tick.")
+
         elif cmd == "TICK":
             if len(parts) >= 4:
                 try:
@@ -93,15 +104,17 @@ class MT5SocketBridge(threading.Thread):
                 except ValueError:
                     pass
         else:
+            # HISTORY data lines (time|bid|ask)
             if len(parts) == 3:
                 try:
                     time_msc = float(parts[0])
                     bid = float(parts[1])
                     ask = float(parts[2])
                     price = (bid + ask) / 2.0
-                    if self.dashboard:
-                        self.dashboard.history_times.append(time_msc)
-                        self.dashboard.history_prices.append(price)
+                    # Appendelés a Temporary Batch Listába a UI szál fagyásának elkerülése végett
+                    if hasattr(self, 'tmp_times'):
+                        self.tmp_times.append(time_msc)
+                        self.tmp_prices.append(price)
                 except ValueError:
                     pass
 
@@ -228,11 +241,17 @@ class VakuDashboardOnline(QMainWindow):
         settings_group.setLayout(settings_layout)
         layout.addWidget(settings_group)
 
-        # Top Panel (Clock)
+        # Top Panel (Clock & Buffer Info)
         top_panel = QHBoxLayout()
         self.lbl_clock = QLabel("MT5 TICK IDŐ: VÁRAKOZÁS...")
         self.lbl_clock.setStyleSheet("font-size: 18px; font-weight: bold; color: #000000; padding-bottom: 5px;")
         top_panel.addWidget(self.lbl_clock)
+
+        self.lbl_buffer = QLabel("Memória Puffer: 0 tick")
+        self.lbl_buffer.setStyleSheet("font-size: 14px; font-weight: normal; color: #555555; padding-bottom: 5px;")
+        self.lbl_buffer.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        top_panel.addWidget(self.lbl_buffer)
+
         layout.addLayout(top_panel)
 
         # Status Panel (Moved to TOP, Fixed Heights)
@@ -459,13 +478,9 @@ class VakuDashboardOnline(QMainWindow):
         self.history_times.append(unix_ms)
         self.history_prices.append(price)
 
-        # Fix flat bug: Ensure we keep AT LEAST enough history for the largest macro window set by the user, + safety buffer
-        try:
-             # Find max requested window and add 5 minutes (300,000ms) safety padding
-             max_win = float(self.inp_macro_win.text()) * 1000.0
-             cutoff = unix_ms - max_win - 300000.0
-        except:
-             cutoff = unix_ms - (3600 * 1000)
+        # THREAD SAFETY FIX: Do not read self.inp_macro_win.text() directly from this socket background thread!
+        # Use a safe, hardcoded 2-hour memory retention limit here to prevent memory leaks and "flatline" charting bugs.
+        cutoff = unix_ms - (7200 * 1000.0)
 
         while len(self.history_times) > 0 and self.history_times[0] < cutoff:
             self.history_times.pop(0)
@@ -598,6 +613,7 @@ class VakuDashboardOnline(QMainWindow):
 
         latest_time = x_draw[-1]
         self.lbl_clock.setText(f"MT5 TICK IDŐ: {pd.to_datetime(latest_time, unit='ms').strftime('%H:%M:%S.%f')[:-3]}")
+        self.lbl_buffer.setText(f"HMM Puffer: {len(self.history_times)} tick betöltve")
 
         # New Decision Logic: Evaluate all active layers
         macro_er = self.macro_data[-1] / 100.0
