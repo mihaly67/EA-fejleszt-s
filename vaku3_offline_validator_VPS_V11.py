@@ -542,6 +542,12 @@ class VakuDashboardOnline(QMainWindow):
         unix_ms = self.history_times[-1]
         price = self.history_prices[-1]
 
+        # --- SYNC FIX: Csak akkor frissítünk, ha érkezett ÚJ tick ---
+        if hasattr(self, 'last_processed_tick') and self.last_processed_tick == unix_ms:
+            return
+        self.last_processed_tick = unix_ms
+
+
         # --- ADWIN ENGINE ---
         if not hasattr(self, 'adwin_engine'):
             delta = self.get_safe_float(self.inp_adwin_delta, 0.05)
