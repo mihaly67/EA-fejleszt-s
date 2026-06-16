@@ -1,3 +1,4 @@
+from fast_adwin import FastADWIN
 import sys
 import json
 import os
@@ -125,12 +126,13 @@ class VakuDashboardOnline(QMainWindow):
         settings_inputs_layout = QHBoxLayout()
         # Left side: Windows
         form_windows = QFormLayout()
-        self.inp_micro_win = QLineEdit("100")
-        self.inp_med_win = QLineEdit("500")
-        self.inp_macro_win = QLineEdit("1000")
-        form_windows.addRow("Mikro Tick-Ablak [Def: 100]:", self.inp_micro_win)
-        form_windows.addRow("Közép Tick-Ablak [Def: 500]:", self.inp_med_win)
-        form_windows.addRow("Makro Tick-Ablak [Def: 1000]:", self.inp_macro_win)
+        self.inp_adwin_delta = QLineEdit("0.05")
+        self.inp_adwin_min = QLineEdit("100")
+        self.inp_macro_win = QLineEdit("ADWIN AUTO")
+        self.inp_macro_win.setReadOnly(True)
+        form_windows.addRow("ADWIN Delta [Def: 0.05]:", self.inp_adwin_delta)
+        form_windows.addRow("ADWIN Min Ablak [Def: 100]:", self.inp_adwin_min)
+        form_windows.addRow("Makro Ablak (ADWIN):", self.inp_macro_win)
         settings_inputs_layout.addLayout(form_windows)
 
         # Middle: Sensitivities
@@ -355,9 +357,18 @@ class VakuDashboardOnline(QMainWindow):
             return default_val
 
     def analyze_time_based_trend(self, current_time, current_price, is_dead_market=False):
-        micro_window_ticks = int(self.get_safe_float(self.inp_micro_win, 100))
-        med_window_ticks = int(self.get_safe_float(self.inp_med_win, 500))
-        macro_window_ticks = int(self.get_safe_float(self.inp_macro_win, 1000))
+        # ADWIN határozza meg a macro_window_ticks-et
+        if hasattr(self, 'adwin_macro_ticks'):
+            macro_window_ticks = self.adwin_macro_ticks
+        else:
+            macro_window_ticks = 1000
+
+        micro_window_ticks = max(10, macro_window_ticks // 10)
+        med_window_ticks = max(50, macro_window_ticks // 2)
+
+        # Frissítjük a GUI-t hogy látszódjon
+        self.inp_macro_win.setText(str(macro_window_ticks))
+
 
         micro_sens = self.get_safe_float(self.inp_micro_sens, 0.02)
         med_sens = self.get_safe_float(self.inp_med_sens, 0.03)
@@ -415,6 +426,9 @@ class VakuDashboardOnline(QMainWindow):
                 import warnings
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
+                    # Tiszta lappal indulunk, hogy ne legyen Warning az overwrite miatt
+                    from hmmlearn import hmm
+                    self.hmm_model = hmm.GaussianHMM(n_components=3, covariance_type="diag", n_iter=10, random_state=42)
                     self.hmm_model.fit(features)
 
         # --- HYSTERESIS LÉPTETÉS ---
@@ -496,7 +510,12 @@ class VakuDashboardOnline(QMainWindow):
         er_html = f"<br><span style='color: #DDDDDD; font-size: 12px; font-weight: normal; background-color: #111; padding: 2px;'>{er_str}</span>"
         if is_dead:
             return f"DÖGLÖTT PIAC VÉDELEM:<br>{state_str}<br>Kereskedés szigorúan tilos!{er_html}"
-        if decision == 'GREEN': return f"OK:<br>Kiszámítható Piaci Trend.<br>Nincs Jelentős Manipuláció.{er_html}"
+        if decision == 'GREEN':
+            base_txt = "OK:<br>Kiszámítható Piaci Trend.<br>Nincs Jelentős Manipuláció."
+            if getattr(self, 'adwin_drift_detected', False):
+                base_txt = "⚠️ ADWIN DRIFT!<br>Ablak levágva." + base_txt
+                self.adwin_drift_detected = False
+            return base_txt + er_html
         if decision == 'YELLOW': return f"FIGYELEM:<br>{state_str}<br>Whipsaw Veszély! Várj!{er_html}"
         if decision == 'RED': return f"TILTVA (KÁOSZ):<br>{state_str}<br>A piac zajos, iránytalan.{er_html}"
 
@@ -523,10 +542,31 @@ class VakuDashboardOnline(QMainWindow):
         unix_ms = self.history_times[-1]
         price = self.history_prices[-1]
 
-        # Calculations moved to GUI thread to be safe with QLineEdit reads
-        micro_window_ticks = int(self.get_safe_float(self.inp_micro_win, 100))
-        med_window_ticks = int(self.get_safe_float(self.inp_med_win, 500))
-        macro_window_ticks = int(self.get_safe_float(self.inp_macro_win, 1000))
+        # --- SYNC FIX: Csak akkor frissítünk, ha érkezett ÚJ tick ---
+        if hasattr(self, 'last_processed_tick') and self.last_processed_tick == unix_ms:
+            return
+        self.last_processed_tick = unix_ms
+
+
+        # --- ADWIN ENGINE ---
+        if not hasattr(self, 'adwin_engine'):
+            delta = self.get_safe_float(self.inp_adwin_delta, 0.05)
+            min_w = int(self.get_safe_float(self.inp_adwin_min, 100))
+            self.adwin_engine = FastADWIN(delta=delta, min_window=min_w)
+
+        # Betápláljuk az új árat az ADWIN-ba (O(1))
+        # Ha a múltban drasztikusan változtattunk (visszajátszás stb.),
+        # a FastADWIN figyeli a váltást.
+
+        drift = self.adwin_engine.add_element(price)
+        if drift:
+            self.adwin_drift_detected = True
+        self.adwin_macro_ticks = len(self.adwin_engine.window)
+
+        macro_window_ticks = self.adwin_macro_ticks
+        micro_window_ticks = max(10, macro_window_ticks // 10)
+        med_window_ticks = max(50, macro_window_ticks // 2)
+
 
         def calc_er_risk(window_ticks):
             if window_ticks <= 0 or len(self.history_times) < 10: return 0.0, 0.0
@@ -599,7 +639,7 @@ class VakuDashboardOnline(QMainWindow):
         med_risk_lim = self.get_safe_float(self.inp_med_risk, 50.0)
         mic_risk_lim = self.get_safe_float(self.inp_micro_risk, 40.0)
 
-        med_win_ticks = int(self.get_safe_float(self.inp_med_win, 500))
+        med_win_ticks = max(50, self.adwin_macro_ticks // 2) if hasattr(self, 'adwin_macro_ticks') else 500
 
         draw_len = min(self.ptr, self.max_points)
         x_draw = self.x_data[-draw_len:]

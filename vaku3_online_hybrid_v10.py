@@ -15,64 +15,121 @@ class TimeAxisItem(pg.AxisItem):
         return [pd.to_datetime(value, unit='ms').strftime('%H:%M:%S') for value in values]
 
 # --- MT5 ONLINE SOCKET RECEIVER (ZMQ/RAW TCP BRIDGE) ---
-class CSVPlaybackBridge(threading.Thread):
-    def __init__(self, csv_path, dashboard=None):
+class MT5SocketBridge(threading.Thread):
+    def __init__(self, host='127.0.0.1', port=5555, dashboard=None):
         super().__init__()
-        self.csv_path = csv_path
+        self.host = host
+        self.port = port
         self.dashboard = dashboard
         self.running = True
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server_socket.bind((self.host, self.port))
+        self.server_socket.listen(1)
+        self.client_socket = None
 
     def run(self):
-        import pandas as pd
-        import time
-        print(f"[BRIDGE] CSV Visszajátszás indul: {self.csv_path}")
-        try:
-            df = pd.read_csv(self.csv_path)
-            t_col = next((c for c in df.columns if c.lower() in ['timemsc', 'time_msc', 'tickmsc']), None)
-            bid_col = next((c for c in df.columns if c.lower() == 'bid'), None)
-            ask_col = next((c for c in df.columns if c.lower() == 'ask'), None)
+        print(f"[BRIDGE] Vaku 3.0 MT5 Bridge indul ezen: {self.host}:{self.port}")
+        while self.running:
+            try:
+                self.server_socket.settimeout(2.0)
+                try:
+                    client, addr = self.server_socket.accept()
+                    self.client_socket = client
+                    self.client_socket.settimeout(None) # Prevents dropping connection during slow tick periods
+                    print(f"[BRIDGE] EA Csatlakozott: {addr}")
+                except socket.timeout:
+                    continue
 
-            if not t_col or not bid_col or not ask_col:
-                print("[BRIDGE] Hiba: Hiányzó oszlopok a CSV-ben.")
-                return
-
-            print(f"[BRIDGE] Betöltött adatok száma: {len(df)}")
-            history_size = 5000
-            if len(df) > history_size:
-                print(f"[BRIDGE] Történelmi betöltés indul ({history_size} tick)...")
-                self.dashboard.history_times.clear()
-                self.dashboard.history_prices.clear()
-
-                hist_times = df[t_col].iloc[:history_size].values
-                hist_bids = df[bid_col].iloc[:history_size].values
-                hist_asks = df[ask_col].iloc[:history_size].values
-                hist_prices = (hist_bids + hist_asks) / 2.0
-
-                self.dashboard.history_times.extend(hist_times.tolist())
-                self.dashboard.history_prices.extend(hist_prices.tolist())
-                print(f"[BRIDGE] Történelmi betöltés kész.")
-
-                for i in range(history_size, len(df)):
-                    if not self.running:
+                buffer = ""
+                while self.running and self.client_socket:
+                    try:
+                        data = self.client_socket.recv(1048576).decode('utf-8')
+                        if not data:
+                            print("[BRIDGE] EA Kapcsolat megszakadt.")
+                            break
+                        buffer += data
+                        while "\n" in buffer:
+                            line, buffer = buffer.split("\n", 1)
+                            self.process_message(line.strip())
+                    except Exception as e:
+                        print(f"[BRIDGE] Hiba: {e}")
                         break
-                    time_msc = df[t_col].iloc[i]
-                    bid = df[bid_col].iloc[i]
-                    ask = df[ask_col].iloc[i]
+            except Exception as e:
+                print(f"[BRIDGE] Szerver Hiba: {e}")
+            finally:
+                if self.client_socket:
+                    self.client_socket.close()
+                    self.client_socket = None
+
+    def process_message(self, message):
+        if not message: return
+
+        parts = message.split('|')
+        cmd = parts[0]
+
+        if cmd == "HISTORY_START":
+            print(f"[BRIDGE] Történelmi adatok (HISTORY) letöltése indul... Várható darab: {parts[1]}")
+            self.dashboard.history_times.clear()
+            self.dashboard.history_prices.clear()
+            # Ideiglenes memória a Batch betöltéshez a gyorsaság érdekében
+            self.tmp_times = []
+            self.tmp_prices = []
+
+        elif cmd == "HISTORY_END":
+            # Bulk extend (Nagyon gyors, O(1))
+            if hasattr(self, 'tmp_times'):
+                self.dashboard.history_times.extend(self.tmp_times)
+                self.dashboard.history_prices.extend(self.tmp_prices)
+                del self.tmp_times
+                del self.tmp_prices
+            print(f"[BRIDGE] Történelmi adatok (HISTORY) vége. Betöltve: {len(self.dashboard.history_times)} tick.")
+
+        elif cmd == "TICK":
+            if len(parts) >= 4:
+                try:
+                    time_msc = float(parts[1])
+                    bid = float(parts[2])
+                    ask = float(parts[3])
                     price = (bid + ask) / 2.0
+
+                    pos_type = 0
+                    pos_price = 0.0
+                    if len(parts) == 6:
+                        pos_type = int(parts[4])
+                        pos_price = float(parts[5])
+
                     if self.dashboard:
-                        self.dashboard.add_live_tick(time_msc, price, 0, 0.0)
-                    if i % 250 == 0:
-                        time.sleep(0.001)
-        except Exception as e:
-            print(f"[BRIDGE] Hiba: {e}")
+                        self.dashboard.add_live_tick(time_msc, price, pos_type, pos_price)
+                except ValueError:
+                    pass
+        else:
+            # HISTORY data lines (time|bid|ask)
+            if len(parts) == 3:
+                try:
+                    time_msc = float(parts[0])
+                    bid = float(parts[1])
+                    ask = float(parts[2])
+                    price = (bid + ask) / 2.0
+                    # Appendelés a Temporary Batch Listába a UI szál fagyásának elkerülése végett
+                    if hasattr(self, 'tmp_times'):
+                        self.tmp_times.append(time_msc)
+                        self.tmp_prices.append(price)
+                except ValueError:
+                    pass
 
     def stop(self):
         self.running = False
+        if self.client_socket:
+            self.client_socket.close()
+        self.server_socket.close()
 
+
+# --- VAKU 3.0 ONLINE DASHBOARD ---
 class VakuDashboardOnline(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Vaku 3.0 ONLINE MT5 Bridge (HMM Scalping Dashboard)")
+        self.setWindowTitle("Vaku 3.0 ADAPTIVE ONLINE MT5 Bridge (V10)")
         self.setGeometry(100, 100, 1200, 600)
         self.setMinimumSize(800, 250)
 
@@ -105,8 +162,7 @@ class VakuDashboardOnline(QMainWindow):
         self.update_timer.start(100)
 
         # Start Bridge
-        csv_path = '/home/misi/Merkava_ML_Ops/data/Merkava_XAUUSD_v1.10_20260408_025931.csv'
-        self.bridge = CSVPlaybackBridge(csv_path=csv_path, dashboard=self)
+        self.bridge = MT5SocketBridge(dashboard=self)
         self.bridge.start()
 
     def setup_ui(self):
