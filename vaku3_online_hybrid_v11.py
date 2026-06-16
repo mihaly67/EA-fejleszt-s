@@ -482,6 +482,9 @@ class VakuDashboardOnline(QMainWindow):
                 import warnings
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
+                    # Tiszta lappal indulunk, hogy ne legyen Warning az overwrite miatt
+                    from hmmlearn import hmm
+                    self.hmm_model = hmm.GaussianHMM(n_components=3, covariance_type="diag", n_iter=10, random_state=42)
                     self.hmm_model.fit(features)
 
         # --- HYSTERESIS LÉPTETÉS ---

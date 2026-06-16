@@ -69,15 +69,16 @@ class FastADWIN:
         return False
 
 # Teszt a gyorsaságra
-import time
-adwin = FastADWIN(delta=0.01)
-stream = np.concatenate([np.random.normal(0, 1, 100000), np.random.normal(3, 1, 100000)])
+if __name__ == '__main__':
+    import time
+    adwin = FastADWIN(delta=0.01)
+    stream = np.concatenate([np.random.normal(0, 1, 100000), np.random.normal(3, 1, 100000)])
 
-start = time.time()
-drifts = []
-for i, val in enumerate(stream):
-    if adwin.add_element(val):
-        drifts.append((i, len(adwin.window)))
-end = time.time()
+    start = time.time()
+    drifts = []
+    for i, val in enumerate(stream):
+        if adwin.add_element(val):
+            drifts.append((i, len(adwin.window)))
+    end = time.time()
 
-print(f"ADWIN Fast teszt kész {end-start:.4f} sec alatt 200,000 tickre. Észlelt driftek: {len(drifts)}")
+    print(f"ADWIN Fast teszt kész {end-start:.4f} sec alatt 200,000 tickre. Észlelt driftek: {len(drifts)}")
