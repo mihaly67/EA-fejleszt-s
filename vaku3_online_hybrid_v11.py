@@ -686,7 +686,7 @@ class VakuDashboardOnline(QMainWindow):
         med_risk_lim = self.get_safe_float(self.inp_med_risk, 50.0)
         mic_risk_lim = self.get_safe_float(self.inp_micro_risk, 40.0)
 
-        med_win_ticks = int(self.get_safe_float(self.inp_med_win, 500))
+        med_win_ticks = max(50, self.adwin_macro_ticks // 2) if hasattr(self, 'adwin_macro_ticks') else 500
 
         draw_len = min(self.ptr, self.max_points)
         x_draw = self.x_data[-draw_len:]
