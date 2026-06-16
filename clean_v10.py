@@ -381,7 +381,10 @@ class VakuDashboardOnline(QMainWindow):
 
         if len(self.history_prices) > macro_window_ticks:
             import numpy as np
-            vol = np.std(self.history_prices[-macro_window_ticks:])
+            # Standard Deviation of raw prices (dollars/points)
+            raw_vol = np.std(self.history_prices[-macro_window_ticks:])
+            # Convert volatility to percentage relative to current price
+            vol = (raw_vol / current_price) * 100.0 if current_price > 0 else 0.01
         else:
             vol = 0.01
 
