@@ -328,9 +328,9 @@ class VakuDashboardOnline(QMainWindow):
 
     def save_settings(self):
         config = {
-            'micro_win': self.inp_micro_win.text(),
-            'med_win': self.inp_med_win.text(),
-            'macro_win': self.inp_macro_win.text(),
+
+
+
             'micro_sens': self.inp_micro_sens.text(),
             'med_sens': self.inp_med_sens.text(),
             'macro_sens': self.inp_macro_sens.text(),
@@ -373,9 +373,8 @@ class VakuDashboardOnline(QMainWindow):
                 print(f"[HIBA] Nem sikerült betölteni a beállításokat: {e}")
 
     def reset_default_settings(self):
-        self.inp_micro_win.setText("30")
-        self.inp_med_win.setText("0")
-        self.inp_macro_win.setText("60")
+        self.inp_adwin_delta.setText("0.05")
+        self.inp_adwin_min.setText("100")
         self.inp_micro_sens.setText("0.02")
         self.inp_med_sens.setText("0.03")
         self.inp_macro_sens.setText("0.05")
