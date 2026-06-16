@@ -349,8 +349,9 @@ class VakuDashboardOnline(QMainWindow):
 
     def get_safe_float(self, qlineedit, default_val):
         try:
-            return float(qlineedit.text())
-        except ValueError:
+            val_str = qlineedit.text().replace(',', '.')
+            return float(val_str)
+        except Exception:
             return default_val
 
     def analyze_time_based_trend(self, current_time, current_price, is_dead_market=False):
@@ -560,8 +561,10 @@ class VakuDashboardOnline(QMainWindow):
         self.current_med_er = med_er
         self.current_med_risk = med_risk
 
-        alpha_er = 0.05
-        alpha_risk = 0.1
+        # Ha valaki átállítja az érzékenységet, a smoothed értékek miatt nehezen reagálhat.
+        # Gyorsítsuk a simítást, hogy reszponzívabb legyen a GUI:
+        alpha_er = 0.15
+        alpha_risk = 0.2
 
         if self.ptr == 0:
             self.smoothed_er = mac_er
