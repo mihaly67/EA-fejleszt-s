@@ -374,16 +374,14 @@ class VakuDashboardOnline(QMainWindow):
         mac_pct = (mac_slope / mac_start_price) * 100
         mic_pct = (micro_slope / micro_start_price) * 100
 
-        # --- ADAPTÍV HMM & HYSTERESIS ---
+        # --- ADAPTÍV HMM & VOLATILITÁS ---
         hyst_on = self.get_safe_float(self.inp_hyst_on, 0.05)
         hyst_off = self.get_safe_float(self.inp_hyst_off, 0.03)
         vol_mult = self.get_safe_float(self.inp_vol_mult, 1.5)
 
         if len(self.history_prices) > macro_window_ticks:
             import numpy as np
-            # Standard Deviation of raw prices (dollars/points)
             raw_vol = np.std(self.history_prices[-macro_window_ticks:])
-            # Convert volatility to percentage relative to current price
             vol = (raw_vol / current_price) * 100.0 if current_price > 0 else 0.01
         else:
             vol = 0.01
@@ -432,22 +430,65 @@ class VakuDashboardOnline(QMainWindow):
             if mac_pct > -hyst_off:
                 self.current_market_state = "RANGING"
 
-        # SZÍNEZÉS
+        # --- DETAILED REGIME STRING ---
+        regime_str = ""
+
+        # Mikro
+        if mic_pct > dyn_micro_sens: regime_str += "Mikro: UP<br>"
+        elif mic_pct < -dyn_micro_sens: regime_str += "Mikro: DOWN<br>"
+        else: regime_str += "Mikro: FLAT" + (" (DÖGLÖTT)<br>" if is_dead_market else "<br>")
+
+        # Közép
+        if med_window_ticks > 0:
+            med_start_price = self.get_price_at_tick_offset(med_window_ticks)
+            if med_start_price is not None:
+                med_slope = current_price - med_start_price
+                med_pct = (med_slope / med_start_price) * 100
+                if med_pct > med_sens: regime_str += "Közép: UP<br>"
+                elif med_pct < -med_sens: regime_str += "Közép: DOWN<br>"
+                else: regime_str += "Közép: FLAT" + (" (DÖGLÖTT)<br>" if is_dead_market else "<br>")
+
+        # Makro
+        if mac_pct > dyn_macro_sens:
+            regime_str += "Makro: UP<br>"
+        elif mac_pct < -dyn_macro_sens:
+            regime_str += "Makro: DOWN<br>"
+        else:
+            regime_str += "Makro: FLAT" + (" (DÖGLÖTT)<br>" if is_dead_market else "<br>")
+
+        # --- SZÍNEZÉS ÉS ÖSSZEGZÉS ---
         if is_dead_market:
-            regime_str = "HMM: FLAT (DÖGLÖTT)"
+            regime_str += "<br><b>ÁLLAPOT: FLAT (DÖGLÖTT)</b>"
             overall_color = "#440000"
         elif self.current_market_state == "UP":
-            regime_str = "HMM ADAPTIVE: TREND UP"
+            regime_str += "<br><b>ÁLLAPOT: ADAPTIVE TREND UP</b>"
             overall_color = "#0f0"
         elif self.current_market_state == "DOWN":
-            regime_str = "HMM ADAPTIVE: TREND DOWN"
+            regime_str += "<br><b>ÁLLAPOT: ADAPTIVE TREND DOWN</b>"
             overall_color = "#f00"
         else:
-            regime_str = "HMM ADAPTIVE: RANGING"
+            regime_str += "<br><b>ÁLLAPOT: ADAPTIVE RANGING</b>"
             overall_color = "#888"
 
-        predict_str = "TREND STABIL"
-        predict_color = "#1a1a2e"
+        # --- PREDIKCIÓ (EREDETI LOGIKA VISSZAÁLLÍTÁSA) ---
+        predict_str = "NINCS JELZÉS"
+        predict_color = "#333"
+
+        if is_dead_market:
+            predict_str = "DÖGLÖTT PIAC!<br>Manipuláció / Stop-vadászat veszély"
+            predict_color = "#660000"
+        elif mac_pct > dyn_macro_sens and mic_pct < -dyn_micro_sens:
+            predict_str = "MEDVE FORDULÓ VÁRHATÓ!<br>(A mikro trend divergál lefelé)"
+            predict_color = "#880000"
+        elif mac_pct < -dyn_macro_sens and mic_pct > dyn_micro_sens:
+            predict_str = "BIKA FORDULÓ VÁRHATÓ!<br>(A mikro trend divergál felfelé)"
+            predict_color = "#008800"
+        elif (mac_pct > 0 and mic_pct < 0) or (mac_pct < 0 and mic_pct > 0):
+            predict_str = "WHIPSAW VESZÉLY!<br>(Konfliktus az idősíkok között)"
+            predict_color = "#888800"
+        else:
+            predict_str = "TREND STABIL<br>(Az idősíkok egyetértenek)"
+            predict_color = "#1a1a2e"
 
         return regime_str, overall_color, predict_str, predict_color
     def get_reason(self, decision, state_str, er_str, is_dead):
