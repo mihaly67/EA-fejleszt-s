@@ -9,8 +9,8 @@
 #property script_show_inputs
 
 #include <Trade\SymbolInfo.mqh>
-#include "../Indicators/DataMiner_NavSystem_v1_00.mqh"
-#include "../Indicators/DataMiner_BlackBox_v1_00.mqh"
+#include "..\\Indicators\\Indicators\\Types_v2_16.mqh"\n#include "..\\Indicators\\Indicators\\DataMiner_NavSystem_v1_00.mqh"
+#include "..\\Indicators\\Indicators\\DataMiner_BlackBox_v1_00.mqh"
 
 //--- Inputs
 input datetime InpStartDate   = D'2025.03.09 00:00:00'; // Start Date for Mining
