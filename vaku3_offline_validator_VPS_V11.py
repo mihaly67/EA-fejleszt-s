@@ -127,11 +127,11 @@ class VakuDashboardOnline(QMainWindow):
         # Left side: Windows
         form_windows = QFormLayout()
         self.inp_adwin_delta = QLineEdit("0.05")
-        self.inp_adwin_min = QLineEdit("100")
+        self.inp_adwin_min = QLineEdit("1.0")
         self.inp_macro_win = QLineEdit("ADWIN AUTO")
         self.inp_macro_win.setReadOnly(True)
         form_windows.addRow("ADWIN Delta [Def: 0.05]:", self.inp_adwin_delta)
-        form_windows.addRow("ADWIN Min Ablak [Def: 100]:", self.inp_adwin_min)
+        form_windows.addRow("ADWIN Bázis Idő [Perc]:", self.inp_adwin_min)
         form_windows.addRow("Makro Ablak (ADWIN):", self.inp_macro_win)
         settings_inputs_layout.addLayout(form_windows)
 
@@ -547,11 +547,27 @@ class VakuDashboardOnline(QMainWindow):
         self.last_processed_tick = unix_ms
 
 
+        # --- TICK SŰRŰSÉG (DENSITY) MÉRÉS ---
+        # Kiszámoljuk, mennyi tick érkezett a beállított Bázis Idő (pl. 1 perc) alatt
+        base_minutes = self.get_safe_float(self.inp_adwin_min, 1.0)
+        base_ms = base_minutes * 60.0 * 1000.0
+
+        target_time = unix_ms - base_ms
+        import bisect
+        idx = bisect.bisect_left(self.history_times, target_time)
+        if idx >= len(self.history_times): idx = len(self.history_times) - 1
+
+        # Ez a dinamikus minimum ablak! Ha gyors a piac, nagy lesz, ha lassú, kicsi.
+        # Megkövetelünk egy abszolút minimum 15 ticket, hogy a statisztika ne omoljon össze.
+        dynamic_min_w = max(15, len(self.history_times) - idx)
+
         # --- ADWIN ENGINE ---
         if not hasattr(self, 'adwin_engine'):
             delta = self.get_safe_float(self.inp_adwin_delta, 0.05)
-            min_w = int(self.get_safe_float(self.inp_adwin_min, 100))
-            self.adwin_engine = FastADWIN(delta=delta, min_window=min_w)
+            self.adwin_engine = FastADWIN(delta=delta, min_window=dynamic_min_w)
+        else:
+            # Folyamatosan frissítjük a minimum ablakot a piac sebességéhez!
+            self.adwin_engine.min_window = dynamic_min_w
 
         # Betápláljuk az új árat az ADWIN-ba (O(1))
         # Ha a múltban drasztikusan változtattunk (visszajátszás stb.),
