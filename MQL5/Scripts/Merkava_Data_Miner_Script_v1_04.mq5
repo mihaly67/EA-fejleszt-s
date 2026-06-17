@@ -9,7 +9,8 @@
 #property script_show_inputs
 
 #include <Trade\SymbolInfo.mqh>
-#include "..\\Indicators\\Indicators\\Types_v2_16.mqh"\n#include "..\\Indicators\\Indicators\\DataMiner_NavSystem_v1_00.mqh"
+#include "..\\Indicators\\Indicators\\Types_v2_16.mqh"
+#include "..\\Indicators\\Indicators\\DataMiner_NavSystem_v1_00.mqh"
 #include "..\\Indicators\\Indicators\\DataMiner_BlackBox_v1_00.mqh"
 
 //--- Inputs
