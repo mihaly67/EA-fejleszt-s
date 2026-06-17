@@ -1,11 +1,12 @@
 //+------------------------------------------------------------------+
-//|                                     Merkava_Data_Miner_M1_v1_03.mq5 |
+//|                             Merkava_Data_Miner_Script_v1_04.mq5 |
 //|                                                      Jules Agent |
 //|                                       Part of Operation Néma Sz. |
 //+------------------------------------------------------------------+
 #property copyright "Jules Agent"
-#property version   "1.03"
+#property version   "1.04"
 #property strict
+#property script_show_inputs
 
 #include <Trade\SymbolInfo.mqh>
 #include "../Indicators/DataMiner_NavSystem_v1_00.mqh"
@@ -64,9 +65,6 @@ CSymbolInfo          m_symbol;
 CDataMiner_NavSystem m_nav_system;
 CDataMiner_BlackBox  m_black_box;
 
-//--- Global State
-bool g_mining_done = false;
-
 //+------------------------------------------------------------------+
 //| Kényszerített Történeti Adatletöltő Függvény                     |
 //+------------------------------------------------------------------+
@@ -75,11 +73,9 @@ int CheckLoadHistory(string symbol, ENUM_TIMEFRAMES period, datetime start_date)
     datetime first_date = 0;
     datetime times[100];
 
-    //--- check if data is present
     SeriesInfoInteger(symbol, period, SERIES_FIRSTDATE, first_date);
     if(first_date > 0 && first_date <= start_date) return(1);
 
-    //--- second attempt
     if(SeriesInfoInteger(symbol, PERIOD_M1, SERIES_TERMINAL_FIRSTDATE, first_date)) {
         if(first_date > 0) {
             CopyTime(symbol, period, first_date + PeriodSeconds(period), 1, times);
@@ -89,14 +85,12 @@ int CheckLoadHistory(string symbol, ENUM_TIMEFRAMES period, datetime start_date)
         }
     }
 
-    //--- load symbol history info
     int max_bars = (int)TerminalInfoInteger(TERMINAL_MAXBARS);
     datetime first_server_date = 0;
     while(!SeriesInfoInteger(symbol, PERIOD_M1, SERIES_SERVER_FIRSTDATE, first_server_date) && !IsStopped()) Sleep(5);
 
     if(first_server_date > start_date) start_date = first_server_date;
 
-    //--- load data step by step
     int fail_cnt = 0;
     while(!IsStopped()) {
         while(!SeriesInfoInteger(symbol, period, SERIES_SYNCHRONIZED) && !IsStopped()) Sleep(5);
@@ -124,16 +118,16 @@ int CheckLoadHistory(string symbol, ENUM_TIMEFRAMES period, datetime start_date)
 }
 
 //+------------------------------------------------------------------+
-//| Expert initialization function                                   |
+//| Script program start function                                    |
 //+------------------------------------------------------------------+
-int OnInit()
+void OnStart()
 {
-    Print("🚀 Merkava Data Miner v1.03 Initializing (Historical EA Mode)...");
+    Print("🚀 Merkava Data Miner Script v1.04 Initializing...");
 
-    if(!m_symbol.Name(_Symbol)) return INIT_FAILED;
+    if(!m_symbol.Name(_Symbol)) { Print("❌ Hiba a szimbólum beállításakor!"); return; }
     m_symbol.RefreshRates();
 
-    // Context Params: show_trends MUST be true for EMAs to be calculated
+    // Context Params initialization
     ContextParams ctx;
     ctx.path = InpContextPath;
     ctx.show_pivots = true; ctx.show_trends = true; ctx.max_hist = 50000;
@@ -166,21 +160,10 @@ int OnInit()
 
     if(!init_ok) {
         Print("❌ Miner Initialization Failed at NavSystem");
-        return INIT_FAILED;
+        return;
     }
 
-    m_black_box.Initialize(_Symbol, "MINER_M1_v1.03");
-
-    Print("✅ Miner Ready. Starting Historical Extraction in OnTick...");
-    return(INIT_SUCCEEDED);
-}
-
-//+------------------------------------------------------------------+
-//| Expert tick function                                             |
-//+------------------------------------------------------------------+
-void OnTick()
-{
-    if(g_mining_done) return;
+    m_black_box.Initialize(_Symbol, "MINER_M1_SCRIPT_v1.04");
 
     PrintFormat("📥 Kényszerített adatletöltés indítása a Bróker szerverről: %s (M1), Kezdete: %s", _Symbol, TimeToString(InpStartDate));
 
@@ -190,8 +173,6 @@ void OnTick()
     if(load_res == -2) Print("⚠️ Figyelem: A 'Max bars in chart' terminál limitet elértük, lehet, hogy nem lesz meg a teljes év!");
     else if(load_res < 0) {
         Print("❌ Hiba az adatok letöltése során! Kód: ", load_res);
-        g_mining_done = true;
-        ExpertRemove();
         return;
     } else {
         Print("✅ A teljes történelmi adat elérhető a gép memóriájában. Bányászat indítása...");
@@ -202,9 +183,7 @@ void OnTick()
 
     if(count <= 0) {
         Print("❌ No rates found in range.");
-        g_mining_done = true;
         m_black_box.CloseLog();
-        ExpertRemove();
         return;
     }
 
@@ -216,6 +195,8 @@ void OnTick()
 
     for(int i=0; i<count; i++)
     {
+        if(IsStopped()) break;
+
         datetime t = rates[i].time;
         long time_msc = (long)t * 1000;
         double r_open = rates[i].open;
@@ -227,7 +208,7 @@ void OnTick()
         double bid = r_close;
         double ask = r_close + (spread * _Point);
 
-        // CREATE DUMMY TICK FOR NAV SYSTEM
+        // CREATE DUMMY TICK FOR NAV SYSTEM (To trigger hybrid indicators calculation sequentially)
         MqlTick dummy_tick;
         dummy_tick.time = t;
         dummy_tick.time_msc = time_msc;
@@ -283,8 +264,6 @@ void OnTick()
     }
 
     PrintFormat("✅ Mining Complete. All %d M1 bars logged. CSV saved directly in the terminal's Files/ directory.", count);
-
+    Alert("✅ Data Miner Script befejezte a gyűjtést!");
     m_black_box.CloseLog();
-    g_mining_done = true;
-    ExpertRemove();
 }
