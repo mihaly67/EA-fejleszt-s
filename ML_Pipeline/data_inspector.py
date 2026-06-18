@@ -75,7 +75,7 @@ else:
 
         # Add signals
         buy_signals = df_subset[df_subset['Target'] == 1]
-        sell_signals = df_subset[df_subset['Target'] == 2]
+        sell_signals = df_subset[df_subset['Target'] == -1]
 
         if not buy_signals.empty:
             fig.add_trace(go.Scatter(
@@ -99,7 +99,7 @@ else:
         st.plotly_chart(fig, use_container_width=True)
 
         # Statisztika az aktuális nézetre
-        st.markdown(f"**Jelenlegi nézet statisztikája:** Összes gyertya: {len(df_subset)} | Hold(0): {len(df_subset[df_subset['Target']==0])} | Buy(1): {len(buy_signals)} | Sell(2): {len(sell_signals)}")
+        st.markdown(f"**Jelenlegi nézet statisztikája:** Összes gyertya: {len(df_subset)} | Hold(0): {len(df_subset[df_subset['Target']==0])} | Buy(1): {len(buy_signals)} | Sell(-1): {len(sell_signals)}")
 
     with tab2:
         st.subheader("XGBoost Feature Korrelációs Hőtérkép")
