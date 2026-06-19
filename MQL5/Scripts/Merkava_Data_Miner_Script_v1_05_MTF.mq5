@@ -176,6 +176,19 @@ void OnStart()
 
     m_black_box.Initialize(_Symbol, "MINER_M1_SCRIPT_v1.05_MTF");
 
+    // Initialize direct file writing for MTF
+    string filename = StringFormat("Merkava_%s_MINER_MTF_v1.05_%s.csv", _Symbol, TimeToString(TimeCurrent(), TIME_DATE|TIME_MINUTES|TIME_SECONDS));
+    StringReplace(filename, ":", ""); StringReplace(filename, " ", "_"); StringReplace(filename, ".", "");
+    m_file_handle = FileOpen(filename, FILE_CSV|FILE_WRITE|FILE_ANSI, ',');
+    if(m_file_handle == INVALID_HANDLE) {
+        Print("❌ Hiba a CSV fájl létrehozásakor!");
+        return;
+    }
+    // Write Header
+    FileWrite(m_file_handle, "Time,TickMSC,Bid,Ask,Spread,Bar_Open,Bar_High,Bar_Low,Bar_Close,RSI,Velocity,Acceleration,Hybrid_MACD,Hybrid_DFCurve,Flow_MFI,Flow_ROC,Flow_Delta,Ctx_EMA_25,Ctx_EMA_50,Ctx_EMA_150,Ctx_EMA_300,WPR,Stoch_K,Ping_MS,EMA_50_M5,EMA_150_M15,RSI_M5,RSI_M15,MACD_M5");
+
+
+
     PrintFormat("📥 Kényszerített adatletöltés indítása a Bróker szerverről: %s (M1), Kezdete: %s", _Symbol, TimeToString(InpStartDate));
 
     int load_res = CheckLoadHistory(_Symbol, PERIOD_M1, InpStartDate);
