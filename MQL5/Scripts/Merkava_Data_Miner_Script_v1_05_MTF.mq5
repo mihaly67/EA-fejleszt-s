@@ -121,6 +121,16 @@ int CheckLoadHistory(string symbol, ENUM_TIMEFRAMES period, datetime start_date)
 //+------------------------------------------------------------------+
 //| Script program start function                                    |
 //+------------------------------------------------------------------+
+
+// -------------------------------------------------------------
+// GLOBAL MTF HANDLES & FILE HANDLE
+// -------------------------------------------------------------
+int m_file_handle = INVALID_HANDLE;
+int handle_ema50_m5 = INVALID_HANDLE;
+int handle_rsi_m5 = INVALID_HANDLE;
+int handle_macd_m5 = INVALID_HANDLE;
+int handle_ema150_m15 = INVALID_HANDLE;
+int handle_rsi_m15 = INVALID_HANDLE;
 void OnStart()
 {
     Print("🚀 Merkava Data Miner Script v1.05_MTF Initializing...");
