@@ -49,8 +49,38 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, shuffl
 print(f"Training set: {X_train.shape[0]} rows")
 print(f"Testing set: {X_test.shape[0]} rows")
 
-# Build the model
-# For 3 classes, we use multi:softprob
+
+# Build the initial model to find feature importance
+model_initial = xgb.XGBClassifier(
+    n_estimators=100,
+    learning_rate=0.1,
+    max_depth=5,
+    objective='multi:softprob',
+    num_class=3,
+    tree_method='hist',
+    n_jobs=-1,
+    random_state=42
+)
+
+print("Training initial model for Feature Selection...")
+model_initial.fit(X_train, y_train, verbose=False)
+
+# Get feature importances and drop the useless ones (e.g. importance < 0.01)
+importance = model_initial.feature_importances_
+imp_df = pd.DataFrame({'Feature': features, 'Importance': importance})
+useless_features = imp_df[imp_df['Importance'] < 0.01]['Feature'].tolist()
+
+print(f"Dropping {len(useless_features)} unimportant features (importance < 0.01): {useless_features}")
+
+# Update features list
+features = [f for f in features if f not in useless_features]
+print(f"Remaining {len(features)} important features: {features}")
+
+# Redefine X with selected features
+X_train_sel = X_train[features]
+X_test_sel = X_test[features]
+
+print("Training final robust model on selected features...")
 model = xgb.XGBClassifier(
     n_estimators=300,
     learning_rate=0.05,
@@ -65,15 +95,15 @@ model = xgb.XGBClassifier(
     random_state=42
 )
 
-print("Training model...")
 model.fit(
-    X_train, y_train,
-    eval_set=[(X_train, y_train), (X_test, y_test)],
+    X_train_sel, y_train,
+    eval_set=[(X_train_sel, y_train), (X_test_sel, y_test)],
     verbose=50
 )
 
 print("Evaluating model...")
-y_pred = model.predict(X_test)
+y_pred = model.predict(X_test_sel)
+
 
 print("\nClassification Report:")
 # Names for classes: 0=Hold, 1=Buy, 2=Sell
@@ -93,4 +123,4 @@ imp_df = imp_df.sort_values(by='Importance', ascending=True).tail(20)
 
 fig = px.bar(imp_df, x='Importance', y='Feature', orientation='h', title='Top 20 Feature Importance')
 fig.write_html('../data/processed/feature_importance.html')
-print("Feature importance plot saved to ../data/processed/feature_importance.html")
+print("Feature importance plot saved to data/processed/feature_importance.html")
