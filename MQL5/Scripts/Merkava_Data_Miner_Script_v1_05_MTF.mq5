@@ -257,24 +257,30 @@ void OnStart()
         datetime m5_open_time = t - (t % 300); // 300 seconds = 5 minutes
         datetime m5_closed_time = m5_open_time - 300;
 
-        double ema_buffer[1];
-        if(CopyBuffer(handle_ema50_m5, 0, m5_closed_time, 1, ema_buffer) > 0) ema50_m5 = ema_buffer[0];
+        int m5_shift = iBarShift(_Symbol, PERIOD_M5, m5_closed_time, true);
+        if(m5_shift >= 0) {
+            double ema_buffer[1];
+            if(CopyBuffer(handle_ema50_m5, 0, m5_shift, 1, ema_buffer) > 0) ema50_m5 = ema_buffer[0];
 
-        double rsi_buffer[1];
-        if(CopyBuffer(handle_rsi_m5, 0, m5_closed_time, 1, rsi_buffer) > 0) rsi_m5 = rsi_buffer[0];
+            double rsi_buffer[1];
+            if(CopyBuffer(handle_rsi_m5, 0, m5_shift, 1, rsi_buffer) > 0) rsi_m5 = rsi_buffer[0];
 
-        double macd_buffer[1];
-        if(CopyBuffer(handle_macd_m5, 0, m5_closed_time, 1, macd_buffer) > 0) macd_m5 = macd_buffer[0];
+            double macd_buffer[1];
+            if(CopyBuffer(handle_macd_m5, 0, m5_shift, 1, macd_buffer) > 0) macd_m5 = macd_buffer[0];
+        }
 
         // --- Get M15 Closed Data ---
         datetime m15_open_time = t - (t % 900); // 900 seconds = 15 minutes
         datetime m15_closed_time = m15_open_time - 900;
 
-        double ema_buffer15[1];
-        if(CopyBuffer(handle_ema150_m15, 0, m15_closed_time, 1, ema_buffer15) > 0) ema150_m15 = ema_buffer15[0];
+        int m15_shift = iBarShift(_Symbol, PERIOD_M15, m15_closed_time, true);
+        if(m15_shift >= 0) {
+            double ema_buffer15[1];
+            if(CopyBuffer(handle_ema150_m15, 0, m15_shift, 1, ema_buffer15) > 0) ema150_m15 = ema_buffer15[0];
 
-        double rsi_buffer15[1];
-        if(CopyBuffer(handle_rsi_m15, 0, m15_closed_time, 1, rsi_buffer15) > 0) rsi_m15 = rsi_buffer15[0];
+            double rsi_buffer15[1];
+            if(CopyBuffer(handle_rsi_m15, 0, m15_shift, 1, rsi_buffer15) > 0) rsi_m15 = rsi_buffer15[0];
+        }
 
 
         double mfi = m_nav_system.GetFlowMFI();
