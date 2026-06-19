@@ -135,6 +135,27 @@ void OnStart()
 {
     Print("🚀 Merkava Data Miner Script v1.05_MTF Initializing...");
 
+    handle_ema50_m5 = iMA(_Symbol, PERIOD_M5, 50, 0, MODE_EMA, PRICE_CLOSE);
+    handle_rsi_m5 = iRSI(_Symbol, PERIOD_M5, 14, PRICE_CLOSE);
+    handle_macd_m5 = iMACD(_Symbol, PERIOD_M5, 12, 26, 9, PRICE_CLOSE);
+
+    handle_ema150_m15 = iMA(_Symbol, PERIOD_M15, 150, 0, MODE_EMA, PRICE_CLOSE);
+    handle_rsi_m15 = iRSI(_Symbol, PERIOD_M15, 14, PRICE_CLOSE);
+
+    if (handle_ema50_m5 == INVALID_HANDLE || handle_rsi_m5 == INVALID_HANDLE || handle_macd_m5 == INVALID_HANDLE || handle_ema150_m15 == INVALID_HANDLE || handle_rsi_m15 == INVALID_HANDLE) {
+        Print("❌ Hiba az MTF Indikátorok inicializálásakor! Error: ", GetLastError());
+        return;
+    }
+
+    // Warm up the indicators by requesting a small piece of data
+    double dummy_arr[1];
+    CopyBuffer(handle_ema50_m5, 0, 0, 1, dummy_arr);
+    CopyBuffer(handle_rsi_m5, 0, 0, 1, dummy_arr);
+    CopyBuffer(handle_macd_m5, 0, 0, 1, dummy_arr);
+    CopyBuffer(handle_ema150_m15, 0, 0, 1, dummy_arr);
+    CopyBuffer(handle_rsi_m15, 0, 0, 1, dummy_arr);
+
+
     if(!m_symbol.Name(_Symbol)) { Print("❌ Hiba a szimbólum beállításakor!"); return; }
     m_symbol.RefreshRates();
 
@@ -174,11 +195,12 @@ void OnStart()
         return;
     }
 
-    m_black_box.Initialize(_Symbol, "MINER_M1_SCRIPT_v1.05_MTF");
+    // m_black_box.Initialize removed to prevent empty file creation
 
     // Initialize direct file writing for MTF
-    string filename = StringFormat("Merkava_%s_MINER_MTF_v1.05_%s.csv", _Symbol, TimeToString(TimeCurrent(), TIME_DATE|TIME_MINUTES|TIME_SECONDS));
-    StringReplace(filename, ":", ""); StringReplace(filename, " ", "_"); StringReplace(filename, ".", "");
+    string time_str = TimeToString(TimeCurrent(), TIME_DATE|TIME_MINUTES|TIME_SECONDS);
+    StringReplace(time_str, ":", ""); StringReplace(time_str, " ", "_"); StringReplace(time_str, ".", "");
+    string filename = StringFormat("Merkava_%s_MINER_MTF_v1.05_%s.csv", _Symbol, time_str);
     m_file_handle = FileOpen(filename, FILE_CSV|FILE_WRITE|FILE_ANSI, ',');
     if(m_file_handle == INVALID_HANDLE) {
         Print("❌ Hiba a CSV fájl létrehozásakor!");
@@ -257,7 +279,7 @@ void OnStart()
         datetime m5_open_time = t - (t % 300); // 300 seconds = 5 minutes
         datetime m5_closed_time = m5_open_time - 300;
 
-        int m5_shift = iBarShift(_Symbol, PERIOD_M5, m5_closed_time, true);
+        int m5_shift = iBarShift(_Symbol, PERIOD_M5, m5_closed_time, false);
         if(m5_shift >= 0) {
             double ema_buffer[1];
             if(CopyBuffer(handle_ema50_m5, 0, m5_shift, 1, ema_buffer) > 0) ema50_m5 = ema_buffer[0];
@@ -273,7 +295,7 @@ void OnStart()
         datetime m15_open_time = t - (t % 900); // 900 seconds = 15 minutes
         datetime m15_closed_time = m15_open_time - 900;
 
-        int m15_shift = iBarShift(_Symbol, PERIOD_M15, m15_closed_time, true);
+        int m15_shift = iBarShift(_Symbol, PERIOD_M15, m15_closed_time, false);
         if(m15_shift >= 0) {
             double ema_buffer15[1];
             if(CopyBuffer(handle_ema150_m15, 0, m15_shift, 1, ema_buffer15) > 0) ema150_m15 = ema_buffer15[0];
