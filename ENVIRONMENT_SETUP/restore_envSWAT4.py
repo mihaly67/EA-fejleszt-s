@@ -78,24 +78,19 @@ ENVIRONMENT_RESOURCES = {
         "type": "zip"
     },
 
-    # --- ÚJ SWAT4 RAG ADATBÁZIS (FAISS + SQLITE) ---
-    "SWAT4_RAG": {
-        "id": "1BH6jT-59VMlDALmQ4hTKHKvPzP61pcFG",
-        "file": "SWAT4.zip",
-        "extract_to": "Knowledge_Base/SWAT_DB",
-        "check_file": "swat_unified_compressed.index", # Később dinamikusan keresi ha változott a név
-        "type": "zip",
-        "preserve_dir": True # Ne törölje a teljes könyvtárat a kicsomagolás előtt (hogy a SWAT3 megmaradjon)
+    # --- ÚJ SWAT4 RAG ADATBÁZIS (VPS HIVATKOZÁSOK) ---
+    "VPS_ML_OPS": {
+        "source_path": "/home/misi/ML_Ops",
+        "extract_to": "Knowledge_Base/ML_Ops_DB",
+        "type": "local_vps_reference",
+        "description": "VPS-en található ML Ops RAG adatbázis és Github repók hivatkozása."
     },
 
-    # --- RAG STRUKTÚRA ---
-    "SWAT4_RAG_STRUCTURE": {
-        "id": "182Zzae4BufQVRimeWx_H_n3U05w5nmON",
-        "file": "repos.zip",
-        "extract_to": "ENVIRONMENT_SETUP",
-        "check_file": "repos.zip", # Nem zip kicsomagolású DB, hanem nyers extract
-        "type": "zip_no_check",
-        "preserve_dir": True
+    "VPS_XGB": {
+        "source_path": "/home/misi/XGB",
+        "extract_to": "Knowledge_Base/XGB_DB",
+        "type": "local_vps_reference",
+        "description": "VPS-en található XGB RAG adatbázis és repók hivatkozása."
     },
 
     # --- KITERJESZTETT AI/MCP TUDÁSBÁZIS (ULTIMATE RAG) ---
@@ -240,10 +235,35 @@ def process_resource(key, config):
 
     target_dir = config.get("extract_to")
     check_file = config.get("check_file")
-    zip_name = config["file"]
-    drive_id = config["id"]
+    zip_name = config.get("file")
+    drive_id = config.get("id")
     res_type = config.get("type", "zip")
     preserve_dir = config.get("preserve_dir", False)
+    source_path = config.get("source_path")
+
+    # 0. Ha VPS hivatkozásról van szó
+    if res_type == "local_vps_reference":
+        log(f"   🔗 {key} egy helyi VPS hivatkozás a következő útvonalra: {source_path}", Fore.CYAN)
+        if os.path.exists(source_path):
+            log(f"   ✅ A forrás mappa megtalálható a VPS-en: {source_path}", Fore.GREEN)
+            # Create a symlink or a reference placeholder if target_dir is defined
+            if target_dir:
+                os.makedirs(os.path.dirname(target_dir), exist_ok=True)
+                if not os.path.exists(target_dir):
+                    try:
+                        os.symlink(source_path, target_dir)
+                        log(f"   ✅ Symlink létrehozva: {target_dir} -> {source_path}", Fore.GREEN)
+                    except OSError as e:
+                        log(f"   ⚠️ Symlink létrehozása sikertelen (lehet hogy Windows/Sandbox környezet): {e}", Fore.YELLOW)
+                        log(f"   ℹ️ Készítek egy referencia fájlt helyette.", Fore.CYAN)
+                        os.makedirs(target_dir, exist_ok=True)
+                        with open(os.path.join(target_dir, "vps_reference.txt"), "w") as f:
+                            f.write(f"Ez a könyvtár a VPS-en lévő {source_path} mappára mutat.\n")
+                else:
+                    log(f"   ℹ️ Cél könyvtár/symlink már létezik: {target_dir}", Fore.CYAN)
+        else:
+            log(f"   ⚠️ A forrás mappa NEM TALÁLHATÓ (valószínűleg nem a VPS-en fut a script, Sandbox környezet). Útvonal: {source_path}", Fore.YELLOW)
+        return
 
     # 1. Ha sima fájlról van szó (pl. Gemini txt fájlok)
     if res_type == "file":
@@ -393,6 +413,12 @@ def main():
 
     # 2. Erőforrások feldolgozása
     for key, config in ENVIRONMENT_RESOURCES.items():
+        # A file key is needed for process_resource, but local_vps_reference may not have it
+        if "file" not in config:
+            config["file"] = "vps_reference"
+        if "id" not in config:
+            config["id"] = "no_id"
+
         process_resource(key, config)
 
     # 3. .gitignore frissítése
