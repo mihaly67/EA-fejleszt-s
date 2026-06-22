@@ -10,10 +10,16 @@ import sqlite3
 import glob
 
 # --- 0. VPS KÖRNYEZETI ALAPBEÁLLÍTÁSOK ---
-os.environ["VPS_HOST"] = "5.189.163.88"
-os.environ["VPS_USER"] = "misi"
-os.environ["VPS_PWD"] = "1104"
-os.environ["VPS_WORKSPACE"] = "/home/misi/Merkava_ML_Ops"
+# A jelszavakat és érzékeny adatokat a rendszer környezeti változóiból olvassuk be,
+# szigorúan tilos hardcode-olni őket a forráskódban a Zero Trust protokoll miatt.
+if "VPS_HOST" not in os.environ:
+    os.environ["VPS_HOST"] = "5.189.163.88"
+if "VPS_USER" not in os.environ:
+    os.environ["VPS_USER"] = "misi"
+if "VPS_WORKSPACE" not in os.environ:
+    os.environ["VPS_WORKSPACE"] = "/home/misi/Merkava_ML_Ops"
+
+# A VPS_PWD és egyéb érzékeny adatok (pl. GITHUB_PAT) beállítása kívülről történik!
 
 # --- 1. FÜGGŐSÉGEK TELEPÍTÉSE (AUTO-INSTALL) ---
 def install_dependencies():
@@ -84,19 +90,26 @@ ENVIRONMENT_RESOURCES = {
         "type": "zip"
     },
 
-    # --- ÚJ SWAT4 RAG ADATBÁZIS (VPS HIVATKOZÁSOK) ---
+    # --- ÚJ SWAT4 RAG ADATBÁZIS (VPS HIVATKOZÁSOK / FAST MCP) ---
+    "VPS_FAST_MCP": {
+        "source_path": "/home/misi/Jules_ICA_Builder",
+        "extract_to": "Knowledge_Base/FAST_MCP",
+        "type": "local_vps_reference",
+        "description": "VPS-en található Fast MCP Szerver, ami tartalmazza a ML_Ops, XGB, SWAT4 és egyéb RAG-okat."
+    },
+
     "VPS_ML_OPS": {
         "source_path": "/home/misi/Merkava_ML_Ops/MLOps",
         "extract_to": "Knowledge_Base/ML_Ops_DB",
         "type": "local_vps_reference",
-        "description": "VPS-en található ML Ops RAG adatbázis és Github repók hivatkozása."
+        "description": "Közvetlen hivatkozás a ML_Ops munkamappára a VPS-en."
     },
 
     "VPS_XGB": {
         "source_path": "/home/misi/Merkava_ML_Ops/XGB",
         "extract_to": "Knowledge_Base/XGB_DB",
         "type": "local_vps_reference",
-        "description": "VPS-en található XGB RAG adatbázis és repók hivatkozása."
+        "description": "Közvetlen hivatkozás az XGB munkamappára a VPS-en."
     },
 
     # --- KITERJESZTETT AI/MCP TUDÁSBÁZIS (ULTIMATE RAG) ---
