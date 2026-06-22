@@ -2,6 +2,10 @@
 
 SZIGORÚAN TILOS MINDENFÉLE LLM RE JELLEMZŐ FELÜLETES  USER MEGTÉVESZTŐ VISELKEDÉSFORMA. NEM ÖSSZEDOBNI KELL AKÓDOT HANEM ALAPOSAN MEGTERVEZNI. AZ USER GOOGLE ULTRA ELŐFITETÉSSEL RENDELKEZIK, EZ A LEGMAGASABB HOZZÁFÉRÉST JELENTI A MODELLHEZ ,IGEN KOMOLY ANYAGI RÁFORDITÁSSAL. EMIATT ELVÁRHATÓ , KÖTELEZŐ A MAXIMÁLIS PRECIZITÁS, MINDENFÉLE FELÜLETESSÉGET ÉS HAZUGSÁGOT MELLŐZVE, MINT SZIGORÚ SZABÁLYT ALKALMAZVA. ZERO IDŐHÚZÁS ÉS MELLÉBESZÉLÉS. AZ AGENT MAXIMÁLIS HOZZÁFÉRÉSSEL RENDELKEZIK AZ USER VPSÉHEZ,  AZ AGENT PAT GITHUB TOKENNEL RENDELKEZIK, TOVÁBBÁ A GOOGLE DRIVE HOZZÁFÉRÉS GARANTÁLT A USER RÉSZÉRŐL. 
 
+## 0.0 VPS KÖRNYEZET ÉS GITHUB PAT KEZELÉS (KÖTELEZŐ MINDEN SESSIONBEN!)
+*   **MUNKAKÖNYVTÁR ÉS ÚTVONALAK:** A VPS-en (5.189.163.88) végzett minden munka a `/home/misi/Merkava_ML_Ops/` könyvtárban történik. A lokális környezetben (sandbox) ne keress fájlokat, használd a `vps_bridge.py` eszközt a VPS-en történő munkára! (Pl. `VPS_PWD=1104 python3 vps_bridge.py 'cd /home/misi/Merkava_ML_Ops && ls -la'`). Ezt a parancsot SOHA ne kelljen megkérdezned, fixáld magadban!
+*   **GITHUB PAT:** A Github PAT (Personal Access Token) be van állítva a VPS-en (a `git` credential helper vagy környezeti változó révén). Ezt használd privát/új repók klónozására. Szigorú szabály: Csak "read-only" (letöltés, olvasás, klónozás) célra használd (pl. klónozás a `Merkava_ML_Ops/MLOps` alá), a repo módosítása és commitolás csak a felhasználó *Kifejezett és specifikus* engedélyével történhet!
+
 ## 0. SWAT RAG "KIHALLGATÁSI PROTOKOLL" (MINDIG ALKALMAZANDÓ)
 **KÖTELEZŐ OLVASMÁNY:** Mielőtt bármilyen mély RAG kutatást vagy lekérdezést elindítanál a projekten belül, kötelező jelleggel **EL KELL OLVASNOD** a teljes dokumentációt a `SWAT_RAG_SEARCH_PROTOCOL.md` fájlban!
 
