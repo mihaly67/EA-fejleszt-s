@@ -9,6 +9,12 @@ import time
 import sqlite3
 import glob
 
+# --- 0. VPS KÖRNYEZETI ALAPBEÁLLÍTÁSOK ---
+os.environ["VPS_HOST"] = "5.189.163.88"
+os.environ["VPS_USER"] = "misi"
+os.environ["VPS_PWD"] = "1104"
+os.environ["VPS_WORKSPACE"] = "/home/misi/Merkava_ML_Ops"
+
 # --- 1. FÜGGŐSÉGEK TELEPÍTÉSE (AUTO-INSTALL) ---
 def install_dependencies():
     print("🔧 Függőségek ellenőrzése és telepítése...")
@@ -80,14 +86,14 @@ ENVIRONMENT_RESOURCES = {
 
     # --- ÚJ SWAT4 RAG ADATBÁZIS (VPS HIVATKOZÁSOK) ---
     "VPS_ML_OPS": {
-        "source_path": "/home/misi/ML_Ops",
+        "source_path": "/home/misi/Merkava_ML_Ops/MLOps",
         "extract_to": "Knowledge_Base/ML_Ops_DB",
         "type": "local_vps_reference",
         "description": "VPS-en található ML Ops RAG adatbázis és Github repók hivatkozása."
     },
 
     "VPS_XGB": {
-        "source_path": "/home/misi/XGB",
+        "source_path": "/home/misi/Merkava_ML_Ops/XGB",
         "extract_to": "Knowledge_Base/XGB_DB",
         "type": "local_vps_reference",
         "description": "VPS-en található XGB RAG adatbázis és repók hivatkozása."
