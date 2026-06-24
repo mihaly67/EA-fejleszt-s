@@ -1,0 +1,23 @@
+[MQL5_DEV] article_16956.html (Score: 0.55)
+------------------------------------------------------------
+iRSI (Relative Strength Index) Setup    [CODE START] rsi_handle = iRSI(_Symbol,PERIOD_CURRENT,14,PRICE_CLOSE); [CODE END]  Now, you’re setting up the magnifying glass (RSI). You tell your assistant exactly how to use it:     _Symbol: This works the same way as before, specifying the asset you're analyzing.  PERIOD_CURRENT: Just like the Moving Average, you're working with the time frame of the current chart.  14: This is the period for the RSI. Think of it like setting the magnifying power of yo...
+
+
+[MQL5_DEV] article_10229.html (Score: 0.55)
+------------------------------------------------------------
+Many users create several files of this type, with several indicators, to be able to perform quick analysis by simply changing the configuration, or rather by applying a ready template. This is very practical because it works like this: let's say we have a template that uses RSI and another one that uses Stochastic for the same asset. However, for practical reasons, due to MA settings, the RSI template can be very different from the Stochastic, and thus either its display does not allow the use ...
+
+
+[MQL5_DEV] article_16956.html (Score: 0.52)
+------------------------------------------------------------
+SL: Last swing low.  TP: Defined by an input parameter for the Risk-Reward Ratio (RRR).       2. Adding Indicator Properties and Retrieving Data   2.1. Setting up Indicator Properties   We'll set up the properties of the indicators that we will be utilizing in our project: the Stochastic Oscillator, RSI, and Moving Average. These properties offer freedom when designing the EA and specify how the indicators will behave.    Analogy   Consider yourself putting together a toolkit for a specific task...
+
+
+[MQL5_DEV] article_18528.html (Score: 0.52)
+------------------------------------------------------------
+Now, for beginners and the edification of experienced traders alike, let’s take a moment to explore how each of the four oscillators we will integrate, is commonly used in trading—and how their combined insights can significantly enhance your real-time decision-making.   Understanding RSI, CCI, Stochastic and MACD in trading:   Relative Strength Index (RSI)   The RSI, developed by J. Welles Wilder in 1978, is a momentum oscillator that measures the speed and change of price movements. It is prim...
+
+
+[MQL5_DEV] article_20037.html (Score: 0.51)
+------------------------------------------------------------
+// Bearish RSI rejection: big red down arrow above bar       if(bearCross)       {          BuffDn[i] = high[i] + (_Point * 5);           if(InpAlertOnCross && i == rates_total - 1 && time[i] != gLastRSIAlertBarTime)          {             FireRSIAlert("RSI cross DOWN from overbought", rsi_curr, time[i]);             gLastRSIAlertBarTime = time[i];          }       }    }     return(rates_total); }  [CODE END] Scalability: Beyond RSI  RSI is just a placeholder. The structure we built supports an...

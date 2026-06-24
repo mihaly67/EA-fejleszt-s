@@ -1,0 +1,1306 @@
+🚀 Starting Deep Research (Depth: 2)
+
+--- DEPTH 1/2 ---
+🔍 Searching: 'Kalman filter lag reduction MQL5'
+   -> Found 5 hits.
+🔍 Searching: 'ALMA vs Jurik Moving Average lag'
+   -> Found 5 hits.
+🔍 Searching: 'Ehlers SuperSmoother vs Kalman filter'
+   -> Found 5 hits.
+🔍 Searching: 'Non-lagging adaptive moving average MQL5'
+   -> Found 5 hits.
+
+--- DEPTH 2/2 ---
+🔍 Searching: 'MQL5 normalization transform indicator'
+   -> Found 5 hits.
+🔍 Searching: 'MQL5 TEMA smoothing algorithm code'
+   -> Found 5 hits.
+🔍 Searching: 'MQL5 ALMA smoothing algorithm code'
+   -> Found 5 hits.
+🔍 Searching: 'MQL5 hma smoothing algorithm code'
+   -> Found 5 hits.
+
+================================================================================
+🔬 RESEARCH REPORT (Total Unique Documents: 35)
+================================================================================
+
+📄 ITEM #1 [CODE | SmoothAlgorithms.mqh] (Score: 0.60)
+--------------------------------------------------------------------------------
+dser1*m_Kct;
+            //----
+            if(dser2<0.0)
+               m_ser2=ser0;
+            else
+               m_ser2=ser0-dser2*m_Kct;
+            //----
+            m_JMA=series;
+            //----
+            if(m_Loop2!=30)
+               continue;
+            else
+              {
+               m_storage1=series;
+               if(MathCeil(m_Krx)>=1)
+                  dSupr=MathCeil(m_Krx);
+               else
+                  dSupr=1.0;
+               //----
+               if(dSupr>0)
+                  Suprem2=MathFloor(dSupr);
+               else
+                 {
+                  if(dSupr<0)
+                     Suprem2=MathCeil(dSupr);
+                  else
+                     Suprem2=0.0;
+                 }
+               //----
+               if(MathFloor(m_Krx)>=1)
+                  m_var2=MathFloor(m_Krx);
+               else
+                  m_var2=1.0;
+               //----
+               if(m_var2>0)
+--------------------------------------------------------------------------------
+
+📄 ITEM #2 [CODE | SmoothAlgorithms.mqh] (Score: 0.60)
+--------------------------------------------------------------------------------
+ }
+//| Checking the depth of the Length smoothing for correctness       |
+void CJJMA::JJMALengthCheck(string LengthName,double ExternLength)
+  {
+//---- writing messages about unacceptable values of input parameters
+   if(ExternLength<1)
+     {
+      string word;
+      StringConcatenate(word,__FUNCTION__," (): Parameter ",LengthName,
+                        " must be no less than 1. You have specified incorrect value",
+                        ExternLength," value 1 will be used");
+      Print(word);
+      return;
+     }
+//----+
+  }
+//| Checking the correctness of the Phase parameter of smoothing     |
+void CJJMA::JJMAPhaseCheck(string PhaseName,double ExternPhase)
+  {
+//---- writing messages about unacceptable values of input parameters
+   if(ExternPhase<-100)
+     {
+      string word;
+      StringConcatenate
+      (word,__FUNCTION__," (): Parameter ",PhaseName,
+       " must be no less than -100. You have specified incorrect value",
+--------------------------------------------------------------------------------
+
+📄 ITEM #3 [CODE | SmoothAlgorithms.mqh] (Score: 0.59)
+--------------------------------------------------------------------------------
+cified unacceptable value ",ExternPhase," 1 will be used");
+            Print(word);
+            break;
+           }
+     }
+//----+
+  }
+//| Checking the depth of the Length smoothing for correctness       |
+void CXMA::XMALengthCheck(string LengthName,double ExternLength)
+  {
+//---- writing messages about unacceptable values of input parameters
+   if(ExternLength<1)
+     {
+      string word;
+      StringConcatenate
+      (word,__FUNCTION__," (): Parameter ",LengthName,
+       " must be no less than 1. You have specified incorrect value",
+       ExternLength," value 1 will be used");
+      Print(word);
+      return;
+     }
+//----+
+  }
+//| Checking correctness of the smoothing period                     |
+void CMovSeriesTools::MALengthCheck(string LengthName,int ExternLength)
+  {
+//----+
+   if(ExternLength<1)
+     {
+      string word;
+      StringConcatenate
+      (word,__FUNCTION__," (): Parameter ",LengthName,
+--------------------------------------------------------------------------------
+
+📄 ITEM #4 [CODE | SmoothAlgorithms.mqh] (Score: 0.59)
+--------------------------------------------------------------------------------
+  = new CMoving_Average;
+         break;
+      case MODE_JJMA:
+         JJMA  = new CJJMA;
+         break;
+      case MODE_JurX:
+         JurX  = new CJurX;
+         break;
+      case MODE_ParMA:
+         ParMA = new CParMA;
+         break;
+      case MODE_T3:
+         T3    = new CT3;
+         break;
+      case MODE_VIDYA:
+         VIDYA = new CCMO;
+         break;
+      case MODE_AMA:
+         AMA   = new CAMA;
+         break;
+      default:
+         break;
+     }
+//----+
+  }
+//|  Deinitialization of the variables of the XMA algorithm          |
+void CXMA::~CXMA()
+  {
+//----+
+   switch(m_Method)
+     {
+      case MODE_SMA_:
+         delete SMA;
+         break;
+      case MODE_EMA_:
+         delete EMA;
+         break;
+      case MODE_SMMA_:
+         delete SMMA;
+         break;
+      case MODE_LWMA_:
+         delete LWMA;
+         break;
+      case MODE_JJMA:
+         delete JJMA;
+         break;
+      case MODE_JurX:
+--------------------------------------------------------------------------------
+
+📄 ITEM #5 [CODE | SmoothAlgorithms.mqh] (Score: 0.59)
+--------------------------------------------------------------------------------
+A_:
+         delete LWMA;
+         break;
+      case MODE_JJMA:
+         delete JJMA;
+         break;
+      case MODE_JurX:
+         delete JurX;
+         break;
+      case MODE_ParMA:
+         delete ParMA;
+         break;
+      case MODE_T3:
+         delete T3;
+         break;
+      case MODE_VIDYA:
+         delete VIDYA;
+         break;
+      case MODE_AMA:
+         delete AMA;
+         break;
+      default:
+         break;
+     }
+//----+
+  }
+//|  Get a name of the XMA smoothing algorithm as a string           |
+string CXMA::GetString_MA_Method(Smooth_Method Method)
+  {
+//----+
+   switch(Method)
+     {
+      case MODE_SMA_:
+         return("SMA");
+      case MODE_EMA_:
+         return("EMA");
+      case MODE_SMMA_:
+         return("SMMA");
+      case MODE_LWMA_:
+         return("LWMA");
+      case MODE_JJMA:
+         return("JJMA");
+      case MODE_JurX:
+         return("JurX");
+      case MODE_ParMA:
+         return("ParMA");
+--------------------------------------------------------------------------------
+
+📄 ITEM #6 [CODE | SmoothAlgorithms.mqh] (Score: 0.59)
+--------------------------------------------------------------------------------
+0,Phase,Length,series,bar,set));
+      case MODE_VIDYA:
+         return(VIDYA.VIDYASeries(begin,prev_calculated,rates_total,Phase,Length,series,bar,set));
+      case MODE_AMA:
+         return(AMA.AMASeries(begin,prev_calculated,rates_total,Length,2,Phase,2.0,series,bar,set));
+     }
+//----+
+   return(0.0);
+  }
+//|  Initialization of variables of the XMA algorithm                |
+void CXMA::XMAInit(Smooth_Method Method)
+  {
+//----+
+   if(m_init)
+      return;
+   else
+     {
+      m_init=true;
+      m_Method=Method;
+     }
+   switch(Method)
+     {
+      case MODE_SMA_:
+         SMA   = new CMoving_Average;
+         break;
+      case MODE_EMA_:
+         EMA   = new CMoving_Average;
+         break;
+      case MODE_SMMA_:
+         SMMA  = new CMoving_Average;
+         break;
+      case MODE_LWMA_:
+         LWMA  = new CMoving_Average;
+         break;
+      case MODE_JJMA:
+         JJMA  = new CJJMA;
+         break;
+      case MODE_JurX:
+--------------------------------------------------------------------------------
+
+📄 ITEM #7 [CODE | SmoothAlgorithms.mqh] (Score: 0.58)
+--------------------------------------------------------------------------------
+e MODE_JJMA:
+         return("JJMA");
+      case MODE_JurX:
+         return("JurX");
+      case MODE_ParMA:
+         return("ParMA");
+      case MODE_T3:
+         return("T3");
+      case MODE_VIDYA:
+         return(" VIDYA");
+      case MODE_AMA:
+         return("AMA");
+     }
+//----+
+   return("");
+  }
+//| Checking the correctness of the Phase parameter of smoothing     |
+void CXMA::XMAPhaseCheck(string PhaseName,double ExternPhase,Smooth_Method Method)
+  {
+//---- writing messages about unacceptable values of input parameters
+   switch(Method)
+     {
+      case MODE_SMA_:
+         break;
+      case MODE_EMA_:
+         break;
+      case MODE_SMMA_:
+         break;
+      case MODE_LWMA_:
+         break;
+      case MODE_JJMA:
+         //----
+         if(ExternPhase<-100)
+           {
+            string word;
+            StringConcatenate(word,__FUNCTION__," (): Parameter ",PhaseName,
+--------------------------------------------------------------------------------
+
+📄 ITEM #8 [CODE | SmoothAlgorithms.mqh] (Score: 0.58)
+--------------------------------------------------------------------------------
+{
+   if(applied_price<1)
+      Alert("The applied_price parameter must not be less than 1. You have specified incorrect value",
+            applied_price," value 1 will be used");
+//----
+   if(applied_price>11)
+      Alert("The parameter applied_price must not exceed 11. You have specified incorrect value",
+            applied_price," value 1 will be used");
+  }
+//|  Standard smoothing algorithms                                   |
+double CMoving_Average::MASeries(uint begin,               // Bars reliable calculation beginning index
+                                 uint prev_calculated,     // Amount of history in bars at previous tick
+                                 uint rates_total,         // Amount of history in bars at the current tick
+                                 double Length,               // Smoothing period
+                                 ENUM_MA_METHOD MA_Method, // Smoothing method (MODE_SMA, MODE_EMA, MODE_SMMA, MODE_LWMA)
+--------------------------------------------------------------------------------
+
+📄 ITEM #9 [CODE | SmoothAlgorithms.mqh] (Score: 0.58)
+--------------------------------------------------------------------------------
+dd1_ = m_midd1;
+      m_midd2_ = m_midd2;
+     }
+//----  End of calculations of the JMASeries() function
+   return(jjma);
+  }
+//|  Initialization of variables of the JMA algorithm                |
+void CJJMA::JJMAInit(uint begin,
+                     int  Din,
+                     double Phase,
+                     double Length,
+                     double series,
+                     uint bar)
+  {
+//---- calculation of coefficients
+   if(bar==begin || Din!=0)
+     {
+      if(bar==begin)
+        {
+         m_midd1 = 63;
+         m_midd2 = 64;
+         m_start = false;
+         //----
+         for(int numb = 0;       numb <= m_midd1; numb++)
+            m_data[numb] = -1000000.0;
+         for(int numb = m_midd2; numb <= 127;     numb++)
+            m_data[numb] = +1000000.0;
+         //---- all cells of arrays must be overwritten
+         ArrayInitialize(m_bhoop1,true);
+         ArrayInitialize(m_bhoop2,true);
+         ArrayInitialize(m_bdata,true);
+--------------------------------------------------------------------------------
+
+📄 ITEM #10 [CODE | SmoothAlgorithms.mqh] (Score: 0.58)
+--------------------------------------------------------------------------------
+ase MODE_LWMA:
+         return(LWMASeries(begin, prev_calculated, rates_total, Length, series, bar, set));
+      default:
+        {
+         if(bar==begin)
+           {
+            string word;
+            StringConcatenate(word,__FUNCTION__,"():",
+                              " The parameter MA_Method must be within the range from MODE_SMA to MODE_LWMA.",
+                              " You specified unacceptable value ",MA_Method," value MODE_SMA will be used!");
+            Print(word);
+           }
+         return(SMASeries(begin,prev_calculated,rates_total,Length,series,bar,set));
+        }
+     }
+//----+
+  }
+//|  Simple smoothing                                                |
+double CMoving_Average::SMASeries(uint begin,           // Bars reliable calculation beginning index
+                                  uint prev_calculated, // Amount of bars in history at previous call
+--------------------------------------------------------------------------------
+
+📄 ITEM #11 [CODE | SmoothAlgorithms.mqh] (Score: 0.58)
+--------------------------------------------------------------------------------
+  bool              m_bhoop1[128],m_bhoop2[11],m_bdata[128];
+  };
+//| The Tilson's algorithm of smoothing of unspecified price series  |
+class CT3 : public CMovSeriesTools
+  {
+public:
+   double            T3Series(uint begin,                // Bars reliable calculation beginning index
+                              uint prev_calculated,      // Amount of bars in history at previous call
+                              uint rates_total,          // Amount of bars in history at the current tick
+                              int  Din,                  // permission to change the Length parameter at every bar.
+                              // 0 - prohibition to change the parameters, any other value means permission.
+                              double Curvature,          // Coefficient (its value is increased 100 times for convenience!)
+                              double Length,             // Smoothing depth
+--------------------------------------------------------------------------------
+
+📄 ITEM #12 [CODE | SmoothAlgorithms.mqh] (Score: 0.58)
+--------------------------------------------------------------------------------
+[99];
+   int               m_Size_,m_count;
+   double            m_RSTL;
+   //---- declaration and initialization of an array for the coefficient of the digital filter
+   double            m_RSTLTable[99];
+  };
+enum Smooth_Method
+  {
+   MODE_SMA_,  //SMA
+   MODE_EMA_,  //EMA
+   MODE_SMMA_, //SMMA
+   MODE_LWMA_, //LWMA
+   MODE_JJMA,  //JJMA
+   MODE_JurX,  //JurX
+   MODE_ParMA, //ParMA
+   MODE_T3,     //T3
+   MODE_VIDYA,  //VIDYA
+   MODE_AMA     //AMA
+  };
+//|  Universal smoothing algorithm                                   |
+class CXMA
+  {
+public:
+   double            XMASeries(uint begin,           // Bars reliable calculation beginning index
+                               uint prev_calculated, // Amount of bars in history at previous call
+                               uint rates_total,     // Amount of bars in history at the current tick
+                               // 0 - prohibition to change the parameters, any other value means permission.
+--------------------------------------------------------------------------------
+
+📄 ITEM #13 [CODE | SmoothAlgorithms.mqh] (Score: 0.58)
+--------------------------------------------------------------------------------
+                                ENUM_MA_METHOD MA_Method, // Smoothing method (MODE_SMA, MODE_EMA, MODE_SMMA, MODE_LWMA)
+                                 double series,            // Value of the price series calculated for the bar with the 'bar' index
+                                 uint bar,                 // Bar index
+                                 bool set                  // Direction of arrays indexing
+                                )
+  {
+//----+
+   switch(MA_Method)
+     {
+      case MODE_SMA:
+         return(SMASeries(begin, prev_calculated, rates_total, Length, series, bar, set));
+      case MODE_EMA:
+         return(EMASeries(begin, prev_calculated, rates_total, Length, series, bar, set));
+      case MODE_SMMA:
+         return(SMMASeries(begin, prev_calculated, rates_total, Length, series, bar, set));
+      case MODE_LWMA:
+         return(LWMASeries(begin, prev_calculated, rates_total, Length, series, bar, set));
+      default:
+        {
+--------------------------------------------------------------------------------
+
+📄 ITEM #14 [MQL5_DEV | article_15222.html] (Score: 0.58)
+--------------------------------------------------------------------------------
+This in addition ensures consistency across all segments, such that they are more comparable than if the absolute values were considered without this normalization. We perform this adjustment within MQL5 via the following source code:
+
+
+[CODE START]
+//+------------------------------------------------------------------+
+// Function to Estimate Hurst Exponent & Constant C
+//+------------------------------------------------------------------+
+--------------------------------------------------------------------------------
+
+📄 ITEM #15 [MQL5_DEV | article_12475.html] (Score: 0.57)
+--------------------------------------------------------------------------------
+Considering what conditions need to be implemented, we will need one of two options for implementing the following indicators:
+
+
+
+
+ SMA — standard moving average (one line)
+ EMA — exponential moving average (one line)
+ Bollinger Bands — Bollinger bands (a set of three lines)
+ RSI — relative strength index (one line in a separate window)
+ ATR — average true range (one line in a separate window)
+
+ Indicators can be implemented using special predefined MQL5 functions, but I do not like this approach, because the implemented code will be more difficult to convert to the MQL4 version. Besides, it will be more difficult for me to integrate it, for example, in my projects in other languages, which I do very often. I have long been in the habit of doing everything as simply as possible and with the future use in mind. I think, this is a very good habit.
+
+ The second important point is that, as a rule, such indicators drag along unnecessary and redundant calculations and functionality. In addition, it is impossible to refine such indicators, since their functions are rigidly set at the code level. In order to make changes, you will need to create your own version of the indicator in any case. I think it is obvious that it is better to have a custom implementation inside an EA or a script. In order to implement such indicators, I came up with the following trick:
+
+
+
+
+ Creation of arrays for storing the values of the indicator lines (limited to the last N bars).
+ Implementation of shifting array values when a new bar appears.
+ Implementing clearing the array of indicator values in case of errors or a long disconnect.
+ Implementing the calculation of the indicator value for the last bar when it closes.
+
+
+
+ In this approach, the first three paragraphs create common array blocks and functions that provide the listed actions. Let's see how this looks using our task as an example. Let's start with the first point:
+
+
+[CODE START]
+   double SMA1Values[]; // Array for storing SMA values
+   double EMAValues[];  // Array for storing EMA values (exponential)
+   double RSIValues[];  // Array for storing RSI values
+  
+   double BollingerBandsUpperValues[];  // Array for storing BollingerBands values, upper
+   double BollingerBandsMiddleValues[]; // Array for storing BollingerBands values, middle
+   double BollingerBandsLowerValues[];  // Array for storing BollingerBands values, lower
+  
+   double ATRValues[];// array for storing Average True Range values
+
+[CODE END]
+ These arrays are initialized at the start of the EA with the given length limits:
+
+
+[CODE START]
+   //Prepare indicator arrays
+   void PrepareArrays()
+   {
+      ArrayResize(SMA1Values, LastBars);
+      ArrayResize(EMAValues, LastBars);
+      ArrayResize(RSIValues, LastBars);
+      ArrayResize(BollingerBandsUpperValues, LastBars);
+      ArrayResize(BollingerBandsMiddleValues, LastBars);
+      ArrayResize(BollingerBandsLowerValues, LastBars);
+      ArrayResize(ATRValues, LastBars);
+   }
+--------------------------------------------------------------------------------
+
+📄 ITEM #16 [MQL5_DEV | article_14775.html] (Score: 0.57)
+--------------------------------------------------------------------------------
+Custom Chaikin Volatility indicator
+
+ In this section, we will learn how to code a custom Chaikin Volatility indicator using MQL5, which can be useful as we can customize the indicator to suit our objectives. The following are the steps to code our custom Chaikin Volatility (CHV) indicator:
+
+ Use the preprocessor #include to be able to use the moving averages include file in the program and calculation.
+
+
+[CODE START]
+#include <MovingAverages.mqh>
+[CODE END]
+ Using the preprocessor #property to specify additional parameters that are the same as the following identifier values:
+
+
+ description: to set a brief text for the mql5 program.
+ indicator_separate_window: to set the place of the indicator in a separate window.
+ indicator_buffers: to set the number of buffers for the indicator calculation.
+ indicator_plots: to set the number of graphic series in the indicator.
+ indicator_type1: to specify the type of graphical plotting, specified by the values of ENUM_DRAW_TYPE. N is the number of graphic series; numbers can start from 1.
+ indicator_color1: to specify the color for displaying line N, N is the number of graphic series; numbers can start from 1.
+ indicator_width1: to specify the line thickness of the indicator, N is the number of graphic series; numbers can start from 1.
+
+
+[CODE START]
+#property description "Chaikin Volatility"
+#property indicator_separate_window
+#property indicator_buffers 3
+
+#property indicator_plots   1
+#property indicator_type1   DRAW_HISTOGRAM
+#property indicator_color1  MediumBlue
+#property indicator_width1  3
+[CODE END]
+ Using the enum keyword to define a set of data for moving average smoothing mode:
+
+
+[CODE START]
+enum smoothMode
+  {
+   SMA=0,// Simple MA
+   EMA=1 // Exponential MA
+  };
+[CODE END]
+ Setting inputs for the indicator settings by using the input keyword:
+
+
+[CODE START]
+input int          smoothPeriodInp=10;  // Smoothing Period
+input int          chvPeriodInp=10;     // Chaikin Volatility Period
+input smoothMode   InpSmoothType=EMA;   // Smoothing Mode
+[CODE END]
+ Declaring three arrays of chv, hl, and shl buffers:
+
+
+[CODE START]
+double             chvBuffer[];
+double             hlBuffer[];
+double             shlBuffer[];
+[CODE END]
+ Declaring two global variables for the smoothing period and CHV period:
+
+
+[CODE START]
+int                smoothPeriod,chvPeriod;
+[CODE END]
+ In the OnInit() part, we will check and specify variables of inputs.
+
+ Moving Average name: After declaring the maName, the program checks if the input is SMA, in which case the name will be SMA (simple moving average), or if the input is EMA, in which case the name will be EMA (exponential moving average).
+--------------------------------------------------------------------------------
+
+📄 ITEM #17 [CODE | AllAverages_v4.9_MT5.mq5] (Score: 0.56)
+--------------------------------------------------------------------------------
+/ Moving Median
+   GeoMean,             // Geometric Mean
+   REMA,                // Regularized EMA by Chris Satchwell
+   ILRS,                // Integral of Linear Regression Slope
+   IE_2,                // Combination of LSMA and ILRS
+   TriMAgen,            // Triangular Moving Average generalized by J.Ehlers
+   VWMA,                // Volume Weighted Moving Average
+   JSmooth,             // Smoothing by Mark Jurik
+   SMA_eq,              // Simplified SMA
+   ALMA,                // Arnaud Legoux Moving Average
+   TEMA,                // Triple Exponential Moving Average by Patrick Mulloy
+   T3,                  // T3 by T.Tillson (correct version)
+   Laguerre,            // Laguerre filter by J.Ehlers
+   MD,                  // McGinley Dynamic
+   BF2P,                // Two-pole modified Butterworth filter by J.Ehlers
+   BF3P,                // Three-pole modified Butterworth filter by J.Ehlers
+   SuperSmu,            // SuperSmoother by J.Ehlers
+--------------------------------------------------------------------------------
+
+📄 ITEM #18 [CODE | Nonlinear Kalman filter.mq5] (Score: 0.56)
+--------------------------------------------------------------------------------
+a*a)*smoother[i] : smoother[i];
+            detrend    = smoother[i] - lowpass[i];
+            delta[i]   = (i>1) ? b*delta[i-1] - a*a*delta[i-2] + (1-b+a*a)*detrend : 0;
+            break;
+         default :
+            lowpass[i] = (i>2) ? (b+c)*lowpass[i-1] - (c+b*c)*lowpass[i-2] + c*c*lowpass[i-3] + (1-b+c)*(1-c)*smoother[i] : smoother[i];
+            detrend    = smoother[i] - lowpass[i];
+            delta[i]   = (i>2) ? (b+c)*delta[i-1] - (c+b*c)*delta[i-2] + c*c*delta[i-3] + (1-b+c)*(1-c)*detrend : 0;
+        }
+      kalman[i]=lowpass[i]+delta[i];
+      kalmanc[i] = (i>0) ? (kalman[i]>kalman[i-1]) ? 0 : (kalman[i]<kalman[i-1]) ? 1 : kalmanc[i-1] : 0;
+     }
+   return(i);
+  }
+//| Custom functions                                                 |
+#define _maInstances 1
+#define _maWorkBufferx1 1*_maInstances
+//|                                                                  |
+double iCustomMa(int mode,double price,double length,int r,int bars,int instanceNo=0)
+--------------------------------------------------------------------------------
+
+📄 ITEM #19 [MQL5_DEV | article_14199.html] (Score: 0.56)
+--------------------------------------------------------------------------------
+Similar to setting the input shape, configuring the output shape is essential for aligning the expected format of the machine learning model's output with the downstream processing requirements in the EA. 
+
+
+[CODE START]
+if(!OnnxSetOutputShape(ONNXHandle,0,output_shape))
+{
+    Print("OnnxSetOutputShape error ",GetLastError());
+    return(INIT_FAILED);
+}
+[CODE END]
+ In this part of the Expert Advisor's OnInit() function in MQL5, two technical indicators are initialized.
+
+
+
+
+ ma_handle is assigned the handle or identifier for a 20-period Exponential Moving Average (EMA) calculated based on the closing prices (PRICE_CLOSE) of the one-minute chart (PERIOD_M1) for the symbol specified by _Symbol.
+ ao_handle is assigned the handle for the Awesome Oscillator (AO) indicator calculated on the one-minute chart for the same symbol.
+ min_volume is the smallest contract size allowed by the broker.
+
+
+[CODE START]
+//Setting up our technical indicators
+ma_handle = iMA(_Symbol,PERIOD_M1,20,0,MODE_EMA,PRICE_CLOSE);
+ao_handle = iAO(_Symbol,PERIOD_M1);
+min_volume = SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+return(INIT_SUCCEEDED);
+}
+[CODE END]
+
+
+
+
+ OnDeinit Function
+
+ The OnDeinit function in this MQL5 Expert Advisor serves as the handler for the EA's deinitialization process. It is automatically executed when the EA is removed or when the trading platform is closed.
+
+ Within this function, a conditional statement checks whether the ONNXHandle variable holds a valid handle (not equal to INVALID_HANDLE). If the condition is true, it signifies that the ONNX model has been initialized during the EA's lifetime. In such cases, the OnnxRelease function is called to release resources associated with the ONNX model, and subsequently, the ONNXHandle is set to INVALID_HANDLE.
+
+ This deinitialization routine ensures the proper release of resources, preventing memory leaks and contributing to the overall efficiency and cleanliness of the EA's lifecycle. It reflects a responsible coding practice to manage and release resources acquired during the EA's execution, enhancing the robustness and reliability of the trading system.
+
+
+[CODE START]
+--------------------------------------------------------------------------------
+
+📄 ITEM #20 [MQL5_DEV | article_14142.html] (Score: 0.56)
+--------------------------------------------------------------------------------
+To propagate the wall, we use vectors to store coefficients to x. Multiplying any two such vectors, in the process of solving for the unknown row would be equivalent to a cross correlation as the resulting vector values would be the x coefficients where a higher index placing indicates a higher exponent for x. This function is inbuilt however when it comes to division we need to resize the two quotient vectors to ensure they match up with any difference in size simply implying they do not match up in x exponents.
+
+ In determining by how much to adjust open position TP, and SL, our input sequence for our number wall will be indicator values of the moving average. Any indicator can be used although this or a Bollinger Bands or an Envelopes style indicator may be better suited in adjusting the trailing stop.
+
+ MQL5 vectors do easily copy and load indicator values once a handle is defined. If we look at the source below for a typical check trailing stop code (usable for both long and short)
+
+
+
+
+[CODE START]
+//+------------------------------------------------------------------+
+//| Checking trailing stop and/or profit for long position.          |
+//+------------------------------------------------------------------+
+bool CTrailingLFSR::CheckTrailingStopLong(CPositionInfo *position, double &sl, double &tp)
+{
+//--- check
+
+...
+
+//---
+   vector _t, _p;
+   _p.Init(2);
+   _t.CopyIndicatorBuffer(m_ma.Handle(), 0, 0, 2);
+   double _s = 0.0;
+   for(int i = 1; i >= 0; i--)
+   {  _s = 0.0;
+      _p[i] = GetOutput(i, _s);
+   }
+   double _o = SetOutput(_t, _p);
+//---
+  
+...
+
+}
+[CODE END]
+
+
+ We can see our decision making is evolving around two functions, the get output and set output. The get output is the primary as it builds the number wall and comes up with polynomial coefficients to an equation that solves for the next value in the sequence. The get output listing as indicated below:
+--------------------------------------------------------------------------------
+
+📄 ITEM #21 [CODE | EMAVFS_StDev.mq5] (Score: 0.56)
+--------------------------------------------------------------------------------
+ow[bar])+(res-dHigh[bar]))/2);
+        }
+      //----
+      default: return(dClose[bar]);
+     }
+//----
+//return(0);
+  }
+--------------------------------------------------------------------------------
+
+📄 ITEM #22 [CODE | Nonlinear Kalman filter.mq5] (Score: 0.55)
+--------------------------------------------------------------------------------
+wma    // Linear weighted MA
+  };
+input ENUM_APPLIED_PRICE Price          =  PRICE_CLOSE;  // Price
+input enOrder            Order          =  ord_3;        // Filter Order
+input int                Length         = 14;            // Fast Filter Period
+input int                PreSmooth      =  3;            // Pre-smoothing period
+input enMaTypes          PreSmoothMode  =  ma_lwma;      // Pre-smoothing MA Mode
+double kalman[],kalmanc[],lowpass[],delta[],smoother[];
+//------------------------------------------------------------------
+//
+//------------------------------------------------------------------
+int OnInit()
+  {
+   SetIndexBuffer(0,kalman,INDICATOR_DATA);
+   SetIndexBuffer(1,kalmanc,INDICATOR_COLOR_INDEX);
+   SetIndexBuffer(2,lowpass,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(3,delta,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(4,smoother,INDICATOR_CALCULATIONS);
+   return(0);
+  }
+void OnDeinit(const int reason) { return; }
+--------------------------------------------------------------------------------
+
+📄 ITEM #23 [CODE | AllAverages_v4.9_MT5.mq5] (Score: 0.55)
+--------------------------------------------------------------------------------
+t per,int bar)
+{
+   double lsma = EMPTY_VALUE, sum = 0;
+   if(bar > per)
+   {
+   for(int i=per;i>=1;i--) sum += (i - (per + 1)/3.0)*array[bar-(per-i)];
+   lsma = sum*6/(per*(per + 1));
+   }
+   return(lsma);
+}
+// MA_Method=7: SMMA - Smoothed Moving Average
+double SMMAOnArray(const double& array[],double prev,int per,int cbars,int bar)
+{
+   double smma = EMPTY_VALUE;
+   if(bar == cbars) smma = SMAOnArray(0,array,per,bar);
+   else
+   if(bar >  cbars)
+   {
+   double sum = 0;
+   for(int i=0;i<per;i++) sum += array[bar-(i+1)];
+   smma = (sum - prev + array[bar])/per;
+   }
+   return(smma);
+}
+// MA_Method=8: HMA - Hull Moving Average by Alan Hull
+double HMAOnArray(const double& array[],int per,int cbars,int bar)
+{
+   double hma = EMPTY_VALUE, tmparray[];
+   int i, len = (int)MathSqrt(per);
+   ArrayResize(tmparray,len);
+   if(bar == cbars) hma = array[bar];
+   else
+   if(bar >  cbars)
+   {
+--------------------------------------------------------------------------------
+
+📄 ITEM #24 [CODE | Nonlinear Kalman filter (zm)(fl).mq5] (Score: 0.55)
+--------------------------------------------------------------------------------
+        m_array[_ic].sum2 += m_array[_ip].price2;
+                  }
+            }
+            return (MathSqrt((m_array[_ic].sum2-m_array[_ic].sum*m_array[_ic].sum/(double)m_period)/(double)m_period));
+      }
+};
+cStdDeviation iDeviation;
+//
+//---
+//
+class CNonLinearKalmanFilter
+{
+   private :
+      int    m_period;
+      int    m_order;
+      int    m_arraySize;
+      double m_a;
+      double m_b;
+      double m_c;
+      struct sNonLinearKalmanFilterStruct
+      {
+         double lowpass;
+         double delta;
+      };
+      sNonLinearKalmanFilterStruct m_array[];
+   public :
+      CNonLinearKalmanFilter() : m_period(1), m_order(0), m_arraySize(-1), m_a(0), m_b(0), m_c(0) { };
+     ~CNonLinearKalmanFilter()                                                                    { ArrayFree(m_array); };
+     //
+     //
+     //
+     bool init(int period, int order)
+     {
+         m_period    = (period>0) ? period : 1;
+--------------------------------------------------------------------------------
+
+📄 ITEM #25 [CODE | AllAverages_v4.9_MT5.mq5] (Score: 0.55)
+--------------------------------------------------------------------------------
+index][0] = VEMAOnArray(index,price[bar],period,cbars,rates,bar); break;
+   default        : ma[index][0] = SMAOnArray(0,price,period,bar); break;
+   }
+   return(ma[index][0]);
+}
+// MA_Method=0: SMA - Simple Moving Average
+double SMAOnArray(int mode,const double& array[],int per,int bar)
+{
+   double sum = 0;
+   if(mode == 0)
+   {
+      if(bar >= per) for(int i=0;i<per;i++) sum += array[bar-i];
+   }
+   else for(int i=0;i<per;i++) sum += array[bar+i];
+   return(sum/per);
+}
+// MA_Method=1: EMA - Exponential Moving Average
+double EMAOnArray(const double price,double prev,int per,int cbars,int bar)
+{
+   double ema;
+   if(bar < cbars) ema = price; else ema = prev + 2.0/(1 + per)*(price - prev);
+   return(ema);
+}
+// MA_Method=2: Wilder - Wilder Exponential Moving Average
+double WilderOnArray(double price,double prev,int per,int cbars,int bar)
+{
+   double wilder;
+   if(bar < cbars) wilder = price; else wilder = prev + (price - prev)/per;
+   return(wilder);
+}
+--------------------------------------------------------------------------------
+
+📄 ITEM #26 [MQL5_DEV | article_17693.html] (Score: 0.55)
+--------------------------------------------------------------------------------
+With COHLCData, you’ll find it straightforward to:
+
+
+ Add new OHLC bars on the fly.
+ Retrieve specific bars by index.
+ Run calculations on any single field (like all highs) without tripping over unrelated data.
+
+
+
+ This design choice means your technical analysis—whether it’s moving averages, volatility calculations, or just scanning for breakouts—runs far more efficiently thanks to better cache locality.
+
+
+
+ Advanced Techniques for High-Frequency Trading
+
+ High-frequency trading (HFT) demands extremely low latency and constant performance. Even the slightest slowdown can disrupt trade execution and result in missed opportunities. Below, we explore two pivotal approaches—pre-allocation and simulated memory mapping—that can help keep latency to an absolute minimum in MQL5.
+
+ Pre-allocation Strategies
+
+ When your system needs to respond within microseconds, you can’t afford the unpredictable delays caused by on-the-fly memory allocation. The solution is pre-allocation—reserve in advance all the memory your application might possibly need, so you never have to allocate more during peak operation times.
+
+
+
+
+[CODE START]
+//+------------------------------------------------------------------+
+//| Pre-allocation example for high-frequency trading                |
+//+------------------------------------------------------------------+
+--------------------------------------------------------------------------------
+
+📄 ITEM #27 [CODE | Nonlinear Kalman filter deviation.mq5] (Score: 0.54)
+--------------------------------------------------------------------------------
+      lowpass[i] = (i>2) ? (ª_b+ª_c)*lowpass[i-1] - (ª_c+ª_b*ª_c)*lowpass[i-2] + ª_c*ª_c*lowpass[i-3] + (1-ª_b+ª_c)*(1-ª_c)*_smoother : _smoother;
+               delta[i]   = (i>2) ? (ª_b+ª_c)*delta[i-1] - (ª_c+ª_b*ª_c)*delta[i-2] + ª_c*ª_c*delta[i-3] + (1-ª_b+ª_c)*(1-ª_c)*_detrend : 0;
+         }
+         //
+         //---
+         //
+         flt[i] = lowpass[i]+delta[i];
+            //
+            //---
+            //
+                  dev_diff[i] = (_smoother-flt[i])*(_smoother-flt[i]);
+                  if (i>Length)
+                           dev_summ[i] = dev_summ[i-1]+dev_diff[i]-dev_diff[i-Length];
+                  else  {  dev_summ[i] = dev_diff[i]; for(int k=1; k<Length && i>=k; k++) dev_summ[i] += dev_diff[i-k]; }
+            //
+            //---
+            //
+         val[i]  = MathSqrt(dev_summ[i]/Length);
+         valc[i] = (i>0) ? (val[i]>val[i-1]) ? 0 : 1 : 0;
+   }
+   return(i);
+}
+--------------------------------------------------------------------------------
+
+📄 ITEM #28 [CODE | Nonlinear Kalman filter (zm)(fl).mq5] (Score: 0.54)
+--------------------------------------------------------------------------------
+ CSma
+{
+   private :
+      struct scSmaArrayStruct
+         {
+            double value;
+            double summ;
+         };
+      scSmaArrayStruct m_array[];
+      int              m_arraySize;
+      int              m_period;
+   public :
+      CSma() { init(1);            return; }
+     ~CSma() { ArrayFree(m_array); return; }
+     //
+     //---
+     //
+     bool init(int period)
+         {
+            m_period    = (period>1) ? period : 1;
+            m_arraySize = m_period+32;
+               ArrayResize(m_array,m_arraySize);
+               for (int k=0; k<m_arraySize; k++)
+               {
+                  m_array[k].value =
+                  m_array[k].summ  = 0;
+               }
+               return(true);
+         }
+     double calculate(double value, int i)
+         {
+            int _indC = (i)%m_arraySize; m_array[_indC].value=value;
+               if (i>m_period)
+               {
+                  int _indP = (i-1       )%m_arraySize;
+--------------------------------------------------------------------------------
+
+📄 ITEM #29 [MQL5_DEV | article_1450.html] (Score: 0.54)
+--------------------------------------------------------------------------------
+// CONTEXT: Series: Effective Averaging Algorithms with Minimal Lag: Use in Indicators - MQL4 Articles, Part: N/A, Title: Effective Averaging Algorithms with Minimal Lag: Use in Indicators - MQL4 Articles | FILE: NK_library.zip/NK_library/INCLUDE/Lite_EXPERT.mqh
+//Version  January 7, 2007 Final
+//+------------------------------------------------------------------+
+//|                                                  Lite_EXPERT.mqh |
+//|                             Copyright © 2006,   Nikolay Kositsin |
+//|                              Khabarovsk,   farria@mail.redcom.ru |
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//| StopCorrect()                                                    |
+//+------------------------------------------------------------------+
+int StopCorrect(int Stop)
+  {
+//----
+   int CorrStop,Extrem_Stop;
+   Extrem_Stop=MarketInfo(Symbol(),MODE_STOPLEVEL);
+   if(Extrem_Stop<=0)return(-1);
+   if(Stop<Extrem_Stop)
+    {
+     CorrStop=Extrem_Stop;
+     if(IsOptimization())
+      {
+       Print("StopCorrect: Íåâåðíûå ñòîïû!!!");
+       PlaySound(ALERT.WAV);
+      }
+     else Alert("StopCorrect: Íåâåðíûå ñòîïû!!!");
+    }
+   else CorrStop= Stop;
+   return(CorrStop);
+//----
+  }
+//+-------------------------------------------------------------------------------------------+
+//| OpenBuyOrder()                                                                            |
+//+-------------------------------------------------------------------------------------------+
+bool OpenBuyOrder(bool BUY_Signal, double Money_Management, int STOPLOSS, int TAKEPROFIT)
+ {
+  if (!BUY_Signal)return(false);
+  int total=OrdersTotal();
+  //---- Ïðîâåðêà íà íàëè÷èå îòêðûòîé ïîçèöèè ïî äàííîé òîðãîâîé ïàðå â Buy íàïðàâëåíèè
+  for(int ttt=total-1;ttt>=0;ttt--)
+      if (OrderSelect(ttt,SELECT_BY_POS,MODE_TRADES))
+           if((OrderSymbol()==Symbol())&&(OrderType()==0))return(false);
+  //----
+  double ask=NormalizeDouble(Ask,Digits);
+  double bid=NormalizeDouble(Bid,Digits);
+  if (ask==0)return(false);
+  double LotVel;
+  double tickVel=MarketInfo(Symbol(),MODE_TICKVALUE);
+  if (tickVel==0)return(true);
+  if (Money_Management>0)LotVel=tickVel*AccountEquity()*Money_Management/10000.0;
+  else LotVel=-tickVel*10000*Money_Management/10000.0;
+  //----
+  int Lot=NormalizeDouble(LotVel,1);
+  if (Lot<0.1)return(false);
+  //----+ Îòêðûâàåì ïîçèöèþ íà ïîêóïêó
+  double Stoploss=NormalizeDouble(bid-STOPLOSS*Point,Digits);
+  double TakeProfit=NormalizeDouble(ask+TAKEPROFIT*Point,Digits);
+  int ticket=OrderSend(Symbol(),OP_BUY,Lot,ask,3,Stoploss,TakeProfit,NULL,0,0,CLR_NONE);
+  return(true);
+ }
+//+-------------------------------------------------------------------------------------------+
+--------------------------------------------------------------------------------
+
+📄 ITEM #30 [MQL5_DEV | article_1563.html] (Score: 0.53)
+--------------------------------------------------------------------------------
+// CONTEXT: Series: Effective Averaging Algorithms with Minimal Lag: Use in Indicators and Expert Advisors - MQL4 Articles, Part: N/A, Title: Effective Averaging Algorithms with Minimal Lag: Use in Indicators and Expert Advisors - MQL4 Articles | FILE: INCLUDE.zip/include/PriceSeries.mqh
+//Version  November 01, 2008
+//+X================================================================X+
+//|                                                  PriceSeries.mqh |
+//|                        Copyright © 2006,        Nikolay Kositsin |
+//|                              Khabarovsk,   farria@mail.redcom.ru |
+//+X================================================================X+
+/*                                                                   |
+Ôóíêöèÿ PriceSeries() âîçâðàùàåò âõîäíóþ öåíó áàðà ïî åãî íîìåðó Bar |
+è ïî íîìåðó öåíû Input_Price_Customs:                                |
+0-CLOSE, 1-OPEN, 2-HIGH, 3-LOW, 4-MEDIAN, 5-TYPICAL,                 |
+6-WEIGHTED, 7-Heiken Ashi Close, 8-SIMPL, 9-TRENDFOLLOW,             |
+10-0.5 * TRENDFOLLOW, 11-Heiken Ashi Low, 12-Heiken Ashi High,       |
+13-Heiken Ashi Open, 14-Heiken Ashi Close.                           |
+ïðèìåð: Momentum = PriceSeries(IPC, bar)                             |
+                  - PriceSeries(IPC, bar + Momentum_Period);         |
+*/                                                              //   |
+//+X================================================================X+
+//| PriceSeries() function                                           |
+//+X================================================================X+
+
+double PriceSeries(int Input_Price_Customs, int Bar)
+ {
+  double dPriceSeries;
+  switch(Input_Price_Customs)
+   {
+    case  0: dPriceSeries = Close[Bar]; break;
+    case  1: dPriceSeries = Open [Bar]; break;
+    case  2: dPriceSeries = High [Bar]; break;
+    case  3: dPriceSeries = Low  [Bar]; break;
+    case  4: dPriceSeries = (High [Bar] + Low  [Bar]) / 2.0; break;
+    case  5: dPriceSeries =
+                  (Close[Bar] + High[Bar] + Low[Bar]) / 3.0; break;
+    case  6: dPriceSeries = (Open [Bar] + High [Bar]
+                             + Low[Bar] + Close[Bar]) / 4.0; break;
+    case  7: dPriceSeries = (Open [Bar] + Close[Bar]) / 2.0; break;
+    case  8: dPriceSeries = (Close[Bar] + High [Bar]
+                             + Low[Bar] + Close[Bar]) / 4.0; break;
+    case  9: dPriceSeries = TrendFollow00(Bar); break;
+    case 10: dPriceSeries = TrendFollow01(Bar); break;
+    case 11: dPriceSeries =
+                   iCustom(NULL, 0, "Heiken Ashi#", 0, Bar); break;
+    case 12: dPriceSeries =
+                   iCustom(NULL, 0, "Heiken Ashi#", 1, Bar); break;
+    case 13: dPriceSeries =
+                   iCustom(NULL, 0, "Heiken Ashi#", 2, Bar); break;
+    case 14: dPriceSeries =
+                   iCustom(NULL, 0, "Heiken Ashi#", 3, Bar); break;
+    case 15: dPriceSeries =
+--------------------------------------------------------------------------------
+
+📄 ITEM #31 [MQL5_DEV | article_3886.html] (Score: 0.52)
+--------------------------------------------------------------------------------
+[CODE START]
+double            Correction(double z);
+
+[CODE END]
+
+  The theoretical section 1.2. of the given article is implemented in this function. Its full code is available in the attachment. At the end of operation, the function returns the updated (corrected) value of the system state.
+
+  3. Practical Demonstration of the Kalman Filter
+
+  Let's test how this Kalman filter based class works in practice. Let's create an indicator based on this class. At the opening of a new candlestick, the indicator calls the system update function and then calls the function predicting the close price of the current bar. The class functions are called in a reverse order, because we call the update (correction) function for the previous closed bar and a forecast for the current newly opened bar, whose closing price is yet unknown.
+
+  The indicator will have two buffers. The predicted values of the system state will be added to the first buffer, and updated values will be added to the second one. I intentionally use two buffers so that the indicator would not be redrawn and we could see how the system is updated (corrected) at the second filter operation phase. The indicator code is simple and is available in the below attachment. Here is the result of the indicator operation.
+
+
+
+
+
+Three broken lines are displayed on the chart:
+
+  The black line shows the actual bar closing values
+
+  The red line shows the predicted value
+
+  The blue line is the system state updated by the Kalman filter
+
+As you can see, both lines are close to the actual close prices and show reversal points with good probability. Note that the indicator does not redraw values and the red line is drawn at the opening of the bar when the close price is not yet known.
+
+This chart shows the consistency of this filter and the possibility of creating a trading system using this filter.
+
+4. Creating a Trading Signals Module for the MQL5 Wizard
+
+We see on the above chart that the red system state prediction line is smoother than the black line showing the actual price. The blue line showing the corrected system state is always in between. In other words, the blue line above the red one indicates a bullish trend. Conversely, the blue line below the red one is an indication of a bearish trend. The intersection of the blue and red lines is a trend change signal.
+
+To test this strategy, let's create a module of trading signals for the MQL5 Wizard. The creation of trading signal modules is described in various articles available in this site: [1], [4], [5]. Here, I'll briefly describe points related to the described strategy.
+--------------------------------------------------------------------------------
+
+📄 ITEM #32 [MQL5_DEV | article_15524.html] (Score: 0.49)
+--------------------------------------------------------------------------------
+Where
+
+
+
+
+ y^ is the forecast value
+ y is the target
+ Delta is a loss input value at which the relationship changes from linear to quadratic
+
+
+
+
+
+ The gradient, like the original Huber-loss, can be computed in one of two ways, depending on how the true or target value compares with the forecast. It is a part linear and part quadratic function that is a mapping of the difference between target values and forecast values as the input parameters are adjusted. It is predominant in robust regression since it combines the best of MAE and MSE and is less sensitive to outliers while being more stable than MAE for small errors. By being wholly differentiable it is ideal for gradient descent, and it is adaptable thanks to delta where a smaller delta has it acting like MAE while larger deltas have it more like MSE. This allows control over the robustness vs sensitivity trade off. On the cons side though Huber-loss is relatively more complex not only is its formula piece-wise as shown above the computation and determining of the ideal delta is often an onerous exercise. To this end, the MQL5 implementation, which I think is based on a standard matrix and vector library that I have failed to reference, does not disclose how its delta value is computed for the Huber-loss and Huber-loss gradient inbuilt functions. Though it can be paired with a variety of activation functions, the linear activation is often recommended as the more suitable.
+
+
+
+
+
+
+
+ Loss Functions for Regression Models
+
+
+
+
+
+ So, which of these loss algorithms would therefore be a best fit for regression networks? The answer, MSE, MAE, and Huber-Loss. Here’s why. Regression networks are characterized by their goal of forecasting continuous numerical values rather than categorical labels or discrete data. This implies the output layer of these networks typically produces real-valued numbers that can span a wide range. The nature of regression tasks requires minimizing the need to measure out wide-ranging deviations between predicted and true values, in their optimization, unlike in classification networks where the outputs that need to be enumerated are often few and known in number beforehand.
+
+
+
+ This therefore leads us to MSE. As observed above it does have large quadratic penalties for large errors which implies off the bat that it guides the gradient descent and optimization towards narrower deviations which is important for regression networks to run efficiently. Also, the smoothness and ease in differentiation makes it a natural fit for the continuous data handled by regression networks.
+--------------------------------------------------------------------------------
+
+📄 ITEM #33 [MQL5_DEV | article_1374.html] (Score: 0.49)
+--------------------------------------------------------------------------------
+In general, the Expert Advisor's testing results leave much to be desired. Let's try to use a combination of the naive methods to cancel out their disadvantages.
+
+Adaptive Method
+
+The essence of the third method is that we do the forecast using one of the two naive forecasting methods which is replaced with the other one in case of an error. In this way, this method adapts to the behavior of the forecast series.
+
+The effectiveness of this method was verified by testing the corresponding Expert Advisor (the CandlePredTest_adaptive.mq4 file attached to the article).
+
+This Expert Advisor represents an improved version of the CandlePredTest_naive Expert Advisor. Its key difference is in that each previous forecast is analyzed for errors on each new bar.
+
+[CODE START]
+// working function of the Expert Advisor
+int start() {
+   // positions are opened once on each bar
+   if (!IsNewBar()) {
+      return (0);
+   }
+   // close all open positions
+   TradeClosePositions(DIRECTION_UP);
+   TradeClosePositions(DIRECTION_DOWN);
+   // update the model state
+   if (prediction!=DIRECTION_NONE) {
+      ModelUpdate(prediction==GetCandleDirection(1));
+   }
+   // predict the color of the next candlestick
+   prediction=ModelPredict();
+   if (prediction==DIRECTION_NONE) {
+      return (0);
+   }
+   // open a position in the right direction
+   TradeOpenPosition(prediction,"");
+   return (0);
+}
+[CODE END]
+
+Errors are analyzed only if the Expert Advisor opened positions on the previous bar, i.e. if the forecast did not return the DIRECTION_NONE constant. The errors are all cases of discrepancy between the forecast and the actual direction of the closed candlestick whose shift becomes equal to one upon opening of the new bar.
+
+One naive forecasting method is replaced by the other one using the ModelUpdate function that receives the forecast correction flag (prediction==GetCandleDirection(1)) as a parameter.
+
+[CODE START]
+// updating the model state
+--------------------------------------------------------------------------------
+
+📄 ITEM #34 [MQL5_DEV | article_13242.html] (Score: 0.49)
+--------------------------------------------------------------------------------
+[CODE END]
+ The use of fully connected layers at the input and output of the Encoder allows us to customize the architecture of convolutional layers without being tied to the dimensions of the source data and compressed representation embedding.
+
+ This concludes our work with the model architecture. Let's get back to describing the future state. We would not experience difficulties in this matter in case of online training. But online training has its drawbacks. When using the experience playback buffer, we have no questions about the historical data of the price movement of the analyzed instrument and indicators. The impact of the Actor's actions on them is negligibly small. The account status is another matter. It directly depends on the direction and volume of the open position. We have to predict the account status depending on the vector of actions generated by the Actor based on the results of the current status analysis. We implement this functionality in the ForecastAccount function.
+
+ In the method parameters, we will pass:
+
+
+
+
+ prev_account — the array of descriptions of the current account state (before the agent’s actions);
+ actions — vector of Actor actions;
+ prof_1l — profit per one lot of a long position;
+ time_label — timestamp of the predicted bar.
+
+ You can notice the considerable variety of parameter types. This is related to the data source. We obtain a description of the current account state and the timestamp of the forecast bar from the experience playback buffer, where the data is stored in dynamic arrays of the float type.
+
+ The Actor's actions are obtained from the results of a direct pass through the model in the form of a vector. 
+
+
+
+
+[CODE START]
+vector<float> ForecastAccount(float &prev_account[],
+                              vector<float> &actions,
+                              double prof_1l,
+                              float time_label
+                             )
+  {
+   vector<float> account;
+   double min_lot = SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+   double step_lot = SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
+   double stops = MathMax(SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL), 1) * Point();
+   double margin_buy,margin_sell;
+   if(!OrderCalcMargin(ORDER_TYPE_BUY,_Symbol,1.0,SymbolInfoDouble(_Symbol,SYMBOL_ASK),margin_buy) ||
+      !OrderCalcMargin(ORDER_TYPE_SELL,_Symbol,1.0,SymbolInfoDouble(_Symbol,SYMBOL_BID),margin_sell))
+      return vector<float>::Zeros(prev_account.Size());
+--------------------------------------------------------------------------------
+
+📄 ITEM #35 [MQL5_DEV | article_13538.html] (Score: 0.49)
+--------------------------------------------------------------------------------
+Fig.10. Properties of the Add operator in the ard_regression_double.onnx model in Netron
+
+
+
+ The Add() ONNX operator performs element-wise addition of two tensors or arrays of the same shape.
+
+ It takes two inputs and returns the result, where each element of the resulting tensor equals the sum of the corresponding elements of the input tensors.
+
+
+
+
+
+ Fig.11. Properties of the Reshape operator in the ard_regression_double.onnx model in Netron
+
+
+
+ The Reshape(-1,1) ONNX operator is used to modify the shape (or dimension) of input data. In this operator, the value -1 for the dimension indicates that the size of that dimension should be automatically computed based on the other dimensions to ensure data consistency.
+
+ The value 1 in the second dimension specifies that after the shape transformation, each element will have a single sub-dimension.
+
+
+
+
+
+ 2.1.2. sklearn.linear_model.BayesianRidge
+
+ BayesianRidge is a regression method that utilizes a Bayesian approach to estimate model parameters. This method enables modeling the prior distribution of parameters and updating it considering the data to obtain the posterior distribution of parameters.
+
+ BayesianRidge is a Bayesian regression method designed to predict the dependent variable based on one or several independent variables.
+
+Working Principle of BayesianRidge:
+
+
+ Prior distribution of parameters: It begins with defining the prior distribution of model parameters. This distribution represents prior knowledge or assumptions about model parameters before considering the data. In the case of BayesianRidge, Gaussian-shaped prior distributions are used.
+ Updating the parameter distribution: Once the prior parameter distribution is set, it is updated based on the data. This is done using Bayesian theory, where the posterior distribution of parameters is computed considering the data. An essential aspect is the estimation of hyperparameters, which influence the form of the posterior distribution.
+ Prediction: After estimating the posterior distribution of parameters, predictions can be made for new observations. This results in a distribution of forecasts rather than a single point value, allowing for uncertainty in predictions to be considered.
+
+ Advantages of BayesianRidge:
+
+
+ Uncertainty consideration: BayesianRidge accounts for uncertainty in model parameters and predictions. Instead of point predictions, confidence intervals are provided.
+ Regularization: The Bayesian regression method can be useful for model regularization, aiding in preventing overfitting.
+ Automatic feature selection: BayesianRidge can automatically determine feature importance by reducing the weights of insignificant features.
+
+ Limitations of BayesianRidge:
+--------------------------------------------------------------------------------

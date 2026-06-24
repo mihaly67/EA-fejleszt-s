@@ -1,0 +1,35 @@
+AUDIT: Mimic_BarbedWire_Probe_EA_1.00.mq5
+Date: 2026.02.02
+Auditor: Jules (via Sherlock Context)
+
+1. The "Spread Trap" Logic:
+   - Function: `ExpandBarbedWire(double center_price)`
+   - Current Calculation:
+     `double spread = m_symbol.Ask() - m_symbol.Bid();`
+     `double dist = spread * InpSpreadMult;`
+     `if (dist < m_symbol.Point() * 10) dist = m_symbol.Point() * 10;`
+     `double buy_limit_price = center_price - dist;`
+
+   - FLAW DETECTED (Logic vs Reality):
+     - The code calculates distance based on the CURRENT spread at the moment of expansion.
+     - If the expansion happens during a "Stall" (low volatility/spread), the distance `dist` will be very tight.
+     - If the Broker widens the spread slightly (e.g., 10-20%), these pending orders (Limit Orders) might be triggered prematurely or trapped inside the widening bid/ask.
+     - Specifically, Limit Orders are placed *below* current price (Buy Limit) and *above* (Sell Limit).
+     - If `dist` is only 1.0x Spread, then the Buy Limit is at `Center - Spread`.
+     - If `Center` is `(Ask+Bid)/2`, then `Center - Spread` is `Mid - (Ask-Bid)`.
+     - This places the order ROUGHLY at the current Bid/Ask levels if SpreadMult=0.5, or slightly outside if SpreadMult=1.0.
+     - ISSUE: Pending Orders usually require a minimum `StopsLevel` distance from current market price. The code does NOT check `m_symbol.StopsLevel()`. If `dist` < `StopsLevel`, order placement fails (Error 130). This explains "nem helyezte el megfelelően" (didn't place correctly).
+
+2. Minimum Distance Safety:
+   - `if (dist < m_symbol.Point() * 10)`
+   - 10 Points is very small (1 pip). On Gold (digits=2), 10 points = 0.10.
+   - StopsLevel on Gold is often higher (e.g., 50-100 points).
+   - This hardcoded safety is likely insufficient for volatile assets or aggressive brokers.
+
+3. Recommendations for Repair (Future):
+   - A) Add `m_symbol.StopsLevel()` check. `dist = MathMax(dist, m_symbol.StopsLevel());`
+   - B) Use the "Safe Zone" finding (50-100 pts) as a minimum hard floor, rather than just Spread Multiplier.
+   - C) Implement `ExpandBarbedWire` to place orders *relative to the widening spread*, monitoring spread velocity before placing.
+
+4. Conclusion:
+   The EA fails because it trusts the raw spread calculation without validating against the Broker's `StopsLevel` constraints. It effectively tries to place traps too close, getting rejected by the server.

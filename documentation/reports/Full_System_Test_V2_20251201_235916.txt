@@ -1,0 +1,174 @@
+[MŰSZAKVEZETŐ]: Eredmény beérkezett (3 találat).
+
+> TALÁLAT (Score: 0.56) [KOD] DeepLearning.mqh
+--------------------------------------------------------------------------------
+#include <DeepLearningLibrary.mqh>
+
+class DeepLearning
+  {
+public:
+   //-------------------------------
+   // Define the cost functions and its derivatives
+   class Loss;
+   // Define metrics for evaluation
+   class Metrics;
+
+   //-------------------------------
+   // Dense Connected Layer
+   class DenseLayer;
+   // Activation Function Layer
+   class ActivationLayer;
+   // Softmax function Layer
+   class SoftmaxLayer;
+   // Dropout Layer to Enhance Overffiting
+   class DropoutLayer;
+
+   //--------------------------------
+   // Convolutional Neural Net Layer
+   class ConvolutionalLayer;
+   // Max Pooling Layer
+   class MaxPoolingLayer;
+   // Flatten Layer
+   class FlattenLayer;
+   // Sum Convolutional Layer
+   class SumConvLayer;
+
+   //--------------------------------
+   //Long Short-Term Memory Layer
+   class LSTMLayer;
+   // Bidirectional LSTM layer
+   class BiLSTMLayer;
+
+
+   //Methods
+   virtual matrix    Output(matrix &X)                {return X*0;   }
+   virtual matrix    GradDescent(matrix &Ey)          {return Ey*0;  }
+   virtual void      Update(void)                     {              }
+   virtual void      SaveWeights(int k,string IAname) {              }
+   virtual void      LoadWeights(int k,string IAname) {              }
+   virtual void      SetDrop(double Drop)             {              }
+   virtual void      SetAdam(double B1, double B2, double Alph) {    }
+
+
+
+   //=============================
+   matrix   InitWeights(matrix &M);
+   matrix
+================================================================================
+
+> TALÁLAT (Score: 0.45) [KOD] ActivationLayer.mqh
+--------------------------------------------------------------------------------
+//+------------------------------------------------------------------+
+//|   Activation Layer                                               |
+//+------------------------------------------------------------------+
+
+class ActivationLayer : public DeepLearning
+  {
+public:
+
+   void   InitLayer(ActFunction af);
+   virtual matrix Output(matrix &X);
+   virtual matrix GradDescent(matrix &Ey);
+
+private :
+
+   //Activation function
+   ActFunction AF;
+   //Input that needs to be saved for gradient descent
+   matrix Xs;
+  };
+
+//+------------------------------------------------------------------+
+//|    Activation Layer                                              |
+//+------------------------------------------------------------------+
+
+void ActivationLayer::InitLayer(ActFunction af)
+{
+AF = af;
+}
+matrix ActivationLayer::Output(matrix &X)
+{
+matrix Y;
+
+Xs = X;
+if(AF == SIGMOID) Y = Sig(X);
+if(AF == TANH)    Y = Tanh(X);
+if(AF == RELU)    Y = ReLU(X);
+
+return Y;
+}
+matrix ActivationLayer::GradDescent(matrix &Ey)
+{
+matrix dPhi;
+
+matrix Ex;
+if(AF == SIGMOID) dPhi = dSig(Xs);
+if(AF == TANH)    dPhi = dTanh(Xs);
+if(AF == RELU)    dPhi = dReLU(Xs);
+
+Ex = Ey * dPhi;
+return Ex;
+}
+
+================================================================================
+
+> TALÁLAT (Score: 0.44) [KOD] SoftmaxLayer.mqh
+--------------------------------------------------------------------------------
+//+------------------------------------------------------------------+
+//|   Softmax Layer                                                  |
+//+------------------------------------------------------------------+
+
+class softmaxLayer : public DeepLearning
+  {
+public:
+   virtual matrix Output(matrix &X);
+   virtual matrix GradDescent(matrix &Ey);
+private:
+   matrix M;
+  };
+
+//+------------------------------------------------------------------+
+//|     Softmax                                                      |
+//+------------------------------------------------------------------+
+matrix softmaxLayer::Output(matrix &X)
+{
+matrix Y;
+Y.Init(X.Rows(),X.Cols());
+double Sum;
+Sum = 0;
+
+for(int i=0;i<X.Rows();i++)
+  {Sum = Sum + MathExp(X[i][0]);}
+for(int i=0;i<Y.Rows();i++)
+  {Y[i][0] = MathExp(X[i][0])/Sum;}
+
+M.Init(Y.Rows(),Y.Rows());
+
+for(int j=0;j<M.Cols();j++)
+  {for(int i=0;i<M.Rows();i++)
+     {M[i][j] = Y[i][0];}}
+
+return Y;
+}
+matrix softmaxLayer::GradDescent(matrix &Ey)
+{
+matrix S;
+matrix I;
+I.Init(M.Rows(),M.Cols());
+I.Identity();
+S = M * (I - M.Transpose());
+S = S.MatMul(Ey);
+return S;
+}
+
+================================================================================
+
+--- PROJEKT FOLYTATÁSA (Resume) ---
+
+=== FELADAT 2: Hybrid Indikátor Stratégiák (EA31337 osztályok) ===
+[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: 'EA31337 hybrid strategy indicator'
+
+--- PROJEKT FOLYTATÁSA (Resume) ---
+
+=== FELADAT 2: Hybrid Indikátor Stratégiák (EA31337 osztályok) ===
+[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: 'EA31337 hybrid strategy indicator'

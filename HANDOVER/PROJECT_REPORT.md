@@ -1,0 +1,1 @@
+# PROJEKT JELENTÉS (Jules Manager)

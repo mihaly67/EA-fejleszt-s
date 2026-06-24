@@ -1,0 +1,127 @@
+--- PROJEKT START (Batch Mode): Trading_Assistant_Batch_01 ---
+Időpont: 20251201_235338
+
+=== FELADAT 1: MQL5 Matematikai és Statisztikai Könyvtárak (Alglib, Fuzzy) ===
+[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: 'MQL5 math library alglib fuzzy statistics'
+[MŰSZAKVEZETŐ]: Eredmény beérkezett (0 találat).
+
+=== FELADAT 2: Piaci Rezsim Detektálás (Trend vs Range, ADX, Volatilitás) ===
+[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: 'market regime detection ADX ATR volatility filter'
+[MŰSZAKVEZETŐ]: Eredmény beérkezett (5 találat).
+
+> TALÁLAT (Score: 0.41) [ELMELET] mql5.txt
+--------------------------------------------------------------------------------
+The price has crossed the indicator upwards (the Open
+                                        price of the analyzed bar is below the indicator and the Close price is
+                                 above the indicator) and the indicator falls (weak signal for a roll-back
+
+                                    · Moving  Average  crossover. The  price  has  crossed  the  indicator
+                                 downwards (the Open price of the analyzed bar is above the indicator and
+                                    the Close price is below the indicator) and the indicator  falls (strong
+
+6158 Standard Library
+
+                                    · Formed breakout. The upper shadow of the bar has crossed the indicator
+                                      (the Open and Close prices of the analyzed bar are below the indicator,
+                                and the High price is above the indicator) and the indicator falls (weak
+                                        signal for a roll-back from the indicator line). No   objections   to   The price is above the indicator. No   objections   to   The price is below the indicator. 6159 Standard Library
+
+            PeriodMA                Period of averaging of the indicator. Shift                       Shift of the indicator along the time axis (in bars). 6160 Standard Library
+
+       Signals of the Intraday Time Filter
+
+            This module is based on the assumption that the efficiency of market models changes in time. Us
+================================================================================
+
+> TALÁLAT (Score: 0.38) [ELMELET] mql5.txt
+--------------------------------------------------------------------------------
+The upper shadow of the bar has crossed the indicator
+                                      (the Open and Close prices of the analyzed bar are below the indicator,
+                                and the High price is above the indicator) and the indicator falls (weak
+                                        signal for a roll-back from the indicator line). No   objections   to   The price is above the indicator. No   objections   to   The price is below the indicator. 6159 Standard Library
+
+            PeriodMA                Period of averaging of the indicator. Shift                       Shift of the indicator along the time axis (in bars). 6160 Standard Library
+
+       Signals of the Intraday Time Filter
+
+            This module is based on the assumption that the efficiency of market models changes in time. Using
+             this module, you can filter signals received from the other modules by hour and days of week. It allows
+            increasing the quality of generated signals due to cutting off the unfavorable time periods. The
+          mechanism of making trade decisions on the basis of signals of the modules is described in a separate
+
+             Signal Type              Description of Conditions
+
+             For buying             No signals. For selling             No signals. No objections to buying   The current date and time meet the specified parameters. No objections to selling   The current date and time meet the specified parameters. GoodHourOfDay
+================================================================================
+
+> TALÁLAT (Score: 0.34) [ELMELET] mql5book.txt
+--------------------------------------------------------------------------------
+Taking into account new information about different ways of comparing and simultaneously eliminating
+ different types of keys in map arrays, we modify the match method. In it, for each specified property,
+ we retrieve a condition from the conditions array based on the key in the data map array, and
+ appropriate checks are performed using the switch operator. template<typename V>
+       bool match(const SymbolMonitor &m, const MapArray<ENUM_ANY,V> &data) const
+          static const V type = (V)NULL;
+             const ENUM_ANY key = data.getKey(i);
+             switch(conditions[key])
+             case EQUAL:
+                if(!equal(m.get(key, type), data.getValue(i))) return false;
+             case NOT_EQUAL:
+                if(equal(m.get(key, type), data.getValue(i))) return false;
+             case GREATER:
+                if(!greater(m.get(key, type), data.getValue(i))) return false;
+             case LESS:
+                if(greater(m.get(key, type), data.getValue(i))) return false;
+
+ The new template greater method is implemented simplistically. static bool greater(const V v1, const V v2)
+          return v1 > v2;
+
+ Now the match method call can be written in a shorter form since the only remaining type of the
+ template V is automatically determined by the passed data argument (and this is one of the arrays
+ longs, doubles, or strings). void select(const bool watch, string &symbols[]) const
+          const int n = SymbolsTotal(watch);
+             const string s = S
+================================================================================
+
+> TALÁLAT (Score: 0.33) [ELMELET] mql5.txt
+--------------------------------------------------------------------------------
+The  price  has  crossed  the  indicator
+                                 downwards (the Open price of the analyzed bar is above the indicator and
+                                    the Close price is below the indicator) and the indicator  falls (strong
+
+6158 Standard Library
+
+                                    · Formed breakout. The upper shadow of the bar has crossed the indicator
+                                      (the Open and Close prices of the analyzed bar are below the indicator,
+                                and the High price is above the indicator) and the indicator falls (weak
+                                        signal for a roll-back from the indicator line). No   objections   to   The price is above the indicator. No   objections   to   The price is below the indicator. 6159 Standard Library
+
+            PeriodMA                Period of averaging of the indicator. Shift                       Shift of the indicator along the time axis (in bars). 6160 Standard Library
+
+       Signals of the Intraday Time Filter
+
+            This module is based on the assumption that the efficiency of market models changes in time. Using
+             this module, you can filter signals received from the other modules by hour and days of week. It allows
+            increasing the quality of generated signals due to cutting off the unfavorable time periods. The
+          mechanism of making trade decisions on the basis of signals of the modules is described in a separat
+================================================================================
+
+> TALÁLAT (Score: 0.22) [ELMELET] mql5book.txt
+--------------------------------------------------------------------------------
+Everything in the completed method and in the MqlTradeResultSync structure is ready for
+ synchronous position closing tracking: the same algorithm worked for a normal closing of a position. else if(action == TRADE_ACTION_CLOSE_BY)
+             return result.closed(timeout);
+
+ Opposite positions are usually used as a replacement for a stop order or an attempt to take profit on a
+ short-term correction while remaining in the market and following the main trend. The option of using a
+ pseudo-stop order allows you to postpone the decision to actually close positions for some time,
+ continuing the analysis of market movements expecting the price to reverse in the right direction. However, it should be kept in mind that "locked" positions require increased deposits and are subject to
+ swaps. That is why it is difficult to imagine a trading strategy built on opposite positions in its pure
+ form, which could serve as an example for this section. Let's develop the idea of the price-action bar-based strategy outlined in the previous example. The new
+ Expert Advisor is TradeCloseBy.mq5. We will use the previous signal to enter the market upon detection of two consecutive candles that
+ closed in the same direction. A function responsible for its formation is again GetTradeDirection. However, let's allow re-entries if the trend continues. The total maximum allowed number of positions
+ will be set in the input variable PositionLimit, the default is 5. The GetMyPositions function will under
+================================================================================
+
+=== FELADAT 3: Kereskedelmi Asszisztens Dashboard (GUI Panel) ===
+[MŰSZAKVEZETŐ]: Kutató indítása (Subprocess)... Query: 'trading dashboard panel graphical interface CAppDialog'

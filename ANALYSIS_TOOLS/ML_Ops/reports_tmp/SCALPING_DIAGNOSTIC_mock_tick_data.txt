@@ -1,0 +1,25 @@
+=========================================================================================
+🔥 VAKU 3.0: MÉLY DIAGNOSZTIKAI SKALPOLÓ RIJPORT (TICK SŰRŰSÉG & BRÓKERI FAGYÁSOK)
+=========================================================================================
+
+Fájl: mock_tick_data.csv
+Feldolgozott adat: 5,000 tick
+Teljes időtartam: 1.06 óra
+Globális átlagsebesség: 1.31 Tick/Másodperc
+
+Ez a jelentés 15-perces ('Skalpoló') időszeletekben tárja fel a bróker feed anomáliáit,
+beleértve a HFT kitöréseket (>20 Tick/s), a latency fagyásokat (>2s szünet), és a sűrűség-spread kapcsolatot.
+
+Időszak (15-Perc)  | Tickek   | P50(T/s) | P90(T/s) | Max Fagyás(s) | >2s Fagyások | HFT Burst(>20T/s)  | Javasolt N
+--------------------------------------------------------------------------------------------------------------------
+2026-01-01 09:00   | 1,164    | 1.2      | 6.8      | 1.5           | 0            | 38                 | N=20
+2026-01-01 09:15   | 1,154    | 1.2      | 6.3      | 1.5           | 0            | 47                 | N=18
+2026-01-01 09:30   | 1,207    | 1.4      | 5.8      | 1.5           | 0            | 22                 | N=17
+2026-01-01 09:45   | 1,202    | 1.4      | 6.2      | 1.5           | 0            | 29                 | N=18
+2026-01-01 10:00   | 272      | 1.4      | 4.9      | 1.5           | 0            | 4                  | N=15
+
+[ATDP ARCHITEKTURÁLIS DIAGNÓZIS]
+1. Fagyások (Freezes): Ha a 'Max Fagyás' tartósan magas, a bróker feedje instabil vagy manipulált (Latency Hold).
+   Ezekben a 15 perces szakaszokban a CUSUM indikátorunk fogja biztosítani a manipuláció detektálását, nem a HMM.
+2. HFT Kitörések (Bursts): Ha egy időszakban sok a HFT Burst, az ATDP dinamikusan kitágítja a RingBuffert (N növelése),
+   hogy a HMM ne legyen 'vaksi' az extrém rángatásokra.

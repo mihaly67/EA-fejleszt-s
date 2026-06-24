@@ -1,0 +1,23 @@
+[MQL5_DEV] article_13796.html (Score: 0.60)
+------------------------------------------------------------
+In this part, we will take a look at a method that can be used to use this Command pattern in the MQL5 and the following steps are for doing that:   Declaring our Command space for specifying our functions, variables, classes ... etc by using the namespace keyword    [CODE START] namespace Command [CODE END]  Declaring the Receiver class as a participant which identifies the method to perform operations of the request    [CODE START]...
+
+
+[MQL5_DEV] article_13451.html (Score: 0.59)
+------------------------------------------------------------
+2.3.2. MQL5 Code for Working with the NuSVC Classifier Model     [CODE START] //+------------------------------------------------------------------+ //|                                                   Iris_NuSVC.mq5 | //|                                  Copyright 2023, MetaQuotes Ltd. | //|                                             https://www.mql5.com | //+------------------------------------------------------------------+ #property copyright "Copyright 2023, MetaQuotes Ltd." #property lin...
+
+
+[MQL5_DEV] article_13714.html (Score: 0.59)
+------------------------------------------------------------
+// CONTEXT: Series: Developing an MQL5 RL agent with RestAPI integration, Part: 2, Title: Developing an MQL5 RL agent with RestAPI integration (Part 2): MQL5 functions for HTTP interaction with the tic-tac-toe game REST API - MQL5 Articles | FILE: Parte_02.zip/Parte_02/Request.mqh //+------------------------------------------------------------------+ //|                                                      Request.mqh | //|                                    Copyright 2023, Lejjo Digital | //...
+
+
+[MQL5_DEV] article_3004.html (Score: 0.59)
+------------------------------------------------------------
+[CODE END]     Key Scan Codes  Information from Wikipedia (more):    A scancode (or scan code) is the data that most computer keyboards send to a computer to report which keys have been pressed. A number, or sequence of numbers, is assigned to each key on the keyboard.  The figure below shows the key scan codes:     Fig. 4. Key Scan Codes.  Similar to the ASCII codes, the scan codes are contained in the KeyCodes.mqh file. The listing below shows a part of the list:  [CODE START] //+-------------...
+
+
+[MQL5_DEV] article_16357.html (Score: 0.58)
+------------------------------------------------------------
+// CONTEXT: Series: Implementing the SHA-256 Cryptographic Algorithm from Scratch in MQL5 - MQL5 Articles, Part: N/A, Title: Implementing the SHA-256 Cryptographic Algorithm from Scratch in MQL5 - MQL5 Articles | FILE: Sha256Algorithm.mqh //+------------------------------------------------------------------+ //|                                             Sha256Algorithm.mqh  | //|                                  Copyright 2024, MetaQuotes Ltd. | //|                                          ...

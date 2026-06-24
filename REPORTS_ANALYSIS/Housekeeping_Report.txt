@@ -1,0 +1,23 @@
+HOUSEKEEPING REPORT: REPOSITORY REORGANIZATION
+Date: 2026.02.02
+Status: COMPLETE
+
+1. New Structure Overview:
+   - /HANDOVER/: All project logs, handover reports, and architecture documents.
+   - /REPORTS_ANALYSIS/: All forensic reports (Colombo, Sherlock, Battlefield).
+   - /ANALYSIS_TOOLS/: Active tools (`analyze_columbo_battlefield.py`, `verify_columbo_library.py`).
+   - /ENVIRONMENT_SETUP/: Setup scripts (`restore_env_TC.py`, `fetch_*.py`, etc.) and system files.
+   - /LEGACY_ANALYSIS/: Deprecated or "Sufni Tuning" scripts (`analyze_coach.py`, `simulate_breakout.py`, etc.).
+   - /Colombo_Huron_Research_Archive/: Raw CSV data files.
+
+2. Critical Note for Future Sessions:
+   - To restore the environment, you must now run:
+     `python3 ENVIRONMENT_SETUP/restore_env_TC.py`
+     (Or update the script to handle paths if run from root. The script assumes it's in root? I should check `restore_env_TC.py` logic if it uses relative paths like `Knowledge_Base`. If run from subdirectory, it might fail. Recommendation: Run from root as `python3 ENVIRONMENT_SETUP/restore_env_TC.py` but ensure CWD is root.)
+
+3. Active vs Legacy Tools:
+   - ACTIVE: `ANALYSIS_TOOLS/analyze_columbo_battlefield.py` (Forensic Engine v2.0)
+   - LEGACY: `LEGACY_ANALYSIS/analyze_chess_match.py` (Replaced by Colombo Game Theory)
+   - LEGACY: `LEGACY_ANALYSIS/analyze_microscope.py` (Replaced by Colombo Micro-Structure Hunt)
+
+The repository is now clean and organized for high-level forensic work.

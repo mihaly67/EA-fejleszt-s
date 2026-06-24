@@ -1,0 +1,38 @@
+=======================================================
+🧠 MÁTRIX KORRELÁCIÓS ELEMZÉS: MATRIX_ANALYZED_Merkava_XAUUSD_v1.10_20260320_225049.csv
+=======================================================
+
+🔎 Tesztelt Szekvencia Ablakok: [40, 80, 120, 150] tick
+🎯 Összes Kereskedés (Trade) száma: 46
+
+📊 PIACI ÁLLAPOT: LOW_VOLATILITY
+--------------------------------------------------
+  Összes kereskedés itt: 15
+    - Ablak:  40 tick -> Találat:   8/15 ( 53.3%)
+    - Ablak:  80 tick -> Találat:   1/15 (  6.7%)
+    - Ablak: 120 tick -> Találat:   8/15 ( 53.3%)
+    - Ablak: 150 tick -> Találat:   1/15 (  6.7%)
+  🏆 GYŐZTES EBBEN AZ ÁLLAPOTBAN: 40 tickes ablak (53.3% felismerés)
+
+📊 PIACI ÁLLAPOT: MEDIUM_VOLATILITY
+--------------------------------------------------
+  Összes kereskedés itt: 19
+    - Ablak:  40 tick -> Találat:  11/19 ( 57.9%)
+    - Ablak:  80 tick -> Találat:   9/19 ( 47.4%)
+    - Ablak: 120 tick -> Találat:  17/19 ( 89.5%)
+    - Ablak: 150 tick -> Találat:  11/19 ( 57.9%)
+  🏆 GYŐZTES EBBEN AZ ÁLLAPOTBAN: 120 tickes ablak (89.5% felismerés)
+
+📊 PIACI ÁLLAPOT: HIGH_VOLATILITY
+--------------------------------------------------
+  Összes kereskedés itt: 12
+    - Ablak:  40 tick -> Találat:   2/12 ( 16.7%)
+    - Ablak:  80 tick -> Találat:   1/12 (  8.3%)
+    - Ablak: 120 tick -> Találat:   2/12 ( 16.7%)
+    - Ablak: 150 tick -> Találat:   2/12 ( 16.7%)
+  🏆 GYŐZTES EBBEN AZ ÁLLAPOTBAN: 40 tickes ablak (16.7% felismerés)
+
+💡 KONKLÚZIÓ (A KORRELÁCIÓS SZABÁLY):
+Ha a piac Low, akkor az ideális ablak: 40 tick.
+Ha a piac Medium, akkor az ideális ablak: 120 tick.
+Ha a piac High, akkor az ideális ablak: 40 tick.

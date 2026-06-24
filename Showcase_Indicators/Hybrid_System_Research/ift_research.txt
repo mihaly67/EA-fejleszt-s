@@ -1,0 +1,23 @@
+[MQL5_DEV] article_2742.html (Score: 0.52)
+------------------------------------------------------------
+[CODE END]  The function calculates the value of the probability distribution function of Fisher's F-distribution with the nu1 and nu2 parameters for an array of random variables x[]. In case of error it returns false.  [CODE START] bool MathCumulativeDistributionF(   const double   &x[],        // [in]  Array with the values of random variable   const double   nu1,         // [in]  The first parameter of distribution (number of degrees of freedom)   const double   nu2,         // [in]  The seco...
+
+
+[MQL5_DEV] article_2742.html (Score: 0.51)
+------------------------------------------------------------
+[CODE END]  The function calculates the value of the probability density function of Fisher's F-distribution with the nu1 and nu2 parameters for a random variable x. In case of error it returns NaN.  [CODE START] double MathProbabilityDensityF(   const double   x,           // [in]  Value of random variable   const double   nu1,         // [in]  The first parameter of distribution (number of degrees of freedom)   const double   nu2,         // [in]  The second parameter of distribution (number o...
+
+
+[MQL5_DEV] article_2742.html (Score: 0.51)
+------------------------------------------------------------
+[CODE END]  2.10.3. MathQuantileNoncentralF  For the specified probability, the function calculates the value of inverse noncentral Fisher's F-distribution function with the nu1, nu2 and sigma parameters. In case of error it returns NaN.  [CODE START] double MathQuantileNoncentralF(   const double   probability,   // [in]  Probability value of random variable occurrence   const double   nu1,           // [in]  The first parameter of distribution (number of degrees of freedom)   const double   nu...
+
+
+[MQL5_DEV] article_2742.html (Score: 0.50)
+------------------------------------------------------------
+[CODE END]  2.9.2. MathCumulativeDistributionF  The function calculates the value of the probability distribution function of Fisher's F-distribution with the nu1 and nu2 parameters for a random variable x. In case of error it returns NaN.  [CODE START] double MathCumulativeDistributionF(   const double   x,           // [in]  Value of random variable   const double   nu1,         // [in]  The first parameter of distribution (number of degrees of freedom)   const double   nu2,         // [in]  T...
+
+
+[MQL5_DEV] article_2742.html (Score: 0.50)
+------------------------------------------------------------
+[CODE END]  For the specified 'probability[]' array of probability values, the function calculates the value of inverse noncentral chi-squared distribution function with the nu and sigma parameters. In case of error it returns false.  [CODE START] bool MathQuantileNoncentralChiSquare(   const double   &probability[],// [in]  Array with probability values of random variable   const double   nu,            // [in]  Parameter of distribution (number of degrees of freedom)   const double   sigma,   ...

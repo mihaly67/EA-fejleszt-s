@@ -1,0 +1,32 @@
+
+=== ELŐKUTATÁSI JELENTÉS: Profit és Tőkemenedzsment ===
+
+Dátum: 2024.12.02
+Feladat időtartama: ~25 perc (becsült, logok alapján)
+
+1. **Bevezetés**
+A következő fázis célja a kereskedési stratégia "lelkének", a pénzkezelésnek (Money Management) a megalapozása. A felderítés során a rendelkezésre álló tudásbázisban (RAG Code, Theory, New Knowledge) kerestem kész megoldásokat és elméleti alapokat.
+
+2. **Találatok a Kódbázisban (MQL5)**
+
+A. **Kockázatkezelés (Risk Management)**
+*   `TradeControlMain.mq5` (New Knowledge): Tartalmaz egy `SystemRisk` változóra épülő logikát, ami a devizapár kitettségét figyeli (`TotalBasePairExposure`). Ez egy portfólió-szintű kockázatkezelés alapja lehet.
+*   `CheckSystem...Exit.mq5` sorozat: Többféle kilépési stratégiát tartalmaz, valószínűleg feltételes zárásokat (pl. indikátor jelre).
+
+B. **Profit Management (Trailing & Exit)**
+*   `System1.mq5` (New Knowledge): Konkrét implementációkat tartalmaz ATR alapú csúszó stopra (`CheckTrailingStopBuy`, `CheckTrailingStopSell`).
+    *   *Logika:* `AtrFactor` paraméterrel dinamikusan állítja a stop távolságot a volatilitáshoz.
+*   `Demo_trail_Buy/Sell_v1.mq4`: Régebbi MQL4 kódok, de a logika (pl. Tick-by-Tick trailing) átültethető MQL5-be.
+
+C. **Hiányosságok (Amit még fejleszteni kell)**
+*   Nem találtam dedikált `MoneyManagement` osztályt, ami fejlett pozícióméretezést (pl. Kelly, Fixed Ratio) végezne egy helyen. Ezt valószínűleg nekünk kell majd megírni "nulláról" vagy a `TradeControlMain` logikáját kiemelni és osztályba szervezni.
+*   A "Martingale" és "Recovery" kulcsszavakra a kereső nem adott erős találatot a jelenlegi indexben, így ezeket óvatosan, saját logikával kell felépíteni, ha szükséges (bár scalpingnál veszélyesek).
+
+3. **Stratégiai Irány a Következő Fázishoz**
+A talált kódok alapján a következő modult javaslom felépíteni:
+*   **Dinamikus Pozícióméretező Osztály:** Ami a számlaegyenleg %-ában számol (pl. 1% kockázat / trade), figyelembe véve a Stop Loss távolságot.
+*   **Advanced Trailing Manager:** A `System1.mq5`-ben látott ATR alapú csúszó stop, kiegészítve "Breakeven" (Nullába húzás) funkcióval X pip profit után.
+*   **Profit Taking:** Részleges zárás (Partial Close) funkció, ha a `Hybrid Conviction` görbe gyengülni kezd (pl. +0.8-ról visszatesztel).
+
+4. **Összegzés**
+Van elegendő "nyersanyag" (ATR Trailing, Exposure check), de nincs kész, "plug-and-play" Money Management könyvtár. A következő feladat ezeknek a mozaikoknak az összeillesztése lesz egy robusztus `ProfitManager` osztállyá.

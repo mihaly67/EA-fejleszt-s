@@ -1,0 +1,9 @@
+# Dependencies for Universal Knowledge Capsule Builder
+tqdm>=4.66.0
+
+# SWAT4 ML Pipeline / Anomaly Detection
+dtaianomaly>=0.4.0
+tensorflow>=2.0.0
+scikit-learn>=1.3.0
+pandas>=1.3.0
+numpy>=1.26.0

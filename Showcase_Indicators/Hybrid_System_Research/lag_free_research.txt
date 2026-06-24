@@ -1,0 +1,23 @@
+[MQL5_DEV] article_1516.html (Score: 0.53)
+------------------------------------------------------------
+In initialization block the variable value should be changed:  [CODE START]  //---- Initialization of variables    MinBar_Up = 4 + 30 + 30; [CODE END]  Now we have two consecutive JMA smoothing, each one needs at least 30 bars and 4 bars for the calculation algorithm of the EA. After that in the block of gaining source values the custom indicator reference should be changed into the one placed at the beginning of the paragraph. For the second part of the algorithm everything is done in the same ...
+
+
+[MQL5_DEV] article_13244.html (Score: 0.52)
+------------------------------------------------------------
+Parameters   The indicator has four configured parameters:     Fast EMA MACD calculation period, default — 12,  Slow EMA MACD calculation period, default — 26,  Signal SMA MACD calculation period, default — 9,  MACD calculation price, default – Close.     Input and global variables for using the indicator in the EA:    [CODE START] //+------------------------------------------------------------------+ //|                                           TestOscillatorOsMA.mq5 | //|                     ...
+
+
+[MQL5_DEV] article_16308.html (Score: 0.52)
+------------------------------------------------------------
+Thus, going in a loop from the beginning of history, for each bar of the i loop, we calculate the average value of the closing prices of the bars on the left in the j loop. This is why the main loop does not start from zero, but from the value of the number of bars, for which we calculate the average - so that the required number of bars is on the left at the very beginning of the SMA calculation.   Above we looked at the simplest and mostly non-optimal code, which shows the calculation of a sim...
+
+
+[MQL5_DEV] article_16931.html (Score: 0.52)
+------------------------------------------------------------
+void OnStart()   {      vector prices = {1,2,3,4,5,6,7,8,9,10};      int period = 3;            Print("RSI values: ", COscillatorIndicators::RSI(prices,period));    } [CODE END]  Outputs    [CODE START] 2025.01.21 12:51:29.640 Custom Indicators test script (EURUSD,H1)       RSI values: [nan,nan,nan,100,100,100,100,100,100,100]  [CODE END]     The Stochastic Oscillator Indicator   This is a momentum indicator that compares the closing price of a security to its price range over a specified period...
+
+
+[MQL5_DEV] article_1451.html (Score: 0.52)
+------------------------------------------------------------
+[CODE START] //----+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -+  //Version  July 1, 2006                                              | //Editing   Nikolay Kositsin  15.06.2006  farria@mail.redcom.ru      | //----+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -+  /* Building a moving average on the current timeframe based on another,    larger timeframe. Attention!!! Indicator values are recalculated not  on the last bar, but on the number of bars, equivalent t...
