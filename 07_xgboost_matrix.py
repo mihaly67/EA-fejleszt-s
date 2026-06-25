@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
 import xgboost as xgb
+from hmmlearn import hmm
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.preprocessing import StandardScaler
 import time
 
 def calculate_atr(df, period):
@@ -13,11 +15,36 @@ def calculate_atr(df, period):
     true_range = np.max(ranges, axis=1)
     return true_range.rolling(period).mean()
 
+def compute_hmm_regimes(df):
+    """
+    Fits a 3-state Gaussian HMM (Bull, Bear, Sideways) on the returns and volatility,
+    and assigns a regime label to each row.
+    """
+    print("🧠 HMM Regime Training inditasa...", flush=True)
+    # Beépítjük a Flow_MFI (Cumulative Delta) változót is a HMM-be
+    hmm_features = df[["Return_5", "Candle_Range_ATR", "Flow_MFI"]].dropna().copy()
+
+    scaler = StandardScaler()
+    scaled_features = scaler.fit_transform(hmm_features)
+
+    model = hmm.GaussianHMM(n_components=3, covariance_type="full", n_iter=100, random_state=42)
+    model.fit(scaled_features)
+
+    regimes = model.predict(scaled_features)
+
+    df.loc[hmm_features.index, "Regime"] = regimes
+
+    state_volatilities = df.groupby("Regime")["Candle_Range_ATR"].mean()
+    sideways_state = state_volatilities.idxmin()
+    print(f"📊 HMM Sideways State detektálva: {sideways_state}", flush=True)
+
+    return df, sideways_state
+
 def run_matrix():
     start_time = time.time()
 
-    DATA_PATH = "/home/misi/Merkava_ML_Ops/data/raw/Merkava_XAUUSD_MINER_MTF_v1.06_20260623_124144.csv" # A kérésnek megfelelően csökkentve az 5 perces időablak csv-re (azonosítva: Merkava_XAUUSD_MINER_MTF_v1.06_20260623_124144.csv a header/tail alapján)
-    df_raw = pd.read_csv(DATA_PATH).tail(120000).copy() # 120k M5 gyertya ~ 1,5 év adat
+    DATA_PATH = "/home/misi/Merkava_ML_Ops/data/raw/Merkava_XAUUSD_MINER_MTF_v1.07_20260623_221200.csv"
+    df_raw = pd.read_csv(DATA_PATH).tail(250000).copy() # 250k M5 gyertya a HMM tanításhoz
     df_raw.reset_index(drop=True, inplace=True)
 
     oscillators = ["Flow_ROC", "Hybrid_DFCurve", "Hybrid_MACD", "RSI_M15", "RSI_H1", "MACD_M15"]
@@ -34,17 +61,29 @@ def run_matrix():
     df_raw["Return_1"] = df_raw["Bar_Close"].pct_change(1)
     df_raw["Return_5"] = df_raw["Bar_Close"].pct_change(5)
 
-    periods = [3, 7, 13]
-    multipliers = [0.5, 1.0, 1.5, 2.0]
+    # 🔴 Cumulative Delta Feature Engineering (Z-Score)
+    # A RAG kutatás szerint a nyers Flow értékek helyett az aszimmetriát kell nézni (rolling Z-score)
+    df_raw["Flow_ROC_Z"] = (df_raw["Flow_ROC"] - df_raw["Flow_ROC"].rolling(100).mean()) / df_raw["Flow_ROC"].rolling(100).std()
+    df_raw["Flow_MFI_Z"] = (df_raw["Flow_MFI"] - df_raw["Flow_MFI"].rolling(100).mean()) / df_raw["Flow_MFI"].rolling(100).std()
+
+    periods = [7]
+    multipliers = [1.0, 1.5]
     lookahead = 3 # 3 x 5 perc = 15 perc (M5 gyertya fixed horizon scalping)
 
     closes = df_raw["Bar_Close"].values
 
     results = []
-    print("START M5 FIXED HORIZON MATRIX (15m predikció)", flush=True)
+    print("START M5 FIXED HORIZON MATRIX (HMM + FLOW Z-SCORE FILTERING)", flush=True)
+
+    depths = [4, 6]
+    thresholds = [0.45, 0.50, 0.55]
 
     for period in periods:
         atr_values = calculate_atr(df_raw, period).values
+        df_raw["Candle_Range_ATR"] = (df_raw["Bar_High"] - df_raw["Bar_Low"]) / atr_values
+
+        df_raw, sideways_state = compute_hmm_regimes(df_raw)
+
         for mult in multipliers:
             labels = np.zeros(len(df_raw))
 
@@ -69,12 +108,18 @@ def run_matrix():
                 labels[i] = np.nan
 
             df_raw["Target"] = labels
-            df_raw["Candle_Range_ATR"] = (df_raw["Bar_High"] - df_raw["Bar_Low"]) / atr_values
-            for col in ["Ctx_EMA_25", "EMA_50_M15"]:
-                df_raw[f"Dist_{col}"] = (df_raw["Bar_Close"] - df_raw[col]) / atr_values
+            for col in ["Ctx_EMA_25", "EMA_50_M15", "EMA_50_H1"]:
+                if col in df_raw.columns:
+                    df_raw[f"Dist_{col}"] = (df_raw["Bar_Close"] - df_raw[col]) / atr_values
 
-            features = ["Return_1", "Return_5", "Flow_ROC", "Flow_ROC_Delta", "Hybrid_MACD_Delta", "Candle_Range_ATR",
-                        "Dist_Ctx_EMA_25", "Dist_EMA_50_M15", "RSI_M15", "RSI_H1", "MACD_M15"]
+            features = ["Return_1", "Return_5", "Flow_ROC_Z", "Flow_MFI_Z", "Flow_ROC_Delta", "Hybrid_MACD_Delta", "Candle_Range_ATR",
+                        "RSI_H1", "RSI_H4", "MACD_H1"]
+
+            if "Dist_Ctx_EMA_25" in df_raw.columns: features.append("Dist_Ctx_EMA_25")
+            if "Dist_EMA_50_H1" in df_raw.columns: features.append("Dist_EMA_50_H1")
+            if "Dist_EMA_50_M15" in df_raw.columns: features.append("Dist_EMA_50_M15")
+            if "RSI_M15" in df_raw.columns: features.append("RSI_M15")
+            if "MACD_M15" in df_raw.columns: features.append("MACD_M15")
 
             # Adjuk hozzá a mikro indikátorokat is a feature készlethez, ha léteznek
             for col in micro_indicators:
@@ -83,50 +128,49 @@ def run_matrix():
                 if f"{col}_Delta" in df_raw.columns:
                     features.append(f"{col}_Delta")
 
-            df_model = df_raw[features + ["Target"]].copy()
+            df_model = df_raw[features + ["Target", "Regime"]].copy()
             df_model = df_model.dropna()
 
-            split_idx = int(len(df_model) * 0.8)
-            train = df_model.iloc[:split_idx]
-            test = df_model.iloc[split_idx:]
+            # HMM FILTERING
+            df_filtered = df_model[df_model["Regime"] != sideways_state].copy()
+            print(f"🧹 HMM Szűrés: {len(df_model)} nyers sor -> {len(df_filtered)} szűrt sor (Trendelő piacok)", flush=True)
+
+            split_idx = int(len(df_filtered) * 0.8)
+            train = df_filtered.iloc[:split_idx]
+            test = df_filtered.iloc[split_idx:]
 
             X_train, y_train = train[features], train["Target"]
             X_test, y_test = test[features], test["Target"]
 
-            # Súlyozott modell + Probability Thresholding
             sample_weights = compute_sample_weight('balanced', y_train)
-            model = xgb.XGBClassifier(n_estimators=50, max_depth=4, learning_rate=0.1, n_jobs=-1, random_state=42)
-            model.fit(X_train, y_train, sample_weight=sample_weights)
 
-            probs = model.predict_proba(X_test)
-            preds = np.zeros(len(probs))
+            for depth in depths:
+                model_weighted = xgb.XGBClassifier(n_estimators=150, max_depth=depth, learning_rate=0.05, n_jobs=-1, random_state=42)
+                model_weighted.fit(X_train, y_train, sample_weight=sample_weights)
+                probs = model_weighted.predict_proba(X_test)
 
-            for idx, p in enumerate(probs):
-                if p[1] > 0.65:
-                    preds[idx] = 1
-                elif p[2] > 0.65:
-                    preds[idx] = 2
-                else:
-                    preds[idx] = 0
+                for thresh in thresholds:
+                    preds_weighted = np.zeros(len(probs))
+                    for idx, p in enumerate(probs):
+                        if p[1] > thresh:
+                            preds_weighted[idx] = 1
+                        elif p[2] > thresh:
+                            preds_weighted[idx] = 2
+                        else:
+                            preds_weighted[idx] = 0
 
-            acc = accuracy_score(y_test, preds) * 100
+                    precision_w = precision_score(y_test, preds_weighted, average='macro', labels=[1, 2], zero_division=0)
+                    recall_w = recall_score(y_test, preds_weighted, average='macro', labels=[1, 2], zero_division=0)
+                    f1_w = f1_score(y_test, preds_weighted, average='macro', labels=[1, 2], zero_division=0)
 
-            hold_pct = (len(df_model[df_model["Target"] == 0]) / len(df_model)) * 100
-
-            # Súlyozott metrikák
-            precision_w = precision_score(y_test, preds, average='macro', labels=[1, 2], zero_division=0)
-            recall_w = recall_score(y_test, preds, average='macro', labels=[1, 2], zero_division=0)
-            f1_w = f1_score(y_test, preds, average='macro', labels=[1, 2], zero_division=0)
-
-            results.append({
-                "ATR": period,
-                "Mult": mult,
-                "Hold_%": round(hold_pct, 1),
-                "XGB_Acc_%": round(acc, 1),
-                "Precision": round(precision_w * 100, 2),
-                "Recall": round(recall_w * 100, 2),
-                "F1_Score": round(f1_w * 100, 2)
-            })
+                    results.append({
+                        "Mult": mult,
+                        "Depth": depth,
+                        "Thresh": thresh,
+                        "Precision": round(precision_w * 100, 2),
+                        "Recall": round(recall_w * 100, 2),
+                        "F1_Score": round(f1_w * 100, 2)
+                    })
 
     res_df = pd.DataFrame(results)
     print(res_df.sort_values(by="F1_Score", ascending=False).to_string(index=False), flush=True)

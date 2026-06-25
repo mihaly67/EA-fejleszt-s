@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import os
 import sys
+from hmmlearn import hmm
+from sklearn.preprocessing import StandardScaler
 
 def calculate_atr(df, period=13):
     high_low = df["Bar_High"] - df["Bar_Low"]
@@ -66,6 +68,32 @@ def perform_feature_engineering(df):
     for col in micro_indicators:
         if col in df.columns:
             df[f"{col}_Delta"] = df[col] - df[col].shift(1)
+
+    # Order Flow Normalizálás (Rolling Z-Score) a robusztus predikcióhoz
+    if "Flow_ROC" in df.columns:
+        df["Flow_ROC_Z"] = (df["Flow_ROC"] - df["Flow_ROC"].rolling(100).mean()) / df["Flow_ROC"].rolling(100).std()
+    if "Flow_MFI" in df.columns:
+        df["Flow_MFI_Z"] = (df["Flow_MFI"] - df["Flow_MFI"].rolling(100).mean()) / df["Flow_MFI"].rolling(100).std()
+
+    # HMM Regime Detection (Kizárólag az oldalazás azonosítására)
+    print("🧠 HMM Regime Training inditasa (Order Flow + Volatilitás)...")
+    hmm_features = df[["Return_5", "Candle_Range_ATR", "Flow_MFI"]].dropna().copy()
+    if not hmm_features.empty:
+        scaler = StandardScaler()
+        scaled_features = scaler.fit_transform(hmm_features)
+        model = hmm.GaussianHMM(n_components=3, covariance_type="full", n_iter=100, random_state=42)
+        model.fit(scaled_features)
+        regimes = model.predict(scaled_features)
+
+        df.loc[hmm_features.index, "Regime"] = regimes
+
+        # A legkisebb volatilitású állapotot kinevezzük "Sideways"-nek
+        state_volatilities = df.groupby("Regime")["Candle_Range_ATR"].mean()
+        sideways_state = state_volatilities.idxmin()
+        df["Is_Sideways"] = (df["Regime"] == sideways_state).astype(int)
+        print(f"📊 HMM Sideways State detektálva: {sideways_state}")
+    else:
+        df["Is_Sideways"] = 0
 
     # 🔴 SZEMET KIDOBASA (kivéve amiket visszahoztunk a pontosság javítására)
     cols_to_drop = [
