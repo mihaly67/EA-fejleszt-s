@@ -58,13 +58,13 @@ def run_matrix():
     df_raw["Flow_MFI_Z"] = (df_raw["Flow_MFI"] - df_raw["Flow_MFI"].rolling(100).mean()) / df_raw["Flow_MFI"].rolling(100).std()
 
     periods = [7]
-    multipliers = [0.2, 0.3]
+    multipliers = [0.1, 0.15, 0.2, 0.25]
     lookahead = 3
 
     closes = df_raw["Bar_Close"].values
 
     results = []
-    print("START M5 FIXED HORIZON MATRIX (SIDEWAYS SCALPING)", flush=True)
+    print("START M5 FIXED HORIZON MATRIX (MICRO-TREND SIDEWAYS SCALPING ~1-2 USD)", flush=True)
 
     depths = [4]
     thresholds = [0.45, 0.50]
