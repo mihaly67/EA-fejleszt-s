@@ -25,18 +25,26 @@ def run_matrix():
         if col in df_raw.columns:
             df_raw[f"{col}_Delta"] = df_raw[col] - df_raw[col].shift(1)
 
+    micro_indicators = ["Spread", "Velocity", "Acceleration", "WPR", "Stoch_K", "Flow_MFI"]
+    for col in micro_indicators:
+        if col in df_raw.columns:
+            df_raw[f"{col}_Delta"] = df_raw[col] - df_raw[col].shift(1)
+
     df_raw["Return_1"] = df_raw["Bar_Close"].pct_change(1)
     df_raw["Return_5"] = df_raw["Bar_Close"].pct_change(5)
 
-    # Csak egyetlen szűkebb tesztre redukálva (1.5 Mult)
-    periods = [7, 13]
+    periods = [7]
     multipliers = [1.0, 1.5]
     lookahead = 3
 
     closes = df_raw["Bar_Close"].values
 
     results = []
-    print("START M5 FIXED HORIZON MATRIX (With F1/Precision)", flush=True)
+    print("START M5 FIXED HORIZON MATRIX (Hyperparameter Tuning 2)", flush=True)
+
+    # Próbáljunk ki különböző valószínűségi küszöböket és fákat
+    depths = [4, 6]
+    thresholds = [0.4, 0.45, 0.50]
 
     for period in periods:
         atr_values = calculate_atr(df_raw, period).values
@@ -68,6 +76,12 @@ def run_matrix():
             features = ["Return_1", "Return_5", "Flow_ROC", "Flow_ROC_Delta", "Hybrid_MACD_Delta", "Candle_Range_ATR",
                         "Dist_Ctx_EMA_25", "Dist_EMA_50_M15", "RSI_M15", "RSI_H1", "MACD_M15"]
 
+            for col in micro_indicators:
+                if col in df_raw.columns:
+                    features.append(col)
+                if f"{col}_Delta" in df_raw.columns:
+                    features.append(f"{col}_Delta")
+
             df_model = df_raw[features + ["Target"]].copy()
             df_model = df_model.dropna()
 
@@ -78,42 +92,38 @@ def run_matrix():
             X_train, y_train = train[features], train["Target"]
             X_test, y_test = test[features], test["Target"]
 
-            # 1. Alap modell (Súlyozás nélkül)
-            model_base = xgb.XGBClassifier(n_estimators=30, max_depth=3, learning_rate=0.1, n_jobs=-1, random_state=42)
-            model_base.fit(X_train, y_train)
-            preds_base = model_base.predict(X_test)
-
-            # 2. Súlyozott modell
             sample_weights = compute_sample_weight('balanced', y_train)
-            model_weighted = xgb.XGBClassifier(n_estimators=30, max_depth=3, learning_rate=0.1, n_jobs=-1, random_state=42)
-            model_weighted.fit(X_train, y_train, sample_weight=sample_weights)
-            preds_weighted = model_weighted.predict(X_test)
 
-            hold_pct = (len(df_model[df_model["Target"] == 0]) / len(df_model)) * 100
+            for depth in depths:
+                model_weighted = xgb.XGBClassifier(n_estimators=150, max_depth=depth, learning_rate=0.05, n_jobs=-1, random_state=42)
+                model_weighted.fit(X_train, y_train, sample_weight=sample_weights)
+                probs = model_weighted.predict_proba(X_test)
 
-            # Alap metrikák (Hold class ignorálásával, átlag=macro)
-            precision_b = precision_score(y_test, preds_base, average='macro', labels=[1, 2], zero_division=0)
-            recall_b = recall_score(y_test, preds_base, average='macro', labels=[1, 2], zero_division=0)
-            f1_b = f1_score(y_test, preds_base, average='macro', labels=[1, 2], zero_division=0)
+                for thresh in thresholds:
+                    preds_weighted = np.zeros(len(probs))
+                    for idx, p in enumerate(probs):
+                        if p[1] > thresh:
+                            preds_weighted[idx] = 1
+                        elif p[2] > thresh:
+                            preds_weighted[idx] = 2
+                        else:
+                            preds_weighted[idx] = 0
 
-            # Súlyozott metrikák
-            precision_w = precision_score(y_test, preds_weighted, average='macro', labels=[1, 2], zero_division=0)
-            recall_w = recall_score(y_test, preds_weighted, average='macro', labels=[1, 2], zero_division=0)
-            f1_w = f1_score(y_test, preds_weighted, average='macro', labels=[1, 2], zero_division=0)
+                    precision_w = precision_score(y_test, preds_weighted, average='macro', labels=[1, 2], zero_division=0)
+                    recall_w = recall_score(y_test, preds_weighted, average='macro', labels=[1, 2], zero_division=0)
+                    f1_w = f1_score(y_test, preds_weighted, average='macro', labels=[1, 2], zero_division=0)
 
-            results.append({
-                "ATR": period,
-                "Mult": mult,
-                "Hold_%": round(hold_pct, 1),
-                "Base_Acc": round(accuracy_score(y_test, preds_base) * 100, 1),
-                "Base_F1": round(f1_b * 100, 2),
-                "Weight_Acc": round(accuracy_score(y_test, preds_weighted) * 100, 1),
-                "Weight_F1": round(f1_w * 100, 2),
-                "Weight_Recall": round(recall_w * 100, 2)
-            })
+                    results.append({
+                        "Mult": mult,
+                        "Depth": depth,
+                        "Thresh": thresh,
+                        "Precision": round(precision_w * 100, 2),
+                        "Recall": round(recall_w * 100, 2),
+                        "F1_Score": round(f1_w * 100, 2)
+                    })
 
     res_df = pd.DataFrame(results)
-    print(res_df.to_string(index=False), flush=True)
+    print(res_df.sort_values(by="F1_Score", ascending=False).to_string(index=False), flush=True)
 
 if __name__ == "__main__":
     run_matrix()

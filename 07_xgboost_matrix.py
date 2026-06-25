@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 import xgboost as xgb
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.utils.class_weight import compute_sample_weight
 import time
 
 def calculate_atr(df, period):
@@ -21,6 +22,12 @@ def run_matrix():
 
     oscillators = ["Flow_ROC", "Hybrid_DFCurve", "Hybrid_MACD", "RSI_M15", "RSI_H1", "MACD_M15"]
     for col in oscillators:
+        if col in df_raw.columns:
+            df_raw[f"{col}_Delta"] = df_raw[col] - df_raw[col].shift(1)
+
+    # Újra bevett mikro-struktúra indikátorok deltái
+    micro_indicators = ["Spread", "Velocity", "Acceleration", "WPR", "Stoch_K", "Flow_MFI"]
+    for col in micro_indicators:
         if col in df_raw.columns:
             df_raw[f"{col}_Delta"] = df_raw[col] - df_raw[col].shift(1)
 
@@ -69,6 +76,13 @@ def run_matrix():
             features = ["Return_1", "Return_5", "Flow_ROC", "Flow_ROC_Delta", "Hybrid_MACD_Delta", "Candle_Range_ATR",
                         "Dist_Ctx_EMA_25", "Dist_EMA_50_M15", "RSI_M15", "RSI_H1", "MACD_M15"]
 
+            # Adjuk hozzá a mikro indikátorokat is a feature készlethez, ha léteznek
+            for col in micro_indicators:
+                if col in df_raw.columns:
+                    features.append(col)
+                if f"{col}_Delta" in df_raw.columns:
+                    features.append(f"{col}_Delta")
+
             df_model = df_raw[features + ["Target"]].copy()
             df_model = df_model.dropna()
 
@@ -79,23 +93,43 @@ def run_matrix():
             X_train, y_train = train[features], train["Target"]
             X_test, y_test = test[features], test["Target"]
 
-            model = xgb.XGBClassifier(n_estimators=30, max_depth=3, learning_rate=0.1, n_jobs=-1, random_state=42)
-            model.fit(X_train, y_train)
+            # Súlyozott modell + Probability Thresholding
+            sample_weights = compute_sample_weight('balanced', y_train)
+            model = xgb.XGBClassifier(n_estimators=50, max_depth=4, learning_rate=0.1, n_jobs=-1, random_state=42)
+            model.fit(X_train, y_train, sample_weight=sample_weights)
 
-            preds = model.predict(X_test)
+            probs = model.predict_proba(X_test)
+            preds = np.zeros(len(probs))
+
+            for idx, p in enumerate(probs):
+                if p[1] > 0.65:
+                    preds[idx] = 1
+                elif p[2] > 0.65:
+                    preds[idx] = 2
+                else:
+                    preds[idx] = 0
+
             acc = accuracy_score(y_test, preds) * 100
 
             hold_pct = (len(df_model[df_model["Target"] == 0]) / len(df_model)) * 100
+
+            # Súlyozott metrikák
+            precision_w = precision_score(y_test, preds, average='macro', labels=[1, 2], zero_division=0)
+            recall_w = recall_score(y_test, preds, average='macro', labels=[1, 2], zero_division=0)
+            f1_w = f1_score(y_test, preds, average='macro', labels=[1, 2], zero_division=0)
 
             results.append({
                 "ATR": period,
                 "Mult": mult,
                 "Hold_%": round(hold_pct, 1),
-                "XGB_Accuracy_%": round(acc, 2)
+                "XGB_Acc_%": round(acc, 1),
+                "Precision": round(precision_w * 100, 2),
+                "Recall": round(recall_w * 100, 2),
+                "F1_Score": round(f1_w * 100, 2)
             })
 
     res_df = pd.DataFrame(results)
-    print(res_df.sort_values(by="XGB_Accuracy_%", ascending=False).to_string(index=False), flush=True)
+    print(res_df.sort_values(by="F1_Score", ascending=False).to_string(index=False), flush=True)
 
 if __name__ == "__main__":
     run_matrix()

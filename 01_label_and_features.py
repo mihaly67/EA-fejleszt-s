@@ -61,14 +61,18 @@ def perform_feature_engineering(df):
         if col in df.columns:
             df[f"{col}_Delta"] = df[col] - df[col].shift(1)
 
-    # 🔴 SZEMET KIDOBASA
+    # Újra bevett mikro-struktúra indikátorok deltái
+    micro_indicators = ["Spread", "Velocity", "Acceleration", "WPR", "Stoch_K", "Flow_MFI"]
+    for col in micro_indicators:
+        if col in df.columns:
+            df[f"{col}_Delta"] = df[col] - df[col].shift(1)
+
+    # 🔴 SZEMET KIDOBASA (kivéve amiket visszahoztunk a pontosság javítására)
     cols_to_drop = [
         "Bar_Open", "Bar_High", "Bar_Low", "Bar_Close", "Bid", "Ask",
         "Ctx_EMA_25", "Ctx_EMA_50", "EMA_50_H1",
         "Ctx_EMA_150", "Ctx_EMA_300", "EMA_150_H4",
-        "Dist_Ctx_EMA_150", "Dist_Ctx_EMA_300", "Dist_EMA_150_H4",
-        "Velocity",
-        "Stoch_K"
+        "Dist_Ctx_EMA_150", "Dist_Ctx_EMA_300", "Dist_EMA_150_H4"
     ]
 
     df = df.drop(columns=[c for c in cols_to_drop if c in df.columns])
