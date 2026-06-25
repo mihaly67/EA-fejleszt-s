@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
 import xgboost as xgb
+from hmmlearn import hmm
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.preprocessing import StandardScaler
 import time
 
 def calculate_atr(df, period):
@@ -16,11 +18,15 @@ def calculate_atr(df, period):
 def run_matrix():
     start_time = time.time()
 
-    DATA_PATH = "/home/misi/Merkava_ML_Ops/data/raw/Merkava_XAUUSD_MINER_MTF_v1.06_20260623_124144.csv"
-    df_raw = pd.read_csv(DATA_PATH).tail(120000).copy()
+    DATA_PATH = "/home/misi/Merkava_ML_Ops/data/raw/Merkava_XAUUSD_MINER_MTF_v1.07_20260623_221200.csv"
+    df_raw = pd.read_csv(DATA_PATH)
+    # A HMM nélkül megnézzük mit dob az új Z-score flow filterrel és class weights-el
+    df_raw = df_raw.tail(250000).copy()
     df_raw.reset_index(drop=True, inplace=True)
 
-    oscillators = ["Flow_ROC", "Hybrid_DFCurve", "Hybrid_MACD", "RSI_M15", "RSI_H1", "MACD_M15"]
+    print(f"📥 Adat betoltve. Méret: {df_raw.shape}", flush=True)
+
+    oscillators = ["Flow_ROC", "Hybrid_DFCurve", "Hybrid_MACD", "RSI_H1", "RSI_H4", "MACD_H1"]
     for col in oscillators:
         if col in df_raw.columns:
             df_raw[f"{col}_Delta"] = df_raw[col] - df_raw[col].shift(1)
@@ -33,21 +39,25 @@ def run_matrix():
     df_raw["Return_1"] = df_raw["Bar_Close"].pct_change(1)
     df_raw["Return_5"] = df_raw["Bar_Close"].pct_change(5)
 
+    df_raw["Flow_ROC_Z"] = (df_raw["Flow_ROC"] - df_raw["Flow_ROC"].rolling(100).mean()) / df_raw["Flow_ROC"].rolling(100).std()
+    df_raw["Flow_MFI_Z"] = (df_raw["Flow_MFI"] - df_raw["Flow_MFI"].rolling(100).mean()) / df_raw["Flow_MFI"].rolling(100).std()
+
     periods = [7]
-    multipliers = [1.0, 1.5]
+    multipliers = [1.5]
     lookahead = 3
 
     closes = df_raw["Bar_Close"].values
 
     results = []
-    print("START M5 FIXED HORIZON MATRIX (Hyperparameter Tuning 2)", flush=True)
+    print("START M5 FIXED HORIZON MATRIX (NO HMM, ONLY FLOW Z-SCORE)", flush=True)
 
-    # Próbáljunk ki különböző valószínűségi küszöböket és fákat
     depths = [4, 6]
-    thresholds = [0.4, 0.45, 0.50]
+    thresholds = [0.45, 0.50, 0.55]
 
     for period in periods:
         atr_values = calculate_atr(df_raw, period).values
+        df_raw["Candle_Range_ATR"] = (df_raw["Bar_High"] - df_raw["Bar_Low"]) / atr_values
+
         for mult in multipliers:
             labels = np.zeros(len(df_raw))
 
@@ -69,12 +79,18 @@ def run_matrix():
                     labels[i] = 0 # HOLD
 
             df_raw["Target"] = labels
-            df_raw["Candle_Range_ATR"] = (df_raw["Bar_High"] - df_raw["Bar_Low"]) / atr_values
-            for col in ["Ctx_EMA_25", "EMA_50_M15"]:
-                df_raw[f"Dist_{col}"] = (df_raw["Bar_Close"] - df_raw[col]) / atr_values
+            for col in ["Ctx_EMA_25", "EMA_50_H1"]:
+                if col in df_raw.columns:
+                    df_raw[f"Dist_{col}"] = (df_raw["Bar_Close"] - df_raw[col]) / atr_values
 
-            features = ["Return_1", "Return_5", "Flow_ROC", "Flow_ROC_Delta", "Hybrid_MACD_Delta", "Candle_Range_ATR",
-                        "Dist_Ctx_EMA_25", "Dist_EMA_50_M15", "RSI_M15", "RSI_H1", "MACD_M15"]
+            features = ["Return_1", "Return_5", "Flow_ROC_Z", "Flow_MFI_Z", "Flow_ROC_Delta", "Hybrid_MACD_Delta", "Candle_Range_ATR",
+                        "RSI_H1", "RSI_H4", "MACD_H1"]
+
+            if "Dist_Ctx_EMA_25" in df_raw.columns: features.append("Dist_Ctx_EMA_25")
+            if "Dist_EMA_50_H1" in df_raw.columns: features.append("Dist_EMA_50_H1")
+            if "Dist_EMA_50_M15" in df_raw.columns: features.append("Dist_EMA_50_M15")
+            if "RSI_M15" in df_raw.columns: features.append("RSI_M15")
+            if "MACD_M15" in df_raw.columns: features.append("MACD_M15")
 
             for col in micro_indicators:
                 if col in df_raw.columns:
