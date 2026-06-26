@@ -228,6 +228,13 @@ class VakuDashboardOnline(QMainWindow):
         form_risk.addRow("Makro Whipsaw [Def: 60%]:", self.inp_macro_risk)
         settings_inputs_layout.addLayout(form_risk)
 
+        # Right 3: Buffer Size
+        form_buffer = QFormLayout()
+        self.inp_max_buffer = QLineEdit("1800")
+        form_buffer.addRow("Max Puffer (Tick):", self.inp_max_buffer)
+        settings_inputs_layout.addLayout(form_buffer)
+
+
         layout_container.addLayout(settings_inputs_layout)
 
         # Bottom row: Buttons
@@ -250,18 +257,30 @@ class VakuDashboardOnline(QMainWindow):
         settings_group.setLayout(settings_layout)
         layout.addWidget(settings_group)
 
-        # Top Panel (Clock & Buffer Info)
+
+        # Top Panel (Clock & Buffer Info & Price & Profit)
         top_panel = QHBoxLayout()
         self.lbl_clock = QLabel("MT5 TICK IDŐ: VÁRAKOZÁS...")
-        self.lbl_clock.setStyleSheet("font-size: 18px; font-weight: bold; color: #000000; padding-bottom: 5px;")
+        self.lbl_clock.setStyleSheet("font-size: 18px; font-weight: bold; color: #000000;")
         top_panel.addWidget(self.lbl_clock)
 
+        self.lbl_live_price = QLabel("ÁRFOLYAM: ----.--")
+        self.lbl_live_price.setStyleSheet("font-size: 18px; font-weight: bold; color: #0055ff;")
+        self.lbl_live_price.setAlignment(Qt.AlignCenter)
+        top_panel.addWidget(self.lbl_live_price)
+
+        self.lbl_live_profit = QLabel("PROFIT: 0.00")
+        self.lbl_live_profit.setStyleSheet("font-size: 18px; font-weight: bold; color: #555555;")
+        self.lbl_live_profit.setAlignment(Qt.AlignCenter)
+        top_panel.addWidget(self.lbl_live_profit)
+
         self.lbl_buffer = QLabel("Memória Puffer: 0 tick")
-        self.lbl_buffer.setStyleSheet("font-size: 14px; font-weight: normal; color: #555555; padding-bottom: 5px;")
+        self.lbl_buffer.setStyleSheet("font-size: 14px; color: #555555;")
         self.lbl_buffer.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         top_panel.addWidget(self.lbl_buffer)
 
         layout.addLayout(top_panel)
+
 
         # Status Panel (Moved to TOP, Fixed Heights)
         status_panel = QHBoxLayout()
@@ -390,7 +409,8 @@ class VakuDashboardOnline(QMainWindow):
             'macro_chaos': self.inp_macro_chaos.text(),
             'micro_risk': self.inp_micro_risk.text(),
             'med_risk': self.inp_med_risk.text(),
-            'macro_risk': self.inp_macro_risk.text()
+            'macro_risk': self.inp_macro_risk.text(),
+            'max_buffer': self.inp_max_buffer.text()
         }
         try:
             with open('vaku3_config.json', 'w') as f:
@@ -419,6 +439,9 @@ class VakuDashboardOnline(QMainWindow):
                 self.inp_micro_risk.setText(config.get('micro_risk', "40.0"))
                 self.inp_med_risk.setText(config.get('med_risk', "50.0"))
                 self.inp_macro_risk.setText(config.get('macro_risk', "60.0"))
+                self.inp_max_buffer.setText(config.get('max_buffer', "1800"))
+                self.max_points = int(config.get('max_buffer', "1800"))
+                self.resize_arrays()
                 print("[INFO] Egyedi beállítások sikeresen betöltve!")
             except Exception as e:
                 print(f"[HIBA] Nem sikerült betölteni a beállításokat: {e}")
@@ -436,6 +459,9 @@ class VakuDashboardOnline(QMainWindow):
         self.inp_micro_risk.setText("40.0")
         self.inp_med_risk.setText("50.0")
         self.inp_macro_risk.setText("60.0")
+        self.inp_max_buffer.setText("1800")
+        self.max_points = 1800
+        self.resize_arrays()
         self.zoom_initialized = False
 
     def get_price_at_time(self, current_time, window_ms):
@@ -552,6 +578,29 @@ class VakuDashboardOnline(QMainWindow):
 
         # Do nothing here to avoid PyQt5 thread issues, move calculation to update_gui_charts
         pass
+
+
+    def resize_arrays(self):
+        old_ptr = self.ptr
+        new_max = self.max_points
+
+        new_x = np.zeros(new_max)
+        new_price = np.zeros(new_max)
+        new_macro = np.zeros(new_max)
+        new_risk = np.zeros(new_max)
+
+        copy_len = min(old_ptr, new_max)
+        if copy_len > 0:
+            new_x[-copy_len:] = self.x_data[-copy_len:]
+            new_price[-copy_len:] = self.price_data[-copy_len:]
+            new_macro[-copy_len:] = self.macro_data[-copy_len:]
+            new_risk[-copy_len:] = self.risk_data[-copy_len:]
+
+        self.x_data = new_x
+        self.price_data = new_price
+        self.macro_data = new_macro
+        self.risk_data = new_risk
+        self.ptr = copy_len
 
     def update_gui_charts(self):
         if len(self.history_times) < 10: return
@@ -676,6 +725,31 @@ class VakuDashboardOnline(QMainWindow):
             self.pos_line.setVisible(False)
 
         latest_time = x_draw[-1]
+
+        # Live Price & Profit Update
+        self.lbl_live_price.setText(f"ÁRFOLYAM: {price:.5f}")
+        if self.pos_type != 0:
+            if self.pos_type == 1: # Buy
+                profit = price - self.pos_price
+            else: # Sell
+                profit = self.pos_price - price
+
+            color = "#00aa00" if profit >= 0 else "#aa0000"
+            self.lbl_live_profit.setText(f"PROFIT: {profit:.5f}")
+            self.lbl_live_profit.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {color};")
+        else:
+            self.lbl_live_profit.setText("PROFIT: 0.00")
+            self.lbl_live_profit.setStyleSheet("font-size: 18px; font-weight: bold; color: #555555;")
+
+        # Puffer dinamikus olvasás
+        try:
+            target_max = int(self.inp_max_buffer.text())
+            if target_max != self.max_points and target_max > 50:
+                self.max_points = target_max
+                self.resize_arrays()
+        except ValueError:
+            pass
+
         self.lbl_clock.setText(f"MT5 TICK IDŐ: {pd.to_datetime(latest_time, unit='ms').strftime('%H:%M:%S.%f')[:-3]}")
         self.lbl_buffer.setText(f"HMM Puffer: {len(self.history_times)} tick betöltve")
 
