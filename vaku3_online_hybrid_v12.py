@@ -181,7 +181,7 @@ class VakuDashboardOnline(QMainWindow):
         # --- PARAMETER SETTINGS PANEL ---
 
         settings_group = QGroupBox("HMM & Piaci Rezsim Paraméterek (Élőben szerkeszthető)")
-        settings_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }")
+        settings_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; } QLineEdit { max-width: 60px; }")
         settings_layout = QHBoxLayout()
 
 
@@ -341,52 +341,75 @@ class VakuDashboardOnline(QMainWindow):
 
         # --- JOBB OLDAL: ON-DEMAND ADVISOR (HMM + XGB) ---
         right_widget = QWidget()
+        right_widget.setStyleSheet("background-color: #d9d9d9; color: #000000; font-family: Arial;")
         right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(15, 15, 15, 15)
 
-        advisor_group = QGroupBox("🤖 JULES ON-DEMAND ADVISOR (XGBoost + HMM Ensemble)")
-        advisor_group.setStyleSheet("QGroupBox { font-weight: bold; border: 2px solid #0055ff; margin-top: 10px; background-color: #111; color: white;} QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; color: #00d4ff;}")
-        adv_layout = QVBoxLayout()
+        # A cím beemelése a tartalomba (feljebb kerül)
+        self.lbl_adv_title = QLabel("🤖 JULES ON-DEMAND ADVISOR (XGBoost + HMM Ensemble)")
+        self.lbl_adv_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #003399; margin-bottom: 10px;")
+        self.lbl_adv_title.setAlignment(Qt.AlignCenter)
+        right_layout.addWidget(self.lbl_adv_title)
+
+        # Keret a belső tartalomhoz
+        from PyQt5.QtWidgets import QFrame
+        inner_frame = QFrame()
+        inner_frame.setStyleSheet("QFrame { background-color: #e6e6e6; border: 1px solid #aaa; border-radius: 5px; } QLabel { border: none; }")
+        adv_layout = QVBoxLayout(inner_frame)
 
         self.lbl_adv_time = QLabel("Időpont: --:--:--")
         self.lbl_adv_price = QLabel("Árfolyam: ----.--")
         self.lbl_adv_atr = QLabel("ATR (Volatilitás): -- USD")
         self.lbl_adv_regime = QLabel("PIACI REZSIM (HMM): Várakozás...")
-        self.lbl_adv_regime.setStyleSheet("font-size: 16px; font-weight: bold; color: yellow;")
+        self.lbl_adv_regime.setStyleSheet("font-size: 16px; font-weight: bold; color: #997300;") # Sötét sárga/barna a szürkén
 
-        adv_layout.addWidget(self.lbl_adv_time)
-        adv_layout.addWidget(self.lbl_adv_price)
-        adv_layout.addWidget(self.lbl_adv_atr)
-        adv_layout.addWidget(QLabel("-" * 40))
+        for lbl in [self.lbl_adv_time, self.lbl_adv_price, self.lbl_adv_atr]:
+            lbl.setStyleSheet("font-size: 14px; font-weight: bold;")
+            adv_layout.addWidget(lbl)
+
+        adv_layout.addWidget(QLabel("-" * 50))
         adv_layout.addWidget(self.lbl_adv_regime)
-        adv_layout.addWidget(QLabel("-" * 40))
+        adv_layout.addWidget(QLabel("-" * 50))
 
         self.lbl_adv_model = QLabel("Betöltött ML Engine: Várakozás adatfolyamra...")
         self.lbl_adv_model.setStyleSheet("font-size: 14px; font-style: italic;")
         adv_layout.addWidget(self.lbl_adv_model)
 
-        adv_layout.addWidget(QLabel("🔮 XGBOOST VALÓSZÍNŰSÉGI ELOSZLÁS:"))
+        lbl_probs_title = QLabel("🔮 XGBOOST VALÓSZÍNŰSÉGI ELOSZLÁS:")
+        lbl_probs_title.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 10px;")
+        adv_layout.addWidget(lbl_probs_title)
+
         self.lbl_adv_prob_hold = QLabel("   - HOLD (Oldalazás/Zaj): --%")
         self.lbl_adv_prob_buy = QLabel("   - BUY (Felfelé kitörés): --%")
         self.lbl_adv_prob_sell = QLabel("   - SELL (Lefelé letörés): --%")
-        self.lbl_adv_prob_buy.setStyleSheet("color: #00ff00; font-weight: bold;")
-        self.lbl_adv_prob_sell.setStyleSheet("color: #ff3333; font-weight: bold;")
+
+        self.lbl_adv_prob_hold.setStyleSheet("font-size: 14px;")
+        self.lbl_adv_prob_buy.setStyleSheet("font-size: 14px; color: #006600; font-weight: bold;")
+        self.lbl_adv_prob_sell.setStyleSheet("font-size: 14px; color: #990000; font-weight: bold;")
 
         adv_layout.addWidget(self.lbl_adv_prob_hold)
         adv_layout.addWidget(self.lbl_adv_prob_buy)
         adv_layout.addWidget(self.lbl_adv_prob_sell)
-        adv_layout.addWidget(QLabel("-" * 40))
+        adv_layout.addWidget(QLabel("-" * 50))
 
         self.lbl_adv_decision = QLabel("🎯 VÉGSŐ TANÁCS (ADVISOR): KIVÁRÁS")
-        self.lbl_adv_decision.setStyleSheet("font-size: 18px; font-weight: bold; background-color: #333; padding: 10px; border-radius: 5px;")
+        self.lbl_adv_decision.setStyleSheet("font-size: 16px; font-weight: bold; background-color: #cccccc; color: black; padding: 10px; border-radius: 5px;")
+        self.lbl_adv_decision.setAlignment(Qt.AlignCenter)
         adv_layout.addWidget(self.lbl_adv_decision)
 
         self.lbl_adv_reason = QLabel("A modell várakozik az első tick adatokra.")
         self.lbl_adv_reason.setWordWrap(True)
+        self.lbl_adv_reason.setStyleSheet("font-size: 13px; color: #333;")
         adv_layout.addWidget(self.lbl_adv_reason)
 
         adv_layout.addStretch()
-        advisor_group.setLayout(adv_layout)
-        right_layout.addWidget(advisor_group)
+        right_layout.addWidget(inner_frame)
+
+        # 3. FIX SZÉLESSÉGEK BEÁLLÍTÁSA (Nem ugrik a splitter)
+        left_widget.setMinimumWidth(850)
+        left_widget.setMaximumWidth(850)
+        right_widget.setMinimumWidth(350)
+        right_widget.setMaximumWidth(450)
 
         # Splitter beállítása
         self.splitter.addWidget(left_widget)
@@ -847,7 +870,7 @@ class VakuDashboardOnline(QMainWindow):
                 if macro_er > mac_chaos_lim and macro_risk < mac_risk_lim:
                     market_phase = "VOLATILIS TRENDELŐ"
                     self.lbl_adv_regime.setText(f"PIACI REZSIM: {market_phase}")
-                    self.lbl_adv_regime.setStyleSheet("font-size: 16px; font-weight: bold; color: #00ff00;")
+                    self.lbl_adv_regime.setStyleSheet("font-size: 16px; font-weight: bold; color: #006600;")
                     self.lbl_adv_model.setText("Betöltött ML Engine: TREND SCALPING MODELL (Cél: 1.0x ATR)")
 
                     delta_price = self.history_prices[-1] - self.history_prices[-min(50, len(self.history_prices))]
@@ -858,7 +881,7 @@ class VakuDashboardOnline(QMainWindow):
                 else:
                     market_phase = "OLDALAZÓ (Zajos, Range-Bound)"
                     self.lbl_adv_regime.setText(f"PIACI REZSIM: {market_phase}")
-                    self.lbl_adv_regime.setStyleSheet("font-size: 16px; font-weight: bold; color: yellow;")
+                    self.lbl_adv_regime.setStyleSheet("font-size: 16px; font-weight: bold; color: #997300;")
                     self.lbl_adv_model.setText("Betöltött ML Engine: MIKRO-TREND SIDEWAYS MODELL (Cél: 0.2x ATR)")
 
                     delta_price = self.history_prices[-1] - self.history_prices[-min(20, len(self.history_prices))]
@@ -873,15 +896,15 @@ class VakuDashboardOnline(QMainWindow):
 
                 if p_buy > thresh:
                     self.lbl_adv_decision.setText("🎯 VÉGSŐ TANÁCS (ADVISOR): >>> ERŐS VÉTEL (BUY) <<<")
-                    self.lbl_adv_decision.setStyleSheet("font-size: 18px; font-weight: bold; background-color: #004d00; color: white; padding: 10px; border-radius: 5px;")
+                    self.lbl_adv_decision.setStyleSheet("font-size: 18px; font-weight: bold; background-color: #99ff99; color: #003300; padding: 10px; border-radius: 5px;")
                     self.lbl_adv_reason.setText(f"A Modell >{thresh*100:.0f}% magabiztossággal vár felfelé elmozdulást.")
                 elif p_sell > thresh:
                     self.lbl_adv_decision.setText("🎯 VÉGSŐ TANÁCS (ADVISOR): >>> ERŐS ELADÁS (SELL) <<<")
-                    self.lbl_adv_decision.setStyleSheet("font-size: 18px; font-weight: bold; background-color: #4d0000; color: white; padding: 10px; border-radius: 5px;")
+                    self.lbl_adv_decision.setStyleSheet("font-size: 18px; font-weight: bold; background-color: #ffb3b3; color: #4d0000; padding: 10px; border-radius: 5px;")
                     self.lbl_adv_reason.setText(f"A Modell >{thresh*100:.0f}% magabiztossággal vár lefelé elmozdulást.")
                 else:
                     self.lbl_adv_decision.setText("🎯 VÉGSŐ TANÁCS (ADVISOR): KIVÁRÁS")
-                    self.lbl_adv_decision.setStyleSheet("font-size: 18px; font-weight: bold; background-color: #333; color: white; padding: 10px; border-radius: 5px;")
+                    self.lbl_adv_decision.setStyleSheet("font-size: 18px; font-weight: bold; background-color: #cccccc; color: black; padding: 10px; border-radius: 5px;")
                     self.lbl_adv_reason.setText(f"A modell {p_hold*100:.1f}% eséllyel zajt vár. Kockázatos belépni.")
         except Exception as e:
             pass
