@@ -485,8 +485,8 @@ class VakuDashboardOnline(QMainWindow):
                 self.inp_micro_risk.setText(config.get('micro_risk', "40.0"))
                 self.inp_med_risk.setText(config.get('med_risk', "50.0"))
                 self.inp_macro_risk.setText(config.get('macro_risk', "60.0"))
-                self.inp_max_buffer.setText(config.get('max_buffer', "1800"))
-                self.max_points = int(config.get('max_buffer', "1800"))
+                self.inp_max_buffer.setText(config.get('max_buffer', "10000"))
+                self.max_points = int(config.get('max_buffer', "10000"))
                 self.resize_arrays()
                 print("[INFO] Egyedi beállítások sikeresen betöltve!")
             except Exception as e:
@@ -505,7 +505,7 @@ class VakuDashboardOnline(QMainWindow):
         self.inp_micro_risk.setText("40.0")
         self.inp_med_risk.setText("50.0")
         self.inp_macro_risk.setText("60.0")
-        self.inp_max_buffer.setText("1800")
+        self.inp_max_buffer.setText("10000")
         self.max_points = 10000
         self.resize_arrays()
         self.zoom_initialized = False
