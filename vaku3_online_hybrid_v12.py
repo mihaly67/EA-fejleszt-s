@@ -170,18 +170,20 @@ class VakuDashboardOnline(QMainWindow):
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         main_layout = QHBoxLayout(main_widget) # Horizontalis fo layout a Split-Screenhez
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         self.splitter = QSplitter(Qt.Horizontal)
         main_layout.addWidget(self.splitter)
 
         # --- BAL OLDAL: EREDETI V9 HMM NÉZET ---
         left_widget = QWidget()
-        layout = QVBoxLayout(left_widget) # Az eredeti 'layout' változó
+        layout = QVBoxLayout(left_widget)
+        layout.setContentsMargins(5, 5, 5, 5)
 
         # --- PARAMETER SETTINGS PANEL ---
 
         settings_group = QGroupBox("HMM & Piaci Rezsim Paraméterek (Élőben szerkeszthető)")
-        settings_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; } QLineEdit { max-width: 60px; }")
+        settings_group.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }")
         settings_layout = QHBoxLayout()
 
 
@@ -191,8 +193,11 @@ class VakuDashboardOnline(QMainWindow):
         # Left side: Windows
         form_windows = QFormLayout()
         self.inp_micro_win = QLineEdit("30")
+        self.inp_micro_win.setFixedWidth(50)
         self.inp_med_win = QLineEdit("0")
+        self.inp_med_win.setFixedWidth(50)
         self.inp_macro_win = QLineEdit("60")
+        self.inp_macro_win.setFixedWidth(50)
         form_windows.addRow("Mikro Ablak [Def: 30mp]:", self.inp_micro_win)
         form_windows.addRow("Közép Ablak [Def: 0mp]:", self.inp_med_win)
         form_windows.addRow("Makro Ablak [Def: 60mp]:", self.inp_macro_win)
@@ -201,8 +206,11 @@ class VakuDashboardOnline(QMainWindow):
         # Middle: Sensitivities
         form_sens = QFormLayout()
         self.inp_micro_sens = QLineEdit("0.02")
+        self.inp_micro_sens.setFixedWidth(50)
         self.inp_med_sens = QLineEdit("0.03")
+        self.inp_med_sens.setFixedWidth(50)
         self.inp_macro_sens = QLineEdit("0.05")
+        self.inp_macro_sens.setFixedWidth(50)
         form_sens.addRow("Mikro Érzékeny [Def: 0.02%]:", self.inp_micro_sens)
         form_sens.addRow("Közép Érzékeny [Def: 0.03%]:", self.inp_med_sens)
         form_sens.addRow("Makro Érzékeny [Def: 0.05%]:", self.inp_macro_sens)
@@ -211,8 +219,11 @@ class VakuDashboardOnline(QMainWindow):
         # Right 1: Chaos (ER Limit)
         form_chaos = QFormLayout()
         self.inp_micro_chaos = QLineEdit("0.02")
+        self.inp_micro_chaos.setFixedWidth(50)
         self.inp_med_chaos = QLineEdit("0.03")
+        self.inp_med_chaos.setFixedWidth(50)
         self.inp_macro_chaos = QLineEdit("0.05")
+        self.inp_macro_chaos.setFixedWidth(50)
         form_chaos.addRow("Mikro Döglött ER < :", self.inp_micro_chaos)
         form_chaos.addRow("Közép Döglött ER < :", self.inp_med_chaos)
         form_chaos.addRow("Makro Döglött ER < :", self.inp_macro_chaos)
@@ -221,8 +232,11 @@ class VakuDashboardOnline(QMainWindow):
         # Right 2: Whipsaw (Risk Limit)
         form_risk = QFormLayout()
         self.inp_micro_risk = QLineEdit("40.0")
+        self.inp_micro_risk.setFixedWidth(50)
         self.inp_med_risk = QLineEdit("50.0")
+        self.inp_med_risk.setFixedWidth(50)
         self.inp_macro_risk = QLineEdit("60.0")
+        self.inp_macro_risk.setFixedWidth(50)
         form_risk.addRow("Mikro Whipsaw [Def: 40%]:", self.inp_micro_risk)
         form_risk.addRow("Közép Whipsaw [Def: 50%]:", self.inp_med_risk)
         form_risk.addRow("Makro Whipsaw [Def: 60%]:", self.inp_macro_risk)
@@ -231,6 +245,7 @@ class VakuDashboardOnline(QMainWindow):
         # Right 3: Buffer Size
         form_buffer = QFormLayout()
         self.inp_max_buffer = QLineEdit("1800")
+        self.inp_max_buffer.setFixedWidth(50)
         form_buffer.addRow("Max Puffer (Tick):", self.inp_max_buffer)
         settings_inputs_layout.addLayout(form_buffer)
 
@@ -251,10 +266,13 @@ class VakuDashboardOnline(QMainWindow):
         btn_layout.addWidget(self.btn_reset)
         layout_container.addLayout(btn_layout)
 
+
+
+
         settings_group.setLayout(layout_container)
 
 
-        settings_group.setLayout(settings_layout)
+
         layout.addWidget(settings_group)
 
 
@@ -343,7 +361,7 @@ class VakuDashboardOnline(QMainWindow):
         right_widget = QWidget()
         right_widget.setStyleSheet("background-color: #d9d9d9; color: #000000; font-family: Arial;")
         right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(15, 15, 15, 15)
+        right_layout.setContentsMargins(5, 5, 5, 5)
 
         # A cím beemelése a tartalomba (feljebb kerül)
         self.lbl_adv_title = QLabel("🤖 JULES ON-DEMAND ADVISOR (XGBoost + HMM Ensemble)")
@@ -405,16 +423,18 @@ class VakuDashboardOnline(QMainWindow):
         adv_layout.addStretch()
         right_layout.addWidget(inner_frame)
 
-        # 3. FIX SZÉLESSÉGEK BEÁLLÍTÁSA (Nem ugrik a splitter)
-        left_widget.setMinimumWidth(850)
-        left_widget.setMaximumWidth(850)
-        right_widget.setMinimumWidth(350)
-        right_widget.setMaximumWidth(450)
+
 
         # Splitter beállítása
         self.splitter.addWidget(left_widget)
         self.splitter.addWidget(right_widget)
-        self.splitter.setSizes([800, 400]) # 2/3 - 1/3 arány
+
+        # A bal oldal (index 0) 2x akkora súllyal nyújtható, mint a jobb oldal (index 1)
+        self.splitter.setStretchFactor(0, 7)
+        self.splitter.setStretchFactor(1, 3)
+        self.splitter.setCollapsible(0, False)
+        self.splitter.setCollapsible(1, False)
+        self.splitter.setSizes([1000, 400]) # Kezdeti arány
 
         self.load_settings()
 
