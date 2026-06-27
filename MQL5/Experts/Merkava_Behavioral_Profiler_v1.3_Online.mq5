@@ -573,6 +573,7 @@ void OnTick()
        if(g_socket_connected) {
            int pos_type = 0;
            double pos_price = 0.0;
+           double pos_profit = 0.0;
            if(PositionsTotal() > 0) {
                // Megkeressük a legelső nyitott pozíciót a charton (ami ehhez az EA-hez/Symbol-hoz tartozik)
                for(int i=0; i<PositionsTotal(); i++) {
@@ -580,12 +581,13 @@ void OnTick()
                        if(m_position.Symbol() == _Symbol) { // Itt opcionálisan szűrhetünk MagicNumber-re is
                            pos_price = m_position.PriceOpen();
                            pos_type = (m_position.PositionType() == POSITION_TYPE_BUY) ? 1 : -1;
+                           pos_profit = m_position.Profit();
                            break;
                        }
                    }
                }
            }
-           SendTickToPython(tick.time_msc, tick.bid, tick.ask, pos_type, pos_price);
+           SendTickToPython(tick.time_msc, tick.bid, tick.ask, pos_type, pos_price, pos_profit);
        }
    }
 
