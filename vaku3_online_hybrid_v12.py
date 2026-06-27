@@ -95,12 +95,15 @@ class MT5SocketBridge(threading.Thread):
 
                     pos_type = 0
                     pos_price = 0.0
-                    if len(parts) == 6:
+                    pos_profit = 0.0
+                    if len(parts) >= 6:
                         pos_type = int(parts[4])
                         pos_price = float(parts[5])
+                    if len(parts) >= 7:
+                        pos_profit = float(parts[6])
 
                     if self.dashboard:
-                        self.dashboard.add_live_tick(time_msc, price, pos_type, pos_price)
+                        self.dashboard.add_live_tick(time_msc, price, pos_type, pos_price, pos_profit)
                 except ValueError:
                     pass
         else:
@@ -134,7 +137,7 @@ class VakuDashboardOnline(QMainWindow):
         self.setMinimumSize(1200, 600)
 
         # Core data buffers
-        self.max_points = 1800 # ~30 perc M1
+        self.max_points = 10000 # ~30 perc M1
         self.history_times = []
         self.history_prices = []
 
@@ -244,7 +247,7 @@ class VakuDashboardOnline(QMainWindow):
 
         # Right 3: Buffer Size
         form_buffer = QFormLayout()
-        self.inp_max_buffer = QLineEdit("1800")
+        self.inp_max_buffer = QLineEdit("10000")
         self.inp_max_buffer.setFixedWidth(50)
         form_buffer.addRow("Max Puffer (Tick):", self.inp_max_buffer)
         settings_inputs_layout.addLayout(form_buffer)
@@ -503,7 +506,7 @@ class VakuDashboardOnline(QMainWindow):
         self.inp_med_risk.setText("50.0")
         self.inp_macro_risk.setText("60.0")
         self.inp_max_buffer.setText("1800")
-        self.max_points = 1800
+        self.max_points = 10000
         self.resize_arrays()
         self.zoom_initialized = False
 
@@ -604,9 +607,10 @@ class VakuDashboardOnline(QMainWindow):
         if decision == 'YELLOW': return f"FIGYELEM:<br>{state_str}<br>Whipsaw Veszély! Várj!{er_html}"
         if decision == 'RED': return f"TILTVA (KÁOSZ):<br>{state_str}<br>A piac zajos, iránytalan.{er_html}"
 
-    def add_live_tick(self, unix_ms, price, pos_type=0, pos_price=0.0):
+    def add_live_tick(self, unix_ms, price, pos_type=0, pos_price=0.0, pos_profit=0.0):
         self.pos_type = pos_type
         self.pos_price = pos_price
+        self.pos_profit = pos_profit
         # Update raw buffers - we just store the data here, calculation happens in the GUI thread now
         self.history_times.append(unix_ms)
         self.history_prices.append(price)
@@ -772,16 +776,12 @@ class VakuDashboardOnline(QMainWindow):
         # Live Price & Profit Update
         self.lbl_live_price.setText(f"ÁRFOLYAM: {price:.5f}")
         if self.pos_type != 0:
-            if self.pos_type == 1: # Buy
-                profit = price - self.pos_price
-            else: # Sell
-                profit = self.pos_price - price
-
+            profit = getattr(self, 'pos_profit', 0.0)
             color = "#00aa00" if profit >= 0 else "#aa0000"
-            self.lbl_live_profit.setText(f"PROFIT: {profit:.5f}")
+            self.lbl_live_profit.setText(f"PROFIT: {profit:.2f} USD")
             self.lbl_live_profit.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {color};")
         else:
-            self.lbl_live_profit.setText("PROFIT: 0.00")
+            self.lbl_live_profit.setText("PROFIT: 0.00 USD")
             self.lbl_live_profit.setStyleSheet("font-size: 18px; font-weight: bold; color: #555555;")
 
         # Puffer dinamikus olvasás

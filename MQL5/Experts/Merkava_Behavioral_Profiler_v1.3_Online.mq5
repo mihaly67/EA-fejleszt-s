@@ -119,7 +119,7 @@ input group "=== Python Bridge Settings ==="
 input bool   InpEnablePythonBridge = true;       // Enable TCP Bridge to Python HMM Engine
 input string InpBridgeHost         = "127.0.0.1"; // Python Server IP
 input int    InpBridgePort         = 5555;       // Python Server Port
-input int    InpHistoryTicks       = 600;        // Number of Ticks to send on Init
+input int    InpHistoryTicks       = 10000;        // Number of Ticks to send on Init
 
 //--- Socket Variables
 int          g_socket = INVALID_HANDLE;
@@ -248,10 +248,10 @@ void SendHistoryToPython() {
     }
 }
 
-void SendTickToPython(long time_msc, double bid, double ask, int pos_type, double pos_price) {
+void SendTickToPython(long time_msc, double bid, double ask, int pos_type, double pos_price, double pos_profit) {
     if(!g_socket_connected) return;
 
-    string payload = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "|" + IntegerToString(pos_type) + "|" + DoubleToString(pos_price, _Digits) + "\n";
+    string payload = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "|" + IntegerToString(pos_type) + "|" + DoubleToString(pos_price, _Digits) + "|" + DoubleToString(pos_profit, 2) + "\n";
     uchar buffer[];
     StringToCharArray(payload, buffer);
 
