@@ -279,7 +279,7 @@ class VakuDashboardOnline(QMainWindow):
         # Top Panel (Clock & Buffer Info & Price & Profit)
         top_panel = QHBoxLayout()
         self.lbl_clock = QLabel("MT5 TICK IDŐ: VÁRAKOZÁS...")
-        self.lbl_clock.setStyleSheet("font-size: 18px; font-weight: bold; color: #000000;")
+        self.lbl_clock.setStyleSheet("font-size: 18px; font-weight: bold; color: #ffffff;")
         top_panel.addWidget(self.lbl_clock)
 
         self.lbl_live_price = QLabel("ÁRFOLYAM: ----.--")
@@ -293,7 +293,7 @@ class VakuDashboardOnline(QMainWindow):
         top_panel.addWidget(self.lbl_live_profit)
 
         self.lbl_buffer = QLabel("Memória Puffer: 0 tick")
-        self.lbl_buffer.setStyleSheet("font-size: 14px; color: #555555;")
+        self.lbl_buffer.setStyleSheet("font-size: 16px; font-weight: bold; color: #ffffff;")
         self.lbl_buffer.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         top_panel.addWidget(self.lbl_buffer)
 
