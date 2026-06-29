@@ -3,12 +3,12 @@ import numpy as np
 
 def detect_spoofing(df, lookback=5):
     # Spoofing: Huge volume appears then disappears without trade execution (price hasn't moved through it)
-    df['Ask_V1_Rolling_Max'] = df['Ask_Vol_1'].rolling(lookback).max()
-    df['Bid_V1_Rolling_Max'] = df['Bid_Vol_1'].rolling(lookback).max()
+    df['Ask_V1_Rolling_Max'] = df.get('Ask_Vol_1', df.get('AskV1', pd.Series(dtype=float))).rolling(lookback).max()
+    df['Bid_V1_Rolling_Max'] = df.get('Bid_Vol_1', df.get('BidV1', pd.Series(dtype=float))).rolling(lookback).max()
 
     # Sudden drop > 50%
-    df['Ask_Spoof'] = (df['Ask_Vol_1'] < df['Ask_V1_Rolling_Max'] * 0.5) & (df['Ask'] == df['Ask'].shift(1))
-    df['Bid_Spoof'] = (df['Bid_Vol_1'] < df['Bid_V1_Rolling_Max'] * 0.5) & (df['Bid'] == df['Bid'].shift(1))
+    df['Ask_Spoof'] = (df.get('Ask_Vol_1', df.get('AskV1', pd.Series(dtype=float))) < df['Ask_V1_Rolling_Max'] * 0.5) & (df.get('Ask', df.get('BestAsk', pd.Series(dtype=float))) == df.get('Ask', df.get('BestAsk', pd.Series(dtype=float))).shift(1))
+    df['Bid_Spoof'] = (df.get('Bid_Vol_1', df.get('BidV1', pd.Series(dtype=float))) < df['Bid_V1_Rolling_Max'] * 0.5) & (df.get('Bid', df.get('BestBid', pd.Series(dtype=float))) == df.get('Bid', df.get('BestBid', pd.Series(dtype=float))).shift(1))
 
     return df['Ask_Spoof'].sum(), df['Bid_Spoof'].sum()
 
@@ -26,5 +26,5 @@ if True:
     print(f"Detektált Ask Spoof gyanús tickek: {ask_s} ({ask_s/len(df)*100:.1f}%)")
     print(f"Detektált Bid Spoof gyanús tickek: {bid_s} ({bid_s/len(df)*100:.1f}%)")
 
-    df['Spread_Tick'] = df['Ask'] - df['Bid']
+    df['Spread_Tick'] = df.get('Ask', df.get('BestAsk', pd.Series(dtype=float))) - df.get('Bid', df.get('BestBid', pd.Series(dtype=float)))
     print(f"Átlagos Spread: {df['Spread_Tick'].mean():.5f}")

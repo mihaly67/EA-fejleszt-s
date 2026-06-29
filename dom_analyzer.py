@@ -18,8 +18,8 @@ def analyze_dom(file_path):
     # EURUSD DOM miner esetében van V1, V2, V3, V4, V5 (a legacy BlackBox miatt)
     # Merkava_DOM_Miner_MQL5 script esetében csak V1, V2 van. Ezt dinaminuksan lekezeljük.
 
-    bid_cols = [c for c in df.columns if c.startswith('Bid_Vol_') and df[c].sum() > 0]
-    ask_cols = [c for c in df.columns if c.startswith('Ask_Vol_') and df[c].sum() > 0]
+    bid_cols = [c for c in df.columns if c.startswith('Bid') and ('Vol' in c or 'V' in c) and df[c].sum() > 0]
+    ask_cols = [c for c in df.columns if c.startswith('Ask') and ('Vol' in c or 'V' in c) and df[c].sum() > 0]
 
     if len(bid_cols) > 0 and len(ask_cols) > 0:
         df['Total_Bid_Vol'] = df[bid_cols].sum(axis=1)
@@ -28,13 +28,13 @@ def analyze_dom(file_path):
 
         # Spoofing detektálás (Hirtelen volumencsökkenés anélkül hogy trade történt volna a levelen)
         # Egyelőre egyszerűen a top level volatilitásának ugrásai
-        df['Ask_V1_Delta'] = df['Ask_Vol_1'].diff()
-        df['Bid_V1_Delta'] = df['Bid_Vol_1'].diff()
+        df['Ask_V1_Delta'] = df.get('Ask_Vol_1', df.get('AskV1', pd.Series())).diff()
+        df['Bid_V1_Delta'] = df.get('Bid_Vol_1', df.get('BidV1', pd.Series())).diff()
 
         print(f"Átlagos Imbalance: {df['Imbalance'].mean():.4f}")
 
         # XGBoost Prediction Power korreláció (Shiftelt jövőbeli árváltozással)
-        df['Future_Return_10s'] = df['Ask'].shift(-10) / df['Ask'] - 1
+        df['Future_Return_10s'] = df.get('Ask', df.get('BestAsk', pd.Series())).shift(-10) / df.get('Ask', df.get('BestAsk', pd.Series())) - 1
 
         corr = df['Imbalance'].corr(df['Future_Return_10s'])
         print(f"Imbalance -> Jövőbeli (10s) Hozam korreláció: {corr:.4f}")
@@ -43,8 +43,8 @@ def analyze_dom(file_path):
         plt.figure(figsize=(15, 10))
 
         plt.subplot(3, 1, 1)
-        plt.plot(df.index, df['Ask'], label='Best Ask', color='red')
-        plt.plot(df.index, df['Bid'], label='Best Bid', color='green')
+        plt.plot(df.index, df.get('Ask', df.get('BestAsk', pd.Series())), label='Best Ask', color='red')
+        plt.plot(df.index, df.get('Bid', df.get('BestBid', pd.Series())), label='Best Bid', color='green')
         plt.title('Árfolyam (Best Bid/Ask)')
         plt.legend()
 
@@ -55,8 +55,8 @@ def analyze_dom(file_path):
         plt.legend()
 
         plt.subplot(3, 1, 3)
-        plt.plot(df.index, df['Ask_Vol_1'], label='Top Ask Volumen', color='red', alpha=0.5)
-        plt.plot(df.index, df['Bid_Vol_1'], label='Top Bid Volumen', color='green', alpha=0.5)
+        plt.plot(df.index, df.get('Ask_Vol_1', df.get('AskV1', pd.Series())), label='Top Ask Volumen', color='red', alpha=0.5)
+        plt.plot(df.index, df.get('Bid_Vol_1', df.get('BidV1', pd.Series())), label='Top Bid Volumen', color='green', alpha=0.5)
         plt.title('Top Level 1 Volumen (Spoofing vizsgálathoz)')
         plt.legend()
 
