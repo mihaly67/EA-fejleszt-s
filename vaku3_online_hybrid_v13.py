@@ -425,7 +425,6 @@ class VakuDashboardOnline(QMainWindow):
         self.lbl_imbalance.setAlignment(Qt.AlignCenter)
         adv_layout.addWidget(self.lbl_imbalance)
 
-        import pyqtgraph as pg
 
         # DOM Hisztogram (BarGraphItem)
         self.dom_plot_widget = pg.PlotWidget(title="")
