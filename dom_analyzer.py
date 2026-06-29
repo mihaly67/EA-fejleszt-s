@@ -34,7 +34,7 @@ def analyze_dom(file_path):
         print(f"Átlagos Imbalance: {df['Imbalance'].mean():.4f}")
 
         # XGBoost Prediction Power korreláció (Shiftelt jövőbeli árváltozással)
-        df['Future_Return_10s'] = df.get('Ask', df.get('BestAsk', pd.Series())).shift(-10) / df.get('Ask', df.get('BestAsk', pd.Series())) - 1
+        df['Future_Return_10s'] = df.get('Ask', df.get('BestAsk', pd.Series())).shift(-1000) / df.get('Ask', df.get('BestAsk', pd.Series())) - 1
 
         corr = df['Imbalance'].corr(df['Future_Return_10s'])
         print(f"Imbalance -> Jövőbeli (10s) Hozam korreláció: {corr:.4f}")
