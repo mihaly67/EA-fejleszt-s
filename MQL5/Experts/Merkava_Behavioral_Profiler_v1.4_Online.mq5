@@ -1,13 +1,13 @@
 //+------------------------------------------------------------------+
-//|                             Merkava_Behavioral_Profiler_v1.3_Online.mq5 |
+//|                             Merkava_Behavioral_Profiler_v1.4_Online.mq5 |
 //|                                    Copyright 2026, Jules (Mimic) |
 //|                                             For Project Merkava  |
-//|                                                   Version 1.3 (Online ZMQ/Socket Bridge + XGBoost/HMM Dashboard)    |
+//|                                                   Version 1.4 (Online ZMQ/Socket Bridge + XGBoost/HMM Dashboard)    |
 //|        (Integration: Context v3.28 4 EMAs, Native EMA removed)   |
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
 #property link      "https://github.com/MimicProject"
-#property version   "1.30"
+#property version   "1.40"
 #property strict
 
 #include "../Indicators/Types_v2_16.mqh"
@@ -248,10 +248,10 @@ void SendHistoryToPython() {
     }
 }
 
-void SendTickToPython(long time_msc, double bid, double ask, int pos_type, double pos_price, double pos_profit) {
+void SendTickToPython(long time_msc, double bid, double ask, int pos_type, double pos_price, double pos_profit, long av1, long av2, long bv1, long bv2) {
     if(!g_socket_connected) return;
 
-    string payload = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "|" + IntegerToString(pos_type) + "|" + DoubleToString(pos_price, _Digits) + "|" + DoubleToString(pos_profit, 2) + "\n";
+    string payload = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "|" + IntegerToString(pos_type) + "|" + DoubleToString(pos_price, _Digits) + "|" + DoubleToString(pos_profit, 2) + "|" + IntegerToString(av1) + "|" + IntegerToString(av2) + "|" + IntegerToString(bv1) + "|" + IntegerToString(bv2) + "\n";
     uchar buffer[];
     StringToCharArray(payload, buffer);
 
@@ -351,11 +351,13 @@ int OnInit()
    m_panel.UpdateUI(GetFloatingPL());
 
    Print("Merkava PROFILER v1.1 Initialized (Strict Silence).");
+   if(InpEnablePythonBridge) { MarketBookAdd(_Symbol); }
    return(INIT_SUCCEEDED);
 }
 
 void OnDeinit(const int reason)
 {
+   if(InpEnablePythonBridge) { MarketBookRelease(_Symbol); }
    m_panel.Destroy();
    ObjectsDeleteAll(0, Prefix);
    ChartRedraw();
@@ -578,7 +580,7 @@ void OnTick()
                // Megkeressük a legelső nyitott pozíciót a charton (ami ehhez az EA-hez/Symbol-hoz tartozik)
                for(int i=0; i<PositionsTotal(); i++) {
                    if(m_position.SelectByIndex(i)) {
-                       if(m_position.Symbol() == _Symbol) { // Itt opcionálisan szűrhetünk MagicNumber-re is
+                       if(m_position.Symbol() == _Symbol) {
                            pos_price = m_position.PriceOpen();
                            pos_type = (m_position.PositionType() == POSITION_TYPE_BUY) ? 1 : -1;
                            pos_profit = m_position.Profit();
@@ -587,7 +589,35 @@ void OnTick()
                    }
                }
            }
-           SendTickToPython(tick.time_msc, tick.bid, tick.ask, pos_type, pos_price, pos_profit);
+
+           // Fetch DOM Data
+           long av1 = 0, av2 = 0, bv1 = 0, bv2 = 0;
+           MqlBookInfo book[];
+           if (MarketBookGet(_Symbol, book)) {
+               int size = ArraySize(book);
+               int buy_start_idx = -1;
+               for(int i=0; i<size; i++) {
+                   if(book[i].type == BOOK_TYPE_BUY) {
+                       buy_start_idx = i;
+                       break;
+                   }
+               }
+
+               if(buy_start_idx > 0) {
+                   if(buy_start_idx - 1 >= 0) av1 = book[buy_start_idx - 1].volume;
+                   if(buy_start_idx - 2 >= 0) av2 = book[buy_start_idx - 2].volume;
+               } else if (buy_start_idx == -1 && size >= 2) {
+                   av1 = book[size - 1].volume;
+                   av2 = book[size - 2].volume;
+               }
+
+               if(buy_start_idx != -1) {
+                   if(buy_start_idx < size) bv1 = book[buy_start_idx].volume;
+                   if(buy_start_idx + 1 < size) bv2 = book[buy_start_idx + 1].volume;
+               }
+           }
+
+           SendTickToPython(tick.time_msc, tick.bid, tick.ask, pos_type, pos_price, pos_profit, av1, av2, bv1, bv2);
        }
    }
 
