@@ -426,13 +426,30 @@ class VakuDashboardOnline(QMainWindow):
         adv_layout.addWidget(self.lbl_imbalance)
 
         from PyQt5.QtWidgets import QProgressBar
-        self.pb_imbalance = QProgressBar()
-        self.pb_imbalance.setRange(-100, 100)
-        self.pb_imbalance.setValue(0)
-        self.pb_imbalance.setTextVisible(False)
-        self.pb_imbalance.setFixedHeight(10)
-        # Zöld ha plusz (Bid többség), Piros ha mínusz (Ask többség) - ezt a frissítőben CSS-el toljuk
-        adv_layout.addWidget(self.pb_imbalance)
+
+        gauge_layout = QHBoxLayout()
+        gauge_layout.setSpacing(0)
+
+        # Bal oldali (Ask/Eladók) sáv: Piros, jobbról balra tölt (Inverted)
+        self.pb_ask = QProgressBar()
+        self.pb_ask.setRange(0, 100)
+        self.pb_ask.setValue(0)
+        self.pb_ask.setTextVisible(False)
+        self.pb_ask.setFixedHeight(12)
+        self.pb_ask.setInvertedAppearance(True)
+        self.pb_ask.setStyleSheet("QProgressBar { border: 1px solid #aaa; background-color: #e6e6e6; } QProgressBar::chunk { background-color: #aa0000; }")
+
+        # Jobb oldali (Bid/Vevők) sáv: Zöld, balról jobbra tölt
+        self.pb_bid = QProgressBar()
+        self.pb_bid.setRange(0, 100)
+        self.pb_bid.setValue(0)
+        self.pb_bid.setTextVisible(False)
+        self.pb_bid.setFixedHeight(12)
+        self.pb_bid.setStyleSheet("QProgressBar { border: 1px solid #aaa; background-color: #e6e6e6; } QProgressBar::chunk { background-color: #00aa00; }")
+
+        gauge_layout.addWidget(self.pb_ask)
+        gauge_layout.addWidget(self.pb_bid)
+        adv_layout.addLayout(gauge_layout)
 
         # Spoofing Riasztás
         self.lbl_spoof_alert = QLabel("✅ DOM INTEGRITÁS STABIL")
@@ -1016,13 +1033,15 @@ class VakuDashboardOnline(QMainWindow):
                     imbalance = 0.0
 
                 self.lbl_imbalance.setText(f"Order Book Imbalance: {imbalance:+.2f}")
-                self.pb_imbalance.setValue(int(imbalance * 100))
-                if imbalance > 0.2:
-                    self.pb_imbalance.setStyleSheet("QProgressBar::chunk { background-color: #00aa00; }")
-                elif imbalance < -0.2:
-                    self.pb_imbalance.setStyleSheet("QProgressBar::chunk { background-color: #aa0000; }")
+
+                # Gauge Frissítés: Ha imbalance < 0, Ask sáv tölt, Bid sáv nulla. Fordítva zöld.
+                imb_pct = int(imbalance * 100)
+                if imb_pct < 0:
+                    self.pb_ask.setValue(abs(imb_pct))
+                    self.pb_bid.setValue(0)
                 else:
-                    self.pb_imbalance.setStyleSheet("QProgressBar::chunk { background-color: #888888; }")
+                    self.pb_ask.setValue(0)
+                    self.pb_bid.setValue(imb_pct)
 
                 self.lbl_dom_details.setText(f"Ask (L1): {av1} | Ask (L2): {av2}\nBid (L1): {bv1} | Bid (L2): {bv2}")
 
