@@ -248,10 +248,10 @@ void SendHistoryToPython() {
     }
 }
 
-void SendTickToPython(long time_msc, double bid, double ask, int pos_type, double pos_price, double pos_profit, long av1, long av2, long bv1, long bv2) {
+void SendTickToPython(long time_msc, double bid, double ask, int pos_type, double pos_price, double pos_profit, long av1, long av2, long bv1, long bv2, double ap1, double ap2, double bp1, double bp2) {
     if(!g_socket_connected) return;
 
-    string payload = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "|" + IntegerToString(pos_type) + "|" + DoubleToString(pos_price, _Digits) + "|" + DoubleToString(pos_profit, 2) + "|" + IntegerToString(av1) + "|" + IntegerToString(av2) + "|" + IntegerToString(bv1) + "|" + IntegerToString(bv2) + "\n";
+    string payload = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "|" + IntegerToString(pos_type) + "|" + DoubleToString(pos_price, _Digits) + "|" + DoubleToString(pos_profit, 2) + "|" + IntegerToString(av1) + "|" + IntegerToString(av2) + "|" + IntegerToString(bv1) + "|" + IntegerToString(bv2) + "|" + DoubleToString(ap1, _Digits) + "|" + DoubleToString(ap2, _Digits) + "|" + DoubleToString(bp1, _Digits) + "|" + DoubleToString(bp2, _Digits) + "\n";
     uchar buffer[];
     StringToCharArray(payload, buffer);
 
@@ -592,6 +592,7 @@ void OnTick()
 
            // Fetch DOM Data
            long av1 = 0, av2 = 0, bv1 = 0, bv2 = 0;
+           double ap1 = 0.0, ap2 = 0.0, bp1 = 0.0, bp2 = 0.0;
            MqlBookInfo book[];
            if (MarketBookGet(_Symbol, book)) {
                int size = ArraySize(book);
@@ -604,20 +605,20 @@ void OnTick()
                }
 
                if(buy_start_idx > 0) {
-                   if(buy_start_idx - 1 >= 0) av1 = book[buy_start_idx - 1].volume;
-                   if(buy_start_idx - 2 >= 0) av2 = book[buy_start_idx - 2].volume;
+                   if(buy_start_idx - 1 >= 0) { ap1 = book[buy_start_idx - 1].price; av1 = book[buy_start_idx - 1].volume; }
+                   if(buy_start_idx - 2 >= 0) { ap2 = book[buy_start_idx - 2].price; av2 = book[buy_start_idx - 2].volume; }
                } else if (buy_start_idx == -1 && size >= 2) {
-                   av1 = book[size - 1].volume;
-                   av2 = book[size - 2].volume;
+                   ap1 = book[size - 1].price; av1 = book[size - 1].volume;
+                   ap2 = book[size - 2].price; av2 = book[size - 2].volume;
                }
 
                if(buy_start_idx != -1) {
-                   if(buy_start_idx < size) bv1 = book[buy_start_idx].volume;
-                   if(buy_start_idx + 1 < size) bv2 = book[buy_start_idx + 1].volume;
+                   if(buy_start_idx < size) { bp1 = book[buy_start_idx].price; bv1 = book[buy_start_idx].volume; }
+                   if(buy_start_idx + 1 < size) { bp2 = book[buy_start_idx + 1].price; bv2 = book[buy_start_idx + 1].volume; }
                }
            }
 
-           SendTickToPython(tick.time_msc, tick.bid, tick.ask, pos_type, pos_price, pos_profit, av1, av2, bv1, bv2);
+           SendTickToPython(tick.time_msc, tick.bid, tick.ask, pos_type, pos_price, pos_profit, av1, av2, bv1, bv2, ap1, ap2, bp1, bp2);
        }
    }
 
