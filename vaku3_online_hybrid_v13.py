@@ -425,31 +425,39 @@ class VakuDashboardOnline(QMainWindow):
         self.lbl_imbalance.setAlignment(Qt.AlignCenter)
         adv_layout.addWidget(self.lbl_imbalance)
 
-        from PyQt5.QtWidgets import QProgressBar
+        import pyqtgraph as pg
 
-        gauge_layout = QHBoxLayout()
-        gauge_layout.setSpacing(0)
+        # DOM Hisztogram (BarGraphItem)
+        self.dom_plot_widget = pg.PlotWidget(title="")
+        self.dom_plot_widget.setFixedHeight(150)
+        self.dom_plot_widget.showGrid(x=False, y=True, alpha=0.3)
+        self.dom_plot_widget.setMouseEnabled(x=False, y=False)
+        self.dom_plot_widget.hideAxis('bottom')
+        self.dom_plot_widget.hideAxis('left')
+        self.dom_plot_widget.setBackground('#d9d9d9')
 
-        # Bal oldali (Ask/Eladók) sáv: Piros, jobbról balra tölt (Inverted)
-        self.pb_ask = QProgressBar()
-        self.pb_ask.setRange(0, 100)
-        self.pb_ask.setValue(0)
-        self.pb_ask.setTextVisible(False)
-        self.pb_ask.setFixedHeight(12)
-        self.pb_ask.setInvertedAppearance(True)
-        self.pb_ask.setStyleSheet("QProgressBar { border: 1px solid #aaa; background-color: #e6e6e6; } QProgressBar::chunk { background-color: #aa0000; }")
+        # Üres adatokkal inicializáljuk (Y: 1 (Level 1), 2 (Level 2))
+        # Ask balra nől negatív X irányba, Bid jobbra pozitív X irányba
+        self.bg_ask_l1 = pg.BarGraphItem(y=[1], x0=[0], x1=[0], height=0.6, brush='r')
+        self.bg_ask_l2 = pg.BarGraphItem(y=[2], x0=[0], x1=[0], height=0.6, brush=pg.mkBrush(200,0,0))
+        self.bg_bid_l1 = pg.BarGraphItem(y=[1], x0=[0], x1=[0], height=0.6, brush='g')
+        self.bg_bid_l2 = pg.BarGraphItem(y=[2], x0=[0], x1=[0], height=0.6, brush=pg.mkBrush(0,200,0))
 
-        # Jobb oldali (Bid/Vevők) sáv: Zöld, balról jobbra tölt
-        self.pb_bid = QProgressBar()
-        self.pb_bid.setRange(0, 100)
-        self.pb_bid.setValue(0)
-        self.pb_bid.setTextVisible(False)
-        self.pb_bid.setFixedHeight(12)
-        self.pb_bid.setStyleSheet("QProgressBar { border: 1px solid #aaa; background-color: #e6e6e6; } QProgressBar::chunk { background-color: #00aa00; }")
+        self.dom_plot_widget.addItem(self.bg_ask_l1)
+        self.dom_plot_widget.addItem(self.bg_ask_l2)
+        self.dom_plot_widget.addItem(self.bg_bid_l1)
+        self.dom_plot_widget.addItem(self.bg_bid_l2)
 
-        gauge_layout.addWidget(self.pb_ask)
-        gauge_layout.addWidget(self.pb_bid)
-        adv_layout.addLayout(gauge_layout)
+        # Középvonal (Y tengely)
+        self.center_line = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('k', width=2))
+        self.center_line.setValue(0)
+        self.dom_plot_widget.addItem(self.center_line)
+
+        adv_layout.addWidget(self.dom_plot_widget)
+
+        # Timer a Spoofing üzenet tartásához
+        self.spoof_alert_time = 0
+
 
         # Spoofing Riasztás
         self.lbl_spoof_alert = QLabel("✅ DOM INTEGRITÁS STABIL")
@@ -1034,40 +1042,65 @@ class VakuDashboardOnline(QMainWindow):
 
                 self.lbl_imbalance.setText(f"Order Book Imbalance: {imbalance:+.2f}")
 
-                # Gauge Frissítés: Ha imbalance < 0, Ask sáv tölt, Bid sáv nulla. Fordítva zöld.
-                imb_pct = int(imbalance * 100)
-                if imb_pct < 0:
-                    self.pb_ask.setValue(abs(imb_pct))
-                    self.pb_bid.setValue(0)
-                else:
-                    self.pb_ask.setValue(0)
-                    self.pb_bid.setValue(imb_pct)
+                # Histogram Frissítés (Vízszintes oszlopok)
+                self.bg_ask_l1.setOpts(x0=[0], x1=[-av1])
+                self.bg_ask_l2.setOpts(x0=[0], x1=[-av2])
+                self.bg_bid_l1.setOpts(x0=[0], x1=[bv1])
+                self.bg_bid_l2.setOpts(x0=[0], x1=[bv2])
 
-                self.lbl_dom_details.setText(f"Ask (L1): {av1} | Ask (L2): {av2}\nBid (L1): {bv1} | Bid (L2): {bv2}")
+                # X tengely dinamikus méretezése, Y fix
+                max_vol = max(av1, av2, bv1, bv2, 10)
+                self.dom_plot_widget.setXRange(-max_vol * 1.1, max_vol * 1.1)
+                self.dom_plot_widget.setYRange(0, 3)
 
-                # Spoofing logika: rolling max az elmúlt kb 100 ticken
+                self.lbl_dom_details.setText(f"Ask (L2): {av2} | Ask (L1): {av1}\nBid (L1): {bv1} | Bid (L2): {bv2}")
+
+                # Spoofing logika: rolling max az elmúlt kb 100 ticken (~1mp Futureson)
                 lookback = min(100, len(self.history_av1))
                 recent_av1 = self.history_av1[-lookback:]
                 recent_bv1 = self.history_bv1[-lookback:]
                 max_av1 = max(recent_av1) if recent_av1 else 1
                 max_bv1 = max(recent_bv1) if recent_bv1 else 1
 
-                # Ha hirtelen a felére esik a volumen az L1-en anélkül, hogy az ár átszelné
-                ask_spoof = (av1 < max_av1 * 0.5) and (self.history_prices[-1] == self.history_prices[-2]) and (max_av1 > 10)
-                bid_spoof = (bv1 < max_bv1 * 0.5) and (self.history_prices[-1] == self.history_prices[-2]) and (max_bv1 > 10)
+                # Ha hirtelen a felére esik a volumen az L1-en, miközben a Mid-Price mozgása elenyésző
+                price_delta = abs(self.history_prices[-1] - self.history_prices[-2])
+                price_stable = price_delta < (self.current_mic_risk * 0.05) if hasattr(self, 'current_mic_risk') else price_delta < 0.1
 
-                if ask_spoof and bid_spoof:
-                    self.lbl_spoof_alert.setText("⚠️ KÉTOLDALÚ SPOOFING / LIKVIDITÁS ELTŰNÉS!")
-                    self.lbl_spoof_alert.setStyleSheet("font-size: 13px; font-weight: bold; background-color: #cc00cc; color: white; padding: 5px; border-radius: 3px;")
-                elif ask_spoof:
-                    self.lbl_spoof_alert.setText("⚠️ ASK SPOOFING (Eladók visszavonták a volument)")
-                    self.lbl_spoof_alert.setStyleSheet("font-size: 13px; font-weight: bold; background-color: #aa0000; color: white; padding: 5px; border-radius: 3px;")
-                elif bid_spoof:
-                    self.lbl_spoof_alert.setText("⚠️ BID SPOOFING (Vevők visszavonták a volument)")
-                    self.lbl_spoof_alert.setStyleSheet("font-size: 13px; font-weight: bold; background-color: #00aa00; color: white; padding: 5px; border-radius: 3px;")
-                else:
-                    self.lbl_spoof_alert.setText("✅ DOM INTEGRITÁS STABIL")
-                    self.lbl_spoof_alert.setStyleSheet("font-size: 13px; font-weight: bold; background-color: #008800; color: white; padding: 5px; border-radius: 3px;")
+                ask_spoof = (av1 < max_av1 * 0.5) and price_stable and (max_av1 > 10)
+                bid_spoof = (bv1 < max_bv1 * 0.5) and price_stable and (max_bv1 > 10)
+
+                # Riasztás "ragadós" időzítő (3 másodpercig kint hagyja a feliratot, hogy ember is lássa)
+                import time
+                current_t = time.time()
+
+                if ask_spoof or bid_spoof:
+                    self.spoof_alert_time = current_t
+                    if ask_spoof and bid_spoof:
+                        self.lbl_spoof_alert.setText("🚨 KÉTOLDALÚ LIKVIDITÁS ELTŰNÉS (SPOOF)!")
+                        self.lbl_spoof_alert.setStyleSheet("font-size: 13px; font-weight: bold; background-color: #cc00cc; color: white; padding: 5px; border-radius: 3px;")
+                    elif ask_spoof:
+                        self.lbl_spoof_alert.setText("🚨 ASK SPOOFING (Eladók visszavonták a volument)")
+                        self.lbl_spoof_alert.setStyleSheet("font-size: 13px; font-weight: bold; background-color: #aa0000; color: white; padding: 5px; border-radius: 3px;")
+                    elif bid_spoof:
+                        self.lbl_spoof_alert.setText("🚨 BID SPOOFING (Vevők visszavonták a volument)")
+                        self.lbl_spoof_alert.setStyleSheet("font-size: 13px; font-weight: bold; background-color: #00aa00; color: white; padding: 5px; border-radius: 3px;")
+                elif (current_t - getattr(self, 'spoof_alert_time', 0)) > 3.0:
+                    # Nincs spoofing az elmúlt 3mp-ben. Integritás és konzisztencia vizsgálat (Rolling Mean Imbalance)
+                    if not hasattr(self, 'history_imbalance'): self.history_imbalance = []
+                    self.history_imbalance.append(imbalance)
+                    if len(self.history_imbalance) > 100: self.history_imbalance.pop(0) # 100 tick kb 1 masodperc futureson
+
+                    mean_imbalance = sum(self.history_imbalance) / len(self.history_imbalance)
+
+                    if mean_imbalance < -0.3:
+                        self.lbl_spoof_alert.setText("⚠️ KONZISZTENS ELADÓI (ASK) NYOMÁS")
+                        self.lbl_spoof_alert.setStyleSheet("font-size: 13px; font-weight: bold; background-color: #aa5500; color: white; padding: 5px; border-radius: 3px;")
+                    elif mean_imbalance > 0.3:
+                        self.lbl_spoof_alert.setText("⚠️ KONZISZTENS VÉTELI (BID) NYOMÁS")
+                        self.lbl_spoof_alert.setStyleSheet("font-size: 13px; font-weight: bold; background-color: #00aa55; color: white; padding: 5px; border-radius: 3px;")
+                    else:
+                        self.lbl_spoof_alert.setText("✅ DOM KIEGYENLÍTETT (STABIL ÁTLAG)")
+                        self.lbl_spoof_alert.setStyleSheet("font-size: 13px; font-weight: bold; background-color: #008800; color: white; padding: 5px; border-radius: 3px;")
 
 
         except Exception as e:
