@@ -462,32 +462,68 @@ class VakuDashboardOnline(QMainWindow):
         gauge_layout.addWidget(self.pb_bid)
         adv_layout.addLayout(gauge_layout)
 
-        # DOM Hisztogram (BarGraphItem)
-        self.dom_plot_widget = pg.PlotWidget(title="")
-        self.dom_plot_widget.setFixedHeight(150)
-        self.dom_plot_widget.showGrid(x=False, y=False) # Szaggatott vonalak eltuntetve!
-        self.dom_plot_widget.setMouseEnabled(x=False, y=False)
-        self.dom_plot_widget.hideAxis('bottom')
-        self.dom_plot_widget.getAxis('left').setPen('k') # Bal tengely mutatja az árakat!
-        self.dom_plot_widget.setBackground('#d9d9d9')
+        # Profi Price Ladder (DOM Hisztogram) PyQt Widgetekből
+        ladder_frame = QFrame()
+        ladder_frame.setStyleSheet("background-color: #d9d9d9; border: 1px solid #999;")
+        ladder_layout = QVBoxLayout(ladder_frame)
+        ladder_layout.setContentsMargins(5, 5, 5, 5)
+        ladder_layout.setSpacing(2)
 
-        # Üres adatokkal inicializáljuk
-        self.bg_ask_l1 = pg.BarGraphItem(y=[2], x0=[0], x1=[0], height=0.8, brush='r')
-        self.bg_ask_l2 = pg.BarGraphItem(y=[3], x0=[0], x1=[0], height=0.8, brush=pg.mkBrush(200,0,0))
-        self.bg_bid_l1 = pg.BarGraphItem(y=[0], x0=[0], x1=[0], height=0.8, brush='g')
-        self.bg_bid_l2 = pg.BarGraphItem(y=[-1], x0=[0], x1=[0], height=0.8, brush=pg.mkBrush(0,200,0))
+        def create_ladder_row(is_ask):
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.dom_plot_widget.addItem(self.bg_ask_l1)
-        self.dom_plot_widget.addItem(self.bg_ask_l2)
-        self.dom_plot_widget.addItem(self.bg_bid_l1)
-        self.dom_plot_widget.addItem(self.bg_bid_l2)
+            lbl_price = QLabel("----.--")
+            lbl_price.setFixedWidth(60)
+            lbl_price.setStyleSheet("font-family: monospace; font-weight: bold; font-size: 12px; border: none;")
 
-        # Középvonal (X=0)
-        self.center_line = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('k', width=2))
-        self.center_line.setValue(0)
-        self.dom_plot_widget.addItem(self.center_line)
+            pb = QProgressBar()
+            pb.setRange(0, 100)
+            pb.setValue(0)
+            pb.setTextVisible(False)
+            pb.setFixedHeight(15)
 
-        adv_layout.addWidget(self.dom_plot_widget)
+            lbl_vol = QLabel("0")
+            lbl_vol.setFixedWidth(40)
+            lbl_vol.setStyleSheet("font-family: monospace; font-size: 11px; border: none;")
+
+            if is_ask:
+                pb.setInvertedAppearance(True) # Jobbról balra nő
+                pb.setStyleSheet("QProgressBar { border: none; background-color: #e6e6e6; } QProgressBar::chunk { background-color: #cc0000; }")
+                lbl_price.setStyleSheet(lbl_price.styleSheet() + " color: #cc0000;")
+                row_layout.addWidget(lbl_price)
+                row_layout.addWidget(pb)
+                row_layout.addWidget(lbl_vol)
+            else:
+                pb.setStyleSheet("QProgressBar { border: none; background-color: #e6e6e6; } QProgressBar::chunk { background-color: #009900; }")
+                lbl_price.setStyleSheet(lbl_price.styleSheet() + " color: #009900;")
+                row_layout.addWidget(lbl_vol)
+                row_layout.addWidget(pb)
+                row_layout.addWidget(lbl_price)
+                lbl_vol.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+            return row, lbl_price, pb, lbl_vol
+
+        self.row_a2, self.lbl_a2_p, self.pb_a2, self.lbl_a2_v = create_ladder_row(is_ask=True)
+        self.row_a1, self.lbl_a1_p, self.pb_a1, self.lbl_a1_v = create_ladder_row(is_ask=True)
+        self.row_b1, self.lbl_b1_p, self.pb_b1, self.lbl_b1_v = create_ladder_row(is_ask=False)
+        self.row_b2, self.lbl_b2_p, self.pb_b2, self.lbl_b2_v = create_ladder_row(is_ask=False)
+
+        ladder_layout.addWidget(self.row_a2)
+        ladder_layout.addWidget(self.row_a1)
+
+        # DOM Középvonal (Spread)
+        spread_line = QFrame()
+        spread_line.setFrameShape(QFrame.HLine)
+        spread_line.setFrameShadow(QFrame.Sunken)
+        spread_line.setStyleSheet("border: 1px solid #666;")
+        ladder_layout.addWidget(spread_line)
+
+        ladder_layout.addWidget(self.row_b1)
+        ladder_layout.addWidget(self.row_b2)
+
+        adv_layout.addWidget(ladder_frame)
 
         # Timer a Spoofing üzenet tartásához
         self.spoof_alert_time = 0
@@ -499,13 +535,7 @@ class VakuDashboardOnline(QMainWindow):
         self.lbl_spoof_alert.setAlignment(Qt.AlignCenter)
         adv_layout.addWidget(self.lbl_spoof_alert)
 
-        # Level 1-2 Details
-        self.lbl_dom_details = QLabel("Ask (L1): -- | Ask (L2): --\nBid (L1): -- | Bid (L2): --")
-        self.lbl_dom_details.setStyleSheet("font-family: monospace; font-size: 12px; color: #555;")
-        self.lbl_dom_details.setAlignment(Qt.AlignCenter)
-        adv_layout.addWidget(self.lbl_dom_details)
 
-        adv_layout.addWidget(QLabel("-" * 50))
 
         self.lbl_adv_model = QLabel("Betöltött ML Engine: Várakozás adatfolyamra...")
         self.lbl_adv_model.setStyleSheet("font-size: 14px; font-style: italic;")
@@ -1097,34 +1127,34 @@ class VakuDashboardOnline(QMainWindow):
                     self.pb_ask.setValue(0)
                     self.pb_bid.setValue(imb_pct)
 
-                # Histogram Frissítés (Vízszintes oszlopok tényleges árakon)
+                # Price Ladder Frissítése (Ár, Volumen, Progress Bar)
                 ap1 = getattr(self, 'history_ap1', [0])[-1]
                 ap2 = getattr(self, 'history_ap2', [0])[-1]
                 bp1 = getattr(self, 'history_bp1', [0])[-1]
                 bp2 = getattr(self, 'history_bp2', [0])[-1]
 
-                if ap1 > 0 and bp1 > 0:
-                    tick_size = (ap1 - bp1) * 0.8
-                else:
-                    tick_size = 0.0001
+                max_vol = max(av1, av2, bv1, bv2, 1)
 
-                if ap1 > 0: self.bg_ask_l1.setOpts(y=[ap1], x0=[0], x1=[-av1], height=tick_size)
-                if ap2 > 0: self.bg_ask_l2.setOpts(y=[ap2], x0=[0], x1=[-av2], height=tick_size)
-                if bp1 > 0: self.bg_bid_l1.setOpts(y=[bp1], x0=[0], x1=[bv1], height=tick_size)
-                if bp2 > 0: self.bg_bid_l2.setOpts(y=[bp2], x0=[0], x1=[bv2], height=tick_size)
+                # Ask 2
+                if hasattr(self, 'lbl_a2_p'):
+                    self.lbl_a2_p.setText(f"{ap2:.2f}")
+                    self.lbl_a2_v.setText(str(av2))
+                    self.pb_a2.setValue(int((av2 / max_vol) * 100))
 
-                # Középvonal (árfolyam) mozgatása
-                mid = (ap1 + bp1) / 2 if (ap1 > 0 and bp1 > 0) else 0
-                if mid > 0: self.center_line.setValue(0)
+                    # Ask 1
+                    self.lbl_a1_p.setText(f"{ap1:.2f}")
+                    self.lbl_a1_v.setText(str(av1))
+                    self.pb_a1.setValue(int((av1 / max_vol) * 100))
 
-                # Tengelyek méretezése
-                max_vol = max(av1, av2, bv1, bv2, 10)
-                self.dom_plot_widget.setXRange(-max_vol * 1.1, max_vol * 1.1, padding=0)
+                    # Bid 1
+                    self.lbl_b1_p.setText(f"{bp1:.2f}")
+                    self.lbl_b1_v.setText(str(bv1))
+                    self.pb_b1.setValue(int((bv1 / max_vol) * 100))
 
-                if bp2 > 0 and ap2 > 0:
-                    self.dom_plot_widget.setYRange(bp2 - (tick_size*1.5), ap2 + (tick_size*1.5), padding=0)
-
-                self.lbl_dom_details.setText(f"Ask (L2): {av2} | Ask (L1): {av1}\nBid (L1): {bv1} | Bid (L2): {bv2}")
+                    # Bid 2
+                    self.lbl_b2_p.setText(f"{bp2:.2f}")
+                    self.lbl_b2_v.setText(str(bv2))
+                    self.pb_b2.setValue(int((bv2 / max_vol) * 100))
 
                 # Spoofing logika: rolling max az elmúlt kb 100 ticken (~1mp Futureson)
                 lookback = min(100, len(self.history_av1))
