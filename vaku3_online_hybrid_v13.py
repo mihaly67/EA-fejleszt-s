@@ -94,6 +94,15 @@ class MT5SocketBridge(threading.Thread):
                 self.dashboard.history_av2.extend(zeros)
                 self.dashboard.history_bv1.extend(zeros)
                 self.dashboard.history_bv2.extend(zeros)
+                if not hasattr(self.dashboard, 'history_ap1'):
+                    self.dashboard.history_ap1 = []
+                    self.dashboard.history_ap2 = []
+                    self.dashboard.history_bp1 = []
+                    self.dashboard.history_bp2 = []
+                self.dashboard.history_ap1.extend(zeros)
+                self.dashboard.history_ap2.extend(zeros)
+                self.dashboard.history_bp1.extend(zeros)
+                self.dashboard.history_bp2.extend(zeros)
 
                 del self.tmp_times
                 del self.tmp_prices
@@ -117,14 +126,19 @@ class MT5SocketBridge(threading.Thread):
                         pos_profit = float(parts[6])
 
                     av1 = av2 = bv1 = bv2 = 0
-                    if len(parts) >= 11:
+                    ap1 = ap2 = bp1 = bp2 = 0.0
+                    if len(parts) >= 15:
                         av1 = int(parts[7])
                         av2 = int(parts[8])
                         bv1 = int(parts[9])
                         bv2 = int(parts[10])
+                        ap1 = float(parts[11])
+                        ap2 = float(parts[12])
+                        bp1 = float(parts[13])
+                        bp2 = float(parts[14])
 
                     if self.dashboard:
-                        self.dashboard.add_live_tick(time_msc, price, pos_type, pos_price, pos_profit, av1, av2, bv1, bv2)
+                        self.dashboard.add_live_tick(time_msc, price, pos_type, pos_price, pos_profit, av1, av2, bv1, bv2, ap1, ap2, bp1, bp2)
                 except ValueError:
                     pass
         else:
@@ -425,29 +439,50 @@ class VakuDashboardOnline(QMainWindow):
         self.lbl_imbalance.setAlignment(Qt.AlignCenter)
         adv_layout.addWidget(self.lbl_imbalance)
 
+        from PyQt5.QtWidgets import QProgressBar
+        gauge_layout = QHBoxLayout()
+        gauge_layout.setSpacing(0)
+
+        self.pb_ask = QProgressBar()
+        self.pb_ask.setRange(0, 100)
+        self.pb_ask.setValue(0)
+        self.pb_ask.setTextVisible(False)
+        self.pb_ask.setFixedHeight(8)
+        self.pb_ask.setInvertedAppearance(True)
+        self.pb_ask.setStyleSheet("QProgressBar { border: none; background-color: #e6e6e6; } QProgressBar::chunk { background-color: #aa0000; }")
+
+        self.pb_bid = QProgressBar()
+        self.pb_bid.setRange(0, 100)
+        self.pb_bid.setValue(0)
+        self.pb_bid.setTextVisible(False)
+        self.pb_bid.setFixedHeight(8)
+        self.pb_bid.setStyleSheet("QProgressBar { border: none; background-color: #e6e6e6; } QProgressBar::chunk { background-color: #00aa00; }")
+
+        gauge_layout.addWidget(self.pb_ask)
+        gauge_layout.addWidget(self.pb_bid)
+        adv_layout.addLayout(gauge_layout)
 
         # DOM Hisztogram (BarGraphItem)
         self.dom_plot_widget = pg.PlotWidget(title="")
         self.dom_plot_widget.setFixedHeight(150)
-        self.dom_plot_widget.showGrid(x=False, y=True, alpha=0.3)
+        self.dom_plot_widget.showGrid(x=False, y=False) # Szaggatott vonalak eltuntetve!
         self.dom_plot_widget.setMouseEnabled(x=False, y=False)
         self.dom_plot_widget.hideAxis('bottom')
-        self.dom_plot_widget.hideAxis('left')
+        self.dom_plot_widget.getAxis('left').setPen('k') # Bal tengely mutatja az árakat!
         self.dom_plot_widget.setBackground('#d9d9d9')
 
-        # Üres adatokkal inicializáljuk (Y: 1 (Level 1), 2 (Level 2))
-        # Ask balra nől negatív X irányba, Bid jobbra pozitív X irányba
-        self.bg_ask_l1 = pg.BarGraphItem(y=[1], x0=[0], x1=[0], height=0.6, brush='r')
-        self.bg_ask_l2 = pg.BarGraphItem(y=[2], x0=[0], x1=[0], height=0.6, brush=pg.mkBrush(200,0,0))
-        self.bg_bid_l1 = pg.BarGraphItem(y=[1], x0=[0], x1=[0], height=0.6, brush='g')
-        self.bg_bid_l2 = pg.BarGraphItem(y=[2], x0=[0], x1=[0], height=0.6, brush=pg.mkBrush(0,200,0))
+        # Üres adatokkal inicializáljuk
+        self.bg_ask_l1 = pg.BarGraphItem(y=[2], x0=[0], x1=[0], height=0.8, brush='r')
+        self.bg_ask_l2 = pg.BarGraphItem(y=[3], x0=[0], x1=[0], height=0.8, brush=pg.mkBrush(200,0,0))
+        self.bg_bid_l1 = pg.BarGraphItem(y=[0], x0=[0], x1=[0], height=0.8, brush='g')
+        self.bg_bid_l2 = pg.BarGraphItem(y=[-1], x0=[0], x1=[0], height=0.8, brush=pg.mkBrush(0,200,0))
 
         self.dom_plot_widget.addItem(self.bg_ask_l1)
         self.dom_plot_widget.addItem(self.bg_ask_l2)
         self.dom_plot_widget.addItem(self.bg_bid_l1)
         self.dom_plot_widget.addItem(self.bg_bid_l2)
 
-        # Középvonal (Y tengely)
+        # Középvonal (X=0)
         self.center_line = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('k', width=2))
         self.center_line.setValue(0)
         self.dom_plot_widget.addItem(self.center_line)
@@ -687,7 +722,7 @@ class VakuDashboardOnline(QMainWindow):
         if decision == 'YELLOW': return f"FIGYELEM:<br>{state_str}<br>Whipsaw Veszély! Várj!{er_html}"
         if decision == 'RED': return f"TILTVA (KÁOSZ):<br>{state_str}<br>A piac zajos, iránytalan.{er_html}"
 
-    def add_live_tick(self, unix_ms, price, pos_type=0, pos_price=0.0, pos_profit=0.0, av1=0, av2=0, bv1=0, bv2=0):
+    def add_live_tick(self, unix_ms, price, pos_type=0, pos_price=0.0, pos_profit=0.0, av1=0, av2=0, bv1=0, bv2=0, ap1=0.0, ap2=0.0, bp1=0.0, bp2=0.0):
         self.pos_type = pos_type
         self.pos_price = pos_price
         self.pos_profit = pos_profit
@@ -698,6 +733,10 @@ class VakuDashboardOnline(QMainWindow):
             self.history_av2 = []
             self.history_bv1 = []
             self.history_bv2 = []
+            self.history_ap1 = []
+            self.history_ap2 = []
+            self.history_bp1 = []
+            self.history_bp2 = []
 
         # Update raw buffers
         self.history_times.append(unix_ms)
@@ -706,6 +745,10 @@ class VakuDashboardOnline(QMainWindow):
         self.history_av2.append(av2)
         self.history_bv1.append(bv1)
         self.history_bv2.append(bv2)
+        self.history_ap1.append(ap1)
+        self.history_ap2.append(ap2)
+        self.history_bp1.append(bp1)
+        self.history_bp2.append(bp2)
 
         # THREAD SAFETY FIX: Do not read self.inp_macro_win.text() directly from this socket background thread!
         # Use a safe, hardcoded 2-hour memory retention limit here to prevent memory leaks and "flatline" charting bugs.
@@ -719,6 +762,10 @@ class VakuDashboardOnline(QMainWindow):
                 self.history_av2.pop(0)
                 self.history_bv1.pop(0)
                 self.history_bv2.pop(0)
+                self.history_ap1.pop(0)
+                self.history_ap2.pop(0)
+                self.history_bp1.pop(0)
+                self.history_bp2.pop(0)
 
         # Do nothing here to avoid PyQt5 thread issues, move calculation to update_gui_charts
         pass
@@ -1041,16 +1088,41 @@ class VakuDashboardOnline(QMainWindow):
 
                 self.lbl_imbalance.setText(f"Order Book Imbalance: {imbalance:+.2f}")
 
-                # Histogram Frissítés (Vízszintes oszlopok)
-                self.bg_ask_l1.setOpts(x0=[0], x1=[-av1])
-                self.bg_ask_l2.setOpts(x0=[0], x1=[-av2])
-                self.bg_bid_l1.setOpts(x0=[0], x1=[bv1])
-                self.bg_bid_l2.setOpts(x0=[0], x1=[bv2])
+                # Imbalance Gauge Update
+                imb_pct = int(imbalance * 100)
+                if imb_pct < 0:
+                    self.pb_ask.setValue(abs(imb_pct))
+                    self.pb_bid.setValue(0)
+                else:
+                    self.pb_ask.setValue(0)
+                    self.pb_bid.setValue(imb_pct)
 
-                # X tengely dinamikus méretezése, Y fix
+                # Histogram Frissítés (Vízszintes oszlopok tényleges árakon)
+                ap1 = getattr(self, 'history_ap1', [0])[-1]
+                ap2 = getattr(self, 'history_ap2', [0])[-1]
+                bp1 = getattr(self, 'history_bp1', [0])[-1]
+                bp2 = getattr(self, 'history_bp2', [0])[-1]
+
+                if ap1 > 0 and bp1 > 0:
+                    tick_size = (ap1 - bp1) * 0.8
+                else:
+                    tick_size = 0.0001
+
+                if ap1 > 0: self.bg_ask_l1.setOpts(y=[ap1], x0=[0], x1=[-av1], height=tick_size)
+                if ap2 > 0: self.bg_ask_l2.setOpts(y=[ap2], x0=[0], x1=[-av2], height=tick_size)
+                if bp1 > 0: self.bg_bid_l1.setOpts(y=[bp1], x0=[0], x1=[bv1], height=tick_size)
+                if bp2 > 0: self.bg_bid_l2.setOpts(y=[bp2], x0=[0], x1=[bv2], height=tick_size)
+
+                # Középvonal (árfolyam) mozgatása
+                mid = (ap1 + bp1) / 2 if (ap1 > 0 and bp1 > 0) else 0
+                if mid > 0: self.center_line.setValue(0)
+
+                # Tengelyek méretezése
                 max_vol = max(av1, av2, bv1, bv2, 10)
-                self.dom_plot_widget.setXRange(-max_vol * 1.1, max_vol * 1.1)
-                self.dom_plot_widget.setYRange(0, 3)
+                self.dom_plot_widget.setXRange(-max_vol * 1.1, max_vol * 1.1, padding=0)
+
+                if bp2 > 0 and ap2 > 0:
+                    self.dom_plot_widget.setYRange(bp2 - (tick_size*1.5), ap2 + (tick_size*1.5), padding=0)
 
                 self.lbl_dom_details.setText(f"Ask (L2): {av2} | Ask (L1): {av1}\nBid (L1): {bv1} | Bid (L2): {bv2}")
 
