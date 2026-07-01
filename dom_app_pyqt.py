@@ -2,9 +2,9 @@ import sys
 import socket
 import threading
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
-from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QObject
-from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QStyledItemDelegate, QStyle
+from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QObject, QRect
+from PyQt5.QtGui import QColor, QFont, QPainter, QBrush
 
 # --- GLOBÁLIS ADATTÁR ---
 LATEST_DOM_DATA = {
@@ -91,6 +91,61 @@ class MT5DOMBridge(threading.Thread):
                 pass
 
 
+# --- DYNAMIC BAR DELEGATE ---
+class DOMBarDelegate(QStyledItemDelegate):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.max_vol = 1
+
+    def set_max_vol(self, mv):
+        self.max_vol = mv if mv > 0 else 1
+
+    def paint(self, painter, option, index):
+        painter.save()
+
+        # Alap háttér rajzolása
+        bg_color = index.data(Qt.BackgroundRole)
+        if not bg_color: bg_color = QColor(11, 14, 20)
+        painter.fillRect(option.rect, bg_color)
+
+        # Adat beolvasása (Volumen)
+        text = index.data(Qt.DisplayRole)
+        col = index.column()
+
+        if text and text.isdigit():
+            vol = int(text)
+            if vol > 0:
+                # Kiszámítjuk a százalékos szélességet a cella aktuális méretéből
+                width_ratio = min(vol / self.max_vol, 1.0)
+                bar_width = int(option.rect.width() * width_ratio)
+
+                # Oszlop 0 (Bid): Zöld sáv, ami a cella jobb széléről indul balra (középpontból kifelé)
+                if col == 0:
+                    bar_rect = QRect(option.rect.right() - bar_width, option.rect.top() + 4, bar_width, option.rect.height() - 8)
+                    painter.fillRect(bar_rect, QColor(0, 230, 118, 60))
+                    painter.fillRect(QRect(option.rect.right() - 2, option.rect.top() + 4, 2, option.rect.height() - 8), QColor(0, 230, 118, 200)) # Erős perem
+
+                # Oszlop 2 (Ask): Piros sáv, ami a cella bal széléről indul jobbra (középpontból kifelé)
+                elif col == 2:
+                    bar_rect = QRect(option.rect.left(), option.rect.top() + 4, bar_width, option.rect.height() - 8)
+                    painter.fillRect(bar_rect, QColor(255, 82, 82, 60))
+                    painter.fillRect(QRect(option.rect.left(), option.rect.top() + 4, 2, option.rect.height() - 8), QColor(255, 82, 82, 200)) # Erős perem
+
+        # Szöveg kiírása a sávok FELÉ
+        text_color = index.data(Qt.ForegroundRole)
+        if not text_color: text_color = QColor(255, 255, 255)
+        painter.setPen(text_color)
+
+        align = index.data(Qt.TextAlignmentRole)
+        if not align: align = Qt.AlignCenter | Qt.AlignVCenter
+
+        # Pici padding a szövegnek
+        text_rect = option.rect.adjusted(10, 0, -10, 0)
+        painter.drawText(text_rect, align, text if text else "")
+
+        painter.restore()
+
+
 # --- PYQT5 NATIVE UI ---
 class DOMWindow(QMainWindow):
     def __init__(self):
@@ -140,9 +195,13 @@ class DOMWindow(QMainWindow):
         self.table.setFocusPolicy(Qt.NoFocus)
         self.table.setShowGrid(False)
         self.table.setStyleSheet("""
-            QTableWidget { background-color: #121212; border: none; font-family: 'Courier New'; font-size: 14px;}
-            QHeaderView::section { background-color: #2b2b2b; color: white; padding: 5px; font-weight: bold; border: 1px solid #1e1e1e;}
+            QTableWidget { background-color: #0b0e14; border: none; font-family: 'Courier New'; font-size: 15px; font-weight: bold;}
+            QHeaderView::section { background-color: #1e222d; color: #787b86; padding: 10px; font-weight: bold; border: 1px solid #2B2B43;}
         """)
+
+        self.delegate = DOMBarDelegate(self.table)
+        self.table.setItemDelegateForColumn(0, self.delegate)
+        self.table.setItemDelegateForColumn(2, self.delegate)
 
         layout.addWidget(self.table)
         self.setCentralWidget(central_widget)
@@ -192,6 +251,12 @@ class DOMWindow(QMainWindow):
             self.lbl_ask.setText(f"Legjobb Eladás:\n{best_ask:.5f}")
             self.lbl_spread.setText(f"Spread:\n{spread:.5f}")
 
+        # Dinamikus Max Volumen kiszámítása a Delegate skálázásához
+        current_max_vol = 0
+        if bids: current_max_vol = max(current_max_vol, max(bids))
+        if asks: current_max_vol = max(current_max_vol, max(asks))
+        self.delegate.set_max_vol(current_max_vol)
+
         # Táblázat feltöltése
         self.table.setRowCount(len(prices))
         for i in range(len(prices)):
@@ -209,37 +274,33 @@ class DOMWindow(QMainWindow):
             item_ask = QTableWidgetItem(str(ask_vol) if ask_vol > 0 else "")
             item_ask.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
-            # --- SZÍNEZÉS (STYLING) ---
+            # --- SZÍNEZÉS ÉS MEGJELENÉS (DELEGATE KEZELI A HÁTTEREKET) ---
             # 1. Eladás (Ask) sor
             if ask_vol > 0:
-                bg_color = QColor(255, 0, 0, 40)
-                text_color = QColor(255, 77, 77)
-                item_ask.setBackground(bg_color); item_ask.setForeground(text_color)
-                item_price.setBackground(QColor(30, 30, 30)); item_price.setForeground(text_color)
-                item_bid.setBackground(QColor(18, 18, 18))
+                item_ask.setForeground(QColor(255, 82, 82))
+                item_price.setBackground(QColor(19, 23, 34)); item_price.setForeground(QColor(255, 82, 82))
+                item_ask.setBackground(QColor(11, 14, 20)); item_bid.setBackground(QColor(11, 14, 20))
 
             # 2. Vétel (Bid) sor
             elif bid_vol > 0:
-                bg_color = QColor(0, 255, 0, 40)
-                text_color = QColor(0, 204, 102)
-                item_bid.setBackground(bg_color); item_bid.setForeground(text_color)
-                item_price.setBackground(QColor(30, 30, 30)); item_price.setForeground(text_color)
-                item_ask.setBackground(QColor(18, 18, 18))
+                item_bid.setForeground(QColor(0, 230, 118))
+                item_price.setBackground(QColor(19, 23, 34)); item_price.setForeground(QColor(0, 230, 118))
+                item_ask.setBackground(QColor(11, 14, 20)); item_bid.setBackground(QColor(11, 14, 20))
 
             # 3. Spread mező
             elif best_bid < price < best_ask:
-                bg_spread = QColor(128, 128, 128, 20)
-                bg_spread_price = QColor(128, 128, 128, 40)
+                bg_spread = QColor(30, 34, 45)
+                bg_spread_price = QColor(42, 46, 57)
                 item_bid.setBackground(bg_spread)
                 item_ask.setBackground(bg_spread)
                 item_price.setBackground(bg_spread_price)
-                item_price.setForeground(QColor(150, 150, 150))
+                item_price.setForeground(QColor(120, 123, 134))
 
             # 4. Üres sor
             else:
-                item_bid.setBackground(QColor(18, 18, 18))
-                item_ask.setBackground(QColor(18, 18, 18))
-                item_price.setBackground(QColor(25, 25, 25))
+                item_bid.setBackground(QColor(11, 14, 20))
+                item_ask.setBackground(QColor(11, 14, 20))
+                item_price.setBackground(QColor(19, 23, 34))
                 item_price.setForeground(QColor(200, 200, 200))
 
             self.table.setItem(i, 0, item_bid)
