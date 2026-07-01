@@ -112,35 +112,118 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Level 2 DOM Heatmap HUD</title>
+    <title>Professional DOM Ladder HUD</title>
     <style>
-        body { font-family: 'Courier New', Courier, monospace; background-color: #131722; color: white; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        h1 { color: #fcd535; }
-        #dom-container { width: 400px; background-color: #1e222d; border: 2px solid #4a5056; display: flex; flex-direction: column; overflow: hidden; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
-        .dom-header { display: flex; justify-content: space-between; padding: 10px; background: #2b3139; font-size: 14px; font-weight: bold; border-bottom: 2px solid #4a5056;}
-        .dom-header div { width: 33%; text-align: center; }
-        #dom-body { display: flex; flex-direction: column; font-size: 16px; font-weight: bold; }
-        .dom-row { display: flex; width: 100%; height: 35px; line-height: 35px; border-bottom: 1px solid #2a2e39; position: relative;}
-        .dom-row:hover { background-color: #3b4249; }
-        .dom-bid, .dom-ask { width: 33%; position: relative; text-align: right; padding-right: 15px; z-index: 2;}
-        .dom-price { width: 34%; text-align: center; background-color: #2a2e39; border-left: 1px solid #1e222d; border-right: 1px solid #1e222d; z-index: 2; color: #fff;}
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b0e14; color: #d1d4dc; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        h1 { color: #e2e8f0; font-size: 24px; font-weight: 300; letter-spacing: 2px;}
 
-        .bar-bg { position: absolute; top: 0; height: 100%; z-index: 1; opacity: 0.4; transition: width 0.1s ease-in-out; }
-        .bar-bg.ask { right: 0; background-color: #ef5350; }
-        .bar-bg.bid { left: 0; background-color: #26a69a; }
+        #dom-container {
+            width: 700px;
+            background-color: #131722;
+            border: 1px solid #2B2B43;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-radius: 4px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
 
-        .row-ask .dom-ask { color: #ef5350; }
-        .row-bid .dom-bid { color: #26a69a; }
-        .current-price-row { background-color: #fcd535; color: black !important; text-align: center; font-size: 18px; line-height: 40px; font-weight: 900;}
+        .dom-header {
+            display: flex;
+            padding: 10px 0;
+            background: #1e222d;
+            font-size: 13px;
+            font-weight: 600;
+            border-bottom: 1px solid #2B2B43;
+            color: #787b86;
+        }
+        .dom-header div { flex: 1; text-align: center; letter-spacing: 1px;}
+        .dom-header .price-col { flex: 0 0 120px; } /* Fix szélesség a középső árnak */
+
+        #dom-body {
+            display: flex;
+            flex-direction: column;
+            font-size: 15px;
+            font-weight: bold;
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #0b0e14;
+        }
+
+        .dom-row {
+            display: flex;
+            width: 100%;
+            height: 36px;
+            line-height: 36px;
+            position: relative;
+            border-bottom: 1px solid #141822;
+        }
+        .dom-row:hover { background-color: #1a202c; }
+
+        .col-bid-vol { flex: 1; position: relative; text-align: right; padding-right: 20px; color: #00e676; z-index: 2; font-size: 16px;}
+        .col-price {
+            flex: 0 0 140px;
+            text-align: center;
+            background-color: #131722;
+            border-left: 2px solid #2B2B43;
+            border-right: 2px solid #2B2B43;
+            z-index: 3;
+            color: #ffffff;
+            letter-spacing: 2px;
+            font-size: 16px;
+        }
+        .col-ask-vol { flex: 1; position: relative; text-align: left; padding-left: 20px; color: #ff5252; z-index: 2; font-size: 16px;}
+
+        /* Modern Flowsurface/Orderbook Style Depth Bars */
+        .bar-bid {
+            position: absolute;
+            right: 0;
+            top: 4px;
+            height: 28px;
+            background: linear-gradient(90deg, rgba(0,230,118,0.1) 0%, rgba(0,230,118,0.4) 100%);
+            z-index: 1;
+            transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border-right: none;
+        }
+        .bar-ask {
+            position: absolute;
+            left: 0;
+            top: 4px;
+            height: 28px;
+            background: linear-gradient(270deg, rgba(255,82,82,0.1) 0%, rgba(255,82,82,0.4) 100%);
+            z-index: 1;
+            transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border-left: none;
+        }
+
+        .spread-row {
+            background-color: #1e222d;
+            color: #787b86;
+            text-align: center;
+            font-size: 12px;
+            font-weight: normal;
+            border-bottom: 1px solid #2B2B43;
+            border-top: 1px solid #2B2B43;
+            height: 24px;
+            line-height: 24px;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: center;
+        }
+        .spread-row span {
+            background-color: #2a2e39;
+            padding: 0 15px;
+            border-radius: 12px;
+            color: #d1d4dc;
+        }
     </style>
 </head>
 <body>
-    <h1>DOM HUD Monitor</h1>
+    <h1>ORDER BOOK PROFILE</h1>
     <div id="dom-container">
         <div class="dom-header">
-            <div>BID VOL</div>
-            <div>PRICE</div>
-            <div>ASK VOL</div>
+            <div>BID VOLUME</div>
+            <div class="price-col">PRICE</div>
+            <div>ASK VOLUME</div>
         </div>
         <div id="dom-body">
             <!-- Data will be injected here via JS -->
@@ -148,7 +231,7 @@ HTML_TEMPLATE = """
     </div>
 
     <script>
-        let MAX_VOLUME = 1; // Dinamikus skálázás bázisa
+        let MAX_VOLUME = 1;
 
         async function fetchDOM() {
             try {
@@ -164,43 +247,57 @@ HTML_TEMPLATE = """
             const body = document.getElementById('dom-body');
             body.innerHTML = '';
 
-            // Dinamikus maximum volumen kiszámítása a hisztogram sávokhoz
             let currentMax = 0;
             data.asks.forEach(a => { if (a.volume > currentMax) currentMax = a.volume; });
             data.bids.forEach(b => { if (b.volume > currentMax) currentMax = b.volume; });
             if (currentMax > 0) MAX_VOLUME = currentMax;
 
-            // Asks (fordított sorrend, legmagasabb ár legfelül)
+            // Asks (Piros oszlopok a jobboldalon, balra fésülve az ár széléről)
             const asksReversed = [...data.asks].reverse();
 
             asksReversed.forEach(ask => {
                 const width = Math.min((ask.volume / MAX_VOLUME) * 100, 100);
                 body.innerHTML += `
-                    <div class="dom-row row-ask">
-                        <div class="dom-bid"></div>
-                        <div class="dom-price">${ask.price.toFixed(5)}</div>
-                        <div class="dom-ask">${ask.volume}</div>
-                        <div class="bar-bg ask" style="width: ${width}%; background-color: rgba(239, 83, 80, 0.7);"></div>
+                    <div class="dom-row">
+                        <div class="col-bid-vol"></div>
+                        <div class="col-price">${ask.price.toFixed(5)}</div>
+                        <div class="col-ask-vol">
+                            ${ask.volume}
+                            <div class="bar-ask" style="width: ${width}%;"></div>
+                        </div>
                     </div>
                 `;
             });
 
-            // Mid price
+            // Spread Display
+            let spreadDisplay = "SPREAD N/A";
+            if (data.asks.length > 0 && data.bids.length > 0) {
+                // Determine best Ask and Bid (since array could be unsorted, we take the closest ones based on the index order given by the Python server)
+                // In Python we add ap2 then ap1 (ap1 is closer to mid), so asks is [ap2, ap1]. Reversed it is [ap1, ap2]. Best ask is index 0.
+                const bestAsk = asksReversed[0].price;
+                // In Python we add bp1 then bp2. Best bid is index 0.
+                const bestBid = data.bids[0].price;
+                const spread = Math.abs(bestAsk - bestBid);
+                spreadDisplay = `SPREAD: ${spread.toFixed(5)}`;
+            }
+
             body.innerHTML += `
-                <div class="current-price-row">
-                    MID: ${data.price.toFixed(5)}
+                <div class="spread-row">
+                    <span>${spreadDisplay}</span>
                 </div>
             `;
 
-            // Bids (legjobb bid felül)
+            // Bids (Zöld oszlopok a baloldalon, jobbra fésülve az ár széléig)
             data.bids.forEach(bid => {
                 const width = Math.min((bid.volume / MAX_VOLUME) * 100, 100);
                 body.innerHTML += `
-                    <div class="dom-row row-bid">
-                        <div class="dom-bid">${bid.volume}</div>
-                        <div class="dom-price">${bid.price.toFixed(5)}</div>
-                        <div class="dom-ask"></div>
-                        <div class="bar-bg bid" style="width: ${width}%; background-color: rgba(38, 166, 154, 0.7);"></div>
+                    <div class="dom-row">
+                        <div class="col-bid-vol">
+                            ${bid.volume}
+                            <div class="bar-bid" style="width: ${width}%;"></div>
+                        </div>
+                        <div class="col-price">${bid.price.toFixed(5)}</div>
+                        <div class="col-ask-vol"></div>
                     </div>
                 `;
             });
