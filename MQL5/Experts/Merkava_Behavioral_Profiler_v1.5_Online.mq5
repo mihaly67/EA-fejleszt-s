@@ -7,7 +7,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
 #property link      "https://github.com/MimicProject"
-#property version   "1.30"
+#property version   "1.50"
 #property strict
 
 #include "../Indicators/Types_v2_16.mqh"
@@ -119,7 +119,7 @@ input group "=== Python Bridge Settings ==="
 input bool   InpEnablePythonBridge = true;       // Enable TCP Bridge to Python HMM Engine
 input string InpBridgeHost         = "127.0.0.1"; // Python Server IP
 input int    InpBridgePort         = 5555;       // Python Server Port
-input int    InpHistoryTicks       = 600;        // Number of Ticks to send on Init
+input int    InpHistoryTicks       = 10000;        // Number of Ticks to send on Init
 
 //--- Socket Variables
 int          g_socket = INVALID_HANDLE;
@@ -248,23 +248,10 @@ void SendHistoryToPython() {
     }
 }
 
-void SendTickToPython(long time_msc, double bid, double ask, int pos_type, double pos_price, double profit, long av1, long av2, long bv1, long bv2, double ap1, double ap2, double bp1, double bp2) {
+void SendTickToPython(long time_msc, double bid, double ask, int pos_type, double pos_price, double pos_profit, long av1, long av2, long bv1, long bv2, double ap1, double ap2, double bp1, double bp2) {
     if(!g_socket_connected) return;
 
-    string payload = "TICK|" + IntegerToString(time_msc) + "|" +
-                     DoubleToString(bid, _Digits) + "|" +
-                     DoubleToString(ask, _Digits) + "|" +
-                     IntegerToString(pos_type) + "|" +
-                     DoubleToString(pos_price, _Digits) + "|" +
-                     DoubleToString(profit, 2) + "|" +
-                     IntegerToString(av1) + "|" +
-                     IntegerToString(av2) + "|" +
-                     IntegerToString(bv1) + "|" +
-                     IntegerToString(bv2) + "|" +
-                     DoubleToString(ap1, _Digits) + "|" +
-                     DoubleToString(ap2, _Digits) + "|" +
-                     DoubleToString(bp1, _Digits) + "|" +
-                     DoubleToString(bp2, _Digits) + "\n";
+    string payload = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "|" + IntegerToString(pos_type) + "|" + DoubleToString(pos_price, _Digits) + "|" + DoubleToString(pos_profit, 2) + "|" + IntegerToString(av1) + "|" + IntegerToString(av2) + "|" + IntegerToString(bv1) + "|" + IntegerToString(bv2) + "|" + DoubleToString(ap1, _Digits) + "|" + DoubleToString(ap2, _Digits) + "|" + DoubleToString(bp1, _Digits) + "|" + DoubleToString(bp2, _Digits) + "\n";
     uchar buffer[];
     StringToCharArray(payload, buffer);
 
@@ -364,11 +351,13 @@ int OnInit()
    m_panel.UpdateUI(GetFloatingPL());
 
    Print("Merkava PROFILER v1.1 Initialized (Strict Silence).");
+   if(InpEnablePythonBridge) { MarketBookAdd(_Symbol); }
    return(INIT_SUCCEEDED);
 }
 
 void OnDeinit(const int reason)
 {
+   if(InpEnablePythonBridge) { MarketBookRelease(_Symbol); }
    m_panel.Destroy();
    ObjectsDeleteAll(0, Prefix);
    ChartRedraw();
@@ -591,7 +580,7 @@ void OnTick()
                // Megkeressük a legelső nyitott pozíciót a charton (ami ehhez az EA-hez/Symbol-hoz tartozik)
                for(int i=0; i<PositionsTotal(); i++) {
                    if(m_position.SelectByIndex(i)) {
-                       if(m_position.Symbol() == _Symbol) { // Itt opcionálisan szűrhetünk MagicNumber-re is
+                       if(m_position.Symbol() == _Symbol) {
                            pos_price = m_position.PriceOpen();
                            pos_type = (m_position.PositionType() == POSITION_TYPE_BUY) ? 1 : -1;
                            pos_profit = m_position.Profit();
@@ -601,25 +590,31 @@ void OnTick()
                }
            }
 
-           // Fetch Level 2 DOM if subscribed
+           // Fetch DOM Data
            long av1 = 0, av2 = 0, bv1 = 0, bv2 = 0;
-           double ap1 = 0, ap2 = 0, bp1 = 0, bp2 = 0;
-
+           double ap1 = 0.0, ap2 = 0.0, bp1 = 0.0, bp2 = 0.0;
            MqlBookInfo book[];
-           if (g_book_subscribed && MarketBookGet(_Symbol, book)) {
+           if (MarketBookGet(_Symbol, book)) {
                int size = ArraySize(book);
-               int ask_idx = 0;
-               int bid_idx = 0;
-
-               // Asks are typically at the beginning or top. Iterate to find best asks and bids
-               for(int i = 0; i < size; i++) {
-                   if (book[i].type == BOOK_TYPE_SELL) {
-                       if (ask_idx == 0) { ap1 = book[i].price; av1 = book[i].volume; ask_idx++; }
-                       else if (ask_idx == 1) { ap2 = book[i].price; av2 = book[i].volume; ask_idx++; }
-                   } else if (book[i].type == BOOK_TYPE_BUY) {
-                       if (bid_idx == 0) { bp1 = book[i].price; bv1 = book[i].volume; bid_idx++; }
-                       else if (bid_idx == 1) { bp2 = book[i].price; bv2 = book[i].volume; bid_idx++; }
+               int buy_start_idx = -1;
+               for(int i=0; i<size; i++) {
+                   if(book[i].type == BOOK_TYPE_BUY) {
+                       buy_start_idx = i;
+                       break;
                    }
+               }
+
+               if(buy_start_idx > 0) {
+                   if(buy_start_idx - 1 >= 0) { ap1 = book[buy_start_idx - 1].price; av1 = book[buy_start_idx - 1].volume; }
+                   if(buy_start_idx - 2 >= 0) { ap2 = book[buy_start_idx - 2].price; av2 = book[buy_start_idx - 2].volume; }
+               } else if (buy_start_idx == -1 && size >= 2) {
+                   ap1 = book[size - 1].price; av1 = book[size - 1].volume;
+                   ap2 = book[size - 2].price; av2 = book[size - 2].volume;
+               }
+
+               if(buy_start_idx != -1) {
+                   if(buy_start_idx < size) { bp1 = book[buy_start_idx].price; bv1 = book[buy_start_idx].volume; }
+                   if(buy_start_idx + 1 < size) { bp2 = book[buy_start_idx + 1].price; bv2 = book[buy_start_idx + 1].volume; }
                }
            }
 
