@@ -1,0 +1,16 @@
+<<<<<<< SEARCH
+        # Szöveg kiírása a sávok FELÉ
+        text_color = index.data(Qt.ForegroundRole)
+        if not text_color: text_color = QColor(255, 255, 255)
+        painter.setPen(text_color)
+=======
+        # Szöveg kiírása a sávok FELÉ
+        text_color_role = index.data(Qt.ForegroundRole)
+        if text_color_role:
+            if isinstance(text_color_role, QBrush):
+                painter.setPen(text_color_role.color())
+            else:
+                painter.setPen(text_color_role)
+        else:
+            painter.setPen(QColor(255, 255, 255))
+>>>>>>> REPLACE
