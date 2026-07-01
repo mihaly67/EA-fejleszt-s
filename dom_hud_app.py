@@ -140,25 +140,60 @@ HTML_TEMPLATE = """
         .dom-header div { flex: 1; text-align: center; letter-spacing: 1px;}
         .dom-header .price-col { flex: 0 0 120px; } /* Fix szélesség a középső árnak */
 
-        #dom-body { display: flex; flex-direction: column; font-size: 15px; font-weight: bold; font-family: 'Courier New', Courier, monospace;}
+        #dom-body {
+            display: flex;
+            flex-direction: column;
+            font-size: 15px;
+            font-weight: bold;
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #0b0e14;
+        }
 
         .dom-row {
             display: flex;
             width: 100%;
-            height: 32px;
-            line-height: 32px;
-            border-bottom: 1px solid #1a1e29;
+            height: 36px;
+            line-height: 36px;
             position: relative;
+            border-bottom: 1px solid #141822;
         }
-        .dom-row:hover { background-color: #2a2e39; }
+        .dom-row:hover { background-color: #1a202c; }
 
-        .col-bid-vol { flex: 1; position: relative; text-align: right; padding-right: 15px; color: #26a69a; z-index: 2;}
-        .col-price { flex: 0 0 120px; text-align: center; background-color: #1e222d; border-left: 1px solid #2B2B43; border-right: 1px solid #2B2B43; z-index: 2; color: #e2e8f0; letter-spacing: 1px;}
-        .col-ask-vol { flex: 1; position: relative; text-align: left; padding-left: 15px; color: #ef5350; z-index: 2;}
+        .col-bid-vol { flex: 1; position: relative; text-align: right; padding-right: 20px; color: #00e676; z-index: 2; font-size: 16px;}
+        .col-price {
+            flex: 0 0 140px;
+            text-align: center;
+            background-color: #131722;
+            border-left: 2px solid #2B2B43;
+            border-right: 2px solid #2B2B43;
+            z-index: 3;
+            color: #ffffff;
+            letter-spacing: 2px;
+            font-size: 16px;
+        }
+        .col-ask-vol { flex: 1; position: relative; text-align: left; padding-left: 20px; color: #ff5252; z-index: 2; font-size: 16px;}
 
-        /* A hőtérkép sávok a középpontból nőnek ki */
-        .bar-bid { position: absolute; right: 0; top: 10%; height: 80%; background-color: rgba(38, 166, 154, 0.25); z-index: 1; transition: width 0.15s ease-out; border-left: 2px solid rgba(38, 166, 154, 0.8);}
-        .bar-ask { position: absolute; left: 0; top: 10%; height: 80%; background-color: rgba(239, 83, 80, 0.25); z-index: 1; transition: width 0.15s ease-out; border-right: 2px solid rgba(239, 83, 80, 0.8);}
+        /* Modern Flowsurface/Orderbook Style Depth Bars */
+        .bar-bid {
+            position: absolute;
+            right: 0;
+            top: 4px;
+            height: 28px;
+            background: linear-gradient(90deg, rgba(0,230,118,0.1) 0%, rgba(0,230,118,0.4) 100%);
+            z-index: 1;
+            transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border-right: none;
+        }
+        .bar-ask {
+            position: absolute;
+            left: 0;
+            top: 4px;
+            height: 28px;
+            background: linear-gradient(270deg, rgba(255,82,82,0.1) 0%, rgba(255,82,82,0.4) 100%);
+            z-index: 1;
+            transition: width 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border-left: none;
+        }
 
         .spread-row {
             background-color: #1e222d;
