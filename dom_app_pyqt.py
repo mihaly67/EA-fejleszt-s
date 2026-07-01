@@ -104,9 +104,14 @@ class DOMBarDelegate(QStyledItemDelegate):
         painter.save()
 
         # Alap háttér rajzolása
-        bg_color = index.data(Qt.BackgroundRole)
-        if not bg_color: bg_color = QColor(11, 14, 20)
-        painter.fillRect(option.rect, bg_color)
+        bg_color_role = index.data(Qt.BackgroundRole)
+        if bg_color_role:
+            if isinstance(bg_color_role, QBrush):
+                painter.fillRect(option.rect, bg_color_role.color())
+            else:
+                painter.fillRect(option.rect, bg_color_role)
+        else:
+            painter.fillRect(option.rect, QColor(11, 14, 20))
 
         # Adat beolvasása (Volumen)
         text = index.data(Qt.DisplayRole)
@@ -132,9 +137,14 @@ class DOMBarDelegate(QStyledItemDelegate):
                     painter.fillRect(QRect(option.rect.left(), option.rect.top() + 4, 2, option.rect.height() - 8), QColor(255, 82, 82, 200)) # Erős perem
 
         # Szöveg kiírása a sávok FELÉ
-        text_color = index.data(Qt.ForegroundRole)
-        if not text_color: text_color = QColor(255, 255, 255)
-        painter.setPen(text_color)
+        text_color_role = index.data(Qt.ForegroundRole)
+        if text_color_role:
+            if isinstance(text_color_role, QBrush):
+                painter.setPen(text_color_role.color())
+            else:
+                painter.setPen(text_color_role)
+        else:
+            painter.setPen(QColor(255, 255, 255))
 
         align = index.data(Qt.TextAlignmentRole)
         if not align: align = Qt.AlignCenter | Qt.AlignVCenter
