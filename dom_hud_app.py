@@ -66,7 +66,10 @@ class MT5DOMBridge(threading.Thread):
         cmd = parts[0]
 
         # Format: TICK|time|bid|ask|type|price|profit|av1|av2|bv1|bv2|ap1|ap2|bp1|bp2
-        if cmd == "TICK" and len(parts) >= 15:
+        if cmd == "TICK":
+            if len(parts) < 15:
+                print(f"[DOM-BRIDGE] HIBÁS TICK PAYLOAD HOSSZ ({len(parts)} részes): {message}")
+                return
             try:
                 time_msc = float(parts[1])
                 bid = float(parts[2])
