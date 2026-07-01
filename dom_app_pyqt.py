@@ -249,7 +249,7 @@ class DOMWindow(QMainWindow):
 
 if __name__ == '__main__':
     # ZMQ Bridge elindítása
-    bridge = MT5DOMBridge(host='0.0.0.0', port=5555)
+    bridge = MT5DOMBridge(host='0.0.0.0', port=5556)
     bridge.start()
 
     # GUI elindítása
