@@ -215,7 +215,7 @@ def api_dom():
 
 if __name__ == '__main__':
     # Start MT5 ZMQ Socket Listener
-    bridge = MT5DOMBridge(host='127.0.0.1', port=5556) # Használjunk 5556-ot, ha 5555 a Vakué
+    bridge = MT5DOMBridge(host='0.0.0.0', port=5556) # Használjunk 5556-ot, ha 5555 a Vakué
     bridge.start()
 
     # Start Web HUD
