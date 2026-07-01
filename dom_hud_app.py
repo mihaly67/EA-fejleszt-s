@@ -148,7 +148,7 @@ HTML_TEMPLATE = """
     </div>
 
     <script>
-        const MAX_VOLUME = 500; // skálázás bázisa
+        let MAX_VOLUME = 1; // Dinamikus skálázás bázisa
 
         async function fetchDOM() {
             try {
@@ -164,9 +164,13 @@ HTML_TEMPLATE = """
             const body = document.getElementById('dom-body');
             body.innerHTML = '';
 
+            // Dinamikus maximum volumen kiszámítása a hisztogram sávokhoz
+            let currentMax = 0;
+            data.asks.forEach(a => { if (a.volume > currentMax) currentMax = a.volume; });
+            data.bids.forEach(b => { if (b.volume > currentMax) currentMax = b.volume; });
+            if (currentMax > 0) MAX_VOLUME = currentMax;
+
             // Asks (fordított sorrend, legmagasabb ár legfelül)
-            // A data.asks csökkenő, tehát index 0 a legjobb ask (legalacsonyabb ár)
-            // Hogy a felületen a magasabb ár legyen felül, megfordítjuk
             const asksReversed = [...data.asks].reverse();
 
             asksReversed.forEach(ask => {
@@ -176,7 +180,7 @@ HTML_TEMPLATE = """
                         <div class="dom-bid"></div>
                         <div class="dom-price">${ask.price.toFixed(5)}</div>
                         <div class="dom-ask">${ask.volume}</div>
-                        <div class="bar-bg ask" style="width: ${width}%;"></div>
+                        <div class="bar-bg ask" style="width: ${width}%; background-color: rgba(239, 83, 80, 0.7);"></div>
                     </div>
                 `;
             });
@@ -196,7 +200,7 @@ HTML_TEMPLATE = """
                         <div class="dom-bid">${bid.volume}</div>
                         <div class="dom-price">${bid.price.toFixed(5)}</div>
                         <div class="dom-ask"></div>
-                        <div class="bar-bg bid" style="width: ${width}%;"></div>
+                        <div class="bar-bg bid" style="width: ${width}%; background-color: rgba(38, 166, 154, 0.7);"></div>
                     </div>
                 `;
             });

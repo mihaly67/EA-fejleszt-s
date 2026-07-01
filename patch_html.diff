@@ -1,0 +1,123 @@
+<<<<<<< SEARCH
+        const MAX_VOLUME = 500; // skálázás bázisa
+
+        async function fetchDOM() {
+            try {
+                const response = await fetch('/api/dom');
+                const data = await response.json();
+                renderDOM(data);
+            } catch (error) {
+                console.error('Error fetching DOM data:', error);
+            }
+        }
+
+        function renderDOM(data) {
+            const body = document.getElementById('dom-body');
+            body.innerHTML = '';
+
+            // Asks (fordított sorrend, legmagasabb ár legfelül)
+            // A data.asks csökkenő, tehát index 0 a legjobb ask (legalacsonyabb ár)
+            // Hogy a felületen a magasabb ár legyen felül, megfordítjuk
+            const asksReversed = [...data.asks].reverse();
+
+            asksReversed.forEach(ask => {
+                const width = Math.min((ask.volume / MAX_VOLUME) * 100, 100);
+                body.innerHTML += `
+                    <div class="dom-row row-ask">
+                        <div class="dom-bid"></div>
+                        <div class="dom-price">${ask.price.toFixed(5)}</div>
+                        <div class="dom-ask">${ask.volume}</div>
+                        <div class="bar-bg ask" style="width: ${width}%;"></div>
+                    </div>
+                `;
+            });
+
+            // Mid price
+            body.innerHTML += `
+                <div class="current-price-row">
+                    MID: ${data.price.toFixed(5)}
+                </div>
+            `;
+
+            // Bids (legjobb bid felül)
+            data.bids.forEach(bid => {
+                const width = Math.min((bid.volume / MAX_VOLUME) * 100, 100);
+                body.innerHTML += `
+                    <div class="dom-row row-bid">
+                        <div class="dom-bid">${bid.volume}</div>
+                        <div class="dom-price">${bid.price.toFixed(5)}</div>
+                        <div class="dom-ask"></div>
+                        <div class="bar-bg bid" style="width: ${width}%;"></div>
+                    </div>
+                `;
+            });
+        }
+
+        setInterval(fetchDOM, 250); // 4 FPS frissítés
+    </script>
+</body>
+</html>
+=======
+        let MAX_VOLUME = 1; // Dinamikus skálázás bázisa
+
+        async function fetchDOM() {
+            try {
+                const response = await fetch('/api/dom');
+                const data = await response.json();
+                renderDOM(data);
+            } catch (error) {
+                console.error('Error fetching DOM data:', error);
+            }
+        }
+
+        function renderDOM(data) {
+            const body = document.getElementById('dom-body');
+            body.innerHTML = '';
+
+            // Dinamikus maximum volumen kiszámítása a hisztogram sávokhoz
+            let currentMax = 0;
+            data.asks.forEach(a => { if (a.volume > currentMax) currentMax = a.volume; });
+            data.bids.forEach(b => { if (b.volume > currentMax) currentMax = b.volume; });
+            if (currentMax > 0) MAX_VOLUME = currentMax;
+
+            // Asks (fordított sorrend, legmagasabb ár legfelül)
+            const asksReversed = [...data.asks].reverse();
+
+            asksReversed.forEach(ask => {
+                const width = Math.min((ask.volume / MAX_VOLUME) * 100, 100);
+                body.innerHTML += `
+                    <div class="dom-row row-ask">
+                        <div class="dom-bid"></div>
+                        <div class="dom-price">${ask.price.toFixed(5)}</div>
+                        <div class="dom-ask">${ask.volume}</div>
+                        <div class="bar-bg ask" style="width: ${width}%; background-color: rgba(239, 83, 80, 0.7);"></div>
+                    </div>
+                `;
+            });
+
+            // Mid price
+            body.innerHTML += `
+                <div class="current-price-row">
+                    MID: ${data.price.toFixed(5)}
+                </div>
+            `;
+
+            // Bids (legjobb bid felül)
+            data.bids.forEach(bid => {
+                const width = Math.min((bid.volume / MAX_VOLUME) * 100, 100);
+                body.innerHTML += `
+                    <div class="dom-row row-bid">
+                        <div class="dom-bid">${bid.volume}</div>
+                        <div class="dom-price">${bid.price.toFixed(5)}</div>
+                        <div class="dom-ask"></div>
+                        <div class="bar-bg bid" style="width: ${width}%; background-color: rgba(38, 166, 154, 0.7);"></div>
+                    </div>
+                `;
+            });
+        }
+
+        setInterval(fetchDOM, 250); // 4 FPS frissítés
+    </script>
+</body>
+</html>
+>>>>>>> REPLACE
