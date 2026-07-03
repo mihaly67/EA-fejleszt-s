@@ -1,0 +1,22 @@
+<<<<<<< SEARCH
+        # --- DIAGNOSZTIKA: Bemenet vs. Kimenet ellenőrzése ---
+        matched_asks = sum([1 for a in asks if a > 0])
+        matched_bids = sum([1 for b in bids if b > 0])
+        input_asks = sum([1 for v in [live_data['av1'], live_data['av2']] if v > 0])
+        input_bids = sum([1 for v in [live_data['bv1'], live_data['bv2']] if v > 0])
+
+        with open("dom_visual_debug.log", "a") as f:
+            f.write(f"[{time.strftime('%H:%M:%S')}] TICK: A1={live_data['ap1']}({live_data['av1']}), A2={live_data['ap2']}({live_data['av2']}) | B1={live_data['bp1']}({live_data['bv1']}), B2={live_data['bp2']}({live_data['bv2']})\n")
+            f.write(f"          -> RÁCSRA ILLESZTVE: Bids {matched_bids}/{input_bids}, Asks {matched_asks}/{input_asks} | Tűrés: {tolerance}\n")
+=======
+        # --- DIAGNOSZTIKA: Bemenet vs. Kimenet ellenőrzése ---
+        # Sikeres beküldést a konzolon is mutatjuk
+        # matched_asks = sum([1 for a in asks if a > 0])
+        # matched_bids = sum([1 for b in bids if b > 0])
+        # input_asks = sum([1 for v in [live_data['av1'], live_data['av2']] if v > 0])
+        # input_bids = sum([1 for v in [live_data['bv1'], live_data['bv2']] if v > 0])
+
+        # with open("dom_visual_debug.log", "a") as f:
+        #    f.write(f"[{time.strftime('%H:%M:%S')}] TICK: A1={live_data['ap1']}({live_data['av1']}), A2={live_data['ap2']}({live_data['av2']}) | B1={live_data['bp1']}({live_data['bv1']}), B2={live_data['bp2']}({live_data['bv2']})\n")
+        #    f.write(f"          -> RÁCSRA ILLESZTVE: Bids {matched_bids}/{input_bids}, Asks {matched_asks}/{input_asks} | Tűrés: {tolerance}\n")
+>>>>>>> REPLACE
