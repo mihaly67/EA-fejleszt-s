@@ -1,95 +1,92 @@
 import sys
-import socket
 import threading
+import time
+import pandas as pd
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QStyledItemDelegate, QStyle
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
+                             QWidget, QLabel, QTableWidget, QTableWidgetItem,
+                             QHeaderView, QAbstractItemView, QStyledItemDelegate, QSlider, QPushButton)
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QObject, QRect
 from PyQt5.QtGui import QColor, QFont, QPainter, QBrush
 
 # --- GLOBÁLIS ADATTÁR ---
 LATEST_DOM_DATA = {
-    'time': 0,
-    'price': 0.0,
+    'time': 0, 'price': 0.0,
     'av1': 0, 'av2': 0, 'bv1': 0, 'bv2': 0,
     'ap1': 0.0, 'ap2': 0.0, 'bp1': 0.0, 'bp2': 0.0
 }
 
-# Jelsugárzó a UI szál értesítésére
 class SignalEmitter(QObject):
     data_updated = pyqtSignal()
 
 emitter = SignalEmitter()
 
-# --- MT5 ZMQ/TCP BRIDGE (HÁTTÉRSZÁL) ---
-class MT5DOMBridge(threading.Thread):
-    def __init__(self, host='0.0.0.0', port=5556):
+# --- CSV OFFLINE PLAYER (HÁTTÉRSZÁL) ---
+class CSVDOMPlayer(threading.Thread):
+    def __init__(self, filepath, speed=1.0):
         super().__init__()
-        self.host = host
-        self.port = port
-        self.running = True
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server_socket.bind((self.host, self.port))
-        self.server_socket.listen(1)
-        self.client_socket = None
+        self.filepath = filepath
+        self.speed = speed
+        self.running = False
+        self.paused = False
+        self.df = None
+        self.current_idx = 0
+        self.total_rows = 0
+
+    def load_data(self):
+        print(f"[CSV-PLAYER] Fájl betöltése: {self.filepath}")
+        try:
+            self.df = pd.read_csv(self.filepath)
+            self.total_rows = len(self.df)
+            print(f"[CSV-PLAYER] Sikeresen betöltve {self.total_rows} sor.")
+            return True
+        except Exception as e:
+            print(f"[CSV-PLAYER] Hiba a fájl beolvasásakor: {e}")
+            return False
 
     def run(self):
-        print(f"[DOM-BRIDGE] DOM HUD Bridge indul ezen: {self.host}:{self.port}")
+        if self.df is None and not self.load_data():
+            return
+
+        self.running = True
+        print("[CSV-PLAYER] Lejátszás indítva...")
+
         while self.running:
-            try:
-                self.server_socket.settimeout(2.0)
-                try:
-                    client, addr = self.server_socket.accept()
-                    self.client_socket = client
-                    self.client_socket.settimeout(None)
-                    print(f"[DOM-BRIDGE] EA Csatlakozott: {addr}")
-                except socket.timeout:
-                    continue
+            if self.paused or self.current_idx >= self.total_rows:
+                time.sleep(0.1)
+                continue
 
-                buffer = ""
-                while self.running and self.client_socket:
-                    try:
-                        data = self.client_socket.recv(1048576).decode('utf-8')
-                        if not data:
-                            print("[DOM-BRIDGE] EA Kapcsolat megszakadt.")
-                            break
-                        buffer += data
-                        while "\n" in buffer:
-                            line, buffer = buffer.split("\n", 1)
-                            self.process_message(line.strip())
-                    except Exception as e:
-                        print(f"[DOM-BRIDGE] Hiba a hálózatban: {e}")
-                        break
-            except Exception as e:
-                print(f"[DOM-BRIDGE] Fő ciklus hiba: {e}")
+            row = self.df.iloc[self.current_idx]
 
-    def process_message(self, message):
-        global LATEST_DOM_DATA
-        if not message: return
-        parts = message.split('|')
-        cmd = parts[0]
+            global LATEST_DOM_DATA
+            LATEST_DOM_DATA['time'] = float(row['TimeMsc'])
+            bid = float(row['Bid'])
+            ask = float(row['Ask'])
+            LATEST_DOM_DATA['price'] = (bid + ask) / 2.0
 
-        if cmd == "TICK":
-            if len(parts) < 15: return
-            try:
-                LATEST_DOM_DATA['time'] = float(parts[1])
-                LATEST_DOM_DATA['price'] = (float(parts[2]) + float(parts[3])) / 2.0
+            LATEST_DOM_DATA['av1'] = int(row['Ask_Vol_1'])
+            LATEST_DOM_DATA['av2'] = int(row['Ask_Vol_2'])
+            LATEST_DOM_DATA['bv1'] = int(row['Bid_Vol_1'])
+            LATEST_DOM_DATA['bv2'] = int(row['Bid_Vol_2'])
 
-                LATEST_DOM_DATA['av1'] = int(parts[7])
-                LATEST_DOM_DATA['av2'] = int(parts[8])
-                LATEST_DOM_DATA['bv1'] = int(parts[9])
-                LATEST_DOM_DATA['bv2'] = int(parts[10])
+            LATEST_DOM_DATA['ap1'] = float(row['Ask_Price_1'])
+            LATEST_DOM_DATA['ap2'] = float(row['Ask_Price_2'])
+            LATEST_DOM_DATA['bp1'] = float(row['Bid_Price_1'])
+            LATEST_DOM_DATA['bp2'] = float(row['Bid_Price_2'])
 
-                LATEST_DOM_DATA['ap1'] = float(parts[11])
-                LATEST_DOM_DATA['ap2'] = float(parts[12])
-                LATEST_DOM_DATA['bp1'] = float(parts[13])
-                LATEST_DOM_DATA['bp2'] = float(parts[14])
+            emitter.data_updated.emit()
 
-                # Értesítjük a GUI-t a frissítésről
-                emitter.data_updated.emit()
-            except ValueError:
-                pass
+            self.current_idx += 1
+            # 1 tick / másodperc alapból, amit a speed szorzó gyorsíthat
+            time.sleep(1.0 / self.speed)
 
+    def set_position(self, percentage):
+        if self.total_rows > 0:
+            self.current_idx = int((percentage / 100.0) * (self.total_rows - 1))
+
+    def toggle_pause(self):
+        self.paused = not self.paused
+        return self.paused
 
 # --- DYNAMIC BAR DELEGATE ---
 class DOMBarDelegate(QStyledItemDelegate):
@@ -103,53 +100,49 @@ class DOMBarDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         painter.save()
 
-        # Alap háttér rajzolása
         bg_color_role = index.data(Qt.BackgroundRole)
         if bg_color_role:
-            if isinstance(bg_color_role, QBrush):
-                painter.fillRect(option.rect, bg_color_role.color())
-            else:
-                painter.fillRect(option.rect, bg_color_role)
+            if isinstance(bg_color_role, QBrush): painter.fillRect(option.rect, bg_color_role.color())
+            else: painter.fillRect(option.rect, bg_color_role)
         else:
             painter.fillRect(option.rect, QColor(11, 14, 20))
 
-        # Adat beolvasása (Volumen)
         text = index.data(Qt.DisplayRole)
         col = index.column()
 
-        if text and text.isdigit():
-            vol = int(text)
-            if vol > 0:
-                # Kiszámítjuk a százalékos szélességet a cella aktuális méretéből
-                width_ratio = min(vol / self.max_vol, 1.0)
-                bar_width = int(option.rect.width() * width_ratio)
+        is_current_price = index.data(Qt.UserRole)
+        if is_current_price:
+            painter.fillRect(option.rect, QColor(252, 213, 53, 50))
 
-                # Oszlop 0 (Bid): Zöld sáv, ami a cella jobb széléről indul balra (középpontból kifelé)
-                if col == 0:
-                    bar_rect = QRect(option.rect.right() - bar_width, option.rect.top() + 4, bar_width, option.rect.height() - 8)
-                    painter.fillRect(bar_rect, QColor(0, 230, 118, 60))
-                    painter.fillRect(QRect(option.rect.right() - 2, option.rect.top() + 4, 2, option.rect.height() - 8), QColor(0, 230, 118, 200)) # Erős perem
+        if text and text.replace('.', '', 1).isdigit():
+            if col == 0 or col == 2:
+                vol = int(float(text))
+                if vol > 0:
+                    width_ratio = min(vol / self.max_vol, 1.0)
+                    bar_width = int(option.rect.width() * width_ratio)
 
-                # Oszlop 2 (Ask): Piros sáv, ami a cella bal széléről indul jobbra (középpontból kifelé)
-                elif col == 2:
-                    bar_rect = QRect(option.rect.left(), option.rect.top() + 4, bar_width, option.rect.height() - 8)
-                    painter.fillRect(bar_rect, QColor(255, 82, 82, 60))
-                    painter.fillRect(QRect(option.rect.left(), option.rect.top() + 4, 2, option.rect.height() - 8), QColor(255, 82, 82, 200)) # Erős perem
+                    if col == 0:
+                        bar_rect = QRect(option.rect.right() - bar_width, option.rect.top() + 4, bar_width, option.rect.height() - 8)
+                        painter.fillRect(bar_rect, QColor(0, 230, 118, 60))
+                        painter.fillRect(QRect(option.rect.right() - 2, option.rect.top() + 4, 2, option.rect.height() - 8), QColor(0, 230, 118, 200))
+                    elif col == 2:
+                        bar_rect = QRect(option.rect.left(), option.rect.top() + 4, bar_width, option.rect.height() - 8)
+                        painter.fillRect(bar_rect, QColor(255, 82, 82, 60))
+                        painter.fillRect(QRect(option.rect.left(), option.rect.top() + 4, 2, option.rect.height() - 8), QColor(255, 82, 82, 200))
 
-        # Szöveg kiírása a sávok FELÉ
+        if is_current_price:
+            painter.fillRect(QRect(option.rect.left(), option.rect.bottom() - 2, option.rect.width(), 2), QColor(252, 213, 53))
+
         text_color_role = index.data(Qt.ForegroundRole)
         if text_color_role:
-            if isinstance(text_color_role, QBrush):
-                painter.setPen(text_color_role.color())
-            else:
-                painter.setPen(text_color_role)
+            if isinstance(text_color_role, QBrush): painter.setPen(text_color_role.color())
+            else: painter.setPen(text_color_role)
         else:
             painter.setPen(QColor(255, 255, 255))
 
         align = index.data(Qt.TextAlignmentRole)
         if not align: align = Qt.AlignCenter | Qt.AlignVCenter
 
-        # Pici padding a szövegnek
         text_rect = option.rect.adjusted(10, 0, -10, 0)
         painter.drawText(text_rect, align, text if text else "")
 
@@ -158,29 +151,44 @@ class DOMBarDelegate(QStyledItemDelegate):
 
 # --- PYQT5 NATIVE UI ---
 class DOMWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, player):
         super().__init__()
-        self.setWindowTitle("🧱 Tőzsdei DOM Monitor (PyQt5)")
-        self.resize(500, 700)
+        self.setWindowTitle("🧱 Tőzsdei DOM Monitor (OFFLINE PLAYER)")
+        self.resize(500, 800)
         self.setStyleSheet("background-color: #121212; color: #ffffff;")
         self.depth_levels = 10
         self.tick_size_estimate = 0.05
+        self.history_imbalance = []
+        self.player = player
 
         self.init_ui()
 
-        # 1.5 másodpercenként garantált vizuális frissítés akkor is, ha nincs friss tick
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_gui)
-        self.timer.start(1500)
+        self.timer.start(100) # Gyors GUI frissités
 
-        # Ha érkezik egy Tick, azonnal frissítjük a GUI-t
         emitter.data_updated.connect(self.update_gui)
 
     def init_ui(self):
         central_widget = QWidget()
         layout = QVBoxLayout(central_widget)
 
-        # KPI Header
+        # --- PLAYER CONTROLS ---
+        control_layout = QHBoxLayout()
+        self.btn_play_pause = QPushButton("⏸ Pause")
+        self.btn_play_pause.clicked.connect(self.toggle_playback)
+        self.btn_play_pause.setStyleSheet("background-color: #fcd535; color: black; font-weight: bold; padding: 10px; border-radius: 5px;")
+
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setRange(0, 100)
+        self.slider.setValue(0)
+        self.slider.sliderMoved.connect(self.seek_position)
+
+        control_layout.addWidget(self.btn_play_pause)
+        control_layout.addWidget(self.slider)
+        layout.addLayout(control_layout)
+
+        # --- KPI Header ---
         kpi_layout = QHBoxLayout()
         self.lbl_bid = QLabel("Legjobb Vétel:\n-")
         self.lbl_ask = QLabel("Legjobb Eladás:\n-")
@@ -194,7 +202,13 @@ class DOMWindow(QMainWindow):
 
         layout.addLayout(kpi_layout)
 
-        # DOM Létra Táblázat
+        # --- Anomália Panel ---
+        self.lbl_anom = QLabel("Várakozás DOM adatokra...")
+        self.lbl_anom.setAlignment(Qt.AlignCenter)
+        self.lbl_anom.setStyleSheet("background-color: #1e1e1e; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
+        layout.addWidget(self.lbl_anom)
+
+        # --- DOM Létra Táblázat ---
         self.table = QTableWidget()
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["Vétel (Bid)", "Ár", "Eladás (Ask)"])
@@ -216,11 +230,17 @@ class DOMWindow(QMainWindow):
         layout.addWidget(self.table)
         self.setCentralWidget(central_widget)
 
+    def toggle_playback(self):
+        is_paused = self.player.toggle_pause()
+        self.btn_play_pause.setText("▶ Play" if is_paused else "⏸ Pause")
+
+    def seek_position(self, value):
+        self.player.set_position(value)
+
     def get_dom_data(self, live_data):
         mid_price = live_data['price']
         if mid_price == 0.0: mid_price = 150.00
 
-        # Dinamikus Tick size
         if live_data['bp1'] > 0 and live_data['ap1'] > 0:
             self.tick_size_estimate = live_data['ap1'] - live_data['bp1']
             if self.tick_size_estimate == 0: self.tick_size_estimate = 0.01
@@ -235,12 +255,10 @@ class DOMWindow(QMainWindow):
         best_ask = live_data['ap1'] if live_data['ap1'] > 0 else mid_rounded + self.tick_size_estimate
 
         for p in prices:
-            # Ask Levels
             if abs(p - live_data['ap2']) < 0.00001 and live_data['av2'] > 0:
                 bids.append(0); asks.append(live_data['av2'])
             elif abs(p - live_data['ap1']) < 0.00001 and live_data['av1'] > 0:
                 bids.append(0); asks.append(live_data['av1'])
-            # Bid Levels
             elif abs(p - live_data['bp1']) < 0.00001 and live_data['bv1'] > 0:
                 bids.append(live_data['bv1']); asks.append(0)
             elif abs(p - live_data['bp2']) < 0.00001 and live_data['bv2'] > 0:
@@ -255,76 +273,99 @@ class DOMWindow(QMainWindow):
         current_data = LATEST_DOM_DATA.copy()
         prices, bids, asks, best_bid, best_ask, spread = self.get_dom_data(current_data)
 
-        # Frissítjük a KPI fejléceket
+        # --- Imbalance Logika ---
+        av1, av2 = current_data['av1'], current_data['av2']
+        bv1, bv2 = current_data['bv1'], current_data['bv2']
+        total_ask = av1 + av2
+        total_bid = bv1 + bv2
+
+        imbalance = 0.0
+        if (total_ask + total_bid) > 0:
+            imbalance = (total_bid - total_ask) / (total_bid + total_ask)
+
+        self.history_imbalance.append(imbalance)
+        if len(self.history_imbalance) > 100: self.history_imbalance.pop(0)
+        mean_imbalance = sum(self.history_imbalance) / len(self.history_imbalance) if self.history_imbalance else 0
+
+        # --- KPI & Anomália Update ---
         if best_bid > 0 and best_ask > 0 and current_data['price'] > 0:
             self.lbl_bid.setText(f"Legjobb Vétel:\n{best_bid:.5f}")
             self.lbl_ask.setText(f"Legjobb Eladás:\n{best_ask:.5f}")
             self.lbl_spread.setText(f"Spread:\n{spread:.5f}")
 
-        # Dinamikus Max Volumen kiszámítása a Delegate skálázásához
-        current_max_vol = 0
+            if mean_imbalance < -0.3:
+                self.lbl_anom.setText("⚠️ KONZISZTENS ELADÓI (ASK) NYOMÁS")
+                self.lbl_anom.setStyleSheet("background-color: #aa5500; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
+            elif mean_imbalance > 0.3:
+                self.lbl_anom.setText("⚠️ KONZISZTENS VÉTELI (BID) NYOMÁS")
+                self.lbl_anom.setStyleSheet("background-color: #00aa55; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
+            else:
+                self.lbl_anom.setText("✅ DOM KIEGYENLÍTETT (STABIL ÁTLAG)")
+                self.lbl_anom.setStyleSheet("background-color: #008800; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
+
+        current_max_vol = 10
         if bids: current_max_vol = max(current_max_vol, max(bids))
         if asks: current_max_vol = max(current_max_vol, max(asks))
         self.delegate.set_max_vol(current_max_vol)
 
-        # Táblázat feltöltése
         self.table.setRowCount(len(prices))
         for i in range(len(prices)):
             price = prices[i]
             bid_vol = bids[i]
             ask_vol = asks[i]
 
-            # --- CELLÁK LÉTREHOZÁSA ---
             item_bid = QTableWidgetItem(str(bid_vol) if bid_vol > 0 else "")
             item_bid.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
             item_price = QTableWidgetItem(f"{price:.5f}")
             item_price.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-
             item_ask = QTableWidgetItem(str(ask_vol) if ask_vol > 0 else "")
             item_ask.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
-            # --- SZÍNEZÉS ÉS MEGJELENÉS (DELEGATE KEZELI A HÁTTEREKET) ---
-            # 1. Eladás (Ask) sor
             if ask_vol > 0:
                 item_ask.setForeground(QColor(255, 82, 82))
                 item_price.setBackground(QColor(19, 23, 34)); item_price.setForeground(QColor(255, 82, 82))
                 item_ask.setBackground(QColor(11, 14, 20)); item_bid.setBackground(QColor(11, 14, 20))
-
-            # 2. Vétel (Bid) sor
             elif bid_vol > 0:
                 item_bid.setForeground(QColor(0, 230, 118))
                 item_price.setBackground(QColor(19, 23, 34)); item_price.setForeground(QColor(0, 230, 118))
                 item_ask.setBackground(QColor(11, 14, 20)); item_bid.setBackground(QColor(11, 14, 20))
-
-            # 3. Spread mező
             elif best_bid < price < best_ask:
-                bg_spread = QColor(30, 34, 45)
-                bg_spread_price = QColor(42, 46, 57)
-                item_bid.setBackground(bg_spread)
-                item_ask.setBackground(bg_spread)
-                item_price.setBackground(bg_spread_price)
-                item_price.setForeground(QColor(120, 123, 134))
-
-            # 4. Üres sor
+                bg_spread = QColor(30, 34, 45); bg_spread_price = QColor(42, 46, 57)
+                item_bid.setBackground(bg_spread); item_ask.setBackground(bg_spread)
+                item_price.setBackground(bg_spread_price); item_price.setForeground(QColor(120, 123, 134))
             else:
-                item_bid.setBackground(QColor(11, 14, 20))
-                item_ask.setBackground(QColor(11, 14, 20))
-                item_price.setBackground(QColor(19, 23, 34))
-                item_price.setForeground(QColor(200, 200, 200))
+                item_bid.setBackground(QColor(11, 14, 20)); item_ask.setBackground(QColor(11, 14, 20))
+                item_price.setBackground(QColor(19, 23, 34)); item_price.setForeground(QColor(200, 200, 200))
+
+            if abs(price - current_data['price']) <= (self.tick_size_estimate / 2.0) and current_data['price'] > 0:
+                item_bid.setData(Qt.UserRole, True)
+                item_price.setData(Qt.UserRole, True)
+                item_ask.setData(Qt.UserRole, True)
+                item_price.setForeground(QColor(252, 213, 53))
 
             self.table.setItem(i, 0, item_bid)
             self.table.setItem(i, 1, item_price)
             self.table.setItem(i, 2, item_ask)
 
+        # Update Slider
+        if self.player.total_rows > 0 and not self.slider.isSliderDown():
+            pct = int((self.player.current_idx / self.player.total_rows) * 100)
+            self.slider.blockSignals(True)
+            self.slider.setValue(pct)
+            self.slider.blockSignals(False)
 
 if __name__ == '__main__':
-    # ZMQ Bridge elindítása
-    bridge = MT5DOMBridge(host='0.0.0.0', port=5556)
-    bridge.start()
+    csv_file = "/home/misi/Merkava_ML_Ops/data/raw/DOM_Data.csv"
 
-    # GUI elindítása
+    # Ha Windows-on futtatja a user a saját gépén, adjunk meg egy fallback útvonalat
+    import os
+    if not os.path.exists(csv_file):
+        csv_file = "DOM_Data.csv" # Ha a lokális mappában van
+
+    player = CSVDOMPlayer(filepath=csv_file, speed=10.0) # 10x-es gyorsított lejátszás
+    player.start()
+
     app = QApplication(sys.argv)
-    window = DOMWindow()
+    window = DOMWindow(player)
     window.show()
     sys.exit(app.exec_())
