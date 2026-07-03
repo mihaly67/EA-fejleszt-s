@@ -186,14 +186,18 @@ double CalculateTotalHistoryProfit() {
 bool ConnectToPython() {
     if(!InpEnablePythonBridge) return false;
 
+    // Ezt a függvényt csak legelső induláskor futtatjuk, az OnTick önállóan kezeli a reconnectet!
+    bool result = false;
+
     // 1. Connect Vaku 3.0 Dashboard (Port 5555)
     if(!g_socket_connected) {
         if(g_socket != INVALID_HANDLE) SocketClose(g_socket);
         g_socket = SocketCreate();
         if(g_socket != INVALID_HANDLE) {
-            if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 1000)) { // 1 masodperc timeout
+            if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 50)) { // Extrem rovid blokkolas (50ms) initkor is
                 g_socket_connected = true;
                 Print("✅ Successfully connected to Vaku 3.0 Dashboard on ", InpBridgeHost, ":", InpBridgePort);
+                result = true;
             } else {
                 SocketClose(g_socket);
                 g_socket = INVALID_HANDLE;
@@ -206,9 +210,10 @@ bool ConnectToPython() {
         if(g_dom_socket != INVALID_HANDLE) SocketClose(g_dom_socket);
         g_dom_socket = SocketCreate();
         if(g_dom_socket != INVALID_HANDLE) {
-            if(SocketConnect(g_dom_socket, InpBridgeHost, InpDomBridgePort, 1000)) { // 1 masodperc timeout
+            if(SocketConnect(g_dom_socket, InpBridgeHost, InpDomBridgePort, 50)) { // Extrem rovid blokkolas (50ms) initkor is
                 g_dom_socket_connected = true;
                 Print("✅ Successfully connected to DOM HUD on ", InpBridgeHost, ":", InpDomBridgePort);
+                result = true;
             } else {
                 SocketClose(g_dom_socket);
                 g_dom_socket = INVALID_HANDLE;
@@ -216,7 +221,7 @@ bool ConnectToPython() {
         }
     }
 
-    return (g_socket_connected || g_dom_socket_connected);
+    return result;
 }
 
 void SendHistoryToPython() {
@@ -594,16 +599,18 @@ void OnTick()
 
    // --- Python Bridge Tick Update & Auto-Reconnect ---
    if(InpEnablePythonBridge) {
-       // Külön idozitok a ket socketre, hogy egy halott socket ne pörgesse feleslegesen a másikat
+       // A reconnect gyakoriságot 10 másodpercre növeljük, és a Timeoutot EXTRÉM rövidre vesszük (1ms),
+       // hogy sose szaggassa meg az OnTick ciklust egy halott kapcsolat.
+       // Ha nem elérhető a socket 1 milliszekundum alatt localhoston, akkor nincs bekapcsolva a Python.
        static datetime last_vaku_reconnect = 0;
        static datetime last_dom_reconnect = 0;
 
-       if(!g_socket_connected && (TimeCurrent() - last_vaku_reconnect > 5)) {
+       if(!g_socket_connected && (TimeCurrent() - last_vaku_reconnect > 10)) {
            last_vaku_reconnect = TimeCurrent();
            if(g_socket != INVALID_HANDLE) SocketClose(g_socket);
            g_socket = SocketCreate();
            if(g_socket != INVALID_HANDLE) {
-               if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 500)) { // 0.5s timeout!
+               if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 1)) { // 1ms non-blocking
                    g_socket_connected = true;
                    Print("✅ Vaku 3.0 Dashboard Reconnected on ", InpBridgePort);
                } else {
@@ -613,12 +620,12 @@ void OnTick()
            }
        }
 
-       if(!g_dom_socket_connected && (TimeCurrent() - last_dom_reconnect > 5)) {
+       if(!g_dom_socket_connected && (TimeCurrent() - last_dom_reconnect > 10)) {
            last_dom_reconnect = TimeCurrent();
            if(g_dom_socket != INVALID_HANDLE) SocketClose(g_dom_socket);
            g_dom_socket = SocketCreate();
            if(g_dom_socket != INVALID_HANDLE) {
-               if(SocketConnect(g_dom_socket, InpBridgeHost, InpDomBridgePort, 500)) { // 0.5s timeout!
+               if(SocketConnect(g_dom_socket, InpBridgeHost, InpDomBridgePort, 1)) { // 1ms non-blocking
                    g_dom_socket_connected = true;
                    Print("✅ DOM HUD Reconnected on ", InpDomBridgePort);
                } else {
