@@ -1,0 +1,28 @@
+<<<<<<< SEARCH
+        for p in prices:
+            if abs(p - live_data['ap2']) < 0.00001 and live_data['av2'] > 0:
+                bids.append(0); asks.append(live_data['av2'])
+            elif abs(p - live_data['ap1']) < 0.00001 and live_data['av1'] > 0:
+                bids.append(0); asks.append(live_data['av1'])
+            elif abs(p - live_data['bp1']) < 0.00001 and live_data['bv1'] > 0:
+                bids.append(live_data['bv1']); asks.append(0)
+            elif abs(p - live_data['bp2']) < 0.00001 and live_data['bv2'] > 0:
+                bids.append(live_data['bv2']); asks.append(0)
+            else:
+                bids.append(0); asks.append(0)
+=======
+        # Lazább tolerancia a float illesztésre, hogy a Spread/Tick_size fluktuációit lekezeljük.
+        tolerance = self.tick_size_estimate / 2.0
+
+        for p in prices:
+            if abs(p - live_data['ap2']) < tolerance and live_data['av2'] > 0:
+                bids.append(0); asks.append(live_data['av2'])
+            elif abs(p - live_data['ap1']) < tolerance and live_data['av1'] > 0:
+                bids.append(0); asks.append(live_data['av1'])
+            elif abs(p - live_data['bp1']) < tolerance and live_data['bv1'] > 0:
+                bids.append(live_data['bv1']); asks.append(0)
+            elif abs(p - live_data['bp2']) < tolerance and live_data['bv2'] > 0:
+                bids.append(live_data['bv2']); asks.append(0)
+            else:
+                bids.append(0); asks.append(0)
+>>>>>>> REPLACE

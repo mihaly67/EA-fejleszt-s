@@ -21,7 +21,7 @@ class SignalEmitter(QObject):
 
 emitter = SignalEmitter()
 
-# --- CSV OFFLINE PLAYER (HÁTTÉRSZÁL) ---
+# --- CSV OFFLINE PLAYER (HÁTTÉRSZÁL EPOCH SZIMULÁCIÓVAL) ---
 class CSVDOMPlayer(threading.Thread):
     def __init__(self, filepath, speed=1.0):
         super().__init__()
@@ -32,6 +32,7 @@ class CSVDOMPlayer(threading.Thread):
         self.df = None
         self.current_idx = 0
         self.total_rows = 0
+        self.last_epoch_msc = 0
 
     def load_data(self):
         print(f"[CSV-PLAYER] Fájl betöltése: {self.filepath}")
@@ -49,17 +50,19 @@ class CSVDOMPlayer(threading.Thread):
             return
 
         self.running = True
-        print("[CSV-PLAYER] Lejátszás indítva...")
+        print("[CSV-PLAYER] Epoch Lejátszás indítva...")
 
         while self.running:
             if self.paused or self.current_idx >= self.total_rows:
                 time.sleep(0.1)
+                self.last_epoch_msc = 0 # reset on pause/end to avoid massive jumps
                 continue
 
             row = self.df.iloc[self.current_idx]
+            current_epoch_msc = float(row['TimeMsc'])
 
             global LATEST_DOM_DATA
-            LATEST_DOM_DATA['time'] = float(row['TimeMsc'])
+            LATEST_DOM_DATA['time'] = current_epoch_msc
             bid = float(row['Bid'])
             ask = float(row['Ask'])
             LATEST_DOM_DATA['price'] = (bid + ask) / 2.0
@@ -76,16 +79,38 @@ class CSVDOMPlayer(threading.Thread):
 
             emitter.data_updated.emit()
 
+            # Valós Epoch-alapú időzítés szimulációja
+            if self.last_epoch_msc > 0 and self.current_idx + 1 < self.total_rows:
+                next_epoch_msc = float(self.df.iloc[self.current_idx + 1]['TimeMsc'])
+                delta_msc = next_epoch_msc - current_epoch_msc
+
+                if delta_msc > 0:
+                    # Várakozási idő számítása a választott sebesség (speed) alapján
+                    sleep_time = (delta_msc / 1000.0) / self.speed
+
+                    # Ha extrém nagy a szünet (pl. hétvége a CSV-ben), vágjuk le max 2 másodpercre (speed-hez igazítva)
+                    max_sleep = 2.0 / self.speed
+                    if sleep_time > max_sleep:
+                        sleep_time = max_sleep
+
+                    time.sleep(sleep_time)
+            else:
+                time.sleep(0.01) # fallback
+
+            self.last_epoch_msc = current_epoch_msc
             self.current_idx += 1
-            # 1 tick / másodperc alapból, amit a speed szorzó gyorsíthat
-            time.sleep(1.0 / self.speed)
 
     def set_position(self, percentage):
         if self.total_rows > 0:
             self.current_idx = int((percentage / 100.0) * (self.total_rows - 1))
+            self.last_epoch_msc = 0 # reset timing on seek
+
+    def set_speed(self, new_speed):
+        self.speed = float(new_speed)
 
     def toggle_pause(self):
         self.paused = not self.paused
+        if self.paused: self.last_epoch_msc = 0 # reset timing
         return self.paused
 
 # --- DYNAMIC BAR DELEGATE ---
@@ -174,10 +199,17 @@ class DOMWindow(QMainWindow):
         layout = QVBoxLayout(central_widget)
 
         # --- PLAYER CONTROLS ---
+        from PyQt5.QtWidgets import QComboBox
         control_layout = QHBoxLayout()
         self.btn_play_pause = QPushButton("⏸ Pause")
         self.btn_play_pause.clicked.connect(self.toggle_playback)
         self.btn_play_pause.setStyleSheet("background-color: #fcd535; color: black; font-weight: bold; padding: 10px; border-radius: 5px;")
+
+        self.cb_speed = QComboBox()
+        self.cb_speed.addItems(["1x", "5x", "10x", "50x", "100x"])
+        self.cb_speed.setCurrentText("10x")
+        self.cb_speed.currentTextChanged.connect(self.change_speed)
+        self.cb_speed.setStyleSheet("background-color: #2b2b2b; color: white; padding: 10px; border-radius: 5px; font-weight: bold;")
 
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(0, 100)
@@ -185,6 +217,7 @@ class DOMWindow(QMainWindow):
         self.slider.sliderMoved.connect(self.seek_position)
 
         control_layout.addWidget(self.btn_play_pause)
+        control_layout.addWidget(self.cb_speed)
         control_layout.addWidget(self.slider)
         layout.addLayout(control_layout)
 
@@ -237,6 +270,10 @@ class DOMWindow(QMainWindow):
     def seek_position(self, value):
         self.player.set_position(value)
 
+    def change_speed(self, text):
+        speed_val = float(text.replace('x', ''))
+        self.player.set_speed(speed_val)
+
     def get_dom_data(self, live_data):
         mid_price = live_data['price']
         if mid_price == 0.0: mid_price = 150.00
@@ -254,19 +291,33 @@ class DOMWindow(QMainWindow):
         best_bid = live_data['bp1'] if live_data['bp1'] > 0 else mid_rounded - self.tick_size_estimate
         best_ask = live_data['ap1'] if live_data['ap1'] > 0 else mid_rounded + self.tick_size_estimate
 
+        # Lazább tolerancia a float illesztésre, hogy a Spread/Tick_size fluktuációit lekezeljük.
+        tolerance = self.tick_size_estimate / 2.0
+
         for p in prices:
-            if abs(p - live_data['ap2']) < 0.00001 and live_data['av2'] > 0:
+            if abs(p - live_data['ap2']) < tolerance and live_data['av2'] > 0:
                 bids.append(0); asks.append(live_data['av2'])
-            elif abs(p - live_data['ap1']) < 0.00001 and live_data['av1'] > 0:
+            elif abs(p - live_data['ap1']) < tolerance and live_data['av1'] > 0:
                 bids.append(0); asks.append(live_data['av1'])
-            elif abs(p - live_data['bp1']) < 0.00001 and live_data['bv1'] > 0:
+            elif abs(p - live_data['bp1']) < tolerance and live_data['bv1'] > 0:
                 bids.append(live_data['bv1']); asks.append(0)
-            elif abs(p - live_data['bp2']) < 0.00001 and live_data['bv2'] > 0:
+            elif abs(p - live_data['bp2']) < tolerance and live_data['bv2'] > 0:
                 bids.append(live_data['bv2']); asks.append(0)
             else:
                 bids.append(0); asks.append(0)
 
         spread_value = max(0, best_ask - best_bid)
+
+        # --- DIAGNOSZTIKA: Bemenet vs. Kimenet ellenőrzése ---
+        matched_asks = sum([1 for a in asks if a > 0])
+        matched_bids = sum([1 for b in bids if b > 0])
+        input_asks = sum([1 for v in [live_data['av1'], live_data['av2']] if v > 0])
+        input_bids = sum([1 for v in [live_data['bv1'], live_data['bv2']] if v > 0])
+
+        with open("dom_visual_debug.log", "a") as f:
+            f.write(f"[{time.strftime('%H:%M:%S')}] TICK: A1={live_data['ap1']}({live_data['av1']}), A2={live_data['ap2']}({live_data['av2']}) | B1={live_data['bp1']}({live_data['bv1']}), B2={live_data['bp2']}({live_data['bv2']})\n")
+            f.write(f"          -> RÁCSRA ILLESZTVE: Bids {matched_bids}/{input_bids}, Asks {matched_asks}/{input_asks} | Tűrés: {tolerance}\n")
+
         return prices, bids, asks, best_bid, best_ask, spread_value
 
     def update_gui(self):
