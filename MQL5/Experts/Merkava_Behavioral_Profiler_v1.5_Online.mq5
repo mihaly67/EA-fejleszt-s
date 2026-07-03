@@ -186,33 +186,35 @@ double CalculateTotalHistoryProfit() {
 bool ConnectToPython() {
     if(!InpEnablePythonBridge) return false;
 
-    // 1. Connect Vaku 3.0 Dashboard (Port 5555)
-    if(g_socket != INVALID_HANDLE) SocketClose(g_socket);
-    g_socket = SocketCreate();
-    if(g_socket != INVALID_HANDLE) {
-        if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 5000)) {
-            g_socket_connected = true;
-            Print("✅ Successfully connected to Vaku 3.0 Dashboard on ", InpBridgeHost, ":", InpBridgePort);
-        } else {
-            Print("❌ Failed to connect to Vaku 3.0 Dashboard. Error: ", GetLastError());
-            SocketClose(g_socket);
-            g_socket = INVALID_HANDLE;
-            g_socket_connected = false;
+    // 1. Connect Vaku 3.0 Dashboard (Port 5555) - ONLY if not already connected
+    if(!g_socket_connected) {
+        if(g_socket != INVALID_HANDLE) SocketClose(g_socket);
+        g_socket = SocketCreate();
+        if(g_socket != INVALID_HANDLE) {
+            if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 5000)) {
+                g_socket_connected = true;
+                Print("✅ Successfully connected to Vaku 3.0 Dashboard on ", InpBridgeHost, ":", InpBridgePort);
+            } else {
+                SocketClose(g_socket);
+                g_socket = INVALID_HANDLE;
+                g_socket_connected = false;
+            }
         }
     }
 
-    // 2. Connect DOM HUD (Port 5556)
-    if(g_dom_socket != INVALID_HANDLE) SocketClose(g_dom_socket);
-    g_dom_socket = SocketCreate();
-    if(g_dom_socket != INVALID_HANDLE) {
-        if(SocketConnect(g_dom_socket, InpBridgeHost, InpDomBridgePort, 5000)) {
-            g_dom_socket_connected = true;
-            Print("✅ Successfully connected to DOM HUD on ", InpBridgeHost, ":", InpDomBridgePort);
-        } else {
-            Print("❌ Failed to connect to DOM HUD. Error: ", GetLastError());
-            SocketClose(g_dom_socket);
-            g_dom_socket = INVALID_HANDLE;
-            g_dom_socket_connected = false;
+    // 2. Connect DOM HUD (Port 5556) - ONLY if not already connected
+    if(!g_dom_socket_connected) {
+        if(g_dom_socket != INVALID_HANDLE) SocketClose(g_dom_socket);
+        g_dom_socket = SocketCreate();
+        if(g_dom_socket != INVALID_HANDLE) {
+            if(SocketConnect(g_dom_socket, InpBridgeHost, InpDomBridgePort, 5000)) {
+                g_dom_socket_connected = true;
+                Print("✅ Successfully connected to DOM HUD on ", InpBridgeHost, ":", InpDomBridgePort);
+            } else {
+                SocketClose(g_dom_socket);
+                g_dom_socket = INVALID_HANDLE;
+                g_dom_socket_connected = false;
+            }
         }
     }
 
@@ -595,9 +597,7 @@ void OnTick()
    if(InpEnablePythonBridge) {
        if((!g_socket_connected || !g_dom_socket_connected) && (TimeCurrent() - g_last_reconnect_time > 5)) {
            g_last_reconnect_time = TimeCurrent();
-           if(ConnectToPython()) {
-               // Optional: Re-send history on reconnect if needed, but for now just resume ticks
-           }
+           ConnectToPython(); // Újra megpróbál csatlakozni mindkét portra
        }
        if(g_socket_connected || g_dom_socket_connected) {
            int pos_type = 0;
