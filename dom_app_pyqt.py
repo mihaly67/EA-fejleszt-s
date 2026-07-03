@@ -22,7 +22,7 @@ emitter = SignalEmitter()
 
 # --- MT5 ZMQ/TCP BRIDGE (HÁTTÉRSZÁL) ---
 class MT5DOMBridge(threading.Thread):
-    def __init__(self, host='0.0.0.0', port=5555):
+    def __init__(self, host='0.0.0.0', port=5556):
         super().__init__()
         self.host = host
         self.port = port
