@@ -32,7 +32,8 @@ class CSVDOMPlayer(threading.Thread):
         self.df = None
         self.current_idx = 0
         self.total_rows = 0
-        self.last_epoch_msc = 0
+        self.virtual_epoch_msc = 0.0
+        self.last_real_time = 0.0
 
     def load_data(self):
         print(f"[CSV-PLAYER] Fájl betöltése: {self.filepath}")
@@ -54,63 +55,69 @@ class CSVDOMPlayer(threading.Thread):
 
         while self.running:
             if self.paused or self.current_idx >= self.total_rows:
-                time.sleep(0.1)
-                self.last_epoch_msc = 0 # reset on pause/end to avoid massive jumps
+                time.sleep(0.05)
+                self.last_real_time = 0.0 # reset on pause
                 continue
 
-            row = self.df.iloc[self.current_idx]
-            current_epoch_msc = float(row['TimeMsc'])
+            # Inicializáljuk az epoch órát a legelső tickből induláskor vagy tekerés után
+            if self.last_real_time == 0.0:
+                self.virtual_epoch_msc = float(self.df.iloc[self.current_idx]['TimeMsc'])
+                self.last_real_time = time.time()
 
-            global LATEST_DOM_DATA
-            LATEST_DOM_DATA['time'] = current_epoch_msc
-            bid = float(row['Bid'])
-            ask = float(row['Ask'])
-            LATEST_DOM_DATA['price'] = (bid + ask) / 2.0
+            # Frissítjük a virtuális Epoch órát a valós eltelt idő * sebesség alapján
+            current_real_time = time.time()
+            real_delta_sec = current_real_time - self.last_real_time
+            self.virtual_epoch_msc += (real_delta_sec * 1000.0) * self.speed
+            self.last_real_time = current_real_time
 
-            LATEST_DOM_DATA['av1'] = int(row['Ask_Vol_1'])
-            LATEST_DOM_DATA['av2'] = int(row['Ask_Vol_2'])
-            LATEST_DOM_DATA['bv1'] = int(row['Bid_Vol_1'])
-            LATEST_DOM_DATA['bv2'] = int(row['Bid_Vol_2'])
+            # Beküldjük az ÖSSZES ticket, aminek az Epoch ideje <= a mi virtuális óránknál
+            # Így nagy sebességnél is garantáltan beküld minden sorozatot, nem hagy ki semmit.
+            ticks_sent = 0
+            while self.current_idx < self.total_rows:
+                row = self.df.iloc[self.current_idx]
+                tick_epoch = float(row['TimeMsc'])
 
-            LATEST_DOM_DATA['ap1'] = float(row['Ask_Price_1'])
-            LATEST_DOM_DATA['ap2'] = float(row['Ask_Price_2'])
-            LATEST_DOM_DATA['bp1'] = float(row['Bid_Price_1'])
-            LATEST_DOM_DATA['bp2'] = float(row['Bid_Price_2'])
+                # Extrém szünet (pl. hétvége gap) kezelése: ha a következő tick több mint 5 percre van, tekerjük előre az órát
+                if (tick_epoch - self.virtual_epoch_msc) > 300000.0:
+                    self.virtual_epoch_msc = tick_epoch - 1000.0
 
-            emitter.data_updated.emit()
+                if tick_epoch <= self.virtual_epoch_msc:
+                    global LATEST_DOM_DATA
+                    LATEST_DOM_DATA['time'] = tick_epoch
+                    bid = float(row['Bid'])
+                    ask = float(row['Ask'])
+                    LATEST_DOM_DATA['price'] = (bid + ask) / 2.0
 
-            # Valós Epoch-alapú időzítés szimulációja
-            if self.last_epoch_msc > 0 and self.current_idx + 1 < self.total_rows:
-                next_epoch_msc = float(self.df.iloc[self.current_idx + 1]['TimeMsc'])
-                delta_msc = next_epoch_msc - current_epoch_msc
+                    LATEST_DOM_DATA['av1'] = int(row['Ask_Vol_1'])
+                    LATEST_DOM_DATA['av2'] = int(row['Ask_Vol_2'])
+                    LATEST_DOM_DATA['bv1'] = int(row['Bid_Vol_1'])
+                    LATEST_DOM_DATA['bv2'] = int(row['Bid_Vol_2'])
 
-                if delta_msc > 0:
-                    # Várakozási idő számítása a választott sebesség (speed) alapján
-                    sleep_time = (delta_msc / 1000.0) / self.speed
+                    LATEST_DOM_DATA['ap1'] = float(row['Ask_Price_1'])
+                    LATEST_DOM_DATA['ap2'] = float(row['Ask_Price_2'])
+                    LATEST_DOM_DATA['bp1'] = float(row['Bid_Price_1'])
+                    LATEST_DOM_DATA['bp2'] = float(row['Bid_Price_2'])
 
-                    # Ha extrém nagy a szünet (pl. hétvége a CSV-ben), vágjuk le max 2 másodpercre (speed-hez igazítva)
-                    max_sleep = 2.0 / self.speed
-                    if sleep_time > max_sleep:
-                        sleep_time = max_sleep
+                    emitter.data_updated.emit()
+                    self.current_idx += 1
+                    ticks_sent += 1
+                else:
+                    break # A következő tick a jövőben van, várjunk a következő ciklusra
 
-                    time.sleep(sleep_time)
-            else:
-                time.sleep(0.01) # fallback
-
-            self.last_epoch_msc = current_epoch_msc
-            self.current_idx += 1
+            # Pici CPU kímélő szünet
+            time.sleep(0.01)
 
     def set_position(self, percentage):
         if self.total_rows > 0:
             self.current_idx = int((percentage / 100.0) * (self.total_rows - 1))
-            self.last_epoch_msc = 0 # reset timing on seek
+            self.last_real_time = 0.0 # Force clock reset on seek
 
     def set_speed(self, new_speed):
         self.speed = float(new_speed)
 
     def toggle_pause(self):
         self.paused = not self.paused
-        if self.paused: self.last_epoch_msc = 0 # reset timing
+        if self.paused: self.last_real_time = 0.0 # Force clock reset
         return self.paused
 
 # --- DYNAMIC BAR DELEGATE ---
@@ -136,7 +143,9 @@ class DOMBarDelegate(QStyledItemDelegate):
         col = index.column()
 
         is_current_price = index.data(Qt.UserRole)
-        if is_current_price:
+
+        # Sárga háttér CSAK a középső (Árfolyam) oszlopban
+        if is_current_price and col == 1:
             painter.fillRect(option.rect, QColor(252, 213, 53, 50))
 
         if text and text.replace('.', '', 1).isdigit():
@@ -155,9 +164,7 @@ class DOMBarDelegate(QStyledItemDelegate):
                         painter.fillRect(bar_rect, QColor(255, 82, 82, 60))
                         painter.fillRect(QRect(option.rect.left(), option.rect.top() + 4, 2, option.rect.height() - 8), QColor(255, 82, 82, 200))
 
-        if is_current_price:
-            painter.fillRect(QRect(option.rect.left(), option.rect.bottom() - 2, option.rect.width(), 2), QColor(252, 213, 53))
-
+        # Szöveg kiírása a sávok FELÉ
         text_color_role = index.data(Qt.ForegroundRole)
         if text_color_role:
             if isinstance(text_color_role, QBrush): painter.setPen(text_color_role.color())
@@ -309,14 +316,14 @@ class DOMWindow(QMainWindow):
         spread_value = max(0, best_ask - best_bid)
 
         # --- DIAGNOSZTIKA: Bemenet vs. Kimenet ellenőrzése ---
+        # A file alapú logolást kikommenteljük a performancia miatt, a terminalba írunk helyette ha van hiányzó
         matched_asks = sum([1 for a in asks if a > 0])
         matched_bids = sum([1 for b in bids if b > 0])
         input_asks = sum([1 for v in [live_data['av1'], live_data['av2']] if v > 0])
         input_bids = sum([1 for v in [live_data['bv1'], live_data['bv2']] if v > 0])
 
-        with open("dom_visual_debug.log", "a") as f:
-            f.write(f"[{time.strftime('%H:%M:%S')}] TICK: A1={live_data['ap1']}({live_data['av1']}), A2={live_data['ap2']}({live_data['av2']}) | B1={live_data['bp1']}({live_data['bv1']}), B2={live_data['bp2']}({live_data['bv2']})\n")
-            f.write(f"          -> RÁCSRA ILLESZTVE: Bids {matched_bids}/{input_bids}, Asks {matched_asks}/{input_asks} | Tűrés: {tolerance}\n")
+        if (input_asks > 0 and matched_asks == 0) or (input_bids > 0 and matched_bids == 0):
+            print(f"[HIBA] Tick elveszett a rácson! Epoch: {live_data['time']} | Tűrés: {tolerance} | A1: {live_data['ap1']} B1: {live_data['bp1']}")
 
         return prices, bids, asks, best_bid, best_ask, spread_value
 
