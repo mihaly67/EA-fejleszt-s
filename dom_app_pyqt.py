@@ -288,19 +288,28 @@ class DOMWindow(QMainWindow):
         mid_price = live_data['price']
         if mid_price == 0.0: mid_price = 150.00
 
-        # Fix Tick Size becslés CFD-re / Goldra (mindig fix 0.1 vagy 0.01, különben ugrál a rács)
-        # Ne vonjuk ki a Bid-et az Ask-ból, mert a spread változik! A tőzsdei tick fix.
-        if live_data['bp1'] > 0:
-            str_price = str(live_data['bp1'])
-            if '.' in str_price:
-                decimals = len(str_price.split('.')[1])
-                self.tick_size_estimate = 1.0 / (10 ** decimals)
-            else:
-                self.tick_size_estimate = 0.1
+        # Mivel a brókerek az utolsó 0-kat sokszor lehagyják a floatok végéről (pl. 4081.50 -> 4081.5),
+        # az egyszerű tizedesjegy-számlálás nagyon ugráló tick size-t okozhat.
+        # Megbízhatóbb, ha az aktuális 1. és 2. szint közötti távolságból próbálunk deriválni,
+        # vagy egy kőkemény fixet adunk a BTCUSD/XAUUSD-hez. (0.1 a Micro Gold, 1.0 a BTC)
 
-        # A biztonság kedvéért, ha túl kicsi vagy túl nagy
-        if self.tick_size_estimate < 0.00001: self.tick_size_estimate = 0.01
-        if self.tick_size_estimate > 1.0: self.tick_size_estimate = 0.1
+        # Próbáljuk meg kikövetkeztetni a valós lépésközt az Ask_Price_1 és Ask_Price_2 különbségéből (ha van)
+        inferred_tick = 0.0
+        if live_data['ap2'] > 0 and live_data['ap1'] > 0:
+            inferred_tick = round(abs(live_data['ap2'] - live_data['ap1']), 5)
+        elif live_data['bp1'] > 0 and live_data['bp2'] > 0:
+            inferred_tick = round(abs(live_data['bp1'] - live_data['bp2']), 5)
+
+        if inferred_tick > 0:
+            self.tick_size_estimate = inferred_tick
+        else:
+            # Fallback a biztonságos kerekítésekhez ha nincs mélység (Level 1 DOM)
+            if live_data['price'] > 10000: self.tick_size_estimate = 1.0 # BTC
+            elif live_data['price'] > 1000: self.tick_size_estimate = 0.1 # Gold
+            elif live_data['price'] > 100: self.tick_size_estimate = 0.01 # JPY
+            else: self.tick_size_estimate = 0.00001 # EURUSD
+
+        if self.tick_size_estimate < 0.00001: self.tick_size_estimate = 0.00001
 
         mid_rounded = np.round(mid_price / self.tick_size_estimate) * self.tick_size_estimate
         prices = np.arange(mid_rounded + (self.depth_levels * self.tick_size_estimate), mid_rounded - (self.depth_levels * self.tick_size_estimate) - self.tick_size_estimate, -self.tick_size_estimate)
