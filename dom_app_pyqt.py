@@ -39,8 +39,11 @@ class CSVDOMPlayer(threading.Thread):
         print(f"[CSV-PLAYER] Fájl betöltése: {self.filepath}")
         try:
             self.df = pd.read_csv(self.filepath)
+            original_rows = len(self.df)
+            # Töröljük a 0 ms-os duplikált DOM screenshotokat, hogy csak a valós elmozdulások maradjanak (teljesítmény javítás)
+            self.df = self.df.drop_duplicates(subset=['TimeMsc'], keep='last').reset_index(drop=True)
             self.total_rows = len(self.df)
-            print(f"[CSV-PLAYER] Sikeresen betöltve {self.total_rows} sor.")
+            print(f"[CSV-PLAYER] Sikeresen betöltve {original_rows} sor. Szűrés után (duplikátumok nélkül): {self.total_rows} VALÓS tick.")
             return True
         except Exception as e:
             print(f"[CSV-PLAYER] Hiba a fájl beolvasásakor: {e}")
