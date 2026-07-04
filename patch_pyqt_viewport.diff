@@ -1,0 +1,29 @@
+<<<<<<< SEARCH
+        mid_rounded = np.round(mid_price / self.tick_size_estimate) * self.tick_size_estimate
+        prices = np.arange(mid_rounded + (self.depth_levels * self.tick_size_estimate), mid_rounded - (self.depth_levels * self.tick_size_estimate) - self.tick_size_estimate, -self.tick_size_estimate)
+        prices = np.round(prices, 5)
+
+        bids, asks = [], []
+        best_bid = live_data['bp1'] if live_data['bp1'] > 0 else mid_rounded - self.tick_size_estimate
+        best_ask = live_data['ap1'] if live_data['ap1'] > 0 else mid_rounded + self.tick_size_estimate
+=======
+        mid_rounded = np.round(mid_price / self.tick_size_estimate) * self.tick_size_estimate
+
+        best_bid = live_data['bp1'] if live_data['bp1'] > 0 else mid_rounded - self.tick_size_estimate
+        best_ask = live_data['ap1'] if live_data['ap1'] > 0 else mid_rounded + self.tick_size_estimate
+
+        # Dinamikus Viewport (Grid) Számítás:
+        # Nem a Mid-től megyünk +/- 10-et, hanem megkeressük a legmagasabb Asket és a legalacsonyabb Bidet a piacon (ami még érvényes).
+        # Hogy biztosan minden beférjen a képernyőre, a legmagasabb pontból indulunk.
+        top_price = best_ask + (self.depth_levels * self.tick_size_estimate)
+        if live_data['ap2'] > 0: top_price = max(top_price, live_data['ap2'] + (self.depth_levels * self.tick_size_estimate))
+
+        bottom_price = best_bid - (self.depth_levels * self.tick_size_estimate)
+        if live_data['bp2'] > 0: bottom_price = min(bottom_price, live_data['bp2'] - (self.depth_levels * self.tick_size_estimate))
+
+        # Grid generálás a Top és Bottom között (nagyon volatilis / nagy spread esetén a grid megnőhet)
+        prices = np.arange(top_price, bottom_price - self.tick_size_estimate, -self.tick_size_estimate)
+        prices = np.round(prices, 5)
+
+        bids, asks = [], []
+>>>>>>> REPLACE

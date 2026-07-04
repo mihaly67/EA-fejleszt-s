@@ -304,7 +304,7 @@ class DOMWindow(QMainWindow):
             self.tick_size_estimate = inferred_tick
         else:
             # Fallback a biztonságos kerekítésekhez ha nincs mélység (Level 1 DOM)
-            if live_data['price'] > 10000: self.tick_size_estimate = 1.0 # BTC
+            if live_data['price'] > 10000: self.tick_size_estimate = 0.1 # BTCUSD CFD-k gyakran 0.1 tickesek!
             elif live_data['price'] > 1000: self.tick_size_estimate = 0.1 # Gold
             elif live_data['price'] > 100: self.tick_size_estimate = 0.01 # JPY
             else: self.tick_size_estimate = 0.00001 # EURUSD
@@ -312,12 +312,29 @@ class DOMWindow(QMainWindow):
         if self.tick_size_estimate < 0.00001: self.tick_size_estimate = 0.00001
 
         mid_rounded = np.round(mid_price / self.tick_size_estimate) * self.tick_size_estimate
-        prices = np.arange(mid_rounded + (self.depth_levels * self.tick_size_estimate), mid_rounded - (self.depth_levels * self.tick_size_estimate) - self.tick_size_estimate, -self.tick_size_estimate)
+
+        best_bid = live_data['bp1'] if live_data['bp1'] > 0 else mid_rounded - self.tick_size_estimate
+        best_ask = live_data['ap1'] if live_data['ap1'] > 0 else mid_rounded + self.tick_size_estimate
+
+        # Dinamikus Viewport (Grid) Számítás:
+        # Nem a Mid-től megyünk +/- 10-et, hanem megkeressük a legmagasabb Asket és a legalacsonyabb Bidet a piacon.
+        # Hogy biztosan minden beférjen a képernyőre, a legmagasabb pontból indulunk.
+        top_price = best_ask + (self.depth_levels * self.tick_size_estimate)
+        if live_data['ap2'] > 0: top_price = max(top_price, live_data['ap2'] + (self.depth_levels * self.tick_size_estimate))
+
+        bottom_price = best_bid - (self.depth_levels * self.tick_size_estimate)
+        if live_data['bp2'] > 0: bottom_price = min(bottom_price, live_data['bp2'] - (self.depth_levels * self.tick_size_estimate))
+
+        # Grid generálás a Top és Bottom között (nagyon volatilis / nagy spread esetén a grid megnőhet)
+        # Az arange hiba elkerülése végett (ha a spread óriási, a táblázat millió soros lenne): limitáljuk max 200 sorban!
+        if (top_price - bottom_price) / self.tick_size_estimate > 200:
+            top_price = mid_rounded + (100 * self.tick_size_estimate)
+            bottom_price = mid_rounded - (100 * self.tick_size_estimate)
+
+        prices = np.arange(top_price, bottom_price - self.tick_size_estimate, -self.tick_size_estimate)
         prices = np.round(prices, 5)
 
         bids, asks = [], []
-        best_bid = live_data['bp1'] if live_data['bp1'] > 0 else mid_rounded - self.tick_size_estimate
-        best_ask = live_data['ap1'] if live_data['ap1'] > 0 else mid_rounded + self.tick_size_estimate
 
         # A tolerancia most már stabil, mert a tick_size fix
         tolerance = self.tick_size_estimate / 2.0
