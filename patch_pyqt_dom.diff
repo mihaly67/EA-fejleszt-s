@@ -1,0 +1,29 @@
+<<<<<<< SEARCH
+        # Fix Tick Size becslés CFD-re / Goldra (mindig fix 0.1 vagy 0.01, különben ugrál a rács)
+        # Ne vonjuk ki a Bid-et az Ask-ból, mert a spread változik! A tőzsdei tick fix.
+        if live_data['bp1'] > 0:
+            str_price = str(live_data['bp1'])
+            if '.' in str_price:
+                decimals = len(str_price.split('.')[1])
+                self.tick_size_estimate = 1.0 / (10 ** decimals)
+            else:
+                self.tick_size_estimate = 0.1
+
+        # A biztonság kedvéért, ha túl kicsi vagy túl nagy
+        if self.tick_size_estimate < 0.00001: self.tick_size_estimate = 0.01
+        if self.tick_size_estimate > 1.0: self.tick_size_estimate = 0.1
+=======
+        # Fix Tick Size becslés CFD-re / Goldra (mindig fix 0.1 vagy 0.01, különben ugrál a rács)
+        # Mivel a Bitcoin (BTCUSD) tick mérete általában 1.0, 0.1 vagy 0.01 brókertől függően,
+        # a korábbi szigorú "max 0.1" korlát Bitcoinon lenullázta a rácsot.
+        if live_data['bp1'] > 0:
+            str_price = str(live_data['bp1'])
+            if '.' in str_price:
+                decimals = len(str_price.split('.')[1])
+                self.tick_size_estimate = 1.0 / (10 ** decimals)
+            else:
+                self.tick_size_estimate = 1.0
+
+        # Eltávolítottuk az önkényes 1.0-ás plafont, hogy a BTC 1.0-ás (vagy nagyobb) tickjeit is kibírja!
+        if self.tick_size_estimate < 0.00001: self.tick_size_estimate = 0.01
+>>>>>>> REPLACE
