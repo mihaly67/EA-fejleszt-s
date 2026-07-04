@@ -80,9 +80,9 @@ class CSVDOMPlayer(threading.Thread):
                 row = self.df.iloc[self.current_idx]
                 tick_epoch = float(row['TimeMsc'])
 
-                # Extrém szünet (pl. hétvége gap) kezelése: ha a következő tick több mint 5 percre van, tekerjük előre az órát
-                if (tick_epoch - self.virtual_epoch_msc) > 300000.0:
-                    self.virtual_epoch_msc = tick_epoch - 1000.0
+                # Extrém szünet (pl. hétvége gap) kezelése: ha a következő tick több mint 1 percre van, tekerjük előre az órát
+                if (tick_epoch - self.virtual_epoch_msc) > 60000.0:
+                    self.virtual_epoch_msc = tick_epoch - 50.0
 
                 if tick_epoch <= self.virtual_epoch_msc:
                     global LATEST_DOM_DATA
@@ -104,10 +104,14 @@ class CSVDOMPlayer(threading.Thread):
                     emitter.data_updated.emit()
                     self.current_idx += 1
                     ticks_sent += 1
+
+                    # Ha már sokat küldtünk egy ciklus alatt (pl. egy burst), adjunk esélyt a GUI-nak frissíteni
+                    if ticks_sent > 10:
+                        break
                 else:
                     break # A következő tick a jövőben van, várjunk a következő ciklusra
 
-            # Pici CPU kímélő szünet
+            # GUI kímélő szünet - fontos hogy a GUI szál ne fagyjon le a sok emittől
             time.sleep(0.01)
 
     def set_position(self, percentage):
