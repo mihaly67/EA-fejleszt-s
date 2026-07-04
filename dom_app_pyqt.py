@@ -304,14 +304,25 @@ class DOMWindow(QMainWindow):
         elif live_data['bp1'] > 0 and live_data['bp2'] > 0:
             inferred_tick = round(abs(live_data['bp1'] - live_data['bp2']), 5)
 
+        # Extrém erős kikényszerítés a rács illeszkedésére!
+        # SOHA ne hagyatkozzunk csak a bróker csonkolt különbségére. Megnézzük a tizedesjegyek valós számát is!
+        decimal_tick = 0.0
+        str_price = str(live_data['bp1']) if live_data['bp1'] > 0 else str(live_data['price'])
+        if '.' in str_price:
+            decimals = len(str_price.split('.')[1])
+            decimal_tick = 1.0 / (10 ** decimals)
+
         if inferred_tick > 0:
-            self.tick_size_estimate = inferred_tick
+            self.tick_size_estimate = min(inferred_tick, decimal_tick) if decimal_tick > 0 else inferred_tick
         else:
-            # Fallback a biztonságos kerekítésekhez ha nincs mélység (Level 1 DOM)
-            if live_data['price'] > 10000: self.tick_size_estimate = 0.1 # BTCUSD CFD-k gyakran 0.1 tickesek!
-            elif live_data['price'] > 1000: self.tick_size_estimate = 0.1 # Gold
-            elif live_data['price'] > 100: self.tick_size_estimate = 0.01 # JPY
-            else: self.tick_size_estimate = 0.00001 # EURUSD
+            self.tick_size_estimate = decimal_tick if decimal_tick > 0 else 0.1
+
+        # BTC Fallback override: Ha a bróker "0.18"-at ad vissza tick különbségnek (spread hiba miatt), a grid szétesik.
+        # Mindig kerekítsük le a legközelebbi power-of-10-re (pl 0.1, 0.01)
+        import math
+        if self.tick_size_estimate > 0:
+            power = math.floor(math.log10(self.tick_size_estimate))
+            self.tick_size_estimate = 10 ** power
 
         if self.tick_size_estimate < 0.00001: self.tick_size_estimate = 0.00001
 
@@ -320,40 +331,51 @@ class DOMWindow(QMainWindow):
         best_bid = live_data['bp1'] if live_data['bp1'] > 0 else mid_rounded - self.tick_size_estimate
         best_ask = live_data['ap1'] if live_data['ap1'] > 0 else mid_rounded + self.tick_size_estimate
 
-        # Dinamikus Viewport (Grid) Számítás:
-        # Nem a Mid-től megyünk +/- 10-et, hanem megkeressük a legmagasabb Asket és a legalacsonyabb Bidet a piacon.
-        # Hogy biztosan minden beférjen a képernyőre, a legmagasabb pontból indulunk.
+        # Új Dinamikus Viewport (Grid) Számítás, ami nem ignorálja a hatalmas spread-et.
+        # A probléma: ha a Spread hatalmas (pl. 300 dollár BTC-n), akkor a grid 300/0.01 = 30000 soros lenne!
+        # Ha a korábbi logika egyszerűen "levágta" 200 sorra a gridet a Mid Price körül, akkor a valós A1 és B1 árak (amik mondjuk 300 dollárra vannak)
+        # fizikailag KIESTEK a generált táblázatból, ezért dobtuk el őket!
+
+        # A megoldás: Ha a Spread óriási (mert a demó bróker furcsa), akkor is be kell foglalni az A1 és B1 árakat a gridbe!
+        # Tehát mindig a TÉNYLEGES best_ask és best_bid a viewport két határa (plusz némi padding).
+
         top_price = best_ask + (self.depth_levels * self.tick_size_estimate)
         if live_data['ap2'] > 0: top_price = max(top_price, live_data['ap2'] + (self.depth_levels * self.tick_size_estimate))
 
         bottom_price = best_bid - (self.depth_levels * self.tick_size_estimate)
         if live_data['bp2'] > 0: bottom_price = min(bottom_price, live_data['bp2'] - (self.depth_levels * self.tick_size_estimate))
 
-        # Grid generálás a Top és Bottom között (nagyon volatilis / nagy spread esetén a grid megnőhet)
-        # Az arange hiba elkerülése végett (ha a spread óriási, a táblázat millió soros lenne): limitáljuk max 200 sorban!
-        if (top_price - bottom_price) / self.tick_size_estimate > 200:
-            top_price = mid_rounded + (100 * self.tick_size_estimate)
-            bottom_price = mid_rounded - (100 * self.tick_size_estimate)
+        # Ha extrém nagy a grid (>100 sor), akkor nem a Mid körül vágjuk el (mert akkor lemarad az A1/B1),
+        # hanem megnöveljük a Tick Size-t (dinamikus kompresszió), hogy beférjen 100 sorba!
+        if (top_price - bottom_price) / self.tick_size_estimate > 100:
+            self.tick_size_estimate = (top_price - bottom_price) / 50.0
+
+        # Újrakerekítés a (lehet hogy módosított) tick_size-ra
+        top_price = np.round(top_price / self.tick_size_estimate) * self.tick_size_estimate
+        bottom_price = np.round(bottom_price / self.tick_size_estimate) * self.tick_size_estimate
 
         prices = np.arange(top_price, bottom_price - self.tick_size_estimate, -self.tick_size_estimate)
         prices = np.round(prices, 5)
 
         bids, asks = [], []
 
-        # A tolerancia most már stabil, mert a tick_size fix
-        tolerance = self.tick_size_estimate / 2.0
+        # Nagyon laza tolerancia, mert az arange matematikai kerekítése hajlamos elcsúszni,
+        # illetve a bróker csonkolása miatt a távolság nem mindig tökéletes (főleg Bitcoin CFD-nél)
+        tolerance = self.tick_size_estimate * 0.9
 
         for p in prices:
-            if abs(p - live_data['ap2']) < tolerance and live_data['av2'] > 0:
-                bids.append(0); asks.append(live_data['av2'])
-            elif abs(p - live_data['ap1']) < tolerance and live_data['av1'] > 0:
-                bids.append(0); asks.append(live_data['av1'])
-            elif abs(p - live_data['bp1']) < tolerance and live_data['bv1'] > 0:
-                bids.append(live_data['bv1']); asks.append(0)
-            elif abs(p - live_data['bp2']) < tolerance and live_data['bv2'] > 0:
-                bids.append(live_data['bv2']); asks.append(0)
-            else:
-                bids.append(0); asks.append(0)
+            # Megnézzük a rács egy adott szintjét. Bekerül-e ide Ask vagy Bid volumen?
+            ask_found = 0
+            bid_found = 0
+
+            if abs(p - live_data['ap2']) <= tolerance and live_data['av2'] > 0: ask_found = live_data['av2']
+            if abs(p - live_data['ap1']) <= tolerance and live_data['av1'] > 0: ask_found = live_data['av1'] # a jobb (közelebbi) ár felülírja
+
+            if abs(p - live_data['bp1']) <= tolerance and live_data['bv1'] > 0: bid_found = live_data['bv1']
+            if abs(p - live_data['bp2']) <= tolerance and live_data['bv2'] > 0: bid_found = live_data['bv2']
+
+            bids.append(bid_found)
+            asks.append(ask_found)
 
         spread_value = max(0, best_ask - best_bid)
 
@@ -403,9 +425,16 @@ class DOMWindow(QMainWindow):
                 self.lbl_anom.setText("✅ DOM KIEGYENLÍTETT (STABIL ÁTLAG)")
                 self.lbl_anom.setStyleSheet("background-color: #008800; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
 
-        current_max_vol = 10
+        # A dinamikus max volumen alapja kikerült a kőbevésett 10-ből, mert Bitcoin esetén a 160+ lotok
+        # azonnal kiakasztották, viszont csendesebb piacon (pl Micro Gold 1-2 lot) aránytalanul eltűntek.
+        # Inkább egy dinamikus padlót használunk, ami mindig alkalmazkodik.
+        current_max_vol = 1
         if bids: current_max_vol = max(current_max_vol, max(bids))
         if asks: current_max_vol = max(current_max_vol, max(asks))
+
+        # Hogy egy 1 lot-os izolált tick ne ugrássza be a képernyő 100%-át Micro Goldon:
+        if current_max_vol < 10: current_max_vol = 10
+
         self.delegate.set_max_vol(current_max_vol)
 
         self.table.setRowCount(len(prices))

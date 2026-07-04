@@ -1,0 +1,37 @@
+<<<<<<< SEARCH
+        # Grid generálás
+        mid_rounded = np.round(mid_price / tick_size) * tick_size
+        prices = np.arange(mid_rounded + (10 * tick_size), mid_rounded - (10 * tick_size) - tick_size, -tick_size)
+        prices = np.round(prices, 5)
+
+        print(f"\nRow {idx} | Mid: {mid_price} | Tick Size: {tick_size} | A1: {ap1}, A2: {ap2}, B1: {bp1}, B2: {bp2}")
+        print(f"Generated Grid: {prices}")
+
+        # Matching teszt
+        tolerance = tick_size / 2.0
+=======
+        # Dinamikus Viewport szimuláció, hogy szinkronban legyen a fő kóddal
+        best_bid = bp1 if bp1 > 0 else mid_price - tick_size
+        best_ask = ap1 if ap1 > 0 else mid_price + tick_size
+
+        top_price = best_ask + (10 * tick_size)
+        if ap2 > 0: top_price = max(top_price, ap2 + (10 * tick_size))
+
+        bottom_price = best_bid - (10 * tick_size)
+        if bp2 > 0: bottom_price = min(bottom_price, bp2 - (10 * tick_size))
+
+        if (top_price - bottom_price) / tick_size > 100:
+            tick_size = (top_price - bottom_price) / 50.0
+
+        top_price = np.round(top_price / tick_size) * tick_size
+        bottom_price = np.round(bottom_price / tick_size) * tick_size
+
+        prices = np.arange(top_price, bottom_price - tick_size, -tick_size)
+        prices = np.round(prices, 5)
+
+        print(f"\nRow {idx} | Mid: {mid_price} | Tick Size: {tick_size} | A1: {ap1}, A2: {ap2}, B1: {bp1}, B2: {bp2}")
+        print(f"Generated Grid (Len {len(prices)}): {prices[:5]} ... {prices[-5:]}")
+
+        # Matching teszt (Az új nagyon laza toleranciával, 0.9 * tick_size)
+        tolerance = tick_size * 0.9
+>>>>>>> REPLACE

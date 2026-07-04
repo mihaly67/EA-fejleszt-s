@@ -1,0 +1,34 @@
+<<<<<<< SEARCH
+        # A tolerancia most már stabil, mert a tick_size fix
+        tolerance = self.tick_size_estimate / 2.0
+
+        for p in prices:
+            if abs(p - live_data['ap2']) < tolerance and live_data['av2'] > 0:
+                bids.append(0); asks.append(live_data['av2'])
+            elif abs(p - live_data['ap1']) < tolerance and live_data['av1'] > 0:
+                bids.append(0); asks.append(live_data['av1'])
+            elif abs(p - live_data['bp1']) < tolerance and live_data['bv1'] > 0:
+                bids.append(live_data['bv1']); asks.append(0)
+            elif abs(p - live_data['bp2']) < tolerance and live_data['bv2'] > 0:
+                bids.append(live_data['bv2']); asks.append(0)
+            else:
+                bids.append(0); asks.append(0)
+=======
+        # Nagyon laza tolerancia, mert az arange matematikai kerekítése hajlamos elcsúszni,
+        # illetve a bróker csonkolása miatt a távolság nem mindig tökéletes (főleg Bitcoin CFD-nél)
+        tolerance = self.tick_size_estimate * 0.9
+
+        for p in prices:
+            # Megnézzük a rács egy adott szintjét. Bekerül-e ide Ask vagy Bid volumen?
+            ask_found = 0
+            bid_found = 0
+
+            if abs(p - live_data['ap2']) <= tolerance and live_data['av2'] > 0: ask_found = live_data['av2']
+            if abs(p - live_data['ap1']) <= tolerance and live_data['av1'] > 0: ask_found = live_data['av1'] # a jobb (közelebbi) ár felülírja
+
+            if abs(p - live_data['bp1']) <= tolerance and live_data['bv1'] > 0: bid_found = live_data['bv1']
+            if abs(p - live_data['bp2']) <= tolerance and live_data['bv2'] > 0: bid_found = live_data['bv2']
+
+            bids.append(bid_found)
+            asks.append(ask_found)
+>>>>>>> REPLACE

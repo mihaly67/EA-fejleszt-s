@@ -1,0 +1,18 @@
+<<<<<<< SEARCH
+        current_max_vol = 10
+        if bids: current_max_vol = max(current_max_vol, max(bids))
+        if asks: current_max_vol = max(current_max_vol, max(asks))
+        self.delegate.set_max_vol(current_max_vol)
+=======
+        # A dinamikus max volumen alapja kikerült a kőbevésett 10-ből, mert Bitcoin esetén a 160+ lotok
+        # azonnal kiakasztották, viszont csendesebb piacon (pl Micro Gold 1-2 lot) aránytalanul eltűntek.
+        # Inkább egy dinamikus padlót használunk, ami mindig alkalmazkodik.
+        current_max_vol = 1
+        if bids: current_max_vol = max(current_max_vol, max(bids))
+        if asks: current_max_vol = max(current_max_vol, max(asks))
+
+        # Hogy egy 1 lot-os izolált tick ne ugrássza be a képernyő 100%-át Micro Goldon:
+        if current_max_vol < 10: current_max_vol = 10
+
+        self.delegate.set_max_vol(current_max_vol)
+>>>>>>> REPLACE

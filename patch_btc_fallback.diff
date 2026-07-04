@@ -1,0 +1,34 @@
+<<<<<<< SEARCH
+        if inferred_tick > 0:
+            self.tick_size_estimate = inferred_tick
+        else:
+            # Fallback a biztonságos kerekítésekhez ha nincs mélység (Level 1 DOM)
+            if live_data['price'] > 10000: self.tick_size_estimate = 0.1 # BTCUSD CFD-k gyakran 0.1 tickesek!
+            elif live_data['price'] > 1000: self.tick_size_estimate = 0.1 # Gold
+            elif live_data['price'] > 100: self.tick_size_estimate = 0.01 # JPY
+            else: self.tick_size_estimate = 0.00001 # EURUSD
+
+        if self.tick_size_estimate < 0.00001: self.tick_size_estimate = 0.00001
+=======
+        # Extrém erős kikényszerítés a rács illeszkedésére!
+        # SOHA ne hagyatkozzunk csak a bróker csonkolt különbségére. Megnézzük a tizedesjegyek valós számát is!
+        decimal_tick = 0.0
+        str_price = str(live_data['bp1']) if live_data['bp1'] > 0 else str(live_data['price'])
+        if '.' in str_price:
+            decimals = len(str_price.split('.')[1])
+            decimal_tick = 1.0 / (10 ** decimals)
+
+        if inferred_tick > 0:
+            self.tick_size_estimate = min(inferred_tick, decimal_tick) if decimal_tick > 0 else inferred_tick
+        else:
+            self.tick_size_estimate = decimal_tick if decimal_tick > 0 else 0.1
+
+        # BTC Fallback override: Ha a bróker "0.18"-at ad vissza tick különbségnek (spread hiba miatt), a grid szétesik.
+        # Mindig kerekítsük le a legközelebbi power-of-10-re (pl 0.1, 0.01)
+        import math
+        if self.tick_size_estimate > 0:
+            power = math.floor(math.log10(self.tick_size_estimate))
+            self.tick_size_estimate = 10 ** power
+
+        if self.tick_size_estimate < 0.00001: self.tick_size_estimate = 0.00001
+>>>>>>> REPLACE
