@@ -472,6 +472,10 @@ if __name__ == '__main__':
         else:
             csv_file = "DOM_Data.csv" # Végső fallback
 
+    if not os.path.exists(csv_file):
+        print(f"[HIBA] Nem talalhato CSV fajl! ({csv_file}) - Kerlek, tolts le egyet a mappaba!")
+        sys.exit(1)
+
     player = CSVDOMPlayer(filepath=csv_file, speed=10.0) # 10x-es gyorsított lejátszás
     player.start()
 
