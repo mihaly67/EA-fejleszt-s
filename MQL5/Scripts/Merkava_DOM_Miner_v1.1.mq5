@@ -1,0 +1,124 @@
+//+------------------------------------------------------------------+
+//|                                     Merkava_DOM_Miner_v1.1.mq5   |
+//|                                    Copyright 2026, Jules (Mimic) |
+//|                                             For Project Merkava  |
+//|                    Version 1.1 (OnBookEvent driven + Epoch Sync) |
+//+------------------------------------------------------------------+
+#property copyright "Jules"
+#property link      "https://github.com/MimicProject"
+#property version   "1.10"
+
+#property script_show_inputs
+
+input string InpFileName = "DOM_Data"; // Filename base (will append _YYYYMMDD_HHMMSS)
+input int InpDurationMinutes = 120; // Futási idő percekben (0 = végtelen)
+
+int file_handle = INVALID_HANDLE;
+long end_time = 0;
+long last_written_time_msc = 0;
+
+void OnStart()
+{
+    string time_suffix = TimeToString(TimeLocal(), TIME_DATE | TIME_MINUTES | TIME_SECONDS);
+    StringReplace(time_suffix, ".", "");
+    StringReplace(time_suffix, ":", "");
+    StringReplace(time_suffix, " ", "_");
+
+    string final_filename = InpFileName + "_" + time_suffix + ".csv";
+
+    file_handle = FileOpen(final_filename, FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
+    if(file_handle == INVALID_HANDLE) {
+        Print("❌ Nem sikerült megnyitni a fájlt: ", final_filename);
+        return;
+    }
+
+    string header = "TimeMsc,Bid,Ask,Spread,Ask_Vol_1,Ask_Price_1,Ask_Vol_2,Ask_Price_2,Bid_Vol_1,Bid_Price_1,Bid_Vol_2,Bid_Price_2";
+    FileWrite(file_handle, header);
+
+    if(!MarketBookAdd(_Symbol)) {
+        Print("❌ Nem sikerült feliratkozni a Depth of Market (DOM) adatokra!");
+        FileClose(file_handle);
+        return;
+    }
+
+    if(InpDurationMinutes > 0) {
+        end_time = TimeLocal() + (InpDurationMinutes * 60);
+        Print("✅ SCRIPT: DOM adatgyűjtés indul ", InpDurationMinutes, " percig a következő fájlba: ", final_filename);
+    } else {
+        end_time = TimeLocal() + 31536000; // Kb 1 év végtelen helyett
+        Print("✅ SCRIPT: DOM adatgyűjtés indul VÉGTELEN ideig a következő fájlba: ", final_filename);
+    }
+
+    MqlTick tick;
+    MqlBookInfo book[];
+
+    // Fő ciklus - ez teszi Scriptté
+    while(!IsStopped() && TimeLocal() < end_time) {
+        if(!SymbolInfoTick(_Symbol, tick)) { Sleep(1); continue; }
+
+        // VÉDELEM A DUPLIKÁTUMOK ELLEN: Csak akkor megyünk tovább, ha a milliszekundum már lépett.
+        // Ezzel garantáljuk, hogy a Script ne robbantsa szét 400 MB-os fájlokkal a lemezt másodpercek alatt.
+        if(tick.time_msc <= last_written_time_msc) {
+            Sleep(1); // Non-blocking várakozás a következő valós tickre
+            continue;
+        }
+
+        if(MarketBookGet(_Symbol, book)) {
+            long a_v1 = 0, a_v2 = 0;
+            double a_p1 = 0.0, a_p2 = 0.0;
+            long b_v1 = 0, b_v2 = 0;
+            double b_p1 = 0.0, b_p2 = 0.0;
+
+            int size = ArraySize(book);
+            int buy_start_idx = -1;
+            for(int i=0; i<size; i++) {
+                if(book[i].type == BOOK_TYPE_BUY) {
+                    buy_start_idx = i;
+                    break;
+                }
+            }
+
+            if(buy_start_idx > 0) {
+                if(buy_start_idx - 1 >= 0) { a_p1 = book[buy_start_idx - 1].price; a_v1 = book[buy_start_idx - 1].volume; }
+                if(buy_start_idx - 2 >= 0) { a_p2 = book[buy_start_idx - 2].price; a_v2 = book[buy_start_idx - 2].volume; }
+            } else if (buy_start_idx == -1 && size >= 2) {
+                a_p1 = book[size - 1].price; a_v1 = book[size - 1].volume;
+                a_p2 = book[size - 2].price; a_v2 = book[size - 2].volume;
+            }
+
+            if(buy_start_idx != -1) {
+                if(buy_start_idx < size) { b_p1 = book[buy_start_idx].price; b_v1 = book[buy_start_idx].volume; }
+                if(buy_start_idx + 1 < size) { b_p2 = book[buy_start_idx + 1].price; b_v2 = book[buy_start_idx + 1].volume; }
+            }
+
+            double spread = tick.ask - tick.bid;
+
+            string line = IntegerToString(tick.time_msc) + "," +
+                          DoubleToString(tick.bid, _Digits) + "," +
+                          DoubleToString(tick.ask, _Digits) + "," +
+                          DoubleToString(spread, _Digits) + "," +
+                          IntegerToString(a_v1) + "," + DoubleToString(a_p1, _Digits) + "," +
+                          IntegerToString(a_v2) + "," + DoubleToString(a_p2, _Digits) + "," +
+                          IntegerToString(b_v1) + "," + DoubleToString(b_p1, _Digits) + "," +
+                          IntegerToString(b_v2) + "," + DoubleToString(b_p2, _Digits);
+
+            FileWrite(file_handle, line);
+            last_written_time_msc = tick.time_msc;
+
+            static int flush_counter = 0;
+            if(++flush_counter % 50 == 0) FileFlush(file_handle);
+
+            Sleep(1); // Szintén a processzor kímélése érdekében egy kis várakozás
+        } else {
+            Sleep(1);
+        }
+    }
+
+    // Kilépéskor eltakarítunk
+    MarketBookRelease(_Symbol);
+    if(file_handle != INVALID_HANDLE) {
+        FileFlush(file_handle);
+        FileClose(file_handle);
+    }
+    Print("🛑 SCRIPT: DOM adatgyűjtés leállt.");
+}
