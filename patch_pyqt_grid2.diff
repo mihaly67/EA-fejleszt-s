@@ -1,0 +1,45 @@
+<<<<<<< SEARCH
+        # Dinamikus Viewport (Grid) Számítás:
+        # Nem a Mid-től megyünk +/- 10-et, hanem megkeressük a legmagasabb Asket és a legalacsonyabb Bidet a piacon.
+        # Hogy biztosan minden beférjen a képernyőre, a legmagasabb pontból indulunk.
+        top_price = best_ask + (self.depth_levels * self.tick_size_estimate)
+        if live_data['ap2'] > 0: top_price = max(top_price, live_data['ap2'] + (self.depth_levels * self.tick_size_estimate))
+
+        bottom_price = best_bid - (self.depth_levels * self.tick_size_estimate)
+        if live_data['bp2'] > 0: bottom_price = min(bottom_price, live_data['bp2'] - (self.depth_levels * self.tick_size_estimate))
+
+        # Grid generálás a Top és Bottom között (nagyon volatilis / nagy spread esetén a grid megnőhet)
+        # Az arange hiba elkerülése végett (ha a spread óriási, a táblázat millió soros lenne): limitáljuk max 200 sorban!
+        if (top_price - bottom_price) / self.tick_size_estimate > 200:
+            top_price = mid_rounded + (100 * self.tick_size_estimate)
+            bottom_price = mid_rounded - (100 * self.tick_size_estimate)
+
+        prices = np.arange(top_price, bottom_price - self.tick_size_estimate, -self.tick_size_estimate)
+        prices = np.round(prices, 5)
+=======
+        # Új Dinamikus Viewport (Grid) Számítás, ami nem ignorálja a hatalmas spread-et.
+        # A probléma: ha a Spread hatalmas (pl. 300 dollár BTC-n), akkor a grid 300/0.01 = 30000 soros lenne!
+        # Ha a korábbi logika egyszerűen "levágta" 200 sorra a gridet a Mid Price körül, akkor a valós A1 és B1 árak (amik mondjuk 300 dollárra vannak)
+        # fizikailag KIESTEK a generált táblázatból, ezért dobtuk el őket!
+
+        # A megoldás: Ha a Spread óriási (mert a demó bróker furcsa), akkor is be kell foglalni az A1 és B1 árakat a gridbe!
+        # Tehát mindig a TÉNYLEGES best_ask és best_bid a viewport két határa (plusz némi padding).
+
+        top_price = best_ask + (self.depth_levels * self.tick_size_estimate)
+        if live_data['ap2'] > 0: top_price = max(top_price, live_data['ap2'] + (self.depth_levels * self.tick_size_estimate))
+
+        bottom_price = best_bid - (self.depth_levels * self.tick_size_estimate)
+        if live_data['bp2'] > 0: bottom_price = min(bottom_price, live_data['bp2'] - (self.depth_levels * self.tick_size_estimate))
+
+        # Ha extrém nagy a grid (>200 sor), akkor nem a Mid körül vágjuk el (mert akkor lemarad az A1/B1),
+        # hanem megnöveljük a Tick Size-t, hogy beférjen 200 sorba! Vizuális kompresszió.
+        if (top_price - bottom_price) / self.tick_size_estimate > 100:
+            self.tick_size_estimate = (top_price - bottom_price) / 50.0
+
+        # Újrakerekítés a (lehet hogy módosított) tick_size-ra
+        top_price = np.round(top_price / self.tick_size_estimate) * self.tick_size_estimate
+        bottom_price = np.round(bottom_price / self.tick_size_estimate) * self.tick_size_estimate
+
+        prices = np.arange(top_price, bottom_price - self.tick_size_estimate, -self.tick_size_estimate)
+        prices = np.round(prices, 5)
+>>>>>>> REPLACE
