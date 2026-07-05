@@ -87,19 +87,46 @@ class CSVDOMPlayer(threading.Thread):
                 if tick_epoch <= self.virtual_epoch_msc:
                     global LATEST_DOM_DATA
                     LATEST_DOM_DATA['time'] = tick_epoch
-                    bid = float(row['Bid'])
-                    ask = float(row['Ask'])
+                    # Fallback logikák a különböző CSV formátumok miatti hiányzó kulcsok elkerülésére
+                    if 'Type' in row:
+                        if row['Type'] == 1: # Ask
+                            ask = float(row['Price'])
+                            bid = float(row.get('Bid', ask - 0.01))
+                            av1 = int(row['Volume'])
+                            bv1 = int(row.get('BidVol', 0))
+                        else: # Bid
+                            bid = float(row['Price'])
+                            ask = float(row.get('Ask', bid + 0.01))
+                            bv1 = int(row['Volume'])
+                            av1 = int(row.get('AskVol', 0))
+                        ap1 = ask
+                        bp1 = bid
+                        av2 = 0
+                        bv2 = 0
+                        ap2 = ask + 0.01
+                        bp2 = bid - 0.01
+                    else:
+                        # Ha megvannak az explicit oszlopok (Merkava DOM Miner formátum)
+                        bid = float(row.get('Bid', row.get('Bid_Price_1', 0)))
+                        ask = float(row.get('Ask', row.get('Ask_Price_1', 0)))
+                        av1 = int(row.get('Ask_Vol_1', 0))
+                        av2 = int(row.get('Ask_Vol_2', 0))
+                        bv1 = int(row.get('Bid_Vol_1', 0))
+                        bv2 = int(row.get('Bid_Vol_2', 0))
+                        ap1 = float(row.get('Ask_Price_1', 0))
+                        ap2 = float(row.get('Ask_Price_2', 0))
+                        bp1 = float(row.get('Bid_Price_1', 0))
+                        bp2 = float(row.get('Bid_Price_2', 0))
+
                     LATEST_DOM_DATA['price'] = (bid + ask) / 2.0
-
-                    LATEST_DOM_DATA['av1'] = int(row['Ask_Vol_1'])
-                    LATEST_DOM_DATA['av2'] = int(row['Ask_Vol_2'])
-                    LATEST_DOM_DATA['bv1'] = int(row['Bid_Vol_1'])
-                    LATEST_DOM_DATA['bv2'] = int(row['Bid_Vol_2'])
-
-                    LATEST_DOM_DATA['ap1'] = float(row['Ask_Price_1'])
-                    LATEST_DOM_DATA['ap2'] = float(row['Ask_Price_2'])
-                    LATEST_DOM_DATA['bp1'] = float(row['Bid_Price_1'])
-                    LATEST_DOM_DATA['bp2'] = float(row['Bid_Price_2'])
+                    LATEST_DOM_DATA['av1'] = av1
+                    LATEST_DOM_DATA['av2'] = av2
+                    LATEST_DOM_DATA['bv1'] = bv1
+                    LATEST_DOM_DATA['bv2'] = bv2
+                    LATEST_DOM_DATA['ap1'] = ap1
+                    LATEST_DOM_DATA['ap2'] = ap2
+                    LATEST_DOM_DATA['bp1'] = bp1
+                    LATEST_DOM_DATA['bp2'] = bp2
 
                     emitter.data_updated.emit()
                     self.current_idx += 1
@@ -345,10 +372,15 @@ class DOMWindow(QMainWindow):
         bottom_price = best_bid - (self.depth_levels * self.tick_size_estimate)
         if live_data['bp2'] > 0: bottom_price = min(bottom_price, live_data['bp2'] - (self.depth_levels * self.tick_size_estimate))
 
-        # Ha extrém nagy a grid (>100 sor), akkor nem a Mid körül vágjuk el (mert akkor lemarad az A1/B1),
-        # hanem megnöveljük a Tick Size-t (dinamikus kompresszió), hogy beférjen 100 sorba!
-        if (top_price - bottom_price) / self.tick_size_estimate > 100:
-            self.tick_size_estimate = (top_price - bottom_price) / 50.0
+        # Erős Kompresszió: Hogy ne kelljen görgetni az ablakot, a teljes rács (Grid)
+        # fizikai elemszámát a felhasználó által kért Depth Levels-hez igazítjuk.
+        # Ha a Spread olyan hatalmas, hogy kifolyna, automatikusan megnöveljük a Tick Size-t (lépésközt),
+        # hogy a legmagasabb Ask és a legalacsonyabb Bid is GARANTÁLTAN ráférjen a képernyőre (görgetés nélkül).
+
+        target_rows = self.depth_levels * 2.0 # Kétszeres mélység a Mid felett/alatt
+
+        if (top_price - bottom_price) / self.tick_size_estimate > target_rows:
+            self.tick_size_estimate = (top_price - bottom_price) / target_rows
 
         # Újrakerekítés a (lehet hogy módosított) tick_size-ra
         top_price = np.round(top_price / self.tick_size_estimate) * self.tick_size_estimate
