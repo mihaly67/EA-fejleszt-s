@@ -381,19 +381,33 @@ class DOMWindow(QMainWindow):
         target_spread_rows = 5.0
 
         if spread / self.tick_size_estimate > target_spread_rows:
-             self.tick_size_estimate = spread / target_spread_rows
+             raw_tick = spread / target_spread_rows
+             # Matematikai kerekítés értelmes kereskedési lépésközre (pl. 64.24 -> 50 vagy 100)
+             # Hogy az árak vizuálisan emberiek maradjanak, és a rács egy stabil ponthoz horgonyozzon.
+             magnitude = 10 ** np.floor(np.log10(raw_tick))
+             normalized = raw_tick / magnitude
+             if normalized < 1.5:
+                 step = 1.0
+             elif normalized < 3.5:
+                 step = 2.0
+             elif normalized < 7.5:
+                 step = 5.0
+             else:
+                 step = 10.0
+             self.tick_size_estimate = step * magnitude
 
-        # Ha megvan a kompressziós Tick Size, ÚJRA kell számolni a top és bottom árakat,
-        # hogy a központban (Mid) elhelyezkedő Spread köré felépüljön a Depth.
-        top_price = best_ask + (self.depth_levels * self.tick_size_estimate)
-        if live_data['ap2'] > 0: top_price = max(top_price, live_data['ap2'] + (self.depth_levels * self.tick_size_estimate))
+        # Ahelyett, hogy folyamatosan a változó best_ask/best_bid köré építenénk a rácsot
+        # (ami miatt a sávok sosem mozognának fel/le, hanem az árak ugrálnának mellettük),
+        # A rácsot egy stabil ponthoz (Mid Price) horgonyozzuk le, ami kerekítve van a lépésközre.
+        mid_anchor = np.round(mid_price / self.tick_size_estimate) * self.tick_size_estimate
 
-        bottom_price = best_bid - (self.depth_levels * self.tick_size_estimate)
-        if live_data['bp2'] > 0: bottom_price = min(bottom_price, live_data['bp2'] - (self.depth_levels * self.tick_size_estimate))
+        # A top és bottom ár innentől a stabil horgonyponthoz képest fix távolságra van!
+        # Ha extrém nagy ugrás van az árban, a horgony (és így a rács) követi, de egy ticken belül
+        # az ask és bid sávok tudnak liftezni fel és le a fix rácson.
+        target_half_rows = int(self.depth_levels * 1.5) # Kicsit több puffer a kompresszió miatt
 
-        # Újrakerekítés a (lehet hogy módosított) tick_size-ra
-        top_price = np.round(top_price / self.tick_size_estimate) * self.tick_size_estimate
-        bottom_price = np.round(bottom_price / self.tick_size_estimate) * self.tick_size_estimate
+        top_price = mid_anchor + (target_half_rows * self.tick_size_estimate)
+        bottom_price = mid_anchor - (target_half_rows * self.tick_size_estimate)
 
         prices = np.arange(top_price, bottom_price - self.tick_size_estimate, -self.tick_size_estimate)
         prices = np.round(prices, 5)
@@ -441,11 +455,16 @@ class DOMWindow(QMainWindow):
         if (input_asks > 0 and matched_asks == 0) or (input_bids > 0 and matched_bids == 0):
             print(f"[HIBA] Tick elveszett a rácson! Epoch: {live_data['time']} | Grid top: {top_price} | A1: {live_data['ap1']} B1: {live_data['bp1']}")
 
-        return prices, bids, asks, best_bid, best_ask, spread_value
+        # Nagyon fontos: Mivel `prices` matematikai tömb, visszatérünk annak az indexével is,
+        # hogy a GUI-ban a spread pontosan tudja, mely sorok esnek a Bid és Ask KÖZÉ.
+        ask1_idx = find_closest_index(best_ask)
+        bid1_idx = find_closest_index(best_bid)
+
+        return prices, bids, asks, best_bid, best_ask, spread_value, ask1_idx, bid1_idx
 
     def update_gui(self):
         current_data = LATEST_DOM_DATA.copy()
-        prices, bids, asks, best_bid, best_ask, spread = self.get_dom_data(current_data)
+        prices, bids, asks, best_bid, best_ask, spread, ask1_idx, bid1_idx = self.get_dom_data(current_data)
 
         # --- Imbalance Logika ---
         av1, av2 = current_data['av1'], current_data['av2']
@@ -508,6 +527,16 @@ class DOMWindow(QMainWindow):
             item_ask = QTableWidgetItem(str(ask_vol) if ask_vol > 0 else "")
             item_ask.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
+            # Ahhoz, hogy a grid vizuálisan pontos legyen a Spread esetén, a sorok fizikai pozíciójára
+            # (indexére) kell hagyatkoznunk, nem a dinamikusan tömörített `price`-ra, ami átcsúszhat a tolerancián.
+            # Mivel a `prices` tömb csökkenő (legmagasabb ár van legfelül/0. index), az Ask indexe kisebb, mint a Bid indexe.
+
+            is_spread_row = False
+            if ask1_idx != -1 and bid1_idx != -1:
+                # Két érvényes indexünk van, minden ami közöttük van (exkluzív) az a spread
+                if ask1_idx < i < bid1_idx:
+                    is_spread_row = True
+
             if ask_vol > 0:
                 item_ask.setForeground(QColor(255, 82, 82))
                 item_price.setBackground(QColor(19, 23, 34)); item_price.setForeground(QColor(255, 82, 82))
@@ -516,7 +545,7 @@ class DOMWindow(QMainWindow):
                 item_bid.setForeground(QColor(0, 230, 118))
                 item_price.setBackground(QColor(19, 23, 34)); item_price.setForeground(QColor(0, 230, 118))
                 item_ask.setBackground(QColor(11, 14, 20)); item_bid.setBackground(QColor(11, 14, 20))
-            elif best_bid < price < best_ask:
+            elif is_spread_row:
                 bg_spread = QColor(30, 34, 45); bg_spread_price = QColor(42, 46, 57)
                 item_bid.setBackground(bg_spread); item_ask.setBackground(bg_spread)
                 item_price.setBackground(bg_spread_price); item_price.setForeground(QColor(120, 123, 134))
