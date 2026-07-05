@@ -398,25 +398,36 @@ class DOMWindow(QMainWindow):
         prices = np.arange(top_price, bottom_price - self.tick_size_estimate, -self.tick_size_estimate)
         prices = np.round(prices, 5)
 
-        bids, asks = [], []
+        # A felhasználó kérése: Ne legyen 2-2 zöld/piros sáv egyetlen Bid vagy Ask szint miatt!
+        # A laza tolerancia miatt előfordult, hogy egy valós ár két szomszédos Grid szinthez is bekerült.
+        # Megoldás: Hozzuk létre üresen a listákat, majd KIKERESSÜK az EGYETLEN LEGJOBBAN ILLESZKEDŐ (closest) sort.
+        bids = [0] * len(prices)
+        asks = [0] * len(prices)
 
-        # Nagyon laza tolerancia, mert az arange matematikai kerekítése hajlamos elcsúszni,
-        # illetve a bróker csonkolása miatt a távolság nem mindig tökéletes (főleg Bitcoin CFD-nél)
-        tolerance = self.tick_size_estimate * 0.9
+        # Segédfüggvény, amely megkeresi a legközelebbi indexet a `prices` tömbben
+        def find_closest_index(target_price):
+            if target_price <= 0: return -1
+            return int(np.argmin(np.abs(prices - target_price)))
 
-        for p in prices:
-            # Megnézzük a rács egy adott szintjét. Bekerül-e ide Ask vagy Bid volumen?
-            ask_found = 0
-            bid_found = 0
+        # 1. Ask Level 2
+        if live_data['av2'] > 0 and live_data['ap2'] > 0:
+            idx = find_closest_index(live_data['ap2'])
+            if idx != -1: asks[idx] = live_data['av2']
 
-            if abs(p - live_data['ap2']) <= tolerance and live_data['av2'] > 0: ask_found = live_data['av2']
-            if abs(p - live_data['ap1']) <= tolerance and live_data['av1'] > 0: ask_found = live_data['av1'] # a jobb (közelebbi) ár felülírja
+        # 2. Ask Level 1 (ez felülírja a Level 2-t, ha pont ugyanabba a sorba esnek a kompresszió miatt)
+        if live_data['av1'] > 0 and live_data['ap1'] > 0:
+            idx = find_closest_index(live_data['ap1'])
+            if idx != -1: asks[idx] = live_data['av1']
 
-            if abs(p - live_data['bp1']) <= tolerance and live_data['bv1'] > 0: bid_found = live_data['bv1']
-            if abs(p - live_data['bp2']) <= tolerance and live_data['bv2'] > 0: bid_found = live_data['bv2']
+        # 3. Bid Level 1
+        if live_data['bv1'] > 0 and live_data['bp1'] > 0:
+            idx = find_closest_index(live_data['bp1'])
+            if idx != -1: bids[idx] = live_data['bv1']
 
-            bids.append(bid_found)
-            asks.append(ask_found)
+        # 4. Bid Level 2 (csak akkor írja felül, ha valamiért egybe esne a B1-el, ami nem logikus, de biztosítjuk)
+        if live_data['bv2'] > 0 and live_data['bp2'] > 0:
+            idx = find_closest_index(live_data['bp2'])
+            if idx != -1 and bids[idx] == 0: bids[idx] = live_data['bv2']
 
         spread_value = max(0, best_ask - best_bid)
 
@@ -428,7 +439,7 @@ class DOMWindow(QMainWindow):
         input_bids = sum([1 for v in [live_data['bv1'], live_data['bv2']] if v > 0])
 
         if (input_asks > 0 and matched_asks == 0) or (input_bids > 0 and matched_bids == 0):
-            print(f"[HIBA] Tick elveszett a rácson! Epoch: {live_data['time']} | Tűrés: {tolerance} | A1: {live_data['ap1']} B1: {live_data['bp1']}")
+            print(f"[HIBA] Tick elveszett a rácson! Epoch: {live_data['time']} | Grid top: {top_price} | A1: {live_data['ap1']} B1: {live_data['bp1']}")
 
         return prices, bids, asks, best_bid, best_ask, spread_value
 
@@ -478,6 +489,9 @@ class DOMWindow(QMainWindow):
 
         self.delegate.set_max_vol(current_max_vol)
 
+        # Formázó string a megfelelő tizedesjegyhez
+        decimal_format = f"{{:.{max(0, int(-np.floor(np.log10(self.tick_size_estimate))))}f}}" if self.tick_size_estimate < 1 else "{:.2f}"
+
         self.table.setRowCount(len(prices))
         for i in range(len(prices)):
             price = prices[i]
@@ -486,7 +500,10 @@ class DOMWindow(QMainWindow):
 
             item_bid = QTableWidgetItem(str(bid_vol) if bid_vol > 0 else "")
             item_bid.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            item_price = QTableWidgetItem(f"{price:.5f}")
+
+            # Dinamikus formázás (pl. BTC 2 tizedes, EURUSD 5 tizedes)
+            price_str = decimal_format.format(price)
+            item_price = QTableWidgetItem(price_str)
             item_price.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
             item_ask = QTableWidgetItem(str(ask_vol) if ask_vol > 0 else "")
             item_ask.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
