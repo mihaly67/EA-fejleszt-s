@@ -372,15 +372,24 @@ class DOMWindow(QMainWindow):
         bottom_price = best_bid - (self.depth_levels * self.tick_size_estimate)
         if live_data['bp2'] > 0: bottom_price = min(bottom_price, live_data['bp2'] - (self.depth_levels * self.tick_size_estimate))
 
-        # Erős Kompresszió: Hogy ne kelljen görgetni az ablakot, a teljes rács (Grid)
-        # fizikai elemszámát a felhasználó által kért Depth Levels-hez igazítjuk.
-        # Ha a Spread olyan hatalmas, hogy kifolyna, automatikusan megnöveljük a Tick Size-t (lépésközt),
-        # hogy a legmagasabb Ask és a legalacsonyabb Bid is GARANTÁLTAN ráférjen a képernyőre (görgetés nélkül).
+        # Új Erős Kompresszió a Spread alapján:
+        # A felhasználó kérése alapján a Bid és Ask ne a képernyő két legszélére szoruljon extrém spread esetén.
+        # Ehelyett úgy számoljuk a dinamikus tick_size-t, hogy a TÉNYLEGES SPREAD (best_ask - best_bid)
+        # nagyjából 4-5 sort (köztes rést) tegyen ki a rács közepén.
+        # Így a Spread felett és alatt is marad elég hely (sor) a további depth szinteknek (ap2, bp2 stb.).
+        spread = best_ask - best_bid
+        target_spread_rows = 5.0
 
-        target_rows = self.depth_levels * 2.0 # Kétszeres mélység a Mid felett/alatt
+        if spread / self.tick_size_estimate > target_spread_rows:
+             self.tick_size_estimate = spread / target_spread_rows
 
-        if (top_price - bottom_price) / self.tick_size_estimate > target_rows:
-            self.tick_size_estimate = (top_price - bottom_price) / target_rows
+        # Ha megvan a kompressziós Tick Size, ÚJRA kell számolni a top és bottom árakat,
+        # hogy a központban (Mid) elhelyezkedő Spread köré felépüljön a Depth.
+        top_price = best_ask + (self.depth_levels * self.tick_size_estimate)
+        if live_data['ap2'] > 0: top_price = max(top_price, live_data['ap2'] + (self.depth_levels * self.tick_size_estimate))
+
+        bottom_price = best_bid - (self.depth_levels * self.tick_size_estimate)
+        if live_data['bp2'] > 0: bottom_price = min(bottom_price, live_data['bp2'] - (self.depth_levels * self.tick_size_estimate))
 
         # Újrakerekítés a (lehet hogy módosított) tick_size-ra
         top_price = np.round(top_price / self.tick_size_estimate) * self.tick_size_estimate
