@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
                              QWidget, QLabel, QTableWidget, QTableWidgetItem,
-                             QHeaderView, QAbstractItemView, QStyledItemDelegate, QSlider, QPushButton)
+                             QHeaderView, QAbstractItemView, QStyledItemDelegate, QSlider, QPushButton, QProgressBar)
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QObject, QRect
 from PyQt5.QtGui import QColor, QFont, QPainter, QBrush
 
@@ -282,6 +282,35 @@ class DOMWindow(QMainWindow):
         self.lbl_anom.setStyleSheet("background-color: #1e1e1e; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
         layout.addWidget(self.lbl_anom)
 
+        # --- Összegző Sáv (Imbalance Bar) ---
+        imb_layout = QHBoxLayout()
+        imb_layout.setSpacing(0)
+
+        self.imb_bar_ask = QProgressBar()
+        self.imb_bar_ask.setRange(0, 100)
+        self.imb_bar_ask.setValue(0)
+        self.imb_bar_ask.setTextVisible(False)
+        self.imb_bar_ask.setInvertedAppearance(True) # Jobbról balra nő
+        self.imb_bar_ask.setFixedHeight(10)
+        self.imb_bar_ask.setStyleSheet("""
+            QProgressBar { border: none; background-color: #1e1e1e; }
+            QProgressBar::chunk { background-color: #ff5252; }
+        """)
+
+        self.imb_bar_bid = QProgressBar()
+        self.imb_bar_bid.setRange(0, 100)
+        self.imb_bar_bid.setValue(0)
+        self.imb_bar_bid.setTextVisible(False)
+        self.imb_bar_bid.setFixedHeight(10)
+        self.imb_bar_bid.setStyleSheet("""
+            QProgressBar { border: none; background-color: #1e1e1e; }
+            QProgressBar::chunk { background-color: #00e676; }
+        """)
+
+        imb_layout.addWidget(self.imb_bar_ask)
+        imb_layout.addWidget(self.imb_bar_bid)
+        layout.addLayout(imb_layout)
+
         # --- DOM Létra Táblázat ---
         self.table = QTableWidget()
         self.table.setColumnCount(3)
@@ -479,6 +508,16 @@ class DOMWindow(QMainWindow):
         self.history_imbalance.append(imbalance)
         if len(self.history_imbalance) > 100: self.history_imbalance.pop(0)
         mean_imbalance = sum(self.history_imbalance) / len(self.history_imbalance) if self.history_imbalance else 0
+
+        # --- Összegző Sáv Update ---
+        # Az imbalance -1.0 (100% Ask) és +1.0 (100% Bid) között mozog.
+        # Ha negatív, az Ask sávot töltjük balra, ha pozitív, a Bid sávot jobbra.
+        if imbalance < 0:
+            self.imb_bar_ask.setValue(int(abs(imbalance) * 100))
+            self.imb_bar_bid.setValue(0)
+        else:
+            self.imb_bar_ask.setValue(0)
+            self.imb_bar_bid.setValue(int(imbalance * 100))
 
         # --- KPI & Anomália Update ---
         if best_bid > 0 and best_ask > 0 and current_data['price'] > 0:
