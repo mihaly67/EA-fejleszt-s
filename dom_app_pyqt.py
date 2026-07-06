@@ -225,6 +225,10 @@ class DOMWindow(QMainWindow):
         self.depth_levels = 10
         self.tick_size_estimate = 0.05
         self.history_imbalance = []
+        self.history_av1 = []
+        self.history_bv1 = []
+        self.history_prices = []
+        self.spoof_alert_time = 0.0
         self.player = player
 
         self.init_ui()
@@ -523,21 +527,61 @@ class DOMWindow(QMainWindow):
             self.imb_bar_bid.setValue(0)
             self.imb_bar_ask.setValue(0)
 
-        # --- KPI & Anomália Update ---
+        # --- Történeti Adatok a Spoofing Detektáláshoz ---
+        self.history_av1.append(av1)
+        self.history_bv1.append(bv1)
+        self.history_prices.append(current_data['price'])
+
+        # Max 100 elem tartása (kb. 1 mp gyors forgalomnál)
+        if len(self.history_av1) > 100: self.history_av1.pop(0)
+        if len(self.history_bv1) > 100: self.history_bv1.pop(0)
+        if len(self.history_prices) > 100: self.history_prices.pop(0)
+
+        # --- Spoofing & Anomália Update ---
         if best_bid > 0 and best_ask > 0 and current_data['price'] > 0:
             self.lbl_bid.setText(f"Legjobb Vétel:\n{best_bid:.5f}")
             self.lbl_ask.setText(f"Legjobb Eladás:\n{best_ask:.5f}")
             self.lbl_spread.setText(f"Spread:\n{spread:.5f}")
 
-            if mean_imbalance < -0.3:
-                self.lbl_anom.setText("⚠️ KONZISZTENS ELADÓI (ASK) NYOMÁS")
-                self.lbl_anom.setStyleSheet("background-color: #aa5500; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
-            elif mean_imbalance > 0.3:
-                self.lbl_anom.setText("⚠️ KONZISZTENS VÉTELI (BID) NYOMÁS")
-                self.lbl_anom.setStyleSheet("background-color: #00aa55; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
-            else:
-                self.lbl_anom.setText("✅ DOM KIEGYENLÍTETT (STABIL ÁTLAG)")
-                self.lbl_anom.setStyleSheet("background-color: #008800; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
+            # Spoofing Logika: Hirtelen feleződik a volumen a csúcshoz képest, stabil ár mellett
+            lookback = len(self.history_av1)
+            max_av1 = max(self.history_av1) if lookback > 0 else 1
+            max_bv1 = max(self.history_bv1) if lookback > 0 else 1
+
+            price_delta = 0
+            if lookback >= 2:
+                price_delta = abs(self.history_prices[-1] - self.history_prices[-2])
+
+            # Ár stabilitása (0.1 szorzó, ahogy a Vaku3-ban)
+            price_stable = price_delta < (self.tick_size_estimate * 0.1)
+
+            ask_spoof = (av1 < max_av1 * 0.5) and price_stable and (max_av1 > 10)
+            bid_spoof = (bv1 < max_bv1 * 0.5) and price_stable and (max_bv1 > 10)
+
+            # Az időmérőt használjuk, hogy a riasztás legalább 3 virtuális másodpercig látható legyen (epoch alapján)
+            current_epoch = current_data['time']
+            if ask_spoof or bid_spoof:
+                self.spoof_alert_time = current_epoch
+                if ask_spoof and bid_spoof:
+                    self.lbl_anom.setText("🚨 KÉTOLDALÚ LIKVIDITÁS ELTŰNÉS (SPOOF)!")
+                    self.lbl_anom.setStyleSheet("background-color: #cc00cc; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
+                elif ask_spoof:
+                    self.lbl_anom.setText("🚨 ASK SPOOFING (Eladók visszavonták a volument)")
+                    self.lbl_anom.setStyleSheet("background-color: #aa0000; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
+                elif bid_spoof:
+                    self.lbl_anom.setText("🚨 BID SPOOFING (Vevők visszavonták a volument)")
+                    self.lbl_anom.setStyleSheet("background-color: #00aa00; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
+            elif (current_epoch - self.spoof_alert_time) > 3000.0: # 3000 ms eltelt
+                # Nincs Spoofing az elmúlt 3 másodpercben, mutatjuk az átlagos Imbalance állapotot
+                if mean_imbalance < -0.3:
+                    self.lbl_anom.setText("⚠️ KONZISZTENS ELADÓI (ASK) NYOMÁS")
+                    self.lbl_anom.setStyleSheet("background-color: #aa5500; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
+                elif mean_imbalance > 0.3:
+                    self.lbl_anom.setText("⚠️ KONZISZTENS VÉTELI (BID) NYOMÁS")
+                    self.lbl_anom.setStyleSheet("background-color: #00aa55; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
+                else:
+                    self.lbl_anom.setText("✅ DOM KIEGYENLÍTETT (STABIL ÁTLAG)")
+                    self.lbl_anom.setStyleSheet("background-color: #008800; color: white; padding: 10px; border-radius: 5px; font-weight: bold; font-size: 13px;")
 
         # A dinamikus max volumen alapja kikerült a kőbevésett 10-ből, mert Bitcoin esetén a 160+ lotok
         # azonnal kiakasztották, viszont csendesebb piacon (pl Micro Gold 1-2 lot) aránytalanul eltűntek.
