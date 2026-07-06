@@ -286,29 +286,31 @@ class DOMWindow(QMainWindow):
         imb_layout = QHBoxLayout()
         imb_layout.setSpacing(0)
 
-        self.imb_bar_ask = QProgressBar()
-        self.imb_bar_ask.setRange(0, 100)
-        self.imb_bar_ask.setValue(0)
-        self.imb_bar_ask.setTextVisible(False)
-        self.imb_bar_ask.setInvertedAppearance(True) # Jobbról balra nő
-        self.imb_bar_ask.setFixedHeight(10)
-        self.imb_bar_ask.setStyleSheet("""
-            QProgressBar { border: none; background-color: #1e1e1e; }
-            QProgressBar::chunk { background-color: #ff5252; }
-        """)
-
+        # A bal oldalon van a Bid (Vétel) logikailag a táblázatban is.
+        # A felhasználó kérése: a Bid (zöld) térjen ki a saját irányába (balra), az Ask (piros) pedig jobbra.
         self.imb_bar_bid = QProgressBar()
         self.imb_bar_bid.setRange(0, 100)
         self.imb_bar_bid.setValue(0)
         self.imb_bar_bid.setTextVisible(False)
+        self.imb_bar_bid.setInvertedAppearance(True) # A bal oldali sáv jobbról balra nő ki a középpontból
         self.imb_bar_bid.setFixedHeight(10)
         self.imb_bar_bid.setStyleSheet("""
             QProgressBar { border: none; background-color: #1e1e1e; }
             QProgressBar::chunk { background-color: #00e676; }
         """)
 
-        imb_layout.addWidget(self.imb_bar_ask)
+        self.imb_bar_ask = QProgressBar()
+        self.imb_bar_ask.setRange(0, 100)
+        self.imb_bar_ask.setValue(0)
+        self.imb_bar_ask.setTextVisible(False)
+        self.imb_bar_ask.setFixedHeight(10)
+        self.imb_bar_ask.setStyleSheet("""
+            QProgressBar { border: none; background-color: #1e1e1e; }
+            QProgressBar::chunk { background-color: #ff5252; }
+        """)
+
         imb_layout.addWidget(self.imb_bar_bid)
+        imb_layout.addWidget(self.imb_bar_ask)
         layout.addLayout(imb_layout)
 
         # --- DOM Létra Táblázat ---
@@ -510,14 +512,16 @@ class DOMWindow(QMainWindow):
         mean_imbalance = sum(self.history_imbalance) / len(self.history_imbalance) if self.history_imbalance else 0
 
         # --- Összegző Sáv Update ---
-        # Az imbalance -1.0 (100% Ask) és +1.0 (100% Bid) között mozog.
-        # Ha negatív, az Ask sávot töltjük balra, ha pozitív, a Bid sávot jobbra.
-        if imbalance < 0:
-            self.imb_bar_ask.setValue(int(abs(imbalance) * 100))
-            self.imb_bar_bid.setValue(0)
+        # A felhasználó kérése: mindkét sáv egyszerre jelenjen meg a volumenek arányában.
+        # Ha total_ask = 60 és total_bid = 40, akkor a piros sáv 60%-ig, a zöld 40%-ig ér.
+        if (total_ask + total_bid) > 0:
+            bid_pct = int((total_bid / (total_ask + total_bid)) * 100)
+            ask_pct = int((total_ask / (total_ask + total_bid)) * 100)
+            self.imb_bar_bid.setValue(bid_pct)
+            self.imb_bar_ask.setValue(ask_pct)
         else:
+            self.imb_bar_bid.setValue(0)
             self.imb_bar_ask.setValue(0)
-            self.imb_bar_bid.setValue(int(imbalance * 100))
 
         # --- KPI & Anomália Update ---
         if best_bid > 0 and best_ask > 0 and current_data['price'] > 0:
