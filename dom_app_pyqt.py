@@ -296,7 +296,7 @@ class DOMWindow(QMainWindow):
         self.imb_bar_bid.setFixedHeight(10)
         self.imb_bar_bid.setStyleSheet("""
             QProgressBar { border: none; background-color: #1e1e1e; }
-            QProgressBar::chunk { background-color: #00e676; }
+            QProgressBar::chunk { background-color: #228B22; } /* Erdőzöld */
         """)
 
         self.imb_bar_ask = QProgressBar()
@@ -306,7 +306,7 @@ class DOMWindow(QMainWindow):
         self.imb_bar_ask.setFixedHeight(10)
         self.imb_bar_ask.setStyleSheet("""
             QProgressBar { border: none; background-color: #1e1e1e; }
-            QProgressBar::chunk { background-color: #ff5252; }
+            QProgressBar::chunk { background-color: #B22222; } /* Téglavörös */
         """)
 
         imb_layout.addWidget(self.imb_bar_bid)
