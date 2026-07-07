@@ -224,10 +224,11 @@ class DOMWindow(QMainWindow):
         self.setStyleSheet("background-color: #121212; color: #ffffff;")
         self.depth_levels = 10
         self.tick_size_estimate = 0.05
-        self.history_imbalance = []
-        self.history_av1 = []
-        self.history_bv1 = []
-        self.history_prices = []
+
+        # Egységes történeti tároló a Tick és Idő alapú vágáshoz:
+        # Formátum: list of dicts: {'time': epoch, 'av1': av1, 'bv1': bv1, 'price': price, 'imbalance': imb}
+        self.history_data = []
+
         self.spoof_alert_time = 0.0
         self.player = player
 
@@ -256,6 +257,11 @@ class DOMWindow(QMainWindow):
         self.cb_speed.currentTextChanged.connect(self.change_speed)
         self.cb_speed.setStyleSheet("background-color: #2b2b2b; color: white; padding: 10px; border-radius: 5px; font-weight: bold;")
 
+        self.cb_mode = QComboBox()
+        self.cb_mode.addItems(["Tick (100)", "Idő (60 mp)"])
+        self.cb_mode.setCurrentText("Tick (100)")
+        self.cb_mode.setStyleSheet("background-color: #2b2b2b; color: white; padding: 10px; border-radius: 5px; font-weight: bold;")
+
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(0, 100)
         self.slider.setValue(0)
@@ -263,6 +269,7 @@ class DOMWindow(QMainWindow):
 
         control_layout.addWidget(self.btn_play_pause)
         control_layout.addWidget(self.cb_speed)
+        control_layout.addWidget(self.cb_mode)
         control_layout.addWidget(self.slider)
         layout.addLayout(control_layout)
 
@@ -511,13 +518,33 @@ class DOMWindow(QMainWindow):
         if (total_ask + total_bid) > 0:
             imbalance = (total_bid - total_ask) / (total_bid + total_ask)
 
-        self.history_imbalance.append(imbalance)
-        if len(self.history_imbalance) > 100: self.history_imbalance.pop(0)
-        mean_imbalance = sum(self.history_imbalance) / len(self.history_imbalance) if self.history_imbalance else 0
+        current_epoch = current_data['time']
+
+        # Történeti adatok rögzítése
+        self.history_data.append({
+            'time': current_epoch,
+            'av1': av1,
+            'bv1': bv1,
+            'price': current_data['price'],
+            'imbalance': imbalance
+        })
+
+        # --- Dinamikus Adatvágás (Pruning) a Kiválasztott Mód Alapján ---
+        mode = self.cb_mode.currentText()
+        if "Tick" in mode:
+            # Tick alapú vágás (utolsó 100 elem)
+            if len(self.history_data) > 100:
+                self.history_data = self.history_data[-100:]
+        else:
+            # Idő alapú vágás (utolsó 60 másodperc = 60000 ms)
+            cutoff_time = current_epoch - 60000.0
+            self.history_data = [d for d in self.history_data if d['time'] >= cutoff_time]
+
+        # Statisztikák kinyerése a levágott adatokból
+        mean_imbalance = sum(d['imbalance'] for d in self.history_data) / len(self.history_data) if self.history_data else 0
 
         # --- Összegző Sáv Update ---
         # A felhasználó kérése: mindkét sáv egyszerre jelenjen meg a volumenek arányában.
-        # Ha total_ask = 60 és total_bid = 40, akkor a piros sáv 60%-ig, a zöld 40%-ig ér.
         if (total_ask + total_bid) > 0:
             bid_pct = int((total_bid / (total_ask + total_bid)) * 100)
             ask_pct = int((total_ask / (total_ask + total_bid)) * 100)
@@ -527,16 +554,6 @@ class DOMWindow(QMainWindow):
             self.imb_bar_bid.setValue(0)
             self.imb_bar_ask.setValue(0)
 
-        # --- Történeti Adatok a Spoofing Detektáláshoz ---
-        self.history_av1.append(av1)
-        self.history_bv1.append(bv1)
-        self.history_prices.append(current_data['price'])
-
-        # Max 100 elem tartása (kb. 1 mp gyors forgalomnál)
-        if len(self.history_av1) > 100: self.history_av1.pop(0)
-        if len(self.history_bv1) > 100: self.history_bv1.pop(0)
-        if len(self.history_prices) > 100: self.history_prices.pop(0)
-
         # --- Spoofing & Anomália Update ---
         if best_bid > 0 and best_ask > 0 and current_data['price'] > 0:
             self.lbl_bid.setText(f"Legjobb Vétel:\n{best_bid:.5f}")
@@ -544,13 +561,13 @@ class DOMWindow(QMainWindow):
             self.lbl_spread.setText(f"Spread:\n{spread:.5f}")
 
             # Spoofing Logika: Hirtelen feleződik a volumen a csúcshoz képest, stabil ár mellett
-            lookback = len(self.history_av1)
-            max_av1 = max(self.history_av1) if lookback > 0 else 1
-            max_bv1 = max(self.history_bv1) if lookback > 0 else 1
+            lookback = len(self.history_data)
+            max_av1 = max((d['av1'] for d in self.history_data), default=1)
+            max_bv1 = max((d['bv1'] for d in self.history_data), default=1)
 
             price_delta = 0
             if lookback >= 2:
-                price_delta = abs(self.history_prices[-1] - self.history_prices[-2])
+                price_delta = abs(self.history_data[-1]['price'] - self.history_data[-2]['price'])
 
             # Ár stabilitása (0.1 szorzó, ahogy a Vaku3-ban)
             price_stable = price_delta < (self.tick_size_estimate * 0.1)
