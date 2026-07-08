@@ -10,10 +10,11 @@ from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QObject, QRect
 from PyQt5.QtGui import QColor, QFont, QPainter, QBrush
 
 # --- GLOBÁLIS ADATTÁR ---
+# Kiterjesztve N-szintre (alapértelmezetten 10 szintes tároló)
 LATEST_DOM_DATA = {
     'time': 0, 'price': 0.0,
-    'av1': 0, 'av2': 0, 'bv1': 0, 'bv2': 0,
-    'ap1': 0.0, 'ap2': 0.0, 'bp1': 0.0, 'bp2': 0.0
+    'asks': [{'price': 0.0, 'volume': 0} for _ in range(10)], # [0] a legjobb ask (ap1, av1)
+    'bids': [{'price': 0.0, 'volume': 0} for _ in range(10)]  # [0] a legjobb bid (bp1, bv1)
 }
 
 class SignalEmitter(QObject):
@@ -87,46 +88,37 @@ class CSVDOMPlayer(threading.Thread):
                 if tick_epoch <= self.virtual_epoch_msc:
                     global LATEST_DOM_DATA
                     LATEST_DOM_DATA['time'] = tick_epoch
-                    # Fallback logikák a különböző CSV formátumok miatti hiányzó kulcsok elkerülésére
-                    if 'Type' in row:
-                        if row['Type'] == 1: # Ask
-                            ask = float(row['Price'])
-                            bid = float(row.get('Bid', ask - 0.01))
-                            av1 = int(row['Volume'])
-                            bv1 = int(row.get('BidVol', 0))
-                        else: # Bid
-                            bid = float(row['Price'])
-                            ask = float(row.get('Ask', bid + 0.01))
-                            bv1 = int(row['Volume'])
-                            av1 = int(row.get('AskVol', 0))
-                        ap1 = ask
-                        bp1 = bid
-                        av2 = 0
-                        bv2 = 0
-                        ap2 = ask + 0.01
-                        bp2 = bid - 0.01
-                    else:
-                        # Ha megvannak az explicit oszlopok (Merkava DOM Miner formátum)
-                        bid = float(row.get('Bid', row.get('Bid_Price_1', 0)))
-                        ask = float(row.get('Ask', row.get('Ask_Price_1', 0)))
-                        av1 = int(row.get('Ask_Vol_1', 0))
-                        av2 = int(row.get('Ask_Vol_2', 0))
-                        bv1 = int(row.get('Bid_Vol_1', 0))
-                        bv2 = int(row.get('Bid_Vol_2', 0))
-                        ap1 = float(row.get('Ask_Price_1', 0))
-                        ap2 = float(row.get('Ask_Price_2', 0))
-                        bp1 = float(row.get('Bid_Price_1', 0))
-                        bp2 = float(row.get('Bid_Price_2', 0))
+                    # Dinamikus N-szintű olvasás (akár 10 szint is, ha a CSV-ben benne van)
+                    asks = []
+                    bids = []
 
-                    LATEST_DOM_DATA['price'] = (bid + ask) / 2.0
-                    LATEST_DOM_DATA['av1'] = av1
-                    LATEST_DOM_DATA['av2'] = av2
-                    LATEST_DOM_DATA['bv1'] = bv1
-                    LATEST_DOM_DATA['bv2'] = bv2
-                    LATEST_DOM_DATA['ap1'] = ap1
-                    LATEST_DOM_DATA['ap2'] = ap2
-                    LATEST_DOM_DATA['bp1'] = bp1
-                    LATEST_DOM_DATA['bp2'] = bp2
+                    if 'Ask_Price_1' in row:
+                        # Új több-szintes formátum
+                        for lvl in range(1, 11): # 1-től 10-ig próbáljuk
+                            ap_key = f'Ask_Price_{lvl}'
+                            av_key = f'Ask_Vol_{lvl}'
+                            bp_key = f'Bid_Price_{lvl}'
+                            bv_key = f'Bid_Vol_{lvl}'
+
+                            if ap_key in row and row[av_key] > 0:
+                                asks.append({'price': float(row[ap_key]), 'volume': int(row[av_key])})
+                            if bp_key in row and row[bv_key] > 0:
+                                bids.append({'price': float(row[bp_key]), 'volume': int(row[bv_key])})
+                    elif 'Type' in row:
+                        # Régi Type-alapú V2 formátum (csak 1 szint)
+                        if row['Type'] == 1:
+                            asks.append({'price': float(row['Price']), 'volume': int(row['Volume'])})
+                            bids.append({'price': float(row.get('Bid', float(row['Price'])-0.01)), 'volume': int(row.get('BidVol', 0))})
+                        else:
+                            bids.append({'price': float(row['Price']), 'volume': int(row['Volume'])})
+                            asks.append({'price': float(row.get('Ask', float(row['Price'])+0.01)), 'volume': int(row.get('AskVol', 0))})
+
+                    best_bid = bids[0]['price'] if bids else 0.0
+                    best_ask = asks[0]['price'] if asks else 0.0
+
+                    LATEST_DOM_DATA['price'] = (best_bid + best_ask) / 2.0
+                    LATEST_DOM_DATA['asks'] = asks
+                    LATEST_DOM_DATA['bids'] = bids
 
                     emitter.data_updated.emit()
                     self.current_idx += 1
@@ -374,22 +366,24 @@ class DOMWindow(QMainWindow):
         mid_price = live_data['price']
         if mid_price == 0.0: mid_price = 150.00
 
+        asks = live_data['asks']
+        bids = live_data['bids']
+
+        best_ask = asks[0]['price'] if asks else 0.0
+        best_bid = bids[0]['price'] if bids else 0.0
+
         # Mivel a brókerek az utolsó 0-kat sokszor lehagyják a floatok végéről (pl. 4081.50 -> 4081.5),
         # az egyszerű tizedesjegy-számlálás nagyon ugráló tick size-t okozhat.
-        # Megbízhatóbb, ha az aktuális 1. és 2. szint közötti távolságból próbálunk deriválni,
-        # vagy egy kőkemény fixet adunk a BTCUSD/XAUUSD-hez. (0.1 a Micro Gold, 1.0 a BTC)
-
-        # Próbáljuk meg kikövetkeztetni a valós lépésközt az Ask_Price_1 és Ask_Price_2 különbségéből (ha van)
+        # Próbáljuk meg kikövetkeztetni a valós lépésközt az 1. és 2. szint közötti távolságból
         inferred_tick = 0.0
-        if live_data['ap2'] > 0 and live_data['ap1'] > 0:
-            inferred_tick = round(abs(live_data['ap2'] - live_data['ap1']), 5)
-        elif live_data['bp1'] > 0 and live_data['bp2'] > 0:
-            inferred_tick = round(abs(live_data['bp1'] - live_data['bp2']), 5)
+        if len(asks) >= 2 and asks[1]['price'] > 0:
+            inferred_tick = round(abs(asks[1]['price'] - asks[0]['price']), 5)
+        elif len(bids) >= 2 and bids[1]['price'] > 0:
+            inferred_tick = round(abs(bids[0]['price'] - bids[1]['price']), 5)
 
         # Extrém erős kikényszerítés a rács illeszkedésére!
-        # SOHA ne hagyatkozzunk csak a bróker csonkolt különbségére. Megnézzük a tizedesjegyek valós számát is!
         decimal_tick = 0.0
-        str_price = str(live_data['bp1']) if live_data['bp1'] > 0 else str(live_data['price'])
+        str_price = str(best_bid) if best_bid > 0 else str(mid_price)
         if '.' in str_price:
             decimals = len(str_price.split('.')[1])
             decimal_tick = 1.0 / (10 ** decimals)
@@ -410,8 +404,13 @@ class DOMWindow(QMainWindow):
 
         mid_rounded = np.round(mid_price / self.tick_size_estimate) * self.tick_size_estimate
 
-        best_bid = live_data['bp1'] if live_data['bp1'] > 0 else mid_rounded - self.tick_size_estimate
-        best_ask = live_data['ap1'] if live_data['ap1'] > 0 else mid_rounded + self.tick_size_estimate
+        # Cseréljük az elavult bp1/ap1 hivatkozásokat az N-szintű dinamikus asks/bids listákra
+        best_ask = live_data['asks'][0]['price'] if live_data['asks'] else mid_rounded + self.tick_size_estimate
+        best_bid = live_data['bids'][0]['price'] if live_data['bids'] else mid_rounded - self.tick_size_estimate
+
+        # Extra fallback, ha valamiért az első szint ára 0 lenne
+        if best_ask == 0.0: best_ask = mid_rounded + self.tick_size_estimate
+        if best_bid == 0.0: best_bid = mid_rounded - self.tick_size_estimate
 
         # Új Dinamikus Viewport (Grid) Számítás, ami nem ignorálja a hatalmas spread-et.
         # A probléma: ha a Spread hatalmas (pl. 300 dollár BTC-n), akkor a grid 300/0.01 = 30000 soros lenne!
@@ -421,11 +420,11 @@ class DOMWindow(QMainWindow):
         # A megoldás: Ha a Spread óriási (mert a demó bróker furcsa), akkor is be kell foglalni az A1 és B1 árakat a gridbe!
         # Tehát mindig a TÉNYLEGES best_ask és best_bid a viewport két határa (plusz némi padding).
 
-        top_price = best_ask + (self.depth_levels * self.tick_size_estimate)
-        if live_data['ap2'] > 0: top_price = max(top_price, live_data['ap2'] + (self.depth_levels * self.tick_size_estimate))
+        highest_ask = max((ask['price'] for ask in live_data['asks']), default=best_ask)
+        lowest_bid = min((bid['price'] for bid in live_data['bids'] if bid['price'] > 0), default=best_bid)
 
-        bottom_price = best_bid - (self.depth_levels * self.tick_size_estimate)
-        if live_data['bp2'] > 0: bottom_price = min(bottom_price, live_data['bp2'] - (self.depth_levels * self.tick_size_estimate))
+        top_price = highest_ask + (self.depth_levels * self.tick_size_estimate)
+        bottom_price = lowest_bid - (self.depth_levels * self.tick_size_estimate)
 
         # Új Erős Kompresszió a Spread alapján:
         # A felhasználó kérése alapján a Bid és Ask ne a képernyő két legszélére szoruljon extrém spread esetén.
@@ -478,60 +477,46 @@ class DOMWindow(QMainWindow):
             if target_price <= 0: return -1
             return int(np.argmin(np.abs(prices - target_price)))
 
-        # 1. Ask Level 2
-        if live_data['av2'] > 0 and live_data['ap2'] > 0:
-            idx = find_closest_index(live_data['ap2'])
-            if idx != -1: asks[idx] = live_data['av2']
+        grid_asks = [0] * len(prices)
+        grid_bids = [0] * len(prices)
 
-        # 2. Ask Level 1 (ez felülírja a Level 2-t, ha pont ugyanabba a sorba esnek a kompresszió miatt)
-        if live_data['av1'] > 0 and live_data['ap1'] > 0:
-            idx = find_closest_index(live_data['ap1'])
-            if idx != -1: asks[idx] = live_data['av1']
+        # N-szintű dinamikus leképezés: Lentről felfelé haladunk (mélyebb szintek először),
+        # hogy az L1 (legjobb ár) a legvégén fusson le, így ha kompresszió miatt egy sorba esnének,
+        # a legfrissebb (legjobb) adat írja felül a korábbit.
+        for ask in reversed(live_data['asks']):
+            idx = find_closest_index(ask['price'])
+            if idx != -1: grid_asks[idx] += ask['volume'] # Összeadjuk a volument ha több szint is 1 sorba kerülne a grid kompresszió miatt!
 
-        # 3. Bid Level 1
-        if live_data['bv1'] > 0 and live_data['bp1'] > 0:
-            idx = find_closest_index(live_data['bp1'])
-            if idx != -1: bids[idx] = live_data['bv1']
-
-        # 4. Bid Level 2 (csak akkor írja felül, ha valamiért egybe esne a B1-el, ami nem logikus, de biztosítjuk)
-        if live_data['bv2'] > 0 and live_data['bp2'] > 0:
-            idx = find_closest_index(live_data['bp2'])
-            if idx != -1 and bids[idx] == 0: bids[idx] = live_data['bv2']
+        for bid in reversed(live_data['bids']):
+            idx = find_closest_index(bid['price'])
+            if idx != -1: grid_bids[idx] += bid['volume']
 
         spread_value = max(0, best_ask - best_bid)
-
-        # --- DIAGNOSZTIKA: Bemenet vs. Kimenet ellenőrzése ---
-        # A file alapú logolást kikommenteljük a performancia miatt, a terminalba írunk helyette ha van hiányzó
-        matched_asks = sum([1 for a in asks if a > 0])
-        matched_bids = sum([1 for b in bids if b > 0])
-        input_asks = sum([1 for v in [live_data['av1'], live_data['av2']] if v > 0])
-        input_bids = sum([1 for v in [live_data['bv1'], live_data['bv2']] if v > 0])
-
-        if (input_asks > 0 and matched_asks == 0) or (input_bids > 0 and matched_bids == 0):
-            print(f"[HIBA] Tick elveszett a rácson! Epoch: {live_data['time']} | Grid top: {top_price} | A1: {live_data['ap1']} B1: {live_data['bp1']}")
 
         # Nagyon fontos: Mivel `prices` matematikai tömb, visszatérünk annak az indexével is,
         # hogy a GUI-ban a spread pontosan tudja, mely sorok esnek a Bid és Ask KÖZÉ.
         ask1_idx = find_closest_index(best_ask)
         bid1_idx = find_closest_index(best_bid)
 
-        return prices, bids, asks, best_bid, best_ask, spread_value, ask1_idx, bid1_idx
+        return prices, grid_bids, grid_asks, best_bid, best_ask, spread_value, ask1_idx, bid1_idx
 
     def update_gui(self):
         current_data = LATEST_DOM_DATA.copy()
         prices, bids, asks, best_bid, best_ask, spread, ask1_idx, bid1_idx = self.get_dom_data(current_data)
 
-        # --- Imbalance Logika ---
-        av1, av2 = current_data['av1'], current_data['av2']
-        bv1, bv2 = current_data['bv1'], current_data['bv2']
-        total_ask = av1 + av2
-        total_bid = bv1 + bv2
+        # --- Imbalance Logika N-szinttel ---
+        total_ask = sum(ask['volume'] for ask in current_data['asks'])
+        total_bid = sum(bid['volume'] for bid in current_data['bids'])
 
         imbalance = 0.0
         if (total_ask + total_bid) > 0:
             imbalance = (total_bid - total_ask) / (total_bid + total_ask)
 
         current_epoch = current_data['time']
+
+        # N-szintes esetben az L1 továbbra is a legfontosabb a Spoofinghoz
+        av1 = current_data['asks'][0]['volume'] if current_data['asks'] else 0
+        bv1 = current_data['bids'][0]['volume'] if current_data['bids'] else 0
 
         # Történeti adatok rögzítése
         self.history_data.append({
@@ -704,7 +689,9 @@ if __name__ == '__main__':
             csv_file = max(dom_files, key=os.path.getmtime)
 
     # 2. Fallback a lokális mappára, ha a saját gépen fut
-    if not csv_file or not os.path.exists(csv_file):
+    if os.environ.get('FORCE_CSV'):
+        csv_file = os.environ.get('FORCE_CSV')
+    elif not csv_file or not os.path.exists(csv_file):
         local_files = glob.glob("DOM_Data*.csv")
         if local_files:
             csv_file = max(local_files, key=os.path.getmtime)
