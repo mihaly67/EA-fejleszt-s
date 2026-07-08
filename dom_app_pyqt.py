@@ -245,7 +245,7 @@ class DOMWindow(QMainWindow):
         layout = QVBoxLayout(central_widget)
 
         # --- PLAYER CONTROLS ---
-        from PyQt5.QtWidgets import QComboBox
+        from PyQt5.QtWidgets import QComboBox, QSpinBox
         control_layout = QHBoxLayout()
         self.btn_play_pause = QPushButton("⏸ Pause")
         self.btn_play_pause.clicked.connect(self.toggle_playback)
@@ -258,9 +258,15 @@ class DOMWindow(QMainWindow):
         self.cb_speed.setStyleSheet("background-color: #2b2b2b; color: white; padding: 10px; border-radius: 5px; font-weight: bold;")
 
         self.cb_mode = QComboBox()
-        self.cb_mode.addItems(["Tick (100)", "Idő (60 mp)"])
-        self.cb_mode.setCurrentText("Tick (100)")
+        self.cb_mode.addItems(["Tick", "Idő (mp)"])
+        self.cb_mode.setCurrentText("Tick")
         self.cb_mode.setStyleSheet("background-color: #2b2b2b; color: white; padding: 10px; border-radius: 5px; font-weight: bold;")
+        self.cb_mode.currentTextChanged.connect(self.on_mode_changed)
+
+        self.spin_lookback = QSpinBox()
+        self.spin_lookback.setRange(1, 10000)
+        self.spin_lookback.setValue(100)
+        self.spin_lookback.setStyleSheet("background-color: #2b2b2b; color: white; padding: 10px; border-radius: 5px; font-weight: bold;")
 
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(0, 100)
@@ -270,6 +276,7 @@ class DOMWindow(QMainWindow):
         control_layout.addWidget(self.btn_play_pause)
         control_layout.addWidget(self.cb_speed)
         control_layout.addWidget(self.cb_mode)
+        control_layout.addWidget(self.spin_lookback)
         control_layout.addWidget(self.slider)
         layout.addLayout(control_layout)
 
@@ -356,6 +363,12 @@ class DOMWindow(QMainWindow):
     def change_speed(self, text):
         speed_val = float(text.replace('x', ''))
         self.player.set_speed(speed_val)
+
+    def on_mode_changed(self, text):
+        if text == "Tick":
+            self.spin_lookback.setValue(100)
+        elif text == "Idő (mp)":
+            self.spin_lookback.setValue(60)
 
     def get_dom_data(self, live_data):
         mid_price = live_data['price']
@@ -531,13 +544,15 @@ class DOMWindow(QMainWindow):
 
         # --- Dinamikus Adatvágás (Pruning) a Kiválasztott Mód Alapján ---
         mode = self.cb_mode.currentText()
+        lookback_val = self.spin_lookback.value()
+
         if "Tick" in mode:
-            # Tick alapú vágás (utolsó 100 elem)
-            if len(self.history_data) > 100:
-                self.history_data = self.history_data[-100:]
+            # Tick alapú vágás (utolsó X elem)
+            if len(self.history_data) > lookback_val:
+                self.history_data = self.history_data[-lookback_val:]
         else:
-            # Idő alapú vágás (utolsó 60 másodperc = 60000 ms)
-            cutoff_time = current_epoch - 60000.0
+            # Idő alapú vágás (utolsó X másodperc, millisekondummá konvertálva)
+            cutoff_time = current_epoch - (lookback_val * 1000.0)
             self.history_data = [d for d in self.history_data if d['time'] >= cutoff_time]
 
         # Statisztikák kinyerése a levágott adatokból
