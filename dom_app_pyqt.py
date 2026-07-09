@@ -22,6 +22,90 @@ class SignalEmitter(QObject):
 
 emitter = SignalEmitter()
 
+import socket
+
+# --- ONLINE TCP BRIDGE (ÉLŐ KAPCSOLAT AZ MT5-HÖZ) ---
+class MT5SocketBridge(threading.Thread):
+    def __init__(self, port=5556):
+        super().__init__()
+        self.port = port
+        self.running = False
+        self.server_socket = None
+
+    def run(self):
+        self.running = True
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server_socket.bind(('0.0.0.0', self.port))
+        self.server_socket.listen(1)
+        self.server_socket.settimeout(1.0)
+
+        print(f"[ONLINE-BRIDGE] ÉLŐ DOM figyelése a {self.port}-es porton...")
+
+        while self.running:
+            try:
+                conn, addr = self.server_socket.accept()
+                conn.settimeout(0.5)
+                buffer = ""
+                while self.running:
+                    try:
+                        data = conn.recv(1024)
+                        if not data:
+                            break
+                        buffer += data.decode('utf-8')
+                        while '\n' in buffer:
+                            line, buffer = buffer.split('\n', 1)
+                            self.process_payload(line.strip())
+                    except socket.timeout:
+                        continue
+                    except Exception as e:
+                        break
+                conn.close()
+            except socket.timeout:
+                continue
+            except Exception as e:
+                if self.running:
+                    print(f"[ONLINE-BRIDGE] Socket Hiba: {e}")
+
+        if self.server_socket:
+            self.server_socket.close()
+
+    def process_payload(self, line):
+        if not line.startswith("TICK|"): return
+
+        # Payload formátum: TICK|time_msc|bid|ask|pos_type|pos_price|pos_profit|av1|av2|bv1|bv2|ap1|ap2|bp1|bp2
+        parts = line.split('|')
+        if len(parts) >= 15:
+            global LATEST_DOM_DATA
+            LATEST_DOM_DATA['time'] = float(parts[1])
+            LATEST_DOM_DATA['price'] = (float(parts[2]) + float(parts[3])) / 2.0
+
+            asks = []
+            bids = []
+
+            # Level 1
+            if float(parts[11]) > 0 and int(parts[7]) > 0: asks.append({'price': float(parts[11]), 'volume': int(parts[7])})
+            if float(parts[13]) > 0 and int(parts[9]) > 0: bids.append({'price': float(parts[13]), 'volume': int(parts[9])})
+
+            # Level 2
+            if float(parts[12]) > 0 and int(parts[8]) > 0: asks.append({'price': float(parts[12]), 'volume': int(parts[8])})
+            if float(parts[14]) > 0 and int(parts[10]) > 0: bids.append({'price': float(parts[14]), 'volume': int(parts[10])})
+
+            # Feltöltjük a tárolót az élő adattal
+            LATEST_DOM_DATA['asks'] = asks
+            LATEST_DOM_DATA['bids'] = bids
+
+            emitter.data_updated.emit()
+
+    def stop(self):
+        self.running = False
+        if self.server_socket:
+            try:
+                self.server_socket.close()
+            except:
+                pass
+
+
 # --- CSV OFFLINE PLAYER (HÁTTÉRSZÁL EPOCH SZIMULÁCIÓVAL) ---
 class CSVDOMPlayer(threading.Thread):
     def __init__(self, filepath, speed=1.0):
@@ -668,44 +752,69 @@ class DOMWindow(QMainWindow):
             self.table.setItem(i, 2, item_ask)
 
         # Update Slider
-        if self.player.total_rows > 0 and not self.slider.isSliderDown():
+        if hasattr(self.player, 'total_rows') and self.player.total_rows > 0 and not self.slider.isSliderDown():
             pct = int((self.player.current_idx / self.player.total_rows) * 100)
             self.slider.blockSignals(True)
             self.slider.setValue(pct)
             self.slider.blockSignals(False)
 
+    def closeEvent(self, event):
+        if hasattr(self.player, 'stop'):
+            self.player.stop()
+        event.accept()
+
 if __name__ == '__main__':
     import os
     import glob
+    import argparse
 
-    # 1. Automatikus keresés a raw mappában a legfrissebb DOM fájlra
-    raw_dir = "/home/misi/Merkava_ML_Ops/data/raw/"
-    csv_file = None
+    parser = argparse.ArgumentParser(description="DOM Monitor (Offline CSV vagy Élő TCP mód)")
+    parser.add_argument('--mode', type=str, choices=['offline', 'online'], default='offline', help="Működési mód: offline (CSV) vagy online (MT5 ZMQ)")
+    parser.add_argument('--port', type=int, default=5556, help="TCP Port az online módhoz (MT5 InpDomBridgePort)")
+    args = parser.parse_args()
 
-    if os.path.exists(raw_dir):
-        # Keresünk minden DOM_Data kezdetű fájlt, és a legújabbat választjuk (időbélyegtől függetlenül)
-        dom_files = glob.glob(os.path.join(raw_dir, "DOM_Data*.csv"))
-        if dom_files:
-            csv_file = max(dom_files, key=os.path.getmtime)
+    if args.mode == 'online':
+        print(f"[INIT] ONLINE MÓD INDÍTÁSA - Várakozás az MT5 EA-ra (Port: {args.port})...")
+        data_source = MT5SocketBridge(port=args.port)
+        data_source.start()
+    else:
+        print("[INIT] OFFLINE CSV MÓD INDÍTÁSA...")
+        # 1. Automatikus keresés a raw mappában a legfrissebb DOM fájlra
+        raw_dir = "/home/misi/Merkava_ML_Ops/data/raw/"
+        csv_file = None
 
-    # 2. Fallback a lokális mappára, ha a saját gépen fut
-    if os.environ.get('FORCE_CSV'):
-        csv_file = os.environ.get('FORCE_CSV')
-    elif not csv_file or not os.path.exists(csv_file):
-        local_files = glob.glob("DOM_Data*.csv")
-        if local_files:
-            csv_file = max(local_files, key=os.path.getmtime)
-        else:
-            csv_file = "DOM_Data.csv" # Végső fallback
+        if os.path.exists(raw_dir):
+            # Keresünk minden DOM_Data kezdetű fájlt, és a legújabbat választjuk (időbélyegtől függetlenül)
+            dom_files = glob.glob(os.path.join(raw_dir, "DOM_Data*.csv"))
+            if dom_files:
+                csv_file = max(dom_files, key=os.path.getmtime)
 
-    if not os.path.exists(csv_file):
-        print(f"[HIBA] Nem talalhato CSV fajl! ({csv_file}) - Kerlek, tolts le egyet a mappaba!")
-        sys.exit(1)
+        # 2. Fallback a lokális mappára, ha a saját gépen fut
+        if os.environ.get('FORCE_CSV'):
+            csv_file = os.environ.get('FORCE_CSV')
+        elif not csv_file or not os.path.exists(csv_file):
+            local_files = glob.glob("DOM_Data*.csv")
+            if local_files:
+                csv_file = max(local_files, key=os.path.getmtime)
+            else:
+                csv_file = "DOM_Data.csv" # Végső fallback
 
-    player = CSVDOMPlayer(filepath=csv_file, speed=10.0) # 10x-es gyorsított lejátszás
-    player.start()
+        if not os.path.exists(csv_file):
+            print(f"[HIBA] Nem talalható CSV fájl! ({csv_file}) - Kérlek, állítsd át --mode online -ra, vagy tölts le egy CSV-t!")
+            sys.exit(1)
+
+        data_source = CSVDOMPlayer(filepath=csv_file, speed=10.0) # 10x-es gyorsított lejátszás
+        data_source.start()
 
     app = QApplication(sys.argv)
-    window = DOMWindow(player)
+    window = DOMWindow(data_source)
+
+    # Ha Online módban vagyunk, elrejtjük a lejátszó gombokat
+    if args.mode == 'online':
+        window.btn_play_pause.hide()
+        window.cb_speed.hide()
+        window.slider.hide()
+        window.setWindowTitle("🧱 Tőzsdei DOM Monitor (ÉLŐ KAPCSOLAT)")
+
     window.show()
     sys.exit(app.exec_())
