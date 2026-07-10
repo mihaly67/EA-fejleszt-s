@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
 import pandas as pd
 import numpy as np
 import os
-from sklearn.preprocessing import StandardScaler
+import glob
+import sys
 
 class DOMFeatureEngineer:
     """
@@ -27,6 +29,19 @@ class DOMFeatureEngineer:
     def process(self):
         print(f"🔄 Adatok beolvasása: {self.data_path}")
         df = pd.read_csv(self.data_path)
+
+        # Fallback ha 1-szintű a CSV (Demo account pl.)
+        if 'Ask_Price_1' not in df.columns and 'Ask' in df.columns:
+            print("⚠️ 1-szintű (L1) DOM CSV formátum detektálva! Adatok konvertálása 10-szintű formátumra (üres mélységgel)...")
+            df['Ask_Price_1'] = df['Ask']
+            df['Bid_Price_1'] = df['Bid']
+
+            # Keresünk Volume oszlopot
+            ask_vol_col = 'AskVol' if 'AskVol' in df.columns else ('Ask_Vol_1' if 'Ask_Vol_1' in df.columns else 'Volume')
+            bid_vol_col = 'BidVol' if 'BidVol' in df.columns else ('Bid_Vol_1' if 'Bid_Vol_1' in df.columns else 'Volume')
+
+            df['Ask_Vol_1'] = df[ask_vol_col]
+            df['Bid_Vol_1'] = df[bid_vol_col]
 
         if 'Price' not in df.columns:
             df['Price'] = (df['Ask_Price_1'] + df['Bid_Price_1']) / 2.0
@@ -58,7 +73,12 @@ class DOMFeatureEngineer:
         print("🔨 Feature Engineering: Sebesség (Velocity) és Ár Momentum")
         df['Return_1'] = df['Price'].pct_change(1)
         df['Return_5'] = df['Price'].pct_change(5)
-        df['Price_Velocity'] = df['Price'].diff(1) / df['TimeMsc'].diff(1).replace(0, 1)
+
+        time_col = 'TimeMsc' if 'TimeMsc' in df.columns else ('TickMS' if 'TickMS' in df.columns else None)
+        if time_col:
+            df['Price_Velocity'] = df['Price'].diff(1) / df[time_col].diff(1).replace(0, 1)
+        else:
+            df['Price_Velocity'] = df['Price'].diff(1) # Fallback
 
         print("🔨 Feature Engineering: ATR és Relatív Távolságok")
         df['ATR_Proxy'] = self.calculate_atr(df, 15)
@@ -84,27 +104,22 @@ class DOMFeatureEngineer:
 
             label = 0 # Hold
 
-            # Végignézzük az ablakot (Barrier érintés vizsgálata)
             for j in range(1, lookahead + 1):
                 future_price = closes[i + j]
-
-                # Ha elérte a felső korlátot hamarabb -> BUY nyer
                 if future_price >= upper_barrier:
                     label = 1
                     break
-                # Ha elérte az alsó korlátot hamarabb -> SELL nyer
                 elif future_price <= lower_barrier:
                     label = -1
                     break
 
             targets[i] = label
-            # Regression target: A valós elmozdulás a lookahead végén
             target_returns[i] = (closes[i + lookahead] - current) / current
 
         df['Target'] = targets
         df['Target_Return'] = target_returns
 
-        exclude_cols = ['Time', 'TimeMsc', 'Type', 'Price']
+        exclude_cols = ['Time', 'TimeMsc', 'TickMS', 'Type', 'Price']
         for i in range(1, 11):
             exclude_cols.extend([f"Ask_Price_{i}", f"Ask_Vol_{i}", f"Bid_Price_{i}", f"Bid_Vol_{i}"])
 
@@ -116,7 +131,20 @@ class DOMFeatureEngineer:
         df_ml.to_csv(self.output_path, index=False)
 
 if __name__ == '__main__':
-    engineer = DOMFeatureEngineer('/home/misi/Merkava_ML_Ops/data/raw/DOM_Data_10Level.csv', '/home/misi/Merkava_ML_Ops/data/processed/ML_READY_FEATURES.csv')
-    # A fenti elérési útvonalat módosíthatod a tényleges CSV fájlod helyére, ami a te VPS-eden van.
-    # Jelenleg csak illusztráció a kód.
-    # engineer.process()
+    # Auto-keresés
+    raw_dir = "/home/misi/Merkava_ML_Ops/data/raw/"
+    csv_file = None
+    if os.path.exists(raw_dir):
+        dom_files = glob.glob(os.path.join(raw_dir, "*DOM*.csv"))
+        if dom_files: csv_file = max(dom_files, key=os.path.getmtime)
+
+    if not csv_file:
+        local_files = glob.glob("*DOM*.csv")
+        if local_files: csv_file = max(local_files, key=os.path.getmtime)
+        else:
+            print("❌ Nem talalhato DOM CSV fajl az adatok elokeszitesehez.")
+            sys.exit(1)
+
+    out_file = "ML_READY_FEATURES.csv"
+    engineer = DOMFeatureEngineer(csv_file, out_file)
+    engineer.process()
