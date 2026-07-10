@@ -231,6 +231,9 @@ class CSVDOMPlayer(threading.Thread):
         if self.paused: self.last_real_time = 0.0 # Force clock reset
         return self.paused
 
+    def stop(self):
+        self.running = False
+
 # --- DYNAMIC BAR DELEGATE ---
 class DOMBarDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
