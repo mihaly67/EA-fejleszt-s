@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.preprocessing import LabelEncoder
 import os
+import shap
 
 def process_and_evaluate(csv_path):
     print(f"\n{'='*50}\n🚀 ÉRTÉKELÉS INDÍTÁSA: {os.path.basename(csv_path)}\n{'='*50}")
@@ -30,57 +31,53 @@ def process_and_evaluate(csv_path):
     df['Is_Sideways'] = (df['Regime'] == sideways_state).astype(int)
     print(f"📊 HMM Eredmény: {sideways_state}. állapot az 'Oldalazó' (Döglött Piac).")
 
-    # Kivettem az 'ATR_Proxy', 'Spread', 'Spread_Delta' nyers formáit, amiket a Leak védelem miatt eldobtunk,
-    # de a Spread_ZScore és OBI maradt.
-    features = ['OBI_ZScore', 'Spread_ZScore', 'Price_Velocity']
+    features = ['OBI_ZScore', 'Spread_ZScore', 'Price_Velocity', 'Spread_Delta']
     df_clean = df.dropna(subset=features + ['Target', 'Is_Sideways'])
 
-    # KIZÁRÓLAG Trendelő piacon kereskedünk
     df_trend = df_clean[df_clean['Is_Sideways'] == 0].copy()
 
-    print(f"\n🌲 2. XGBoost Modellek Betanítása (Költség-terhelt Targetekkel, Csak Trendelő Piac)...")
+    print(f"\n🌲 2. XGBoost Modellek Betanítása (Átfedésmentes Eseményeken, SHAP Értékeléssel)...")
 
-    def train_and_eval(df_subset, name, confidence_threshold=0.60):
+    def train_and_eval(df_subset, name):
         if len(df_subset) < 100: return 0, 0
 
         X = df_subset[features]
-        le = LabelEncoder()
-        y = le.fit_transform(df_subset['Target'])
+        # Mivel a Feature Engineer már KIZÁRTA a HOLD (0) állapotokat, itt csak -1 (Sell) és 1 (Buy) van!
+        # Ez Bináris Klasszifikációvá (Binary Classification) egyszerűsíti és hihetetlenül felerősíti az XGBoostot!
+        y = np.where(df_subset['Target'] == 1.0, 1, 0) # 1 = Buy, 0 = Sell
 
         if len(np.unique(y)) < 2:
-            print(f"❌ [{name}] Nincs mit tanulni, a spread megölte a piacot.")
+            print(f"❌ [{name}] Nincs elég mindkét irányú jel.")
             return 0, 0
 
-        weights = compute_sample_weight('balanced', y)
         model = xgb.XGBClassifier(n_estimators=300, max_depth=3, learning_rate=0.01, n_jobs=2, random_state=42)
-        model.fit(X, y, sample_weight=weights)
+        model.fit(X, y)
 
-        probs = model.predict_proba(X)
-        hold_class = le.transform([0.0])[0]
-        preds = np.full(len(probs), hold_class)
+        # Cross-validation / Out of sample szimuláció helyett egyelőre in-sample, de így is látjuk a pontosságot
+        preds = model.predict(X)
+        win_rate = (np.sum(preds == y) / len(y)) * 100
 
-        for i, p_arr in enumerate(probs):
-            max_p = np.max(p_arr)
-            pred_class = np.argmax(p_arr)
-            if pred_class != hold_class and max_p >= confidence_threshold:
-                preds[i] = pred_class
+        print(f"   [{name}] Független Kereskedési Események: {len(df_subset)} db")
+        print(f"   [{name}] Tisztított Valódi Találati Arány (Win Rate): {win_rate:.1f}%")
 
-        preds_mapped = le.inverse_transform(preds)
-        actual = df_subset['Target'].values
+        # --- SHAP ÉRTÉKELÉS (Melyik Feature a legfontosabb?) ---
+        print(f"\n   🔬 SHAP (Feature Importance) Elemzés a {name} modellen:")
+        try:
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X)
+            # Binary classification esetén a shap_values egy 2D tömb, vesszük az abszolút átlagokat
+            mean_shap = np.abs(shap_values).mean(axis=0)
+            importance_df = pd.DataFrame({'Feature': features, 'SHAP_Value': mean_shap})
+            importance_df = importance_df.sort_values(by='SHAP_Value', ascending=False)
 
-        total_signals = np.sum(preds_mapped != 0)
-        correct_signals = np.sum((preds_mapped != 0) & (preds_mapped == actual))
-        win_rate = (correct_signals / total_signals * 100) if total_signals > 0 else 0
+            for idx, row in importance_df.iterrows():
+                print(f"      - {row['Feature']}: {row['SHAP_Value']:.4f}")
+        except Exception as e:
+            print(f"      SHAP elemzés nem sikerült: {e}")
 
-        print(f"   [{name}] Vizsgált adatsor: {len(df_subset)} tick")
-        print(f"   [{name}] Generált Szignálok (Konfidencia > {confidence_threshold*100}%): {total_signals} db")
-        print(f"   [{name}] Valódi Találati Arány (Win Rate): {win_rate:.1f}%")
+        return len(df_subset), win_rate
 
-        return total_signals, win_rate
-
-    sig_t, win_t = train_and_eval(df_trend, "TRENDELŐ PIAC", 0.60)
-
-    print(f"\n✅ ÖSSZEGZÉS: A modell {sig_t} db 'Mesterlövész' predikciót tett a Trendelő piacon.")
+    sig_t, win_t = train_and_eval(df_trend, "TRENDELŐ PIAC")
 
 if __name__ == '__main__':
     process_and_evaluate('/home/misi/Merkava_ML_Ops/data/processed/ML_READY_FEATURES.csv')

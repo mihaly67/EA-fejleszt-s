@@ -44,7 +44,7 @@ class DOMFeatureEngineer:
                 total_weighted_bid += df[bv_col].fillna(0) * weight
 
         raw_obi = (total_weighted_bid - total_weighted_ask) / (total_weighted_bid + total_weighted_ask + 1e-9)
-        # Szigorú SHIFT(1) a Target Leak ellen (csak a megképzett múltat láthatja)
+        # Szigorú SHIFT(1) a Target Leak ellen
         df['OBI_Raw'] = raw_obi
         df['OBI_ZScore'] = ((raw_obi - raw_obi.rolling(100).mean()) / (raw_obi.rolling(100).std() + 1e-9)).shift(1)
 
@@ -65,63 +65,76 @@ class DOMFeatureEngineer:
 
         df['ATR_Proxy'] = self.calculate_atr(df, 15).shift(1)
 
-        # A jelenlegi Price és a Spread nem lehet shifttelt, mert abból indul a szimuláció, de a modell nem is kapja meg!
         df = df.dropna().copy()
 
-        print("🎯 Javított Szimmetrikus Triple-Barrier Labeling (MGC Cost)")
-        lookahead = 60 # 60 tick (kb 20 másodperc a kitörésre)
-        tp_mult = 0.20
-        sl_mult = 0.15
-        # Micro Gold Cost: kb 0.15 pont a kerekített round turn jutalék a 4100-as árszinten
-        commission_cost = 0.15
+        print("🎯 Event-Based Triple-Barrier Labeling (Fix USD/Pont Célokkal, Költségekkel)")
+
+        # --- A FELHASZNÁLÓI IGÉNYEKRE SZABVA (Fix profit célok ATR helyett) ---
+        # A MGC (Micro Gold) tick size 0.1, ami 1 dollárt ér pontonként (vagy 10 dollár?
+        # Tegyük fel, hogy 1 pont (pl 4100 -> 4101) = 10 USD, ahogy írtad: 1.5 USD költség = 0.15 pont.
+        # Cél: Legalább 5-10 USD profit -> Vagyis 0.5 - 1.0 pontnyi mozgás a CÉL.
+
+        lookahead = 200 # Több időt hagyunk a mozgásnak (nem 30 tick, ami ~2 mp, hanem pl. 200 tick ~ 1 perc)
+        tp_target_points = 0.60 # kb. 6 USD nyereség cél
+        sl_target_points = 0.40 # kb. 4 USD max veszteség
+        commission_cost = 0.15  # 1.5 USD költség
 
         prices = df['Price'].values
-        atrs = df['ATR_Proxy'].values
         spreads = df['Spread'].values
         targets = np.zeros(len(df))
 
-        for i in range(len(df) - lookahead):
-            current_mid = prices[i]
-            if atrs[i] == 0: continue
+        # Az átfedések megszüntetése (Event-Driven Labeling):
+        # Csak akkor "vagyunk a piacon", ha az előző trade már lezárult.
+        # Ha beléptünk egy pozícióba, az összes közbenső tick a jövőbeni kilépésig irreleváns a tanításhoz!
+        in_trade_until = 0
 
-            # Valós Spread (A fele a nyitás, fele a zárás költsége = 1 teljes Spread veszteség)
+        valid_samples_count = 0
+
+        for i in range(len(df) - lookahead):
+            # Átfedés szűrése: Ha már vagyunk egy pozícióban, a közbenső tickeket NEM címkézzük be új belépőként (0 marad, amiket majd kidobunk)
+            if i < in_trade_until:
+                continue
+
+            current_mid = prices[i]
             total_cost = spreads[i] + commission_cost
 
-            # Long (Buy) Falak
-            buy_tp = current_mid + (atrs[i] * tp_mult) + total_cost
-            buy_sl = current_mid - (atrs[i] * sl_mult)
+            # FIX PONTOS FALAK (NEM ATR, így nem tud átverni a volatilitás!)
+            buy_tp = current_mid + tp_target_points + total_cost
+            buy_sl = current_mid - sl_target_points
 
-            # Short (Sell) Falak
-            sell_tp = current_mid - (atrs[i] * tp_mult) - total_cost
-            sell_sl = current_mid + (atrs[i] * sl_mult)
+            sell_tp = current_mid - tp_target_points - total_cost
+            sell_sl = current_mid + sl_target_points
 
             long_alive = True
             short_alive = True
-            label = 0 # Hold
+            label = 0
 
             for j in range(1, lookahead + 1):
                 future_mid = prices[i + j]
 
-                # 1. LONG ELLENŐRZÉS
                 if long_alive:
                     if future_mid >= buy_tp:
-                        label = 1 # Long Nyer
+                        label = 1
+                        in_trade_until = i + j # Eddig az indexig a piacban vagyunk!
                         break
                     elif future_mid <= buy_sl:
-                        long_alive = False # Long Stop-Out
+                        long_alive = False
 
-                # 2. SHORT ELLENŐRZÉS
                 if short_alive:
                     if future_mid <= sell_tp:
-                        label = -1 # Short Nyer
+                        label = -1
+                        in_trade_until = i + j
                         break
                     elif future_mid >= sell_sl:
-                        short_alive = False # Short Stop-Out
+                        short_alive = False
 
                 if not long_alive and not short_alive:
+                    in_trade_until = i + j # A stop-out is lezárja a pozíciót, eddig voltunk bent
                     break
 
-            targets[i] = label
+            if label != 0:
+                targets[i] = label
+                valid_samples_count += 1
 
         df['Target'] = targets
 
@@ -132,8 +145,13 @@ class DOMFeatureEngineer:
         ml_columns = [c for c in df.columns if c not in exclude_cols]
         df_ml = df[ml_columns]
 
-        print(f"📊 Class eloszlás:\n{df_ml['Target'].value_counts()}")
-        df_ml.to_csv(self.output_path, index=False)
+        # Átfedésmentesítés: Csak azokat a tickeket tartjuk meg a modell tanításához, ahol VALÓDI DÖNTÉS született (Nincs Overlapping!)
+        # Hatalmas ugrás lesz a modell tisztaságában, mivel a 600,000 tickből csak az események (Events) maradnak meg.
+        df_events_only = df_ml[df_ml['Target'] != 0].copy()
+
+        print(f"📊 Független (Átfedésmentes) Döntési Események:\n{df_events_only['Target'].value_counts()}")
+        print(f"💾 Kimentés: {self.output_path} ({len(df_events_only)} esemény, {len(ml_columns)} feature)")
+        df_events_only.to_csv(self.output_path, index=False)
 
 if __name__ == '__main__':
     engineer = DOMFeatureEngineer('/home/misi/Merkava_ML_Ops/data/raw/DOM_Data_20260706_111039.csv', '/home/misi/Merkava_ML_Ops/data/processed/ML_READY_FEATURES.csv')
