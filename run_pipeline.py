@@ -1,23 +1,28 @@
-#!/usr/bin/env python3
 import os
 import sys
 
-print("=========================================================================")
-print("🚀 END-TO-END DOM MACHINE LEARNING PIPELINE INDÍTÁSA")
-print("=========================================================================\n")
+print("="*40)
+print("DOM HUD - END-TO-END ML PIPELINE")
+print("="*40)
 
-# 1. Feature Engineering
-print("[1/2] FEATURE ENGINEERING (dom_feature_engineer.py) FUTTATÁSA...")
-ret1 = os.system("python3 dom_feature_engineer.py")
-if ret1 != 0:
-    print("❌ Hiba történt a Feature Engineering során. A pipeline leáll.")
-    sys.exit(1)
+def run(cmd):
+    print(f"\n>>> Futtatás: {cmd}")
+    res = os.system(cmd)
+    if res != 0:
+        print(f"Hiba a következő parancsban: {cmd}")
+        sys.exit(1)
 
-# 2. Modell Képzés és Értékelés
-print("\n[2/2] XGBOOST & HMM MODELL KIÉRTÉKELÉS (evaluate_dom_ml.py) FUTTATÁSA...")
-ret2 = os.system("python3 evaluate_dom_ml.py")
-if ret2 != 0:
-    print("❌ Hiba történt a Modellezés során.")
-    sys.exit(1)
+cat_script = """
+import sys
+from dom_feature_engineer import DOMFeatureEngineer
+print("OOS FEATURE ENGINEERING...")
+eng_oos = DOMFeatureEngineer('data/DOM_Data_20260710_050837.csv', 'data/processed/engineered_oos.csv')
+eng_oos.process()
+"""
+with open("prep_all.py", "w") as f:
+    f.write(cat_script)
 
-print("\n✅ PIPELINE SIKERESEN LEFUTOTT!")
+run("python3 prep_all.py")
+run("python3 dom_inference_exam.py")
+
+print("\nPipeline Kész.")

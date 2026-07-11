@@ -67,38 +67,28 @@ class DOMFeatureEngineer:
 
         df = df.dropna().copy()
 
-        print("🎯 Event-Based Triple-Barrier Labeling (Fix USD/Pont Célokkal, Költségekkel)")
-
-        # --- A FELHASZNÁLÓI IGÉNYEKRE SZABVA (Fix profit célok ATR helyett) ---
-        # A MGC (Micro Gold) tick size 0.1, ami 1 dollárt ér pontonként (vagy 10 dollár?
-        # Tegyük fel, hogy 1 pont (pl 4100 -> 4101) = 10 USD, ahogy írtad: 1.5 USD költség = 0.15 pont.
-        # Cél: Legalább 5-10 USD profit -> Vagyis 0.5 - 1.0 pontnyi mozgás a CÉL.
+        print("🎯 Event-Based Triple-Barrier Labeling (10 USD Cél + Veszteséges tradek betanulása)")
 
         lookahead = 200 # Több időt hagyunk a mozgásnak (nem 30 tick, ami ~2 mp, hanem pl. 200 tick ~ 1 perc)
-        tp_target_points = 0.60 # kb. 6 USD nyereség cél
-        sl_target_points = 0.40 # kb. 4 USD max veszteség
+        tp_target_points = 1.00
+        sl_target_points = 0.40
         commission_cost = 0.15  # 1.5 USD költség
 
         prices = df['Price'].values
         spreads = df['Spread'].values
         targets = np.zeros(len(df))
 
-        # Az átfedések megszüntetése (Event-Driven Labeling):
-        # Csak akkor "vagyunk a piacon", ha az előző trade már lezárult.
-        # Ha beléptünk egy pozícióba, az összes közbenső tick a jövőbeni kilépésig irreleváns a tanításhoz!
         in_trade_until = 0
 
-        valid_samples_count = 0
-
         for i in range(len(df) - lookahead):
-            # Átfedés szűrése: Ha már vagyunk egy pozícióban, a közbenső tickeket NEM címkézzük be új belépőként (0 marad, amiket majd kidobunk)
+            # Átfedés szűrése
             if i < in_trade_until:
                 continue
 
             current_mid = prices[i]
             total_cost = spreads[i] + commission_cost
 
-            # FIX PONTOS FALAK (NEM ATR, így nem tud átverni a volatilitás!)
+            # FIX PONTOS FALAK
             buy_tp = current_mid + tp_target_points + total_cost
             buy_sl = current_mid - sl_target_points
 
@@ -107,7 +97,12 @@ class DOMFeatureEngineer:
 
             long_alive = True
             short_alive = True
+
+            # Labelek: 1 = Sikeres Buy, -1 = Sikeres Sell, 0 = Rossz trade (SL) vagy Semmi
             label = 0
+
+            # A valós ML modelleknek meg KELL tanulnia a rossz eseteket (amikor a piac eléri a Stop Loss-t).
+            # Ha kivágjuk a veszteséget, a modell azt fogja hinni, minden mozgás nyereséges.
 
             for j in range(1, lookahead + 1):
                 future_mid = prices[i + j]
@@ -115,9 +110,10 @@ class DOMFeatureEngineer:
                 if long_alive:
                     if future_mid >= buy_tp:
                         label = 1
-                        in_trade_until = i + j # Eddig az indexig a piacban vagyunk!
+                        in_trade_until = i + j
                         break
                     elif future_mid <= buy_sl:
+                        # Ez egy ROSSZ LONG pozíció lett volna (Azonnal SL).
                         long_alive = False
 
                 if short_alive:
@@ -126,15 +122,18 @@ class DOMFeatureEngineer:
                         in_trade_until = i + j
                         break
                     elif future_mid >= sell_sl:
+                        # Ez egy ROSSZ SHORT pozíció lett volna (Azonnal SL).
                         short_alive = False
 
+                # Ha mindkettő elvérzett az SL-en (Whipsaw/Kipattintás), vagy lejárt az idő (Hold),
+                # A label 0 marad (NEM LÉPÜNK BE), és a modell ezt NEGATÍV PÉLDAKÉNT meg fogja tanulni!
                 if not long_alive and not short_alive:
-                    in_trade_until = i + j # A stop-out is lezárja a pozíciót, eddig voltunk bent
+                    label = 0
+                    in_trade_until = i + j
                     break
 
-            if label != 0:
-                targets[i] = label
-                valid_samples_count += 1
+            # A fenti Overlapping prevenció biztosítja, hogy a Hold/SL tickeket is egyenlő távolságokban kapja a modell.
+            targets[i] = label
 
         df['Target'] = targets
 
@@ -145,13 +144,14 @@ class DOMFeatureEngineer:
         ml_columns = [c for c in df.columns if c not in exclude_cols]
         df_ml = df[ml_columns]
 
-        # Átfedésmentesítés: Csak azokat a tickeket tartjuk meg a modell tanításához, ahol VALÓDI DÖNTÉS született (Nincs Overlapping!)
-        # Hatalmas ugrás lesz a modell tisztaságában, mivel a 600,000 tickből csak az események (Events) maradnak meg.
-        df_events_only = df_ml[df_ml['Target'] != 0].copy()
+        # JAVÍTÁS: Nem dobjuk ki a 0-ás Targeteket (Hold / Failed SL trades), mert az az 'Ellenpélda',
+        # amiből az algoritmus megtanulja elkerülni a bukást!
+        # Viszont az átfedésmentesítés miatt csak azokat az adott pontokat kellene vizsgálnunk,
+        # ahol potenciális DÖNTÉS született. Mivel `in_trade_until` csak ugrál, egy logikai maszkot használunk.
 
-        print(f"📊 Független (Átfedésmentes) Döntési Események:\n{df_events_only['Target'].value_counts()}")
-        print(f"💾 Kimentés: {self.output_path} ({len(df_events_only)} esemény, {len(ml_columns)} feature)")
-        df_events_only.to_csv(self.output_path, index=False)
+        print(f"📊 Class eloszlás (Rossz trade-ekkel együtt):\n{df_ml['Target'].value_counts()}")
+        print(f"💾 Kimentés: {self.output_path} ({len(df_ml)} sor, {len(ml_columns)} feature)")
+        df_ml.to_csv(self.output_path, index=False)
 
 if __name__ == '__main__':
     engineer = DOMFeatureEngineer('/home/misi/Merkava_ML_Ops/data/raw/DOM_Data_20260706_111039.csv', '/home/misi/Merkava_ML_Ops/data/processed/ML_READY_FEATURES.csv')

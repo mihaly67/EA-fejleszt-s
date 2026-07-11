@@ -36,37 +36,59 @@ def process_and_evaluate(csv_path):
 
     df_trend = df_clean[df_clean['Is_Sideways'] == 0].copy()
 
-    print(f"\n🌲 2. XGBoost Modellek Betanítása (Átfedésmentes Eseményeken, SHAP Értékeléssel)...")
+    print(f"\n🌲 2. XGBoost Modellek Betanítása (Minden esettel: Hold/SL vs Buy/Sell)...")
 
-    def train_and_eval(df_subset, name):
+    def train_and_eval(df_subset, name, confidence_threshold=0.50):
         if len(df_subset) < 100: return 0, 0
 
         X = df_subset[features]
-        # Mivel a Feature Engineer már KIZÁRTA a HOLD (0) állapotokat, itt csak -1 (Sell) és 1 (Buy) van!
-        # Ez Bináris Klasszifikációvá (Binary Classification) egyszerűsíti és hihetetlenül felerősíti az XGBoostot!
-        y = np.where(df_subset['Target'] == 1.0, 1, 0) # 1 = Buy, 0 = Sell
+        # LabelEncoder (pl: -1 -> 0, 0 -> 1, 1 -> 2)
+        le = LabelEncoder()
+        y = le.fit_transform(df_subset['Target'])
 
         if len(np.unique(y)) < 2:
             print(f"❌ [{name}] Nincs elég mindkét irányú jel.")
             return 0, 0
 
+        # Mivel a legtöbb tick "Hold" (0), a balanced weight KÖTELEZŐ!
+        weights = compute_sample_weight('balanced', y)
         model = xgb.XGBClassifier(n_estimators=300, max_depth=3, learning_rate=0.01, n_jobs=2, random_state=42)
-        model.fit(X, y)
+        model.fit(X, y, sample_weight=weights)
 
-        # Cross-validation / Out of sample szimuláció helyett egyelőre in-sample, de így is látjuk a pontosságot
-        preds = model.predict(X)
-        win_rate = (np.sum(preds == y) / len(y)) * 100
+        probs = model.predict_proba(X)
+        hold_class = le.transform([0.0])[0]
+        preds = np.full(len(probs), hold_class)
 
-        print(f"   [{name}] Független Kereskedési Események: {len(df_subset)} db")
-        print(f"   [{name}] Tisztított Valódi Találati Arány (Win Rate): {win_rate:.1f}%")
+        for i, p_arr in enumerate(probs):
+            max_p = np.max(p_arr)
+            pred_class = np.argmax(p_arr)
+            # Konfidencia szűrő a Hold osztállyal szemben
+            if pred_class != hold_class and max_p >= confidence_threshold:
+                preds[i] = pred_class
 
-        # --- SHAP ÉRTÉKELÉS (Melyik Feature a legfontosabb?) ---
+        preds_mapped = le.inverse_transform(preds)
+        actual = df_subset['Target'].values
+
+        total_signals = np.sum(preds_mapped != 0)
+        correct_signals = np.sum((preds_mapped != 0) & (preds_mapped == actual))
+        win_rate = (correct_signals / total_signals * 100) if total_signals > 0 else 0
+
+        print(f"   [{name}] Vizsgált adatsor: {len(df_subset)} tick")
+        print(f"   [{name}] Generált Szignálok (Buy/Sell Konfidencia > {confidence_threshold*100}%): {total_signals} db")
+        print(f"   [{name}] Valódi Találati Arány (Win Rate): {win_rate:.1f}%")
+
+        # --- SHAP ÉRTÉKELÉS ---
         print(f"\n   🔬 SHAP (Feature Importance) Elemzés a {name} modellen:")
         try:
             explainer = shap.TreeExplainer(model)
             shap_values = explainer.shap_values(X)
-            # Binary classification esetén a shap_values egy 2D tömb, vesszük az abszolút átlagokat
-            mean_shap = np.abs(shap_values).mean(axis=0)
+
+            # Multi-class esetén a shap_values egy lista. Átlagoljuk az osztályok fontosságát.
+            if isinstance(shap_values, list):
+                mean_shap = np.mean([np.abs(sv).mean(axis=0) for sv in shap_values], axis=0)
+            else:
+                mean_shap = np.abs(shap_values).mean(axis=0)
+
             importance_df = pd.DataFrame({'Feature': features, 'SHAP_Value': mean_shap})
             importance_df = importance_df.sort_values(by='SHAP_Value', ascending=False)
 
@@ -75,9 +97,10 @@ def process_and_evaluate(csv_path):
         except Exception as e:
             print(f"      SHAP elemzés nem sikerült: {e}")
 
-        return len(df_subset), win_rate
+        return total_signals, win_rate
 
-    sig_t, win_t = train_and_eval(df_trend, "TRENDELŐ PIAC")
+    # Multi-class probléma lévén a konfidenciát visszavesszük (45-50% már jónak számít a 33% random baseline felett)
+    sig_t, win_t = train_and_eval(df_trend, "TRENDELŐ PIAC", 0.50)
 
 if __name__ == '__main__':
     process_and_evaluate('/home/misi/Merkava_ML_Ops/data/processed/ML_READY_FEATURES.csv')
