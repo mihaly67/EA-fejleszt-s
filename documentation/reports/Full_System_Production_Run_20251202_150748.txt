@@ -1,1 +1,0 @@
-[MŰSZAKVEZETŐ]: Gyártás kész. (3 db). Fájlok: ['DeepLearning.mqh', 'ActivationLayer.mqh', 'SoftmaxLayer.mqh']
