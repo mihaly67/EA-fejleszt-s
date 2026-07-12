@@ -103,4 +103,4 @@ def process_and_evaluate(csv_path):
     sig_t, win_t = train_and_eval(df_trend, "TRENDELŐ PIAC", 0.50)
 
 if __name__ == '__main__':
-    process_and_evaluate('/home/misi/Merkava_ML_Ops/data/processed/ML_READY_FEATURES.csv')
+    process_and_evaluate('data/processed/ML_READY_FEATURES.csv')

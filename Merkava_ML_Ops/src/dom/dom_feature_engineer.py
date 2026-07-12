@@ -154,5 +154,5 @@ class DOMFeatureEngineer:
         df_ml.to_csv(self.output_path, index=False)
 
 if __name__ == '__main__':
-    engineer = DOMFeatureEngineer('/home/misi/Merkava_ML_Ops/data/raw/DOM_Data_20260706_111039.csv', '/home/misi/Merkava_ML_Ops/data/processed/ML_READY_FEATURES.csv')
+    engineer = DOMFeatureEngineer('data/raw/DOM_Data_20260706_111039.csv', 'data/processed/ML_READY_FEATURES.csv')
     engineer.process()

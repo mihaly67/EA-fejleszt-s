@@ -16,12 +16,7 @@ def calculate_atr(df, period):
     return true_range.rolling(period).mean()
 
 def compute_hmm_regimes(df):
-    """
-    Fits a 3-state Gaussian HMM (Bull, Bear, Sideways) on the returns and volatility,
-    and assigns a regime label to each row.
-    """
     print("🧠 HMM Regime Training inditasa...", flush=True)
-    # Beépítjük a Flow_MFI (Cumulative Delta) változót is a HMM-be
     hmm_features = df[["Return_5", "Candle_Range_ATR", "Flow_MFI"]].dropna().copy()
     
     scaler = StandardScaler()
@@ -31,25 +26,20 @@ def compute_hmm_regimes(df):
     model.fit(scaled_features)
     
     regimes = model.predict(scaled_features)
-    
     df.loc[hmm_features.index, "Regime"] = regimes
     
     state_volatilities = df.groupby("Regime")["Candle_Range_ATR"].mean()
     sideways_state = state_volatilities.idxmin()
     print(f"📊 HMM Sideways State detektálva: {sideways_state}", flush=True)
-    print(state_volatilities, flush=True)
     
     return df, sideways_state
 
 def run_matrix():
     start_time = time.time()
     
-    DATA_PATH = "/home/misi/Merkava_ML_Ops/data/raw/Merkava_XAUUSD_MINER_MTF_v1.07_20260623_221200.csv"
-    df_raw = pd.read_csv(DATA_PATH)
-    df_raw = df_raw.tail(250000).copy() 
+    DATA_PATH = "data/raw/Merkava_XAUUSD_MINER_MTF_v1.07_20260623_221200.csv"
+    df_raw = pd.read_csv(DATA_PATH).tail(250000).copy() 
     df_raw.reset_index(drop=True, inplace=True)
-    
-    print(f"📥 Adat betoltve. Méret: {df_raw.shape}", flush=True)
     
     oscillators = ["Flow_ROC", "Hybrid_DFCurve", "Hybrid_MACD", "RSI_H1", "RSI_H4", "MACD_H1"]
     for col in oscillators:
@@ -64,22 +54,20 @@ def run_matrix():
     df_raw["Return_1"] = df_raw["Bar_Close"].pct_change(1)
     df_raw["Return_5"] = df_raw["Bar_Close"].pct_change(5)
     
-    # 🔴 Cumulative Delta Feature Engineering (Z-Score)
-    # A RAG kutatás szerint a nyers Flow értékek helyett az aszimmetriát kell nézni (rolling Z-score)
     df_raw["Flow_ROC_Z"] = (df_raw["Flow_ROC"] - df_raw["Flow_ROC"].rolling(100).mean()) / df_raw["Flow_ROC"].rolling(100).std()
     df_raw["Flow_MFI_Z"] = (df_raw["Flow_MFI"] - df_raw["Flow_MFI"].rolling(100).mean()) / df_raw["Flow_MFI"].rolling(100).std()
     
     periods = [7]
-    multipliers = [0.3, 0.5, 0.7, 1.0]
+    multipliers = [0.1, 0.15, 0.2, 0.25]
     lookahead = 3 
     
     closes = df_raw["Bar_Close"].values
     
     results = []
-    print("START M5 FIXED HORIZON MATRIX (SCALPING TARGETS)", flush=True)
+    print("START M5 FIXED HORIZON MATRIX (MICRO-TREND SIDEWAYS SCALPING ~1-2 USD)", flush=True)
     
     depths = [4]
-    thresholds = [0.45, 0.50, 0.55]
+    thresholds = [0.45, 0.50]
     
     for period in periods:
         atr_values = calculate_atr(df_raw, period).values
@@ -130,18 +118,14 @@ def run_matrix():
             df_model = df_raw[features + ["Target", "Regime"]].copy()
             df_model = df_model.dropna()
             
-            # HMM FILTERING
-            df_filtered = df_model[df_model["Regime"] != sideways_state].copy()
-            print(f"🧹 HMM Szűrés: {len(df_model)} nyers sor -> {len(df_filtered)} szűrt sor (Trendelő piacok)", flush=True)
+            # KIZÁRÓLAG AZ OLDALAZÓ PIACON (Sideways) TANÍTUNK!
+            df_filtered = df_model[df_model["Regime"] == sideways_state].copy()
+            print(f"🧹 HMM Szűrés: {len(df_model)} nyers sor -> {len(df_filtered)} szűrt sor (CSAK Oldalazó piac)", flush=True)
             
-            # Teszteljük a modell pontosságát és frekvenciáját
             split_idx = int(len(df_filtered) * 0.8)
             train = df_filtered.iloc[:split_idx]
             test = df_filtered.iloc[split_idx:]
             
-            # Kiszámoljuk hány "napnyi" adat van a teszt halmazban (M5 esetén napi 288 gyertya)
-            # Figyelembe véve, hogy ez már egy SZŰRT (HMM trend) halmaz, az eredeti teszt időtartamot 
-            # arányosítani kell. Az egyszerűség kedvéért az eredeti adathalmaz utolsó 20%-ára eső napokat becsüljük.
             total_days_in_test = (len(df_raw) * 0.2) / 288.0
             
             X_train, y_train = train[features], train["Target"]
@@ -168,7 +152,6 @@ def run_matrix():
                     recall_w = recall_score(y_test, preds_weighted, average='macro', labels=[1, 2], zero_division=0)
                     f1_w = f1_score(y_test, preds_weighted, average='macro', labels=[1, 2], zero_division=0)
                     
-                    # Napi kötésszám (Trades per Day)
                     total_trades = np.count_nonzero(preds_weighted)
                     trades_per_day = total_trades / total_days_in_test if total_days_in_test > 0 else 0
                     
