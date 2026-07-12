@@ -2,7 +2,7 @@ import os
 import sys
 
 print("="*40)
-print("DOM HUD - END-TO-END ML PIPELINE")
+print("DOM HUD - END-TO-END VAKU 3 PIPELINE")
 print("="*40)
 
 def run(cmd):
@@ -22,6 +22,7 @@ eng_oos.process()
 with open("prep_all.py", "w") as f:
     f.write(cat_script)
 
+run("python3 dom_train_pipeline.py")
 run("python3 prep_all.py")
 run("python3 dom_inference_exam.py")
 
