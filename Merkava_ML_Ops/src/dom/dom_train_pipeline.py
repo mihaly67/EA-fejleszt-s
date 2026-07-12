@@ -63,10 +63,10 @@ def process_and_train(csv_path, model_dir):
 if __name__ == '__main__':
     from dom_feature_engineer import DOMFeatureEngineer
     # 1. Feature Engineering a régi (tanító) fájlon
-    train_raw = '/home/misi/Merkava_ML_Ops/data/raw/DOM_Data_20260706_111039.csv'
-    train_features = '/home/misi/Merkava_ML_Ops/data/processed/ML_TRAIN_FEATURES.csv'
+    train_raw = 'data/raw/DOM_Data_20260706_111039.csv'
+    train_features = 'data/processed/ML_TRAIN_FEATURES.csv'
     engineer = DOMFeatureEngineer(train_raw, train_features)
     engineer.process()
 
     # 2. Betanítás
-    process_and_train(train_features, '/home/misi/Merkava_ML_Ops/models/')
+    process_and_train(train_features, 'models/')

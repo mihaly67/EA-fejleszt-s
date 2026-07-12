@@ -45,7 +45,7 @@ def run_matrix():
     start_time = time.time()
     
     # Az M1 (1 perces) adathalmaz betöltése
-    DATA_PATH = "/home/misi/Merkava_ML_Ops/data/raw/Merkava_XAUUSD_MINER_M1_SCRIPT_v1.04_20260618_022831.csv"
+    DATA_PATH = "data/raw/Merkava_XAUUSD_MINER_M1_SCRIPT_v1.04_20260618_022831.csv"
     df_raw = pd.read_csv(DATA_PATH)
     # Mivel napi 1440 gyertya van, 250k sor is csak ~170 nap, vegyünk fel egy nagyobb halmazt a HMM-nek
     df_raw = df_raw.tail(500000).copy() 

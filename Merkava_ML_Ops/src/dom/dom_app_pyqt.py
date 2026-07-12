@@ -780,7 +780,7 @@ if __name__ == '__main__':
     else:
         print("[INIT] OFFLINE CSV MÓD INDÍTÁSA...")
         # 1. Automatikus keresés a raw mappában a legfrissebb DOM fájlra
-        raw_dir = "/home/misi/Merkava_ML_Ops/data/raw/"
+        raw_dir = "data/raw/"
         csv_file = None
 
         if os.path.exists(raw_dir):
