@@ -1,9 +1,0 @@
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=Vaku 3.0 Online Bridge
-Comment=Start Online HMM Bridge
-Exec=xfce4-terminal --command="bash -c 'cd /home/misi/Merkava_ML_Ops && source /home/misi/ML_Ops/venv/bin/activate && export DISPLAY=:10.0 && python3 vaku3_online_hybrid_v9.py; read -p \"Press enter to exit\"'"
-Icon=utilities-terminal
-Terminal=false
-Categories=Development;
