@@ -1,0 +1,1102 @@
+🚀 Starting Deep Research (Depth: 3)
+
+--- DEPTH 1/3 ---
+🔍 Searching: 'Multi-timeframe scalping strategy M1 M5 M15'
+   -> Found 5 hits.
+🔍 Searching: 'MTF indicator implementation MQL5 iCustom'
+   -> Found 5 hits.
+🔍 Searching: 'Hybrid oscillator algorithm combining MACD Stochastic'
+   -> Found 5 hits.
+🔍 Searching: 'MTF signal weighted average MQL5'
+   -> Found 5 hits.
+🔍 Searching: 'Scalping noise reduction multi-timeframe'
+   -> Found 5 hits.
+
+================================================================================
+🔬 RESEARCH REPORT (Total Unique Documents: 25)
+================================================================================
+
+📄 ITEM #1 [MQL5_DEV | article_15479.html] (Score: 0.61)
+--------------------------------------------------------------------------------
+MorningEvening StarDoji CCI.mq5 — EA based on Morning Star (Morning Doji Star) and Evening Star (Evening Doji Star) patterns with confirmation of signals by the CCI indicator.
+
+ MorningEvening StarDoji MFI.mq5 — EA based on Morning Star (Morning Doji Star) and Evening Star (Evening Doji Star) patterns with confirmation of signals by the MFI indicator.
+ MorningEvening StarDoji RSI.mq5 — EA based on Morning Star (Morning Doji Star) and Evening Star (Evening Doji Star) patterns with confirmation of signals by the RSI indicator.
+ MorningEvening StarDoji Stoch.mq5 — EA based on Morning Star (Morning Doji Star) and Evening Star (Evening Doji Star) patterns with confirmation of signals by the Stochastic Oscillator indicator.
+
+
+
+ All indicators used in EAs serve to confirm entries into a long or short position (in case of appropriate signals from candlestick patterns) and to close open positions based on indicator signals.
+
+ The tables below show the indicator values used to confirm position entries and to close open positions:
+
+    Indicator
+  Buy
+  Sell
+
+     CCI
+  CCI (1)<-50 — CCI indicator value on the last completed bar is less than -50
+  CCI(1)>50 — CCI indicator value on the last completed bar exceeds 50
+
+   MFI
+  MFI(1)<40 — MFI indicator value on the last completed bar is less than 40
+  MFI(1)>60 — MFI indicator value on the last completed bar exceeds 60
+
+   RSI
+  RSI(1)<40 — RSI indicator line value on the last completed bar is less than 40
+  RSI(1)>60 — RSI indicator line value on the last completed bar exceeds 60
+
+   Stochastic
+  Stochastic Signal(1)<30 — Stochastic signal line value on the last completed bar is less than 30
+  Stochastic Signal(1)>70 — Stochastic signal line value on the last completed bar exceeds 70
+    Technical indicator signals for closing positions occur when the indicator value crosses the border of the extreme zone, namely, entering or exiting the overbought or oversold zone.
+
+    Indicator
+  Closing a long position
+   Closing a short position
+
+     CCI
+  CCI indicator crossing the level of 80 or -80 downwards
+  CCI indicator crossing the level of -80 or 80 upwards
+
+   MFI
+  MFI indicator crossing the level of 70 or 30 downwards
+  MFI indicator crossing the level of 30 or 70 upwards
+
+   RSI
+  RSI indicator crossing the level of 70 or 30 downwards
+  RSI indicator crossing the level of 30 or 70 upwards
+
+   Stochastic
+  Stochastic indicator signal line crossing the level of 80 or 20 downwards
+  Stochastic indicator signal line crossing the level of 20 or 80 upwards
+
+ One separate EA works on a pair of candlestick patterns in opposite directions, and is presented in four versions of confirming indicators.
+
+ As a result, we have 7 * 4 = 28 different EAs organized according to a single structure. Let's consider the unified logic of all EAs using flow diagrams.
+
+
+
+ General logic
+--------------------------------------------------------------------------------
+
+📄 ITEM #2 [MQL5_DEV | article_1457.html] (Score: 0.60)
+--------------------------------------------------------------------------------
+I think if a reader uses MQL4 quite well, after reading the actions described above he will not have any problems in writing indicator functions according to the given scheme.
+
+Example of Writing a Custom Indicator Function
+
+Now let us write an indicator function. Let us take a maximally simple indicator:
+--------------------------------------------------------------------------------
+
+📄 ITEM #3 [MQL5_DEV | article_8023.html] (Score: 0.60)
+--------------------------------------------------------------------------------
+[CODE END]
+ The remaining actions and the OnCalculate() handler logic are described in detail in the code comments. Working with the multi-period indicator has become much easier. We do not need to calculate anything on our own. Instead, we can simply write data to the buffer to let the library define where to put the data and how to display it:
+
+
+
+
+
+
+
+ What's next?
+
+ In the next article, we will continue the development of the indicator buffer collection class and arrange the indicator operation in multi-symbol mode.
+
+
+  All files of the current version of the library are attached below together with the test EA files for you to test and download.
+ Leave your questions, comments and suggestions in the comments.
+ Please keep in mind that here I have developed the MQL5 test indicator for MetaTrader 5.
+ The attached files are intended only for MetaTrader 5. The current library version has not been tested in MetaTrader 4.
+ After creating and testing the indicator buffer collection, I will try to implement some MQL5 features in MetaTrader 4.
+
+
+ Back to contents
+
+ Previous articles within the series:
+
+ Timeseries in DoEasy library (part 35): Bar object and symbol timeseries list
+ Timeseries in DoEasy library (part 36): Object of timeseries for all used symbol periods
+ Timeseries in DoEasy library (part 37): Timeseries collection - database of timeseries by symbols and periods
+ Timeseries in DoEasy library (part 38): Timeseries collection - real-time updates and accessing data from the program
+ Timeseries in DoEasy library (part 39): Library-based indicators - preparing data and timeseries events
+ Timeseries in DoEasy library (part 40): Library-based indicators - updating data in real time
+ Timeseries in DoEasy library (part 41): Sample multi-symbol multi-period indicator
+ Timeseries in DoEasy library (part 42): Abstract indicator buffer object class
+ Timeseries in DoEasy library (part 43): Classes of indicator buffer objects
+ Timeseries in DoEasy library (part 44): Collection class of indicator buffer objects
+
+
+
+
+
+
+              Translated from Russian by MetaQuotes Ltd.
+Original article: https://www.mql5.com/ru/articles/8023
+
+
+
+  Attached files |
+
+
+      Download ZIP
+
+
+
+
+      MQL5.zip
+      (3772.33 KB)
+
+
+
+
+
+    Warning: All rights to these materials are reserved by MetaQuotes Ltd. Copying or reprinting of these materials in whole or in part is prohibited.
+
+      This article was written by a user of the site and reflects their personal views. MetaQuotes Ltd is not responsible for the accuracy of the information presented, nor for any consequences resulting from the use of the solutions, strategies or recommendations described.
+
+
+
+
+    Other articles by this author
+
+
+
+          How to publish code to CodeBase: A practical guide
+
+
+
+          The View component for tables in the MQL5 MVC paradigm: Base graphical element
+--------------------------------------------------------------------------------
+
+📄 ITEM #4 [MQL5_DEV | article_17155.html] (Score: 0.60)
+--------------------------------------------------------------------------------
+Furthermore, we will incorporate error handling to ensure that both indicator handles are created successfully, providing a reliable foundation for the indicator’s calculations. Beyond the core indicator logic, we will integrate custom canvas graphics to enhance the visual presentation, including the creation of a bitmap label that overlays the chart. This modular design will not only simplify debugging and future modifications but also ensure that each component—from data calculation to visual output—operates in harmony, delivering a robust and visually appealing trading tool. In a nutshell, here are the three things we will achieve.
+
+Implementation in MQL5
+
+To create the indicator in MQL5, just open the MetaEditor, go to the Navigator, locate the Indicators folder, click on the "New" tab, and follow the prompts to create the file. Once it is created, in the coding environment, we will define the indicator properties and settings such as number of buffers, plots and individual line properties such as the color, width and label.
+
+[CODE START]
+//+------------------------------------------------------------------+
+//|                             Keltner Channel Canvas Indicator.mq5 |
+//|                        Copyright 2025, Forex Algo-Trader, Allan. |
+//|                                 "https://t.me/Forex_Algo_Trader" |
+//+------------------------------------------------------------------+
+#property copyright "Forex Algo-Trader, Allan"
+#property link      "https://t.me/Forex_Algo_Trader"
+#property version   "1.00"
+#property description "Description: Keltner Channel Indicator"
+#property indicator_chart_window
+
+//+------------------------------------------------------------------+
+//| Indicator properties and settings                                |
+//+------------------------------------------------------------------+
+
+// Define the number of buffers used for plotting data on the chart
+#property indicator_buffers 3  // We will use 3 buffers: Upper Channel, Middle (MA) line, and Lower Channel
+
+// Define the number of plots on the chart
+#property indicator_plots   3  // We will plot 3 lines (Upper, Middle, and Lower)
+
+//--- Plot settings for the Upper Keltner Channel line
+#property indicator_type1   DRAW_LINE        // Draw the Upper Channel as a line
+#property indicator_color1  clrBlue           // Set the color of the Upper Channel to Blue
+#property indicator_label1  "Upper Keltner"   // Label of the Upper Channel line in the Data Window
+#property indicator_width1  2                 // Set the line width of the Upper Channel to 2 pixels
+--------------------------------------------------------------------------------
+
+📄 ITEM #5 [MQL5_DEV | article_8576.html] (Score: 0.60)
+--------------------------------------------------------------------------------
+[CODE END]
+ Although, the indicator type is one - AMA, but two handles of this indicator are created since parameters of indicators created were different. Therefore, these are two different indicators - each having its handle. Respectively, two indicator objects are created and placed in indicator collection.
+
+
+ Meanwhile, we can only create different indicators with different parameters. But to apply them in EAs, area for storing their data must be prepared. From that area, data in any required combinations of parameters may be received and used in programs to make decisions or to get statistical data. I will start doing all these things from the next article.
+
+
+ What's next?
+
+ In the following article, implementing data storage and receiving from indicator objects in EAs will be started.
+
+
+  All files of the current version of the library are attached below together with the test EA file for MQL5. You can download them and test everything.
+ Note, that at the moment indicator collection class is under development, therefore  it is strictly recommended not to use it in your programs.
+ Leave your comments, questions and suggestions in the comments to the article.
+
+
+ Back to contents
+
+ Previous articles within the series:
+--------------------------------------------------------------------------------
+
+📄 ITEM #6 [CODE | Scalpel EA.mq5] (Score: 0.58)
+--------------------------------------------------------------------------------
+pTakeProfit     = 30;
+input ushort   InpStopLoss       = 21;
+input ushort   InpTrailingStop   = 10;
+input int      cciPeriod         = 15;
+input double   cciLimit          = 3;
+input int      MaxPos            = 1;           // open positions allowed in one dir.
+input uint     InpInterval       = 0;           // Minutes before adding a position (0=not used)
+input uint     Reduce            = 600;         // Minutes before reducing TP by one pip (0=not used)
+input uint     Live              = 0;           // Minutes before closing an order regardless profit (0=not used)
+input int      Volatility        = 14;          // volatility bars (positive>directional or negative>non dir.)
+input ushort   InpThreshold      = 1;           // pip threshold for volatility
+input uchar    FridayClose       = 22;          // At what time to close all orders on Friday (0=not used)
+input ushort   InpSlippage       = 3;
+input double   InpSpreadLimit    = 5.5;
+--------------------------------------------------------------------------------
+
+📄 ITEM #7 [MQL5_DEV | article_15185.html] (Score: 0.58)
+--------------------------------------------------------------------------------
+Where
+
+
+ n is the number of values in the set
+ x are the values in the set at their respective index
+
+
+
+ We use the QM to develop and test a custom signal that trades on multiple timeframes and another custom signal that also trades across multiple symbols. In the previous article because of the bias or preference weighting towards smaller values in a set for the geometric mean and harmonic mean, we developed mirror averages that had biases towards larger values. The implementation of QM in MQL5 is given by the code below:
+
+
+
+
+[CODE START]
+//+------------------------------------------------------------------+
+//| Quadratic Mean                                                   |
+//+------------------------------------------------------------------+
+double CSignalQM::QM(int Index, int Mask = 8)
+{  vector _f;
+   _f.CopyRates(m_symbol.Name(), m_period, Mask, Index, m_length);
+   vector _p = _f*_f;
+   double _m = _p.Mean();
+   return(sqrt(_m));
+}
+[CODE END]
+ Before we dig in and start to explore possible applications, it would be prudent to do something similar for the QM since it leans more towards the larger values by having a mirror mean labelled QM’ that is weighted more towards the smaller values. Once again, this dichotomy of smaller value weighting vs larger value weighting can allow us to derive low price buffers and high price buffers respectively.
+
+
+
+ In the prior article, we used these buffer pairs to generate envelope (Bollinger Bands) and divergence signals. Besides these 2 applications we can generate alternative applications if we were to for instance, derive OSMA signals, however since the main purpose of this article is not QM or Averages introduction per se but the trading of multiple symbols and the trading on multiple time frames, we will stick to the applications already introduced in the prior article. As always, the reader can independently modify the attached code to explore other implementation avenues of QM.
+
+
+
+ The QM mirror QM' can be given by a formula similar to what we did share in the last article:
+
+
+
+
+[CODE START]
+//+------------------------------------------------------------------+
+//| Inverse Quadratic Mean                                           |
+//+------------------------------------------------------------------+
+double CSignalQM::QM_(int Index, int Mask = 8)
+{  double _am = AM(Index, Mask);
+   double _qm = QM(Index, Mask);
+   return(_am + (_am - _qm));
+}
+[CODE END]
+
+
+
+
+ The central thesis of this formula is that the arithmetic mean provides the most impartial and fair mean, implying that any distance from this mean off an alternative mean can be ‘mirrored’ if we take this raw arithmetic mean as a mirror line. The MQL5 source code that implements this is therefore identical to what we already shared and will not be shared here. It is attached below.
+--------------------------------------------------------------------------------
+
+📄 ITEM #8 [CODE | Aeron JJN Scalper EA.mq5] (Score: 0.58)
+--------------------------------------------------------------------------------
+                       ", description of result: ",m_trade.ResultRetcodeDescription());
+                    }
+              }
+           }
+  }
+--------------------------------------------------------------------------------
+
+📄 ITEM #9 [CODE | True Scalper Profit Lock.mq5] (Score: 0.58)
+--------------------------------------------------------------------------------
+//|            True Scalper Profit Lock(barabashkakvn's edition).mq5 |
+//|         Copyright © 2005, International Federation of Red Cross. |
+//|                                             http://www.ifrc.org/ |
+//|                                         Please donate some pips  |
+//|  Modifications                                                   |
+//|  -------------                                                   |
+//|  1)  Jacob Yego and Ron Thompson: Original version               |
+//|                                                                  |
+//|  2)  Reworked by Roger.                                          |
+#property link      "http://www.ifrc.org/"
+#property version   "1.001"
+//---
+#include <Trade\PositionInfo.mqh>
+#include <Trade\Trade.mqh>
+#include <Trade\SymbolInfo.mqh>
+#include <Trade\AccountInfo.mqh>
+CPositionInfo  m_position;                   // trade position object
+CTrade         m_trade;                      // trading object
+--------------------------------------------------------------------------------
+
+📄 ITEM #10 [CODE | Scalpel EA.mq5] (Score: 0.57)
+--------------------------------------------------------------------------------
+igits()),
+                                         m_position.TakeProfit());
+        }
+     }
+   if(MathAbs(buys-sells)>=MaxPos)
+      return;
+   if(str1.day_of_week==5)
+      return;
+   if(ExtInterval>0 && life_minutes>ExtInterval)
+      return;
+   if(ExtSpreadLimit>0 && (m_symbol.Ask()-m_symbol.Bid())>ExtSpreadLimit)
+      return;
+   if(tim!=iTime(Symbol(),Period(),0))
+     {
+      cci=iCCIGet(1);
+      if(cciLimit>0)
+        {
+         ccib=(cci>0 && cci< cciLimit);
+         ccis=(cci<0 && cci>-cciLimit);
+        }
+      else
+        {
+         ccib=(cci>-cciLimit);
+         ccib=(cci< cciLimit);
+        }
+      tim=iTime(Symbol(),Period(),0);
+     }
+   if(!ccib && !ccis)
+      return;
+   high4=iHigh(Symbol(),PERIOD_H4,0);
+   low4=iLow(Symbol(),PERIOD_H4,0);
+   if(tim4!=iTime(Symbol(),PERIOD_H4,0))
+     {
+      high4s=iHigh(Symbol(),PERIOD_H4,1);
+      low4s=iLow(Symbol(),PERIOD_H4,1);
+      tim4=iTime(Symbol(),PERIOD_H4,0);
+     }
+--------------------------------------------------------------------------------
+
+📄 ITEM #11 [CODE | Aeron JJN Scalper EA.mq5] (Score: 0.57)
+--------------------------------------------------------------------------------
+//|                                         Aeron JJN Scalper EA.mq5 |
+//|                              Copyright © 2018, Vladimir Karputov |
+//|                                           http://wmua.ru/slesar/ |
+#property link      "http://wmua.ru/slesar/"
+#property version   "1.000"
+//---
+#include <Trade\PositionInfo.mqh>
+#include <Trade\Trade.mqh>
+#include <Trade\SymbolInfo.mqh>
+#include <Trade\OrderInfo.mqh>
+CPositionInfo  m_position;                   // trade position object
+CTrade         m_trade;                      // trading object
+CSymbolInfo    m_symbol;                     // symbol info object
+COrderInfo     m_order;                      // pending orders object
+//--- input parameters
+input double   InpLots           = 0.1;      // Lots
+input ushort   InpTrailingStop   = 5;        // Trailing Stop (in pips)
+input ushort   InpTrailingStep   = 5;        // Trailing Step (in pips)
+input uchar    InpResetTime      = 10;       // Reset time (minutes)
+--------------------------------------------------------------------------------
+
+📄 ITEM #12 [CODE | averages_-_mtf.mq5] (Score: 0.56)
+--------------------------------------------------------------------------------
+
+                  aResultBuffer[i] = avg/k;
+            else  aResultBuffer[i] = aPricesBuffer[i];
+         }
+         else   aResultBuffer[i] = (aResultBuffer[i-1]*(cPeriod-1)+aPricesBuffer[i])/cPeriod;
+         return(aResultBuffer[i]);
+      }
+      //
+      //
+      //
+      //
+      //
+      case avgLwma:
+      {
+         double sum  = 0;
+         double sumw = 0;
+            for (int k=0; k<cPeriod && (i-k)>=0; k++ )
+            {
+               double weight =  cPeriod-k;
+                      sumw   += weight;
+                      sum    += weight*aPricesBuffer[i-k];
+            }
+            if (sumw!=0)
+                  return(sum/sumw);
+            else  return(EMPTY_VALUE);
+      }
+      //
+      //
+      //
+      //
+      //
+      case avgLsma:
+      {
+         static averages lwma;
+         static averages sma;
+--------------------------------------------------------------------------------
+
+📄 ITEM #13 [CODE | averages_-_mtf.mq5] (Score: 0.56)
+--------------------------------------------------------------------------------
+     //
+      case avgLsma:
+      {
+         static averages lwma;
+         static averages sma;
+            return (3*lwma.calc(symbol,period,cPeriod,avgLwma,cPrice,i)-2*sma.calc(symbol,period,cPeriod,avgSma,cPrice,i));
+      }
+      //
+      //
+      //
+      //
+      //
+      case avgTrima:
+      {
+         double half = (cPeriod+1.0)/2.0;
+         double sum  = 0;
+         double sumw = 0;
+            for (int k=0; k<cPeriod && (i-k)>=0; k++ )
+            {
+               double weight =  cPeriod-k;  if (weight > half) weight = cPeriod-k;
+                      sumw   += weight;
+                      sum    += weight*aPricesBuffer[i-k];
+            }
+            if (sumw!=0)
+                  return(sum/sumw);
+            else  return(EMPTY_VALUE);
+      }
+      //
+      //
+      //
+      //
+      //
+      case avgSwma:
+      {
+         #define Pi 3.14159265358979323846
+         double sum  = 0;
+--------------------------------------------------------------------------------
+
+📄 ITEM #14 [CODE | MFI_normalized.mq5] (Score: 0.55)
+--------------------------------------------------------------------------------
+eriod;
+   double sd=0;
+   for(int i=0; i<period; i++)
+      sd+=(avg-array[index+i])*(avg-array[index+i]);
+   return(sqrt(sd/period));
+  }
+--------------------------------------------------------------------------------
+
+📄 ITEM #15 [CODE | averages_-_mtf.mq5] (Score: 0.55)
+--------------------------------------------------------------------------------
+     bool   QuantInitialized;
+      //
+      //
+      //
+      //
+      //
+      void   averages() { T3Initialized=false; QuantInitialized=false; };
+      double calc(string symbol, ENUM_TIMEFRAMES period, double cPeriod, int cType, double cPrice, int i);
+      void   setT3Parameters(double cPeriod, double cT3Hot, bool cT3Original);
+      void   setQuantParameters(double cPercent);
+};
+//|                                                                  |
+//
+//
+//
+//
+//
+void averages::setQuantParameters(double cPercent)
+{
+   quantPercent = MathMax(MathMin(cPercent,100),0);
+   QuantInitialized = true;
+}
+void averages::setT3Parameters(double cPeriod, double cT3Hot, bool cT3Original)
+{
+   cT3Hot = MathMax(MathMin(cT3Hot,1),0.0001);
+   double a    = cT3Hot;
+          t3c1 = -a*a*a;
+          t3c2 =  3*(a*a+a*a*a);
+          t3c3 = -3*(2*a*a+a+a*a*a);
+          t3c4 = 1+3*a+a*a*a+3*a*a;
+          t3period  = cPeriod;
+--------------------------------------------------------------------------------
+
+📄 ITEM #16 [MQL5_DEV | article_17886.html] (Score: 0.55)
+--------------------------------------------------------------------------------
+class COscillatorIndicators
+  {
+public:
+                     COscillatorIndicators(void) {};
+                    ~COscillatorIndicators(void) {};
+
+   //--- For dealing with vectors
+
+   static MACDResults MACDIndicator(const vector &price, uint fast_ema = 12, uint slow_ema = 26, uint macd_sma = 9, uint shift = 0);
+   static vector     RSIIndicator(const vector &price, uint period, uint shift = 0);
+   static StochasticOscillatorResults StochasticOscillator(const vector &high, const vector &low, const vector &close, uint k_period = 5, uint d_period = 3, uint period = 3,  uint shift = 0);
+   static vector     ATRIndicator(const vector &high, const vector &low, const vector &close, uint period = 14, uint shift = 0);
+   static vector     MomentumIndicator(const vector &price, uint period, uint shift = 0);
+   static ADXResults ADXIndicator(const vector &high, const vector &low, const vector &close, uint period=14, bool fillna=true);
+   static vector     CCIIndicator(const vector &high, const vector &low, const vector &close, uint period=20, uint shift = 0);
+   static vector     WilliamsR(const vector &high, const vector &low, const vector &close, uint period=14, uint shift = 0);
+   static vector     TSIIndicator(const vector &price, uint slow_period = 25, uint fast_period = 13, uint shift = 0);
+   static vector     ROCIndicator(const vector &price, uint period=12, uint shift = 0);
+   static vector     UltimateOscillator(const vector &high, const vector &low, const vector &close, uint short_period = 7, uint medium_period = 14, uint long_period = 28, uint shift = 0);
+
+   //--- For dealing with arrays
+
+   static MACDResults MACDIndicator(const double &price[], uint fast_ema = 12, uint slow_ema = 26, uint macd_sma = 9, uint shift = 0)
+     {
+      vector v = ArrayToVector(price);
+      return MACDIndicator(v, fast_ema, slow_ema, macd_sma, shift);
+     }
+   static vector     RSIIndicator(const double &price[], uint period=13, uint shift = 0)
+     {
+      vector v = ArrayToVector(price);
+      return RSIIndicator(v, period, shift);
+     }
+   static StochasticOscillatorResults StochasticOscillator(const double &high[], const double &low[], const double &close[], uint k_period = 5, uint d_period = 3, uint period = 3,  uint shift = 0)
+     {
+      vector high_vector = ArrayToVector(high),
+             low_vector = ArrayToVector(low),
+             close_vector = ArrayToVector(close);
+
+      return StochasticOscillator(high_vector, low_vector, close_vector, k_period, d_period, period, shift);
+     }
+
+   static vector     ATRIndicator(const double &high[], const double &low[], const double &close[], uint period = 14, uint shift = 0)
+     {
+      vector high_vector = ArrayToVector(high),
+             low_vector = ArrayToVector(low),
+             close_vector = ArrayToVector(close);
+
+      return ATRIndicator(high_vector, low_vector, close_vector, period, shift);
+     }
+--------------------------------------------------------------------------------
+
+📄 ITEM #17 [MQL5_DEV | article_16931.html] (Score: 0.54)
+--------------------------------------------------------------------------------
+class COscillatorIndicators
+  {
+public:
+                     COscillatorIndicators(void) {};
+                    ~COscillatorIndicators(void) {};
+
+   //--- For dealing with vectors
+
+   static MACD_res_struct MACD(const vector &price, uint fast_ema = 12, uint slow_ema = 26, uint macd_sma = 9, uint shift = 0);
+   static vector     RSI(const vector &price, uint period, uint shift = 0);
+   static Stochastic_struct StochasticOscillator(const vector &high, const vector &low, const vector &close, uint k_period = 5, uint d_period = 3, uint period = 3,  uint shift = 0);
+   static vector     ATR(const vector &high, const vector &low, const vector &close, uint period = 14, uint shift = 0);
+   static vector     MomentumIndicator(const vector &price, uint period, uint shift = 0);
+
+   //--- For dealing with arrays
+
+   static MACD_res_struct MACD(const double &price[], uint fast_ema = 12, uint slow_ema = 26, uint macd_sma = 9, uint shift = 0)
+     {
+      vector v = ArrayToVector(price);
+      return MACD(v, fast_ema, slow_ema, macd_sma, shift);
+     }
+   static vector     RSI(const double &price[], uint period, uint shift = 0)
+     {
+      vector v = ArrayToVector(price);
+      return RSI(v, period, shift);
+     }
+   static Stochastic_struct StochasticOscillator(const double &high[], const double &low[], const double &close[], uint k_period = 5, uint d_period = 3, uint period = 3,  uint shift = 0)
+     {
+      vector high_vector = ArrayToVector(high),
+             low_vector = ArrayToVector(low),
+             close_vector = ArrayToVector(close);
+
+      return StochasticOscillator(high_vector, low_vector, close_vector, k_period, d_period, period, shift);
+     }
+
+   static vector     ATR(const double &high[], const double &low[], const double &close[], uint period = 14, uint shift = 0)
+     {
+      vector high_vector = ArrayToVector(high),
+             low_vector = ArrayToVector(low),
+             close_vector = ArrayToVector(close);
+
+      return ATR(high_vector, low_vector, close_vector, period, shift);
+     }
+   static vector     MomentumIndicator(const double &price[], uint period, uint shift = 0)
+     {
+      vector v = ArrayToVector(price);
+      return MomentumIndicator(v, period, shift);
+     }
+  };
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+MACD_res_struct COscillatorIndicators::MACD(const vector &price, uint fast_ema = 12, uint slow_ema = 26, uint macd_sma = 9, uint shift = 0)
+  {
+   uint size = (uint)price.Size();
+
+   MACD_res_struct res;
+   if(!CheckShiftPeriod(size, slow_ema, shift))
+      return res;
+
+//--- Calculate EMA(short), EMA(long), and MACD Line
+
+   vector fast_ema_vector = CTrendIndicators::EMA(price, fast_ema, shift);
+   vector slow_ema_vector = CTrendIndicators::EMA(price, slow_ema, shift);
+--------------------------------------------------------------------------------
+
+📄 ITEM #18 [MQL5_DEV | article_16931.html] (Score: 0.52)
+--------------------------------------------------------------------------------
+}
+
+   return rsi;
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+Stochastic_struct COscillatorIndicators::StochasticOscillator(const vector &high, const vector &low, const vector &close, uint k_period = 5, uint d_period = 3, uint period = 3, uint shift = 0)
+  {
+   uint size = (uint)close.Size();
+
+   Stochastic_struct res;
+
+// Check for valid parameters
+   if(!CheckShiftPeriod(size, period, shift))
+      return res;
+
+// Initialize vectors for %K and %D
+   vector K(size), D(size);
+   K.Fill(NaN);
+   D.Fill(NaN);
+
+// Calculate %K
+   for(uint i = shift + period - 1; i < size; i++)
+     {
+      double H_max = -DBL_MAX, L_min = DBL_MAX;
+
+      // Find the highest high and the lowest low over the lookback period
+      for(uint j = i - period + 1; j <= i; j++)
+        {
+         H_max = MathMax(H_max, high[j]);
+         L_min = MathMin(L_min, low[j]);
+        }
+
+      // Calculate %K
+      double K_value = (H_max - L_min != 0) ? ((close[i] - L_min) / (H_max - L_min)) * 100 : 0;
+      K[i] = K_value;
+     }
+
+// Smooth %K with a simple moving average (k_period)
+   vector smoothedK(size);
+   smoothedK.Fill(NaN);
+
+   for(uint i = shift + k_period - 1; i < size; i++)
+     {
+      double sum = 0;
+      for(uint j = i - k_period + 1; j <= i; j++)
+        {
+         sum += K[j];
+        }
+      smoothedK[i] = sum / k_period;
+     }
+
+// Calculate %D (3-period moving average of %K)
+
+   D = CTrendIndicators::SMA(smoothedK, period, shift);
+
+   res.main = K;
+   res.signal = D;
+
+   return res;
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+vector COscillatorIndicators::ATR(const vector &high, const vector &low, const vector &close, uint period = 14, uint shift = 0)
+  {
+   uint size = (uint)close.Size();
+
+// Check for valid parameters
+   if(!CheckShiftPeriod(size, period, shift))
+      return close;
+
+// Initialize the True Range (TR) and ATR vectors
+   vector TR(size);
+   TR.Fill(NaN);
+
+// Calculate the True Range for each period
+   for(uint i = shift + 1; i < size; i++)
+     {
+      double H = high[i];
+      double L = low[i];
+      double C_prev = close[i - 1];
+
+      // Calculate the three possible True Range values
+      double TR1 = H - L;
+      double TR2 = MathAbs(H - C_prev);
+      double TR3 = MathAbs(L - C_prev);
+
+      // True Range is the maximum of the three
+      TR[i] = MathMax(TR1, MathMax(TR2, TR3));
+     }
+
+//--- Smooth the True Range using a simple moving average (SMA) over the specified period
+
+   return CTrendIndicators::SMA(TR, period, shift);
+  }
+--------------------------------------------------------------------------------
+
+📄 ITEM #19 [MQL5_DEV | article_19857.html] (Score: 0.52)
+--------------------------------------------------------------------------------
+virtual double    Direction(void) override;
+
+protected:
+   //--- method of initialization of the oscillator
+   bool              InitFrAMA_Stochastic(CIndicators *indicators);
+   //--- methods of getting data
+   double            FrAMA(int ind)
+   {  //
+      m_frama.Refresh(-1);
+      double _f = m_frama.Main(ind);
+      if(!MathIsValidNumber(_f))
+      {  for(int i = ind; i < m_past + ind; i++)
+         {  m_frama.Refresh(-1);
+            if(MathIsValidNumber(m_frama.Main(i)))
+            {  _f = m_frama.Main(i);
+            }
+         }
+      }
+      if(MathIsValidNumber(_f))
+      {  m_last = _f;
+      }
+      else
+      {  _f = m_last;
+      }
+      return(_f);
+   }
+   double  FrAMASlope( int ind)
+   {  return FrAMA(ind) - FrAMA(ind + 1);
+   }
+
+   double  K( int ind)
+   {  m_stochastic.Refresh(-1);
+      return m_stochastic.Main(ind);     // %K
+   }
+   double  D( int ind)
+   {  m_stochastic.Refresh(-1);
+      return m_stochastic.Signal(ind);   // %D
+   }
+   //
+   bool    CrossUp(double a0, double b0, double a1, double b1)
+   {  return (a1 <= b1 && a0 > b0);
+   }
+   bool    CrossDown(double a0, double b0, double a1, double b1)
+   {  return (a1 >= b1 && a0 < b0);
+   }
+
+   bool    FlatFrama(int ind);
+   bool    FarAboveFrama(const int ind, double mult = 0.0000005);
+   bool    FarBelowFrama(const int ind, double mult = 0.0000005);
+
+   bool    BullishDivergence();
+   bool    BearishDivergence();
+
+   bool    FramaTurningUp();
+   bool    FramaTurningDown();
+   //
+   double            Close(int ind)
+   {  //
+      m_close.Refresh(-1);
+      return(m_symbol.Bid() + (m_close.GetData(ind) - m_close.GetData(X())));
+   }
+   double            High(int ind)
+   {  //
+      m_high.Refresh(-1);
+      return(m_high.GetData(ind));
+   }
+   double            Low(int ind)
+   {  //
+      m_low.Refresh(-1);
+      return(m_low.GetData(ind));
+   }
+   int               X()
+   {  //
+      return(StartIndex());
+   }
+   //--- methods to check for patterns
+   bool              IsPattern_0(ENUM_POSITION_TYPE T);
+   bool              IsPattern_1(ENUM_POSITION_TYPE T);
+   bool              IsPattern_2(ENUM_POSITION_TYPE T);
+   bool              IsPattern_3(ENUM_POSITION_TYPE T);
+   bool              IsPattern_4(ENUM_POSITION_TYPE T);
+   bool              IsPattern_5(ENUM_POSITION_TYPE T);
+   bool              IsPattern_6(ENUM_POSITION_TYPE T);
+   bool              IsPattern_7(ENUM_POSITION_TYPE T);
+   bool              IsPattern_8(ENUM_POSITION_TYPE T);
+   bool              IsPattern_9(ENUM_POSITION_TYPE T);
+};
+//+------------------------------------------------------------------+
+//| Constructor                                                      |
+//+------------------------------------------------------------------+
+CSignalFrAMA_Stochastic::CSignalFrAMA_Stochastic(void) : m_pattern_0(50),
+   m_pattern_1(50),
+   m_pattern_2(50),
+   m_pattern_3(50),
+   m_pattern_4(50),
+--------------------------------------------------------------------------------
+
+📄 ITEM #20 [MQL5_DEV | article_19890.html] (Score: 0.52)
+--------------------------------------------------------------------------------
+virtual double    Direction(void) override;
+
+protected:
+   //--- method of initialization of the oscillator
+   bool              InitFrAMA_Stochastic(CIndicators *indicators);
+   //--- methods of getting data
+   double            FrAMA(int ind)
+   {  //
+      m_frama.Refresh(-1);
+      double _f = m_frama.Main(ind);
+      if(!MathIsValidNumber(_f))
+      {  for(int i = ind; i < m_past + ind; i++)
+         {  m_frama.Refresh(-1);
+            if(MathIsValidNumber(m_frama.Main(i)))
+            {  _f = m_frama.Main(i);
+            }
+         }
+      }
+      if(MathIsValidNumber(_f))
+      {  m_last = _f;
+      }
+      else
+      {  _f = m_last;
+      }
+      return(_f);
+   }
+   double  FrAMASlope( int ind)
+   {  return FrAMA(ind) - FrAMA(ind + 1);
+   }
+
+   double  K( int ind)
+   {  m_stochastic.Refresh(-1);
+      return m_stochastic.Main(ind);     // %K
+   }
+   double  D( int ind)
+   {  m_stochastic.Refresh(-1);
+      return m_stochastic.Signal(ind);   // %D
+   }
+   //
+   bool    CrossUp(double a0, double b0, double a1, double b1)
+   {  return (a1 <= b1 && a0 > b0);
+   }
+   bool    CrossDown(double a0, double b0, double a1, double b1)
+   {  return (a1 >= b1 && a0 < b0);
+   }
+
+   bool    FlatFrama(int ind);
+   bool    FarAboveFrama(const int ind, double mult = 0.0000005);
+   bool    FarBelowFrama(const int ind, double mult = 0.0000005);
+
+   bool    BullishDivergence();
+   bool    BearishDivergence();
+
+   bool    FramaTurningUp();
+   bool    FramaTurningDown();
+   //
+   double            Close(int ind)
+   {  //
+      m_close.Refresh(-1);
+      return(m_symbol.Bid() + (m_close.GetData(ind) - m_close.GetData(X())));
+   }
+   double            High(int ind)
+   {  //
+      m_high.Refresh(-1);
+      return(m_high.GetData(ind));
+   }
+   double            Low(int ind)
+   {  //
+      m_low.Refresh(-1);
+      return(m_low.GetData(ind));
+   }
+   int               X()
+   {  //
+      return(StartIndex());
+   }
+   //--- methods to check for patterns
+   bool              IsPattern_0(ENUM_POSITION_TYPE T);
+   bool              IsPattern_1(ENUM_POSITION_TYPE T);
+   bool              IsPattern_2(ENUM_POSITION_TYPE T);
+   bool              IsPattern_3(ENUM_POSITION_TYPE T);
+   bool              IsPattern_4(ENUM_POSITION_TYPE T);
+   bool              IsPattern_5(ENUM_POSITION_TYPE T);
+   bool              IsPattern_6(ENUM_POSITION_TYPE T);
+   bool              IsPattern_7(ENUM_POSITION_TYPE T);
+   bool              IsPattern_8(ENUM_POSITION_TYPE T);
+   bool              IsPattern_9(ENUM_POSITION_TYPE T);
+};
+//+------------------------------------------------------------------+
+//| Constructor                                                      |
+//+------------------------------------------------------------------+
+CSignalFrAMA_Stochastic::CSignalFrAMA_Stochastic(void) : m_pattern_0(50),
+   m_pattern_1(50),
+   m_pattern_2(50),
+   m_pattern_3(50),
+   m_pattern_4(50),
+--------------------------------------------------------------------------------
+
+📄 ITEM #21 [MQL5_DEV | article_16747.html] (Score: 0.50)
+--------------------------------------------------------------------------------
+Signal decomposition module
+
+ To split the analyzed signal into low-frequency and high-frequency components, the framework's authors propose using the discrete wavelet transform. Unlike the Fourier decomposition, the wavelet transform is capable of capturing not only the frequency content but also the structure of the signal. This makes it more advantageous for financial market analysis, where not only frequency but also the ordering of signals is important.
+
+ Previously, we already used the discrete wavelet transform when building the FEDformer framework, but then we extracted only the low-frequency component. Now we need the high-frequency component as well. Nevertheless, we can reuse existing developments.
+
+ The discrete wavelet transform is, in essence, a convolution operation with a certain wavelet used as the filter. This allows us to use convolutional layer algorithms as the base functionality. It should be noted that in the transformation we use static wavelets whose parameters do not change during training. Therefore, we must disable the optimization mechanism for our object's parameters.
+
+ With the above in mind, we create a new object for extracting high- and low-frequency signal components using the discrete wavelet transform CNeuronLegendreWaveletsHL.
+
+
+[CODE START]
+--------------------------------------------------------------------------------
+
+📄 ITEM #22 [MQL5_DEV | article_16416.html] (Score: 0.49)
+--------------------------------------------------------------------------------
+Adaptive partitioning begins with a coarse-grained partitioning of the data space. For each partition, the mutual information between the variables is calculated. If this value exceeds a predefined threshold, the partition is further subdivided into smaller sub-partitions. This recursive partitioning process continues until a stopping criterion is met. If the partitioning process stops too early, the resulting partitions may be too coarse, causing a loss of detail and a downward bias in the estimated mutual information. Conversely, if the partitioning process continues for too long, the partitions may become overly fine-grained, resulting in overfitting and an inflated estimate of mutual information due to noise.
+
+To determine whether a partition should be further subdivided, a chi-square test is employed. This test assesses the independence between the two variables within the partition. The partition is divided into four sub-partitions, creating a 2x2 contingency table. The number of data points falling into each of the four sub-partitions is counted. Under the null hypothesis of independence between the two variables, the expected number of data points in each sub-partition is calculated based on the marginal totals. The calculated chi-square statistic is then compared to a critical value from the chi-square distribution with 1 degree of freedom. If the calculated value exceeds the critical value, the null hypothesis of independence is rejected, indicating a significant relationship between the two variables within the partition.
+
+ If the chi-square test is significant, the partition is further subdivided into smaller partitions. This process continues recursively until the partitions become sufficiently homogeneous, or the stopping criterion is met. If the chi-square test is not significant, the partition is considered homogeneous, and no further subdivision is necessary.
+
+To address the possibility of a more complex relationship within a partition that might be missed by a simple 2x2 split, the algorithm incorporates an additional check. If the 2x2 chi-square test fails to detect a significant relationship, but the partition remains relatively large, a more refined 4x4 split is performed. A chi-square test is then applied to this 4x4 partition to assess the presence of a non-random distribution. If the 4x4 test also fails to detect a significant relationship, the partition is considered homogeneous, and its contribution to the overall mutual information is calculated. No further subdivision is necessary in this case.
+--------------------------------------------------------------------------------
+
+📄 ITEM #23 [MQL5_DEV | article_3526.html] (Score: 0.49)
+--------------------------------------------------------------------------------
+// CONTEXT: Series: Deep Neural Networks (Part III). Sample selection and dimensionality reduction - MQL5 Articles, Part: N/A, Title: Deep Neural Networks (Part III). Sample selection and dimensionality reduction - MQL5 Articles
+
+Contents
+
+Introduction
+
+1. Sample selection
+
+2. Dimensionality reduction
+
+2.1. Principal component analysis (PCA)
+
+2.2. Independent component analysis (ICA)
+
+2.3. Probabilistic principal component analysis (PPCA)
+
+2.4. Autoencoder (nonlinear PCA)
+
+2.5. Inverse nonlinear PCA (NLPCA)
+
+3. Dividing the data set into the train/valid/test sets
+
+Conclusion
+
+Application
+
+Introduction
+
+This is the third (and last) article describing data preparation - the most important stage of work with neural networks. We will consider two very important methods of preparing data. They are removing noise and reducing input dimensionality. Method descriptions will be accompanied by detailed examples and charts.
+
+1. Sample selection
+
+Noise samples refer to the wrong labeling of training samples. This is a very undesirable peculiarity of data. To overcome this we will use the NoiseFilterR package where classical and contemporary noise filters are R implemented.
+
+Lately, data mining has had to deal with increasingly complex problems connected with the character of data. It is not the volume of the data but their imperfection and different forms present the explorers with a multitude of various scenarios. Consequently, preliminary data processing has become an important part of the KDD process (Knowledge Discovery from Databases). At the same time, the development of the software for preliminary data processing provides sufficient tools for work.
+
+Preliminary data processing is required for the following algorithms to be able to extract maximum information from a data set. This is one of the most energy and time consuming stages in the whole process of KDD. Preliminary data processing can be divided into sub-tasks. For instance, these can be the selection of predictors or removing missing and noise data. The selection of predictors aims to extract the most important attributes for training, which allows to simplify models and reduce the calculation time. Processing of the missing data is necessary for storing as much data as possible. Noise data is either incorrect data or data that stand out from the data distribution.
+
+ All these problems can be solved with widely available software. For instance, the KEEL (RKEEL) tool contains a wide set of algorithms of preliminary data processing which covers all the manipulations mentioned above. There are other popular solutions like WEKA (RWEKA) or RapidMiner for selecting predictors. There is also a number of unique program complexes for Data Mining such as R, KNIME or Python.
+
+ As for the statistical software R, The Comprehensive R Archive Network (CRAN) contains a lot of packages for solving problems of preliminary data processing.
+--------------------------------------------------------------------------------
+
+📄 ITEM #24 [MQL5_DEV | article_11032.html] (Score: 0.49)
+--------------------------------------------------------------------------------
+// CONTEXT: Series: Neural networks made easy, Part: 17, Title: Neural networks made easy (Part 17): Dimensionality reduction - MQL5 Articles
+
+Contents
+
+
+ Introduction
+ 1. Understanding the dimensionality reduction problem
+ 2. Principal Component Analysis (PCA) method
+ 3. PCA implementation using MQL5
+ 4. Testing
+ Conclusion
+ List of references
+ Programs used in the article
+
+ Introduction
+
+ We continue to study models and unsupervised learning algorithms. We have already considered data clustering algorithms. In this article, I will explore a solution of problems related to dimensionality reduction. Essentially, these are certain data compression algorithms that are widely used in practice. Let us study the implementation of one of these algorithms and see how it can be used in building our trading model.
+
+ 1. Understanding the dimensionality reduction problem
+
+ Every new day, new hour and new moment provides a huge amount of information in all spheres of human life. With the constantly spreading information technology in today world, people try to save and process as much information as possible. However, the soring of large amounts of information requires large data storages. Furthermore, extensive computing resources are required to process this information. One of the possible solutions to this problem is recording the available information in a more concise form. Moreover, if the compressed form preserves the full data context, less resources will be required for its processing.
+
+ For example, when we deal with pattern recognition on a 200*200 pixel image, each pixel is written in the color format which occupies 4 bytes in memory. The ability to represent each pixel in one of 16.5 million colors would be excessive for this problem. In most cases, the model performance will not be affected if we reduce the gradation to, say, 16 or 32 colors. In this case, we will only use 1 byte to write the color number of each pixel. Of course, we would need one-time cost to write the color matrix, 64 bytes for 16 colors and 128 bytes for 32 colors. This is not a big price to pay for reducing the size of all our images by 4 times. Actually, such a problem can be solved using the data clustering method already known to us. However, this might not be the most efficient way.
+
+ Another area of use for dimensionality reduction techniques is data visualization. For example, you have data describing certain system states, represented by 10 parameters. You need to find a way to visualize this data. 2D and 3D images are most preferred for human perception. Well, you could create several slides with different variations of 2-3 parameters. But this would not provide a complete picture of the system state. In most cases, different states in different slides will merge into one point. But these may be different states.
+--------------------------------------------------------------------------------
+
+📄 ITEM #25 [MQL5_DEV | article_3526.html] (Score: 0.49)
+--------------------------------------------------------------------------------
+In simple terms, PCA can be treated as a preliminary suppression of noise predictors if their number is significant (>50).
+
+
+ 2.2. ICA, Independent Component Analysis
+
+ Unlike PCA, independent component analysis is a recent thing, though quickly gaining popularity in various areas of data exploration.
+
+ Different to principal component analysis, the ICA transformations require a model. Most common model is the assumption that P variables are measured from the linear transformation p of independent variables. The aim of ICA is to restore initial independent variables. Majority of the ICA algorithms at first enable data whitening, then rotate data in such a way so the resultant components are as independent as possible. When components are constructed sequentially, it implies a search of a large non-Gaussian projection which is not connected with the projections singled out earlier.
+ Method of independent components is widely used during signal processing. This technique linearly transforms initial data into new components. The new components will be as statistically independent from each other as possible. Independent components are not necessarily orthogonal but their statistical independence is a more strict condition than the absence of statistical correlation in PCA.
+
+ The PCA and ICA methods are implemented in the caret package by the preProcess() function. In this function either the number of principal components or cumulative percent of dispersion covered by PCA can be set. Independent Component Analysis has two stages. At first, required parameters are calculated on the train data set. Then, the data sets and all new data coming in later are transformed using predict().
+
+Table 1. Comparative characteristics of PCA and ICA
+
+ Method Advantages
+  Disadvantages Peculiarities
+  Result obtained in most cases
+  Way to calculate new principal components
+
+ PCA  Simplicity of
+calculations
+
+Linearity of transformations
+High sensitivity to outliers
+Does not accept NA
+
+   Non-uniqueness of solution (rotational uncertainty). Every new calculation based on one training test will produce different principal components.
+  
+Т — matrix of scores (scores) with dimensions [I x A]
+P — matrix of loadings (loadings) with dimensions [J x A]. Matrix of transition from the Х[ ,J] space to PCA[ ,A]
+E — matrix of remainders with dimensions [I x J]
+
+  Tnew = Xnew * P
+ICA
+ Simplicity of calculations
+
+Compulsory standardization of data
+Linearity of transformations
+High sensitivity to outliers
+does not accept NA
+Applicable to the number of components 2 — 5
+
+ With a large difference in the dimensionality of the input data set and independent components, used consecutively PCA -> ICA.
+
+W — division matrix
+
+K — prewhitening matrix
+
+  Snew =scale( Xnew )* W * K
+
+Let us carry out an experiment. Load the results of script calculations from the first part of the article Part_1.Rda into Rstudio. Below is the content of env:
+--------------------------------------------------------------------------------

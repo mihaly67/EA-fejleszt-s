@@ -1,0 +1,1683 @@
+🚀 Starting Deep Research (Depth: 2)
+
+--- DEPTH 1/2 ---
+🔍 Searching: 'Signal amplitude restoration after smoothing'
+   -> Found 5 hits.
+🔍 Searching: 'Automatic Gain Control AGC trading indicator'
+   -> Found 5 hits.
+🔍 Searching: 'Inverse Fisher Transform lag compensation'
+   -> Found 5 hits.
+🔍 Searching: 'Ehlers roofing filter MQL5'
+   -> Found 5 hits.
+
+--- DEPTH 2/2 ---
+🔍 Searching: 'MQL5 normalization transform indicator'
+   -> Found 5 hits.
+🔍 Searching: 'MQL5 Kalman smoothing algorithm code'
+   -> Found 5 hits.
+🔍 Searching: 'MQL5 Expert Trailing TrailingNone source code'
+   -> Found 5 hits.
+🔍 Searching: 'MQL5 Arrays ArrayObj source code'
+   -> Found 5 hits.
+🔍 Searching: 'MQL5 Expert Signal My SignalWZ_25 source code'
+   -> Found 5 hits.
+
+================================================================================
+🔬 RESEARCH REPORT (Total Unique Documents: 41)
+================================================================================
+
+📄 ITEM #1 [MQL5_DEV | article_14407.html] (Score: 0.62)
+--------------------------------------------------------------------------------
+[CODE START]
+ArrayCopy(DestinationArray, SourceArray, 2, 0, WHOLE_ARRAY);
+[CODE END]
+
+ This line uses the ArrayCopy function to copy elements from SourceArray into DestinationArray starting from index 2.
+
+
+
+[CODE START]
+Print("Elements of DestinationArray after using ArrayCopy: ");
+ArrayPrint(DestinationArray, 2, " ", 0, WHOLE_ARRAY);
+[CODE END]
+
+ This prints a message and then the modified elements of “DestinationArray” after the “ArrayCopy()” operation.
+
+ Output:
+
+
+
+ The objective of this code sample is to demonstrate the differences between MQL5's “ArrayInsert()” and “ArrayCopy()” functions. While manipulating array elements is a common use for both functions, their functions are distinct. Two dynamic arrays—“SourceArray” and “DestinationArray”—are used in this example. Before performing any operations, the script displays the elements contained in these arrays. Then, to insert elements from —“SourceArray” into designated locations within “DestinationArray()”, ArrayInsert is utilized. After that, the arrays are reset, and elements from —“SourceArray” are copied into “DestinationArray()” using “ArrayCopy()”. Their actions are where they diverge most: When inserting elements at a specific position into the destination array, “ArrayInsert()” moves the existing elements to make room for the new elements. It is useful for putting elements at the desired index. With “ArrayCopy()”, elements from the source array are copied and substituted for any existing elements in the destination array. Efficient in copying elements between arrays without affecting the values that are already set.
+
+
+
+
+ 3. ArraySize
+
+
+ The MQL5 function “ArraySize()” is intended to ascertain how many elements are contained in a one-dimensional array. Returning an integer that represents the total count of elements within the specified array, makes the process of determining the size of an array simpler.
+
+ Analogy
+
+ Assume that you have a bookshelf full of different books, each of which is a representation of an element in an array. Like a librarian, the “ArraySize()” function tells you the precise number of books on your shelf. Similarly, you can manage and arrange your data more effectively by using “ArraySize(),” which, when applied to an array, tells you the total number of elements it contains. Programmers can use it as a useful tool to comprehend the size of their arrays and make sure they have the appropriate number of "books" for their coding endeavors.
+
+Syntax:
+[CODE START]
+ArraySize( array[]);
+[CODE END]
+ Parameter:
+
+
+
+
+
+ array[]: The array for which you wish to find the size is indicated by this parameter.
+
+
+Example:
+
+
+[CODE START]
+--------------------------------------------------------------------------------
+
+📄 ITEM #2 [CODE | SignalDeltaZZ.mqh] (Score: 0.61)
+--------------------------------------------------------------------------------
+//|                                                SignalDeltaZZ.mqh |
+//|                                      Copyright 2014, PunkBASSter |
+//|                      https://login.mql5.com/en/users/punkbasster |
+#include <Expert\ExpertSignal.mqh>
+// wizard description start
+//| Description of the class                                         |
+//| Title=DeltaZZ Signal Module                                      |
+//| Type=SignalAdvanced                                              |
+//| Name=DeltaZZ Signal Module                                       |
+//| ShortName=DeltaZZ_SM                                             |
+//| Class=CSignalDeltaZZ                                             |
+//| Page=not used                                                    |
+//| Parameter=setAppPrice,int,1, Applied price: 0 - Close, 1 - H/L   |
+//| Parameter=setRevMode,int,1, Reversal mode: 0 - Pips, 1 - Percent |
+--------------------------------------------------------------------------------
+
+📄 ITEM #3 [MQL5_DEV | article_3068.html] (Score: 0.61)
+--------------------------------------------------------------------------------
+// CONTEXT: Series: Ready-made Expert Advisors from the MQL5 Wizard work in MetaTrader 4 - MQL5 Articles, Part: N/A, Title: Ready-made Expert Advisors from the MQL5 Wizard work in MetaTrader 4 - MQL5 Articles | FILE: MT4-1.1-SL5-b1545.zip/Expert/Signal/SignalBullsPower.mqh
+//+------------------------------------------------------------------+
+//|                                             SignalBullsPower.mqh |
+//|                   Copyright 2009-2013, MetaQuotes Software Corp. |
+//|                                              http://www.mql5.com |
+//+------------------------------------------------------------------+
+#include <Expert\ExpertSignal.mqh>
+// wizard description start
+//+------------------------------------------------------------------+
+//| Description of the class                                         |
+//| Title=Signals of oscillator 'Bulls Power'                        |
+//| Type=SignalAdvanced                                              |
+//| Name=Bulls Power                                                 |
+//| ShortName=BullsPower                                             |
+//| Class=CSignalBullsPower                                          |
+//| Page=signal_bulls                                                |
+//| Parameter=PeriodBulls,int,13,Period of calculation               |
+//+------------------------------------------------------------------+
+// wizard description end
+//+------------------------------------------------------------------+
+//| Class CSignalBullsPower.                                         |
+//| Purpose: Class of generator of trade signals based on            |
+//|          the 'Bulls Power' oscillator.                           |
+//| Is derived from the CExpertSignal class.                         |
+//+------------------------------------------------------------------+
+--------------------------------------------------------------------------------
+
+📄 ITEM #4 [CODE | Nonlinear Kalman filter.mq5] (Score: 0.60)
+--------------------------------------------------------------------------------
+a*a)*smoother[i] : smoother[i];
+            detrend    = smoother[i] - lowpass[i];
+            delta[i]   = (i>1) ? b*delta[i-1] - a*a*delta[i-2] + (1-b+a*a)*detrend : 0;
+            break;
+         default :
+            lowpass[i] = (i>2) ? (b+c)*lowpass[i-1] - (c+b*c)*lowpass[i-2] + c*c*lowpass[i-3] + (1-b+c)*(1-c)*smoother[i] : smoother[i];
+            detrend    = smoother[i] - lowpass[i];
+            delta[i]   = (i>2) ? (b+c)*delta[i-1] - (c+b*c)*delta[i-2] + c*c*delta[i-3] + (1-b+c)*(1-c)*detrend : 0;
+        }
+      kalman[i]=lowpass[i]+delta[i];
+      kalmanc[i] = (i>0) ? (kalman[i]>kalman[i-1]) ? 0 : (kalman[i]<kalman[i-1]) ? 1 : kalmanc[i-1] : 0;
+     }
+   return(i);
+  }
+//| Custom functions                                                 |
+#define _maInstances 1
+#define _maWorkBufferx1 1*_maInstances
+//|                                                                  |
+double iCustomMa(int mode,double price,double length,int r,int bars,int instanceNo=0)
+--------------------------------------------------------------------------------
+
+📄 ITEM #5 [MQL5_DEV | article_14306.html] (Score: 0.59)
+--------------------------------------------------------------------------------
+3. ArrayCopy
+
+
+ In MQL5, the function "ArrayCopy()" is used to duplicate elements between arrays. It enables you to replicate a specific range-defined portion of an array into another array in a selective manner. This function makes it easier to manage and arrange data inside arrays, which makes it easier to extract and move particular elements between arrays.
+
+ Analogy
+
+ Consider that you have two lists of items and that you wish to copy certain items exactly from the first list to the second. This is where MQL5's "ArrayCopy()" function is useful. It functions as a copy assistant, letting you select particular items from an array and neatly copy them into another list.
+
+ Here's a more concrete example: imagine you have an array with five different item prices, and you want to create a second array that contains the prices of just three particular items. You can neatly extract and duplicate just those three prices into a new array while maintaining the original array by using the "ArrayCopy()" function. It's similar to having a useful tool that makes copying and choosing items from one collection to another easier, increasing the efficiency and organization of your array manipulation tasks.
+
+ Syntax:
+
+
+[CODE START]
+ArrayCopy(
+          dst_array[],         // The destination array to receive copied elements
+          src_array[],         // The source array from which elements will be copied
+          dst_start=0,         // The index in the destination array to start writing from  
+          src_start=0,         // The index in the source array from which to start copying
+          count                // The number of elements to copy; default is to copy the entire array
+);
+
+[CODE END]
+
+
+ This powerful command empowers you to skillfully merge arrays with precision and control. In this enchanting process, “dst_array” serves as the destination where elements will be copied, and “src_array” acts as the source from which elements are drawn. Additional parameters such as “dst_start”, “src_start”, and “count” provide the flexibility to finely adjust the merging operation. Think of it as crafting a command that orchestrates the flawless fusion of arrays in the captivating domain of MQL5 programming!
+
+Example:
+[CODE START]
+--------------------------------------------------------------------------------
+
+📄 ITEM #6 [CODE | memmap.mq5] (Score: 0.59)
+--------------------------------------------------------------------------------
+//|                                                           MemMap |
+//|               Copyright © 2006-2013, FINEXWARE Technologies GmbH |
+//|                                                www.FINEXWARE.com |
+//|      programming & development - Alexey Sergeev, Boris Gershanov |
+#property link      "www.FINEXWARE.com"
+#property version   "1.00"
+#include <MemMapLib.mqh>
+//------------------------------------------------------------------	OnStart
+void OnStart()
+{
+	CMemMapFile hmem;
+	long err=hmem.Open("Local\\test",111,modeCreate);
+	uchar data[];
+	StringToCharArray("Hello from MQL5!",data);
+	err=hmem.Write(data,ArraySize(data));
+	ArrayInitialize(data,0);
+	hmem.Seek(0,SEEK_SET);
+	err=hmem.Read(data,ArraySize(data));
+	Print(CharArrayToString(data));
+	hmem.Close();
+}
+--------------------------------------------------------------------------------
+
+📄 ITEM #7 [CODE | CopyConstructor.mq5] (Score: 0.59)
+--------------------------------------------------------------------------------
+/****************************************************************/
+void OnStart() {ClassExample(); StructExample();}
+/***************************************************************
+   Have you ever wondered how to safely return automatic objects
+    from functions without memory leaks?
+   Here is one option that will work in MQL.
+   The technique is called 'copy constructor'. Make sure that
+    all fields are copied, including complex data types,
+    recursively.
+   Please refer to the example code below, you will figure out
+    how it works.
+*/
+void ClassExample()
+  {
+   Print(__FUNCTION__);
+   A a1;
+   A a2=Fa(); //object receive from function
+   a1.Work();
+   a1.Report(); //1 1 1 1
+   a2.Report(); //3 3 3 3
+   /*CONTINUE USE OBJECT FROM FUNCTION*/
+   a2.Work();
+   a2.Report(); //4 4 4 4
+   return;
+  }
+/***************************************************************
+   PARTS OF CLASS A*/
+struct C {int mx; C():mx(0) {}};
+--------------------------------------------------------------------------------
+
+📄 ITEM #8 [CODE | Nonlinear Kalman filter.mq5] (Score: 0.59)
+--------------------------------------------------------------------------------
+wma    // Linear weighted MA
+  };
+input ENUM_APPLIED_PRICE Price          =  PRICE_CLOSE;  // Price
+input enOrder            Order          =  ord_3;        // Filter Order
+input int                Length         = 14;            // Fast Filter Period
+input int                PreSmooth      =  3;            // Pre-smoothing period
+input enMaTypes          PreSmoothMode  =  ma_lwma;      // Pre-smoothing MA Mode
+double kalman[],kalmanc[],lowpass[],delta[],smoother[];
+//------------------------------------------------------------------
+//
+//------------------------------------------------------------------
+int OnInit()
+  {
+   SetIndexBuffer(0,kalman,INDICATOR_DATA);
+   SetIndexBuffer(1,kalmanc,INDICATOR_COLOR_INDEX);
+   SetIndexBuffer(2,lowpass,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(3,delta,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(4,smoother,INDICATOR_CALCULATIONS);
+   return(0);
+  }
+void OnDeinit(const int reason) { return; }
+--------------------------------------------------------------------------------
+
+📄 ITEM #9 [CODE | Nonlinear Kalman filter deviation.mq5] (Score: 0.59)
+--------------------------------------------------------------------------------
+E_CLOSE;  // Price
+input int                PreSmooth      =  3;           // Pre-smoothing period
+input ENUM_MA_METHOD     PreSmoothMode  = MODE_LWMA;    // Pre-smoothing MA method
+//
+//---
+//
+double val[],valc[],lowpass[],delta[],flt[],avg[],dev_diff[],dev_summ[];
+double ª_a=0,ª_b=0,ª_c=0; int ª_maHandle;
+//------------------------------------------------------------------
+//
+//------------------------------------------------------------------
+int OnInit()
+{
+   ª_maHandle  = iMA(_Symbol,0,PreSmooth,0,PreSmoothMode,Price); if (!_checkHandle(ª_maHandle,"average")) { return(INIT_FAILED); }
+   //
+   //---
+   //
+      SetIndexBuffer(0,val     ,INDICATOR_DATA);
+      SetIndexBuffer(1,valc    ,INDICATOR_COLOR_INDEX);
+      SetIndexBuffer(2,flt     ,INDICATOR_CALCULATIONS);
+      SetIndexBuffer(3,avg     ,INDICATOR_CALCULATIONS);
+      SetIndexBuffer(4,delta   ,INDICATOR_CALCULATIONS);
+      SetIndexBuffer(5,lowpass ,INDICATOR_CALCULATIONS);
+--------------------------------------------------------------------------------
+
+📄 ITEM #10 [CODE | Nonlinear Kalman filter deviation.mq5] (Score: 0.59)
+--------------------------------------------------------------------------------
+      lowpass[i] = (i>2) ? (ª_b+ª_c)*lowpass[i-1] - (ª_c+ª_b*ª_c)*lowpass[i-2] + ª_c*ª_c*lowpass[i-3] + (1-ª_b+ª_c)*(1-ª_c)*_smoother : _smoother;
+               delta[i]   = (i>2) ? (ª_b+ª_c)*delta[i-1] - (ª_c+ª_b*ª_c)*delta[i-2] + ª_c*ª_c*delta[i-3] + (1-ª_b+ª_c)*(1-ª_c)*_detrend : 0;
+         }
+         //
+         //---
+         //
+         flt[i] = lowpass[i]+delta[i];
+            //
+            //---
+            //
+                  dev_diff[i] = (_smoother-flt[i])*(_smoother-flt[i]);
+                  if (i>Length)
+                           dev_summ[i] = dev_summ[i-1]+dev_diff[i]-dev_diff[i-Length];
+                  else  {  dev_summ[i] = dev_diff[i]; for(int k=1; k<Length && i>=k; k++) dev_summ[i] += dev_diff[i-k]; }
+            //
+            //---
+            //
+         val[i]  = MathSqrt(dev_summ[i]/Length);
+         valc[i] = (i>0) ? (val[i]>val[i-1]) ? 0 : 1 : 0;
+   }
+   return(i);
+}
+--------------------------------------------------------------------------------
+
+📄 ITEM #11 [CODE | ARRAYTEST.mq5] (Score: 0.59)
+--------------------------------------------------------------------------------
+//|                                                    Array_MT5.mq5 |
+//|                                            copyright © 2023 Enev |
+//|                              https://www.mql5.com/en/users/esebg |
+#property strict
+#property version   "1.00"
+#property description "Two dimension Array fill and Print"
+//|                                                                  |
+void OnTick()
+  {
+   string array_test[][2] = {"0.001", "0.002",
+                             "0.003", "0.004",
+                             "0.005", "0.006",
+                             "0.007", "0.008",
+                             "0.009", "0.010"
+                            };
+   int sizein = ArraySize(array_test) / 2;
+   for(int i = 0; i < sizein; i++)
+     {
+      Print("Print line1 element1 ", StringToDouble(array_test[i][0]));
+      Print("Print line1 element2 ", StringToDouble(array_test[i][1]));
+     }
+  }
+--------------------------------------------------------------------------------
+
+📄 ITEM #12 [CODE | Nonlinear Kalman filter (zm)(fl).mq5] (Score: 0.58)
+--------------------------------------------------------------------------------
+ CSma
+{
+   private :
+      struct scSmaArrayStruct
+         {
+            double value;
+            double summ;
+         };
+      scSmaArrayStruct m_array[];
+      int              m_arraySize;
+      int              m_period;
+   public :
+      CSma() { init(1);            return; }
+     ~CSma() { ArrayFree(m_array); return; }
+     //
+     //---
+     //
+     bool init(int period)
+         {
+            m_period    = (period>1) ? period : 1;
+            m_arraySize = m_period+32;
+               ArrayResize(m_array,m_arraySize);
+               for (int k=0; k<m_arraySize; k++)
+               {
+                  m_array[k].value =
+                  m_array[k].summ  = 0;
+               }
+               return(true);
+         }
+     double calculate(double value, int i)
+         {
+            int _indC = (i)%m_arraySize; m_array[_indC].value=value;
+               if (i>m_period)
+               {
+                  int _indP = (i-1       )%m_arraySize;
+--------------------------------------------------------------------------------
+
+📄 ITEM #13 [MQL5_DEV | article_2411.html] (Score: 0.58)
+--------------------------------------------------------------------------------
+We have identified two general entities for all types of trailing, which can be conveniently presented in the form of a special base class, call it CTrailing. It will contain methods for setting the current position, and the virtual Modify method, by which the stop-loss will be modified, as well as a special virtual Copy method, the purpose of which will be explained later:
+
+[CODE START]
+//+------------------------------------------------------------------+
+//|                                                     Trailing.mqh |
+//|                                 Copyright 2016, Vasiliy Sokolov. |
+//|                                              http://www.mql5.com |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2016, Vasiliy Sokolov."
+#property link      "http://www.mql5.com"
+#include <Object.mqh>
+#include "..\PositionMT5.mqh"
+#include "..\Logs.mqh"
+--------------------------------------------------------------------------------
+
+📄 ITEM #14 [MQL5_DEV | article_12475.html] (Score: 0.57)
+--------------------------------------------------------------------------------
+Considering what conditions need to be implemented, we will need one of two options for implementing the following indicators:
+
+
+
+
+ SMA — standard moving average (one line)
+ EMA — exponential moving average (one line)
+ Bollinger Bands — Bollinger bands (a set of three lines)
+ RSI — relative strength index (one line in a separate window)
+ ATR — average true range (one line in a separate window)
+
+ Indicators can be implemented using special predefined MQL5 functions, but I do not like this approach, because the implemented code will be more difficult to convert to the MQL4 version. Besides, it will be more difficult for me to integrate it, for example, in my projects in other languages, which I do very often. I have long been in the habit of doing everything as simply as possible and with the future use in mind. I think, this is a very good habit.
+
+ The second important point is that, as a rule, such indicators drag along unnecessary and redundant calculations and functionality. In addition, it is impossible to refine such indicators, since their functions are rigidly set at the code level. In order to make changes, you will need to create your own version of the indicator in any case. I think it is obvious that it is better to have a custom implementation inside an EA or a script. In order to implement such indicators, I came up with the following trick:
+
+
+
+
+ Creation of arrays for storing the values of the indicator lines (limited to the last N bars).
+ Implementation of shifting array values when a new bar appears.
+ Implementing clearing the array of indicator values in case of errors or a long disconnect.
+ Implementing the calculation of the indicator value for the last bar when it closes.
+
+
+
+ In this approach, the first three paragraphs create common array blocks and functions that provide the listed actions. Let's see how this looks using our task as an example. Let's start with the first point:
+
+
+[CODE START]
+   double SMA1Values[]; // Array for storing SMA values
+   double EMAValues[];  // Array for storing EMA values (exponential)
+   double RSIValues[];  // Array for storing RSI values
+  
+   double BollingerBandsUpperValues[];  // Array for storing BollingerBands values, upper
+   double BollingerBandsMiddleValues[]; // Array for storing BollingerBands values, middle
+   double BollingerBandsLowerValues[];  // Array for storing BollingerBands values, lower
+  
+   double ATRValues[];// array for storing Average True Range values
+
+[CODE END]
+ These arrays are initialized at the start of the EA with the given length limits:
+
+
+[CODE START]
+   //Prepare indicator arrays
+   void PrepareArrays()
+   {
+      ArrayResize(SMA1Values, LastBars);
+      ArrayResize(EMAValues, LastBars);
+      ArrayResize(RSIValues, LastBars);
+      ArrayResize(BollingerBandsUpperValues, LastBars);
+      ArrayResize(BollingerBandsMiddleValues, LastBars);
+      ArrayResize(BollingerBandsLowerValues, LastBars);
+      ArrayResize(ATRValues, LastBars);
+   }
+--------------------------------------------------------------------------------
+
+📄 ITEM #15 [MQL5_DEV | article_14775.html] (Score: 0.57)
+--------------------------------------------------------------------------------
+Custom Chaikin Volatility indicator
+
+ In this section, we will learn how to code a custom Chaikin Volatility indicator using MQL5, which can be useful as we can customize the indicator to suit our objectives. The following are the steps to code our custom Chaikin Volatility (CHV) indicator:
+
+ Use the preprocessor #include to be able to use the moving averages include file in the program and calculation.
+
+
+[CODE START]
+#include <MovingAverages.mqh>
+[CODE END]
+ Using the preprocessor #property to specify additional parameters that are the same as the following identifier values:
+
+
+ description: to set a brief text for the mql5 program.
+ indicator_separate_window: to set the place of the indicator in a separate window.
+ indicator_buffers: to set the number of buffers for the indicator calculation.
+ indicator_plots: to set the number of graphic series in the indicator.
+ indicator_type1: to specify the type of graphical plotting, specified by the values of ENUM_DRAW_TYPE. N is the number of graphic series; numbers can start from 1.
+ indicator_color1: to specify the color for displaying line N, N is the number of graphic series; numbers can start from 1.
+ indicator_width1: to specify the line thickness of the indicator, N is the number of graphic series; numbers can start from 1.
+
+
+[CODE START]
+#property description "Chaikin Volatility"
+#property indicator_separate_window
+#property indicator_buffers 3
+
+#property indicator_plots   1
+#property indicator_type1   DRAW_HISTOGRAM
+#property indicator_color1  MediumBlue
+#property indicator_width1  3
+[CODE END]
+ Using the enum keyword to define a set of data for moving average smoothing mode:
+
+
+[CODE START]
+enum smoothMode
+  {
+   SMA=0,// Simple MA
+   EMA=1 // Exponential MA
+  };
+[CODE END]
+ Setting inputs for the indicator settings by using the input keyword:
+
+
+[CODE START]
+input int          smoothPeriodInp=10;  // Smoothing Period
+input int          chvPeriodInp=10;     // Chaikin Volatility Period
+input smoothMode   InpSmoothType=EMA;   // Smoothing Mode
+[CODE END]
+ Declaring three arrays of chv, hl, and shl buffers:
+
+
+[CODE START]
+double             chvBuffer[];
+double             hlBuffer[];
+double             shlBuffer[];
+[CODE END]
+ Declaring two global variables for the smoothing period and CHV period:
+
+
+[CODE START]
+int                smoothPeriod,chvPeriod;
+[CODE END]
+ In the OnInit() part, we will check and specify variables of inputs.
+
+ Moving Average name: After declaring the maName, the program checks if the input is SMA, in which case the name will be SMA (simple moving average), or if the input is EMA, in which case the name will be EMA (exponential moving average).
+--------------------------------------------------------------------------------
+
+📄 ITEM #16 [MQL5_DEV | article_2731.html] (Score: 0.56)
+--------------------------------------------------------------------------------
+searching for "[Common]" (MQL5);
+once the line is found, writing it into an array;
+then we continue to write lines into the array until the regular expression finds the "[" symbol.
+
+An example of this approach is implemented in the "Receiving lines v.2.mq5" script:
+
+[CODE START]
+//+------------------------------------------------------------------+
+//|                                          Receiving lines v.2.mq5 |
+//|                        Copyright 2016, MetaQuotes Software Corp. |
+//|                                             https://www.mql5.com |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2016, MetaQuotes Software Corp."
+#property link      "https://www.mql5.com"
+#property version   "1.000"
+#property description "Singling the block \"[Common]\""
+#property script_show_inputs
+#include <RegularExpressions\Regex.mqh>
+//---
+input string   file_name="test_original.ini";         // file name
+input string   str_format="(\\[)(.*?)(\\])";
+//---
+int            m_handel;
+bool           m_found_Common=false;                  // after finding of the word "[Common]" - the flag will be true
+//+------------------------------------------------------------------+
+//| Script program start function                                    |
+//+------------------------------------------------------------------+
+--------------------------------------------------------------------------------
+
+📄 ITEM #17 [MQL5_DEV | article_14199.html] (Score: 0.56)
+--------------------------------------------------------------------------------
+Similar to setting the input shape, configuring the output shape is essential for aligning the expected format of the machine learning model's output with the downstream processing requirements in the EA. 
+
+
+[CODE START]
+if(!OnnxSetOutputShape(ONNXHandle,0,output_shape))
+{
+    Print("OnnxSetOutputShape error ",GetLastError());
+    return(INIT_FAILED);
+}
+[CODE END]
+ In this part of the Expert Advisor's OnInit() function in MQL5, two technical indicators are initialized.
+
+
+
+
+ ma_handle is assigned the handle or identifier for a 20-period Exponential Moving Average (EMA) calculated based on the closing prices (PRICE_CLOSE) of the one-minute chart (PERIOD_M1) for the symbol specified by _Symbol.
+ ao_handle is assigned the handle for the Awesome Oscillator (AO) indicator calculated on the one-minute chart for the same symbol.
+ min_volume is the smallest contract size allowed by the broker.
+
+
+[CODE START]
+//Setting up our technical indicators
+ma_handle = iMA(_Symbol,PERIOD_M1,20,0,MODE_EMA,PRICE_CLOSE);
+ao_handle = iAO(_Symbol,PERIOD_M1);
+min_volume = SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+return(INIT_SUCCEEDED);
+}
+[CODE END]
+
+
+
+
+ OnDeinit Function
+
+ The OnDeinit function in this MQL5 Expert Advisor serves as the handler for the EA's deinitialization process. It is automatically executed when the EA is removed or when the trading platform is closed.
+
+ Within this function, a conditional statement checks whether the ONNXHandle variable holds a valid handle (not equal to INVALID_HANDLE). If the condition is true, it signifies that the ONNX model has been initialized during the EA's lifetime. In such cases, the OnnxRelease function is called to release resources associated with the ONNX model, and subsequently, the ONNXHandle is set to INVALID_HANDLE.
+
+ This deinitialization routine ensures the proper release of resources, preventing memory leaks and contributing to the overall efficiency and cleanliness of the EA's lifecycle. It reflects a responsible coding practice to manage and release resources acquired during the EA's execution, enhancing the robustness and reliability of the trading system.
+
+
+[CODE START]
+--------------------------------------------------------------------------------
+
+📄 ITEM #18 [MQL5_DEV | article_16563.html] (Score: 0.56)
+--------------------------------------------------------------------------------
+Developing a Swing Entry Monitoring (EA)
+
+
+
+ I have organized the development process into three steps to streamline our progress toward creating a fully functional Expert Advisor. The first step involves understanding the Moving Average we are utilizing, which forms the foundation for developing our custom indicator. This indicator will serve as a standalone tool and also lay the groundwork for building our Monitoring Expert Advisor in subsequent steps.
+
+
+
+ Step 1: Understanding the EMA 100 Strategy
+
+
+
+ The Exponential Moving Average (EMA) is a widely used indicator that places greater weight on recent data. The EMA 100, in particular, is a critical level in pair trading, often serving as a strong support or resistance point. Many profitable Bitcoin entry opportunities have historically occurred when the price bounced off the EMA 100, especially during volatile periods.
+
+ Step 2: Monitoring Indicator
+
+
+
+ Since we are using the Exponential Moving Average (EMA), an inbuilt feature of the MetaTrader 5 terminal, I decided to first develop a monitoring indicator that leverages these built-in tools. This approach simplifies the process of identifying key areas of interest during price action. Based on my experience, the indicator is capable of sending alerts via terminal notifications, push notifications, and even email.
+
+ However, it lacks the ability to handle web requests for advanced alerting services, such as integration with popular social networks. To overcome this limitation, we will move to Step 3, where the indicator will be enhanced into an Expert Advisor (EA). This transformation will enable more robust functionalities, including seamless communication through Telegram, ensuring a comprehensive and efficient monitoring system.
+
+ Here is the development breakdown of our Monitoring indicator;
+
+ Properties and Metadata:
+
+ This section defines essential metadata for the Expert Advisor (EA), including the copyright holder, a link to the author's profile, the version number, and a brief description of the Indicator's purpose. This information is crucial for documentation, helping users understand the creator and the intended functionality at a glance.
+
+
+[CODE START]
+#property copyright "Clemence Benjamin"
+#property link      "https://www.mql5.com/en/users/billionaire2024/seller"
+#property version   "1.0"
+#property description "EMA 100 Monitoring Indicator"
+[CODE END]
+ Indicator Settings:
+--------------------------------------------------------------------------------
+
+📄 ITEM #19 [MQL5_DEV | article_1863.html] (Score: 0.56)
+--------------------------------------------------------------------------------
+[CODE END]
+
+Add the channel width criteria to the group of "Channels" custom parameters to the ChannelsTrader3.mq5 expert source file.
+
+[CODE START]
+//---
+sinput string Info_channels="+===-- Channels --====+"; // +===-- Channels --====+
+input int InpPipsInside=100;            // Internal tolerance, pips
+input int InpPipsOutside=150;           // External tolerance, pips
+input int InpNarrowPips=250;            // Narrow channel, pips
+input int InpBroadPips=1200;            // Wide channel, pips
+...
+
+[CODE END]
+
+If the criterion of the narrow channel has a value greater than that of the wide channel, an initialization error will take place.
+
+[CODE START]
+//--- filter parameters
+   filter0.PointsInside(_Point*InpPipsInside);
+   filter0.PointsOutside(_Point*InpPipsOutside);
+   if(InpNarrowPips>=InpBroadPips)
+     {
+      PrintFormat(__FUNCTION__+": error specifying narrow and broad values");
+      return INIT_FAILED;
+     }
+   filter0.NarrowTolerance(_Point*InpNarrowPips);
+   filter0.BroadTolerance(_Point*InpBroadPips);
+
+[CODE END]
+
+The moment of determining the degree of channel width is presented in the body of the Direction() method.
+
+[CODE START]
+//--- Channel width
+   m_ch_width=CHANNEL_WIDTH_MID;               // average
+   double ch_width_pnt=((upper_vals[1]-lower_vals[1])/(1.0+pr_speed_pnt));
+//--- if the narrow channel criterion is specified
+   if(m_ch_narrow_tol!=EMPTY_VALUE)
+      if(ch_width_pnt<=m_ch_narrow_tol)
+         m_ch_width=CHANNEL_WIDTH_NARROW;      // narrow      
+//--- if the wide channel criterion is specified
+   if(m_ch_narrow_tol!=EMPTY_VALUE)
+      if(ch_width_pnt>=m_ch_broad_tol)
+         m_ch_width=CHANNEL_WIDTH_BROAD;       // wide
+
+[CODE END]
+
+Initially, the channel is considered to be average. After that, it is checked if it is narrow or wide.
+
+It is also necessary to change the methods for determining the trading direction as well. Thus, the condition for buying will look the following way:
+--------------------------------------------------------------------------------
+
+📄 ITEM #20 [MQL5_DEV | article_13451.html] (Score: 0.56)
+--------------------------------------------------------------------------------
+2.3.2. MQL5 Code for Working with the NuSVC Classifier Model
+
+
+[CODE START]
+//+------------------------------------------------------------------+
+//|                                                   Iris_NuSVC.mq5 |
+//|                                  Copyright 2023, MetaQuotes Ltd. |
+//|                                             https://www.mql5.com |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2023, MetaQuotes Ltd."
+#property link      "https://www.mql5.com"
+#property version   "1.00"
+
+#include "iris.mqh"
+#resource "nusvc_iris.onnx" as const uchar ExtModel[];
+--------------------------------------------------------------------------------
+
+📄 ITEM #21 [MQL5_DEV | article_14142.html] (Score: 0.56)
+--------------------------------------------------------------------------------
+To propagate the wall, we use vectors to store coefficients to x. Multiplying any two such vectors, in the process of solving for the unknown row would be equivalent to a cross correlation as the resulting vector values would be the x coefficients where a higher index placing indicates a higher exponent for x. This function is inbuilt however when it comes to division we need to resize the two quotient vectors to ensure they match up with any difference in size simply implying they do not match up in x exponents.
+
+ In determining by how much to adjust open position TP, and SL, our input sequence for our number wall will be indicator values of the moving average. Any indicator can be used although this or a Bollinger Bands or an Envelopes style indicator may be better suited in adjusting the trailing stop.
+
+ MQL5 vectors do easily copy and load indicator values once a handle is defined. If we look at the source below for a typical check trailing stop code (usable for both long and short)
+
+
+
+
+[CODE START]
+//+------------------------------------------------------------------+
+//| Checking trailing stop and/or profit for long position.          |
+//+------------------------------------------------------------------+
+bool CTrailingLFSR::CheckTrailingStopLong(CPositionInfo *position, double &sl, double &tp)
+{
+//--- check
+
+...
+
+//---
+   vector _t, _p;
+   _p.Init(2);
+   _t.CopyIndicatorBuffer(m_ma.Handle(), 0, 0, 2);
+   double _s = 0.0;
+   for(int i = 1; i >= 0; i--)
+   {  _s = 0.0;
+      _p[i] = GetOutput(i, _s);
+   }
+   double _o = SetOutput(_t, _p);
+//---
+  
+...
+
+}
+[CODE END]
+
+
+ We can see our decision making is evolving around two functions, the get output and set output. The get output is the primary as it builds the number wall and comes up with polynomial coefficients to an equation that solves for the next value in the sequence. The get output listing as indicated below:
+--------------------------------------------------------------------------------
+
+📄 ITEM #22 [CODE | EMAVFS_StDev.mq5] (Score: 0.56)
+--------------------------------------------------------------------------------
+ow[bar])+(res-dHigh[bar]))/2);
+        }
+      //----
+      default: return(dClose[bar]);
+     }
+//----
+//return(0);
+  }
+--------------------------------------------------------------------------------
+
+📄 ITEM #23 [MQL5_DEV | article_16563.html] (Score: 0.56)
+--------------------------------------------------------------------------------
+Adding the EA and Indicator to the chart
+
+
+
+
+
+Conclusion
+
+ The Monitoring EA, we developed in this article, serves as a valuable tool for every trader. By automating price monitoring and integrating strategies like the EMA 100, it reduces the manual effort required to identify trading opportunities. While we developed it for BTCUSD, it can be extended to other instruments or customized for additional indicators. This project saved a motivational foundational simple for beginners to get started. The sky is the limit, so go ahead and try different approaches.
+
+ Download the attached EA and Indicator, back-test it with your preferred settings, and refine it to suit your trading strategy. Stay ahead in the dynamic world of trading by combining technical analysis with automation. Please note that this system is designed exclusively for monitoring and alerting purposes, with no trading features integrated at this stage. For about Telegram credentials, visit these article:  Link 1 and Link 2
+
+ Table of attached files:
+
+    Files  Description
+    ema100_monitoring_indicator.mq5  Custom indicator based on EMA 100 bounce strategy
+  bitcoin_monitoring_expert.mq5  Expert Advisor to enable Telegram alerting functionality via WebRequest and also monitors continuously.
+
+
+
+
+  Attached files |
+
+
+      Download ZIP
+
+
+
+
+      ema100_monitoring_indicator.mq5
+      (5.62 KB)
+
+
+
+      bitcoin_monitoring_expert.mq5
+      (4.95 KB)
+
+
+
+
+
+    Warning: All rights to these materials are reserved by MetaQuotes Ltd. Copying or reprinting of these materials in whole or in part is prohibited.
+
+      This article was written by a user of the site and reflects their personal views. MetaQuotes Ltd is not responsible for the accuracy of the information presented, nor for any consequences resulting from the use of the solutions, strategies or recommendations described.
+
+
+
+
+    Other articles by this author
+
+
+
+          The MQL5 Standard Library Explorer (Part 5): Multiple Signal Expert
+
+
+
+          The MQL5 Standard Library Explorer (Part 4): Custom Signal Library
+
+
+
+          From Novice to Expert: Predictive Price Pathways
+
+
+
+          From Novice to Expert: Time Filtered Trading
+
+
+
+          From Novice to Expert: Forex Market Periods
+
+
+
+          The MQL5 Standard Library Explorer (Part 3): Expert Standard Deviation Channel
+
+
+
+          From Novice to Expert: Revealing the Candlestick Shadows (Wicks)
+--------------------------------------------------------------------------------
+
+📄 ITEM #24 [MQL5_DEV | article_10961.html] (Score: 0.56)
+--------------------------------------------------------------------------------
+By double-clicking the expert file the following window will appear:
+
+
+
+ By pressing "OK", the expert will be attached to the chart the same as the following:
+
+
+
+ The following are examples from testing for generated signals according to this strategy,
+
+ Rising OBV:
+
+
+
+ Declining OBV:
+
+
+
+
+ Strategy two: Simple OBV strength:
+
+
+
+ According to this strategy the same as I mentioned, we need to compare two values and they are the current OBV value and the average value of the previous four OBV values after calculating this average and then decide if the current value is greater than the average this means that the "OBV is strong" and vice versa, if the current value is less than the average this means that the "OBV is weak". The following is the full code to create a trading system for this strategy:
+
+
+[CODE START]
+//+------------------------------------------------------------------+
+//|                                          Simple OBV Strength.mq5 |
+//|                                  Copyright 2022, MetaQuotes Ltd. |
+//|                                             https://www.mql5.com |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2022, MetaQuotes Ltd."
+#property link      "https://www.mql5.com"
+#property version   "1.00"
+//+------------------------------------------------------------------+
+--------------------------------------------------------------------------------
+
+📄 ITEM #25 [MQL5_DEV | article_12570.html] (Score: 0.55)
+--------------------------------------------------------------------------------
+As we can see in the previous chart we have a buy signal as a comment in the top left corner as per our strategy conditions the same as the following:
+
+
+ Buy Signal
+ TSI Value
+ The fastMA value
+ The slowMA value
+
+ In case of sell signal:
+
+
+
+ As we can see in the previous chart we have a sell signal as a comment in the top left corner as per our strategy conditions. the same as the following:
+
+
+ Sell Signal
+ TSI Value
+ The fastMA value
+ The slowMA value
+
+ Conclusion
+
+ In this article, we learned how you can create your own True Strength Index technical indicator to implement your specific settings and preferences. We have seen which information and insights this indicator provides, which can be very helpful in trading. We learned also how we can use this customized indicator in a simple trading system to generate the current value of the TSI indicator as a comment on the chart. We have also seen how to use the indicator in an automated trading system by creating the EA which utilizes the TSI data combined with another technical tool, which in our case is the moving average. This combination of the custom TSI and two moving averages generated buy and sell signals based on a specific strategy, which we considered in detail in the topic of TSI System EA.
+
+ I hope that this article will be useful for your trading and programming learning. If you want to read other articles about indicators and to learn how to create trading systems based on the most popular technical indicator, please see my previous articles, in which I cover popular indicators such as the moving average, Bollinger Bands, RSI, MACD, Stochastics, parabolic SAR, ATR, and others.
+
+
+
+  Attached files |
+
+
+      Download ZIP
+
+
+
+
+      simpleTSI.mq5
+      (7.46 KB)
+
+
+
+      iCustomTSI_ea.mq5
+      (0.81 KB)
+
+
+
+      TSI_System_EA.mq5
+      (2.09 KB)
+
+
+
+
+
+    Warning: All rights to these materials are reserved by MetaQuotes Ltd. Copying or reprinting of these materials in whole or in part is prohibited.
+
+      This article was written by a user of the site and reflects their personal views. MetaQuotes Ltd is not responsible for the accuracy of the information presented, nor for any consequences resulting from the use of the solutions, strategies or recommendations described.
+
+
+
+
+    Other articles by this author
+
+
+
+          How to build and optimize a cycle-based trading system (Detrended Price Oscillator - DPO)
+
+
+
+          How to build and optimize a volume-based trading system (Chaikin Money Flow - CMF)
+
+
+
+          MQL5 Integration: Python
+
+
+
+          How to build and optimize a volatility-based trading system (Chaikin Volatility - CHV)
+
+
+
+          Advanced Variables and Data Types in MQL5
+
+
+
+          Building and testing Keltner Channel trading systems
+
+
+
+          Building and testing Aroon Trading Systems
+--------------------------------------------------------------------------------
+
+📄 ITEM #26 [CODE | EhlersPredictiveMovingAverage.mq5] (Score: 0.55)
+--------------------------------------------------------------------------------
+//|                                EhlersPredictiveMovingAverage.mq5 |
+//|                                Copyright 2020, Andrei Novichkov. |
+#property link      "https://www.mql5.com/ru/users/andreifx60"
+#property version   "1.00"
+#property description "The Predictive Moving Average:\nJohn Ehlers, \"Rocket Science For Traders\", pg.212"
+#property indicator_applied_price PRICE_MEDIAN
+#property indicator_chart_window
+#property indicator_buffers 5
+#property indicator_plots   2
+//--- plot predict
+#property indicator_label1  "predict"
+#property indicator_type1   DRAW_LINE
+#property indicator_color1  clrDarkBlue
+#property indicator_style1  STYLE_SOLID
+#property indicator_width1  2
+//--- plot trigger
+#property indicator_label2  "trigger"
+#property indicator_type2   DRAW_COLOR_LINE
+#property indicator_color2  clrGreen,clrRed,clrLimeGreen
+#property indicator_style2  STYLE_SOLID
+#property indicator_width2  2
+//--- indicator buffers
+double         pb[];
+--------------------------------------------------------------------------------
+
+📄 ITEM #27 [MQL5_DEV | article_16357.html] (Score: 0.52)
+--------------------------------------------------------------------------------
+// CONTEXT: Series: Implementing the SHA-256 Cryptographic Algorithm from Scratch in MQL5 - MQL5 Articles, Part: N/A, Title: Implementing the SHA-256 Cryptographic Algorithm from Scratch in MQL5 - MQL5 Articles | FILE: Sha256Algorithm.mqh
+//+------------------------------------------------------------------+
+//|                                             Sha256Algorithm.mqh  |
+//|                                  Copyright 2024, MetaQuotes Ltd. |
+//|                                             https://www.mql5.com |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2024, MetaQuotes Ltd."
+#property link      "kadiabdulkudus@gmail.com"
+--------------------------------------------------------------------------------
+
+📄 ITEM #28 [MQL5_DEV | article_14479.html] (Score: 0.51)
+--------------------------------------------------------------------------------
+// CONTEXT: Series: DoEasy. Service functions, Part: 2, Title: DoEasy. Service functions (Part 2): Inside Bar pattern - MQL5 Articles | FILE: MQL5.zip/MQL5/Include/DoEasy/Services/XDimArray.mqh
+//+------------------------------------------------------------------+
+//|                                                    XDimArray.mqh |
+//|                                  Copyright 2021, MetaQuotes Ltd. |
+//|                             https://mql5.com/en/users/artmedia70 |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2021, MetaQuotes Ltd."
+#property link      "https://mql5.com/en/users/artmedia70"
+#property version   "1.00"
+#property strict    // Necessary for mql4
+//+------------------------------------------------------------------+
+//| Include files                                                    |
+//+------------------------------------------------------------------+
+#include <Arrays\ArrayObj.mqh>
+#include "Message.mqh"
+//+------------------------------------------------------------------+
+//| Abstract data unit class                                         |
+//+------------------------------------------------------------------+
+class CDataUnit : public CObject
+  {
+private:
+   int               m_type;
+protected:
+                     CDataUnit(int type)  { this.m_type=type;        }
+public:
+   virtual int       Type(void)     const { return this.m_type;      }
+                     CDataUnit(){ this.m_type=OBJECT_DE_TYPE_OBJECT; }
+  };
+//+------------------------------------------------------------------+
+//| Integer data unit class                                          |
+//+------------------------------------------------------------------+
+class CDataUnitLong : public CDataUnit
+  {
+public:
+   long              Value;
+                     CDataUnitLong() : CDataUnit(OBJECT_DE_TYPE_LONG){}
+  };
+//+------------------------------------------------------------------+
+//| Class of a single long array dimension                           |
+//+------------------------------------------------------------------+
+--------------------------------------------------------------------------------
+
+📄 ITEM #29 [MQL5_DEV | article_15185.html] (Score: 0.51)
+--------------------------------------------------------------------------------
+Practical Implementation and Testing
+
+
+
+
+
+ Once an Expert that uses our signal above is assembled in the wizard, if we are using multiple time frames, then the header part of the *MQ5 file will look as follows:
+
+
+
+
+[CODE START]
+//+------------------------------------------------------------------+
+//|                                                           qm.mq5 |
+//|                                  Copyright 2024, MetaQuotes Ltd. |
+//|                                             https://www.mql5.com |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2024, MetaQuotes Ltd."
+#property link      "https://www.mql5.com"
+#property version   "1.00"
+//+------------------------------------------------------------------+
+//| Include                                                          |
+//+------------------------------------------------------------------+
+#include <Expert\Expert.mqh>
+//--- available signals
+#include <Expert\Signal\My\SignalWZ_25.mqh>
+//--- available trailing
+#include <Expert\Trailing\TrailingNone.mqh>
+//--- available money management
+#include <Expert\Money\MoneyFixedMargin.mqh>
+//+------------------------------------------------------------------+
+//| Inputs                                                           |
+//+------------------------------------------------------------------+
+//--- inputs for expert
+input string Expert_Title           = "qm_frame"; // Document name
+ulong        Expert_MagicNumber     = 2028; //
+bool         Expert_EveryTick       = false; //
+//--- inputs for main signal
+input int    Signal_ThresholdOpen   = 10;   // Signal threshold value to open [0...100]
+input int    Signal_ThresholdClose  = 10;   // Signal threshold value to close [0...100]
+input double Signal_PriceLevel      = 0.0;  // Price level to execute a deal
+input double Signal_StopLevel       = 50.0; // Stop Loss level (in points)
+input double Signal_TakeLevel       = 50.0; // Take Profit level (in points)
+input int    Signal_Expiration      = 4;    // Expiration of pending orders (in bars)
+input int    Signal_0_QM_Length     = 50;   // QM(50) H1 Averaging Length
+input double Signal_0_QM_Weight     = 1.0;  // QM(50) H1 Weight [0...1.0]
+input int    Signal_1_QM_Length     = 50;   // QM(50) H4 Averaging Length
+input double Signal_1_QM_Weight     = 1.0;  // QM(50) H4 Weight [0...1.0]
+input int    Signal_2_QM_Length     = 50;   // QM(50) D1 Averaging Length
+input double Signal_2_QM_Weight     = 1.0;  // QM(50) D1 Weight [0...1.0]
+//--- inputs for money
+input double Money_FixMargin_Percent = 10.0; // Percentage of margin
+[CODE END]
+--------------------------------------------------------------------------------
+
+📄 ITEM #30 [MQL5_DEV | article_1479.html] (Score: 0.51)
+--------------------------------------------------------------------------------
+Finish with the end of every EA.
+
+[CODE START]
+return(0);
+}
+[CODE END]
+
+Step 6 : Gathering Them All
+
+Here you can see how myHedge.mq4 looks like.
+--------------------------------------------------------------------------------
+
+📄 ITEM #31 [MQL5_DEV | article_14710.html] (Score: 0.50)
+--------------------------------------------------------------------------------
+// CONTEXT: Series: DoEasy. Service functions, Part: 3, Title: DoEasy. Service functions (Part 3): Outside Bar pattern - MQL5 Articles | FILE: MQL5.zip/MQL5/Include/DoEasy/Services/XDimArray.mqh
+//+------------------------------------------------------------------+
+//|                                                    XDimArray.mqh |
+//|                                  Copyright 2021, MetaQuotes Ltd. |
+//|                             https://mql5.com/en/users/artmedia70 |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2021, MetaQuotes Ltd."
+#property link      "https://mql5.com/en/users/artmedia70"
+#property version   "1.00"
+#property strict    // Necessary for mql4
+//+------------------------------------------------------------------+
+//| Include files                                                    |
+//+------------------------------------------------------------------+
+#include <Arrays\ArrayObj.mqh>
+#include "Message.mqh"
+//+------------------------------------------------------------------+
+//| Abstract data unit class                                         |
+//+------------------------------------------------------------------+
+class CDataUnit : public CObject
+  {
+private:
+   int               m_type;
+protected:
+                     CDataUnit(int type)  { this.m_type=type;        }
+public:
+   virtual int       Type(void)     const { return this.m_type;      }
+                     CDataUnit(){ this.m_type=OBJECT_DE_TYPE_OBJECT; }
+  };
+//+------------------------------------------------------------------+
+//| Integer data unit class                                          |
+//+------------------------------------------------------------------+
+class CDataUnitLong : public CDataUnit
+  {
+public:
+   long              Value;
+                     CDataUnitLong() : CDataUnit(OBJECT_DE_TYPE_LONG){}
+  };
+//+------------------------------------------------------------------+
+//| Class of a single long array dimension                           |
+//+------------------------------------------------------------------+
+--------------------------------------------------------------------------------
+
+📄 ITEM #32 [MQL5_DEV | article_19188.html] (Score: 0.50)
+--------------------------------------------------------------------------------
+Amplitudes and mode dynamics
+
+Reconstruction in DMD is the reproduction of the input data using only the modes deduced by the decomposition. Filtering with DMD is the reconstruction of the input data using only a selection of modes. Forecasting simply extrapolates a reconstruction forward in time. To do any of these, we need to calculate the corresponding amplitudes and dynamics of the modes. The amplitudes are not a direct output of the DynamicModeDecomposition() method; they must be computed in a separate step by fitting the modes to a snapshot. This is typically done using a least-squares fit or by computing the pseudoinverse of the modes.
+
+To find the solution to a least-squares problem for a complex, non-symmetric matrix, we can use the LU decomposition of the normal equations. The normal equations transform the overdetermined system into a solvable square system. This can be accomplished with utilities from the Alglib library, as shown in the following code snippet.
+
+[CODE START]
+//+------------------------------------------------------------------+
+//|  compute the DMD amplitudes                                      |
+//+------------------------------------------------------------------+
+vectorc              compute_amplitudes(matrix& snapshots, matrixc& modes)
+  {
+   vectorc amplitudes(0);
+
+   vectorc x0 = as_complex(snapshots.Col(0));
+   matrixc A_h = modes.TransposeConjugate();
+   matrixc B = np::matmul(A_h,modes);
+   vectorc c = np::matmul(A_h,x0);
+   complex right_side[], solution[];
+   int pivots[];
+   CMatrixComplex lua = B;
+
+   if(!np::vecAsArray(c,right_side))
+     {
+      Print(__FUNCTION__, " vector as array failure ");
+      return amplitudes;
+     }
+
+   vector check_pivots;
+   ResetLastError();
+   CAlglib::CMatrixLU(lua,lua.Rows(),lua.Cols(),pivots);
+   int info;
+   check_pivots.Assign(pivots);
+   if(check_pivots.Max() == check_pivots.Min())
+     {
+      Print(__FUNCTION__," CAlglib::CMatrixLU()  failure ", GetLastError());
+      return amplitudes;
+     }
+
+   CDenseSolverReportShell shell;
+
+   CAlglib::CMatrixLUSolve(lua,pivots,int(pivots.Size()),right_side,info,shell,solution);
+
+   if(info < 1)
+     {
+      Print(__FUNCTION__, " modes matrix is singular, or VERY close to singular. ", GetLastError());
+      return amplitudes;
+     }
+
+   amplitudes.Assign(solution);
+
+   return amplitudes;
+
+  
+[CODE END]
+The code defines a function that calculates the amplitudes given a matrix of snapshots and the modes. Note that the first snapshot is used in this example, but it is possible to use a snapshot from any time point. The solution to the least-squares fit are the amplitudes, which are complex. The amplitudes also allow us to calculate the most dominant modes as revealed by the DMD procedure. We do this by computing the magnitude of the amplitudes. We can use this information when filtering.
+--------------------------------------------------------------------------------
+
+📄 ITEM #33 [MQL5_DEV | article_14044.html] (Score: 0.49)
+--------------------------------------------------------------------------------
+2.1 Method integration issues
+
+ When integrating new approaches into a ready-made structure, we must ensure that the changes we make do not disrupt the already built process. Therefore, before starting our work, we must analyze the impact of new approaches on the previously created learning process and the subsequent operation of the model.
+
+ Noise augmentation to the trajectories from the training dataset will obviously change the distribution of the original data. Consequently, this will affect the parameters of the batch normalization layer, in which we pre-process the source data. On the one hand, this is what we are trying to achieve. We want to train a model to work under conditions close to real ones in an environment with high stochasticity. On the other hand, the addition of random noise can push the original data beyond the actual values of the analyzed parameters. To minimize the negative impact of this factor, the authors of the algorithm added a noise factor (ω), which regulates the amount of data shift. In the conditions where we have "raw" non-normalized data, we will need a separate noise factor for each metric of the source data. Thus, we come to using a vector of noise factors. Then selecting a vector of hyperparameters becomes a rather complex task, the complexity of which increases with the increase in the number of analyzed parameters.
+
+ The solution to this issue, as it turns out, is quite straightforward. Multiplying noise from a normal distribution by a certain factor is actually quite similar to the reparameterization trick, which we used in the variational autoencoder layer.
+
+
+
+ Therefore, by using the parameters of the training dataset distribution, we can keep the model within the original distribution. At the same time, we add the stochasticity inherent in the analyzed environment.
+
+ However, one more point must be taken into account here. We add noise to the real trajectories from the training dataset rather than replacing their data with random values. When solving the problem directly, we obtain the distribution parameters of the initial data.
+
+ Let's take another look at the idea of using noise. At a specific point in time, we have actual data for each of the analyzed parameters. At the next time step, the parameters change by a certain amount. The size of the change for each parameter depends on a large number of different factors, which brings it close to a random variable. At the same time, such change has its limits. Therefore, in order to preserve the natural distribution of the original data, we can determine the distribution parameters of such deviations between 2 subsequent values of each analyzed parameter. These will be the parameters for reparametrizing our noise.
+--------------------------------------------------------------------------------
+
+📄 ITEM #34 [MQL5_DEV | article_14858.html] (Score: 0.48)
+--------------------------------------------------------------------------------
+As mentioned earlier, the method uses a random subset of the Fourier basis, and the scale of the subset is limited by a scalar. Selecting a mode index before DFT and inverse DFT (IDFT) operations allows you to further adjust the complexity of calculations.
+
+ Extended frequency range block with Fourier transform (FEB-f) is used in both the Encoder and the Decoder. Source data of the FEB-f block is first linearly projected and then transformed from the time domain to frequency responses. Mharmonics are randomly sampled from the obtained frequency characteristics. After that, the selected frequency features are multiplied by the matrix of the parameterized kernel, which is initialized with random parameters and adjusted during the model training process. The result is zero-padded to the full frequency response dimensions before performing the inverse Fourier transform, which returns the analyzed sequence to the time domain. The original visualization of the FEB-f block provided by the paper authors is presented below.
+
+
+
+
+
+
+
+ The frequency response attention block using the discrete Fourier transform (FEA-f) applies the canonical Transformer approach with a small addition. The source data is transformed into Query, Key and Value representations. With cross attention, Query come from the Decoder, while Key and Value come from Encoder. However, in FEA-f, we transform Query, Key and Value using the Fourier transform and perform a similar canonical attention mechanism in the frequency area. Here, as in the FEB-f block, for analysis we randomly sample M harmonics. The result of the attention operation is padded with zeros to the size of the original sequence, and the inverse Fourier transform is performed. The FEA-f structure in the author's visualization is shown below.
+
+
+
+
+
+
+
+ While the Fourier transform creates a frequency domain representation of a signal, the wavelet transform allows the signal to be represented in both the frequency and time domains, providing efficient access to localized information about the original signal. The multiwavelet transform combines the advantages of orthogonal polynomials and wavelets. A multiwavelet representation of a signal can be obtained by tensor product of a multiscale and multiwavelet basis. Note that bases at different scales are related by a tensor product. Authors of the FEDformer method adapt a non-standard wavelet representation to reduce the complexity of the model.
+--------------------------------------------------------------------------------
+
+📄 ITEM #35 [MQL5_DEV | article_3456.html] (Score: 0.48)
+--------------------------------------------------------------------------------
+In particular, a spectral density of a time series represented as a rational function can serve as the source model. In this case, it is possible to implement an autoregressive model, a moving-average model, and an autoregressive-moving-average model. Therefore, different methodological approaches will be used when estimating the model parameters.
+
+To solve this problem, we can also use the variational principle and the corresponding functional of the quality assessment. Here, the Lagrange multipliers will serve as the estimated parameters. This approach is applied in estimation of the spectral density by the maximum entropy method, which requires maximizing the entropy of the process according to the known separate values of the correlation function.
+
+Nonparametric methods of spectral analysis, unlike the parametric ones, do not have any predetermined models. The most popular among them is the method, where the periodicity of the process is determined (i.e., the square of absolute value of the existing implementation's Fourier transform) at the initial stage. After this, the task is reduced to selecting the suitable window, which would meet certain requirements.
+
+The Blackman–Tukey method is also widely used. It finds the Fourier transform of the weighted estimation of the correlation sequence for the analyzed time series.
+
+Another approach lies in reducing the problem of estimating the spectral density of a time series to solving a fundamental integral equation, describing the Fourier transform of the analyzed time series through a random process with orthogonal increment.
+
+According to the author of the proposed trading system, it is impossible to qualitatively evaluate the spectral density of the power of exchange rate fluctuations using the classic nonparametric methods of spectral estimation, which are based on calculation of the discrete Fourier transform of time series. The only way is to use the parametric methods of spectral analysis, which are able to obtain a consistent estimate of PSD for a relatively short discrete time sample, where the process is either stationary or it can be made so by removing the linear trend. Among the various parametric methods of spectral estimation, the maximum entropy method deserves the greatest attention.
+
+1.2. Applied technical analysis tools
+
+The main difference of the presented strategy is the adaptive trend line. Its direction indicates the current trend direction.
+
+Adaptive trend line is the low-frequency component of the input time series. It is obtained by the low-pass filter (LPF). The lower the cutoff frequency fc of LPF, the greater the smoothing of the trend line.
+--------------------------------------------------------------------------------
+
+📄 ITEM #36 [MQL5_DEV | article_3886.html] (Score: 0.48)
+--------------------------------------------------------------------------------
+[CODE START]
+double            Correction(double z);
+
+[CODE END]
+
+  The theoretical section 1.2. of the given article is implemented in this function. Its full code is available in the attachment. At the end of operation, the function returns the updated (corrected) value of the system state.
+
+  3. Practical Demonstration of the Kalman Filter
+
+  Let's test how this Kalman filter based class works in practice. Let's create an indicator based on this class. At the opening of a new candlestick, the indicator calls the system update function and then calls the function predicting the close price of the current bar. The class functions are called in a reverse order, because we call the update (correction) function for the previous closed bar and a forecast for the current newly opened bar, whose closing price is yet unknown.
+
+  The indicator will have two buffers. The predicted values of the system state will be added to the first buffer, and updated values will be added to the second one. I intentionally use two buffers so that the indicator would not be redrawn and we could see how the system is updated (corrected) at the second filter operation phase. The indicator code is simple and is available in the below attachment. Here is the result of the indicator operation.
+
+
+
+
+
+Three broken lines are displayed on the chart:
+
+  The black line shows the actual bar closing values
+
+  The red line shows the predicted value
+
+  The blue line is the system state updated by the Kalman filter
+
+As you can see, both lines are close to the actual close prices and show reversal points with good probability. Note that the indicator does not redraw values and the red line is drawn at the opening of the bar when the close price is not yet known.
+
+This chart shows the consistency of this filter and the possibility of creating a trading system using this filter.
+
+4. Creating a Trading Signals Module for the MQL5 Wizard
+
+We see on the above chart that the red system state prediction line is smoother than the black line showing the actual price. The blue line showing the corrected system state is always in between. In other words, the blue line above the red one indicates a bullish trend. Conversely, the blue line below the red one is an indication of a bearish trend. The intersection of the blue and red lines is a trend change signal.
+
+To test this strategy, let's create a module of trading signals for the MQL5 Wizard. The creation of trading signal modules is described in various articles available in this site: [1], [4], [5]. Here, I'll briefly describe points related to the described strategy.
+--------------------------------------------------------------------------------
+
+📄 ITEM #37 [MQL5_DEV | article_14044.html] (Score: 0.48)
+--------------------------------------------------------------------------------
+Additionally, the SSWNP method solves the problem of self-supervised noise prediction, which includes predicting the noise present in its clean form, the observed past trajectory X≤tob, as well as in the noise-augmented form Ẍ≤tob. The goal here is to estimate the noise value associated with a given observed waypoint.
+
+
+
+ Note that the features extracted by the model Θfe are used as input data for the noise prediction model (Θss), which determines the noise level in the observed trajectories (clean and augmented views). For a loss function for the self-supervised learning of the noise prediction model, the authors of the method propose to use the root mean square error (MSE).
+
+
+
+
+
+
+
+ The value 0 here denotes the absence of noise in the clean form trajectory.
+
+ The general loss function of the SSWNP method is represented as:
+
+
+
+
+
+ Where λ denotes the contribution of noise prediction error to the total error when training the model using the proposed approach.
+
+ The original visualization of the Self-Supervised Waypoint Noise Prediction method is presented below.
+
+
+
+
+
+ 2. Implementation using MQL5
+
+ We have seen the theoretical aspects of the Self-Supervised Waypoint Noise Prediction method. As you can see, the proposed approaches do not impose any restrictions on either the architecture of the models used or the structure of the source data. This allows us to integrate the proposed approaches with a large number of algorithms we have previously considered. In particular, in this article we will add the proposed approaches to the autoencoder training algorithm TrajNet, the method we discussed in the recent article on Goal-Conditioned Predictive Coding.
+
+ As we discussed previously, the GCPC algorithm provides 2 stages of model training:
+
+
+
+
+ Trajectory function training
+ Behavior policy training.
+
+
+
+ The SSWNP method discussed in this article aims to improve the efficiency of predicting future trajectories. Therefore, it covers only the "Trajectory function training" stage. We will make the necessary adjustments to this stage. The second stage, "Behavior policy training" will be used in its existing form.
+
+ 2.1 Method integration issues
+
+ When integrating new approaches into a ready-made structure, we must ensure that the changes we make do not disrupt the already built process. Therefore, before starting our work, we must analyze the impact of new approaches on the previously created learning process and the subsequent operation of the model.
+--------------------------------------------------------------------------------
+
+📄 ITEM #38 [CODE | ehlers_inverse_fisher_transform_2.mq5] (Score: 0.47)
+--------------------------------------------------------------------------------
+krSmma[r][instanceNo] = workrSmma[r-1][instanceNo]+(price-workrSmma[r-1][instanceNo])/period;
+   return(workrSmma[r][instanceNo]);
+}
+--------------------------------------------------------------------------------
+
+📄 ITEM #39 [MQL5_DEV | article_14203.html] (Score: 0.47)
+--------------------------------------------------------------------------------
+[CODE START]
+ N = double(Y.Size());
+
+         vector X(ulong(N),arange,1.0,1.0);
+
+         mx = X.Sum()/N;
+
+         XP = MathPow(X,2.0);
+
+         SSxx = XP.Sum() - N*pow(mx,2.0);
+
+         my = Y.Sum()/N;
+
+         XY = X*Y;
+
+         SSxy = XY.Sum() - N*mx*my;
+
+         cc1 = SSxy/SSxx;
+
+         cc2 = my - cc1*mx;
+
+         ddVd = dv - cc1;
+
+         VVVd = Y - cc1*X - cc2;
+
+         PddVd = MathAbs(ddVd);
+
+         PddVd = pow(PddVd,q);
+
+         PVVVd = MathAbs(VVVd);
+
+         PVVVd = pow(PVVVd,q);
+
+         mcord[j-1][0] = PddVd.Mean()/PVVVd.Mean();
+        }
+[CODE END]
+ Its here that the variance at a specific lag is calculated. The results of which are stored in the matrix "mcord".
+
+
+[CODE START]
+ Px_vector = MathLog10(x_vector);
+
+      mx = Px_vector.Mean();
+
+      Sqx = MathPow(Px_vector,2.0);
+
+      SSxx = Sqx.Sum() - i*pow(mx,2.0);
+
+      lmcord = log10(mcord);
+
+      my = lmcord.Mean();
+
+      pt = Px_vector*lmcord.Col(0);
+
+      SSxy = pt.Sum() - i*mx*my;
+
+      H[k][0]= SSxy/SSxx;
+
+      k++;
+[CODE END]
+
+Outside the inner loop, in the final leg of the outer loop, the main "H" matrix values are updated. Finally, the function returns the mean of the 'H' matrix divided by 'q'.
+
+
+[CODE START]
+ return H.Mean()/double(q);
+[CODE END]
+
+To test our GHE function, the application GHE.ex5, implemented as an Expert Advisor has been prepared. It allows one to visualize, random series with predefined characteristics and observe how the GHE works. Full interactivity enables adjusting the all parameters of the GHE, as well as the length of the series within  limits. An interesting feature is the ability to log transform the series before applying the GHE, to test if there are any benefits to preprocessing the data in this manner.
+
+
+
+
+
+
+
+We all know that when it comes to real world application, data sets are plagued by excessive noise. Since the GHE produces an estimate, that is sensitive to sample size, we need to test the significance of the result. This can be done by conducting a hypothesis test called the Variance Ratio (VR) test.
+
+
+
+ The Variance Ratio Test
+
+ The Variance Ratio Test is a statistical test used to assess the randomness of a time series by examining whether the variance of the series increases proportionally with the length of the time interval. The test is based on the idea that if the series to be tested follows a random walk, the variance of the series  changes over a given time interval should increase linearly with the length of the interval. If the variance increases at a slower rate, it may indicate serial correlation in the series changes, suggesting that the series is predictable. The Variance Ratio tests whether:
+
+
+
+
+
+
+
+is equal to 1, where:
+- X() is the time series of interest.
+- K is an arbitrary lag.
+- Var() denotes the variance.
+--------------------------------------------------------------------------------
+
+📄 ITEM #40 [MQL5_DEV | article_3886.html] (Score: 0.47)
+--------------------------------------------------------------------------------
+Then the system's covariance error is predicted:
+
+ (1.2)
+
+Where:
+
+   Pk is the extrapolated covariance matrix of the dynamic system state vector,
+
+  Fk is the state transition model showing the dependence of the current system state on the previous state,
+
+  P^k-1 is the covariance matrix of the state vector updated at the previous step,
+
+
+
+  Qk is the covariance noise matrix of the process.
+
+1.2. Update of System Values
+
+The second step of the filter algorithm starts with the measurement of the actual system state zk. The actually measured value of the system state is specified taking into account the true system state and the measurement error. In our case, the measurement error is the effects of noise on the dynamic system.
+
+To this moment, we have two different values that represent the state of a single dynamic process. They include the extrapolated value of the dynamic system calculated at the first step, and the actual measured value. Each of these values with a certain degree of probability characterizes the true state of our process, which, therefore, is somewhere between these two value. So, our goal is to determine the confidence, i.e. the extent, to which this or that value is trusted. Iterations of the Kalman filter's second phase are performed for this purpose.
+
+Using available data, we determine the deviation of the actual system state from the extrapolated value.
+
+ (2.1)
+
+Here:
+
+   yk is the deviation of the actual state of the system at the k-th step after extrapolation,
+
+  zk is the actual state of the system at the k-th step,
+
+
+
+  Hk is the measurement matrix that displays dependence of the actual system state on the calculated data (often takes a value of one in practice),
+
+  xk is the extrapolated value of the dynamic system at the k-th step.
+
+At the next step, a covariance matrix for the error vector is calculated:
+
+ (2.2)
+
+Here:
+
+   Sk is the covariance matrix of the error vector at the k-th step,
+
+  Hk is the measurement matrix that displays dependence of the actual system state on the calculated data,
+
+
+
+  Pk is the extrapolated covariance matrix of the dynamic system state vector,
+
+  Rk is the covariance matrix of the measurement noise.
+
+Then the optimal gain is determined. Gain reflects the confidence in the calculated and empirical values.
+
+  (2.3)
+
+Here: 
+
+   Kk is the matrix of Kalman gain values,
+
+
+
+  Pk is the extrapolated covariance matrix of the dynamic system state vector,
+
+
+
+  Hk is the measurement matrix that displays dependence of the actual system state on the calculated data,
+
+  Sk is the covariance matrix of the error vector at the k-th step.
+
+Now, we use Kalman gain to update the system state value and the covariance matrix of the state vector estimate.
+
+ (2.4)
+
+Where:
+
+   x^k and x^k-1 are updated values at the k-th and k-1 step,
+
+  Kk is the matrix of Kalman gain values,
+
+
+
+  yk is the deviation of the actual state of the system at the k-th step after extrapolation.
+
+ (2.5)
+
+Where:
+--------------------------------------------------------------------------------
+
+📄 ITEM #41 [MQL5_DEV | article_1345.html] (Score: 0.47)
+--------------------------------------------------------------------------------
+Number "10" in the series names denotes the lambda parameter in the Hodrick-Prescott filter. Based on the theory behind this tool, the lambda value is of great importance for the result which appears to be as follows:
+
+
+
+
+
+
+
+ Fig. 5. The smoothing result using the Hodrick-Prescott filter
+
+ We will use the equation from the previous article which in the EViews notations appears as follows:
+
+  quotes = C(1) * HP(-1) + C(2) * D(HP(-1)) + C(3)*D(HP(-2))
+
+
+ i.e. in this equation, we take into account the deterministic component and noise by which we mean the difference between the initial quotes and its deterministic component.
+
+ Following the analysis of the current model of the initial quotes, we obtain the following regression equation parameters:
+
+
+
+
+ Table 2. Regression equation estimation
+
+
+
+
+ The 39% probability of the coefficient being zero if РќР 1_D(-1) is certainly extremely displeasing. We will leave everything as it is since the example we are going to provide is for demonstration purposes.
+
+ Having obtained the regression equation estimates (estimation of the equation coefficients) we can proceed to the one-step-ahead forecast.
+
+
+ The result is as follows:
+
+
+
+
+
+
+ Fig. 6. EURUSD one-step-ahead forecast (as at 12 a.m. on Monday)
+
+ 1.3. Estimating residuals from the regression equation
+
+ Let us perform a limited analysis of the residual from the regression equation. This residual was obtained by subtracting the values calculated using the regression equation from the initial EURUSD quotes.
+
+
+ Let me remind you that the characteristics of this residual will help us estimate the future stability of the trading system.
+
+ First, we will run a test for the analysis of correlations between the lags in the residual:
+
+
+
+
+
+
+ Fig. 7. Autocorrelation function of the residual
+
+
+
+
+ Unfortunately, the correlations between the lags are still there and their presence casts doubt on the statistical analysis.
+
+ The next test we are going to perform is the normality test of the residual.
+
+
+ The result appears as follows:
+
+
+
+ Fig. 8. Histogram of the residual from the regression equation
+
+
+
+
+ The probability of the residual to be normally distributed is 25.57% which is quite a big figure.
+
+ Let us perform tests for heteroscedasticity of the residual.
+
+
+ The results are as follows:
+--------------------------------------------------------------------------------
