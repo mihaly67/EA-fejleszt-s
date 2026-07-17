@@ -5,26 +5,49 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules"
 #property link      ""
-#property version   "1.00"
+#property version   "1.03"
 #property strict
 #property script_show_inputs
 
 //--- Bemeneti paraméterek
-input datetime InpStartDate = D'2026.07.01 00:00:00'; // Kezdő dátum
-input datetime InpEndDate   = D'2026.07.15 23:59:59'; // Záró dátum
-input string   InpFileName  = "Merkava_MTF_Data.csv"; // Fájl neve a kimentéshez
+input datetime InpStartDate = D'2026.04.01 00:00:00'; // Kezdő dátum
+input datetime InpEndDate   = D'2026.07.16 23:59:59'; // Záró dátum
+input string   InpFileName  = "Merkava_MTF_GCE_Data.csv"; // Fájl neve a kimentéshez
 
 // Globális változók
 int file_handle = INVALID_HANDLE;
+
+//+------------------------------------------------------------------+
+//| Helper: Idő konvertálása olvasható formátumba (MT5 Szerveridő)    |
+//+------------------------------------------------------------------+
+string FormatTime(ulong time_msc)
+  {
+   datetime time_sec = (datetime)(time_msc / 1000);
+   int msc = (int)(time_msc % 1000);
+   return StringFormat("%s.%03d", TimeToString(time_sec, TIME_DATE|TIME_SECONDS), msc);
+  }
 
 //+------------------------------------------------------------------+
 //| Script program start function                                    |
 //+------------------------------------------------------------------+
 void OnStart()
   {
-   Print("🚀 Merkava MTF Data Miner elindult. Zárt piacokon (hétvégén) is működik.");
+   Print("🚀 Merkava MTF Data Miner elindult. Célpont: ", _Symbol);
 
-   // Fájl megnyitása
+   // A letöltést kiterjesztjük 2 nappal korábbra a biztonság kedvéért.
+   datetime mtf_start_date = InpStartDate - (2 * 24 * 60 * 60);
+
+   MqlRates rates_1m[], rates_5m[], rates_15m[];
+   int copied_1m = CopyRates(_Symbol, PERIOD_M1, mtf_start_date, InpEndDate, rates_1m);
+   int copied_5m = CopyRates(_Symbol, PERIOD_M5, mtf_start_date, InpEndDate, rates_5m);
+   int copied_15m = CopyRates(_Symbol, PERIOD_M15, mtf_start_date, InpEndDate, rates_15m);
+
+   if(copied_1m <= 0 || copied_5m <= 0 || copied_15m <= 0)
+     {
+      Print("❌ KRITIKUS HIBA: Nem sikerült letölteni az M1, M5 vagy M15 adatokat.");
+      return;
+     }
+
    file_handle = FileOpen(InpFileName, FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
    if(file_handle == INVALID_HANDLE)
      {
@@ -32,40 +55,22 @@ void OnStart()
       return;
      }
 
-   // Fejléc írása
    FileWrite(file_handle, "Timestamp", "Bid", "Ask", "Bid_Volume", "Ask_Volume", "1m_Close", "5m_Close", "15m_Close");
 
-   Print("📥 Tick adatok letöltése folyamatban... Ez a folyamat több percet is igénybe vehet.");
-
-   // Történelmi tickek lekérése
    MqlTick tick_array[];
    int total_ticks = CopyTicksRange(_Symbol, tick_array, COPY_TICKS_ALL, (ulong)InpStartDate*1000, (ulong)InpEndDate*1000);
 
    if(total_ticks <= 0)
      {
-      Print("❌ Hiba: Nem található tick adat a megadott időszakra! Tölteni kell az MT5 history-ból.");
+      Print("❌ HIBA: Nem található tick adat az adott időszakra.");
       FileClose(file_handle);
       return;
-     }
-
-   Print("✅ Tick adatok sikeresen letöltve. Összesen: ", total_ticks, " darab. Feldolgozás és MTF szinkronizáció...");
-
-   // Történelmi MTF gyertyák előzetes letöltése cache-be
-   MqlRates rates_1m[], rates_5m[], rates_15m[];
-   int copied_1m = CopyRates(_Symbol, PERIOD_M1, InpStartDate, InpEndDate, rates_1m);
-   int copied_5m = CopyRates(_Symbol, PERIOD_M5, InpStartDate, InpEndDate, rates_5m);
-   int copied_15m = CopyRates(_Symbol, PERIOD_M15, InpStartDate, InpEndDate, rates_15m);
-
-   if(copied_1m <= 0 || copied_5m <= 0 || copied_15m <= 0)
-     {
-      Print("⚠️ Figyelmeztetés: Magasabb idősík adatok letöltése részlegesen sikertelen.");
      }
 
    int idx_1m = 0;
    int idx_5m = 0;
    int idx_15m = 0;
 
-   // 1 másodperces vödör változói
    ulong current_second_bucket = 0;
    double bucket_bid = 0.0;
    double bucket_ask = 0.0;
@@ -73,59 +78,42 @@ void OnStart()
    ulong bucket_ask_vol = 0;
    ulong tick_count_in_bucket = 0;
 
-   double last_1m_close = 0.0;
-   double last_5m_close = 0.0;
-   double last_15m_close = 0.0;
-
-   // Hogy elkerüljük az UI teljes fagyását egy végtelen ciklus miatt (Watchdog)
-   uint last_time = GetTickCount();
+   double last_1m_close = rates_1m[0].close;
+   double last_5m_close = rates_5m[0].close;
+   double last_15m_close = rates_15m[0].close;
 
    for(int i = 0; i < total_ticks; i++)
      {
-      // Log progress without spamming
-      if(i % 500000 == 0)
-        {
-         Print("Feldolgozás: ", i, " / ", total_ticks, " (", (i*100)/total_ticks, "%)");
-        }
-
       ulong tick_time_ms = tick_array[i].time_msc;
       ulong tick_second = tick_time_ms / 1000;
+      datetime tick_time_sec = (datetime)tick_second;
 
-      // MTF (M1, M5, M15) záróárak szinkronizálása a forward-fill logikával
-      // Addig iteráljuk a gyertyákat előre, amíg a gyertya ideje KISEBB VAGY EGYENLŐ a tick idejével.
-      // Tehát a tick pillanatában az *éppen megnyitott gyertya utolsó ismert close* értékét (ami valójában a live ár lenne) fogjuk be,
-      // DE a legfontosabb, hogy a nyers MTF struktúrát Forward Fill-el kitöltsük. Mivel az MqlRates-ben a close változik amíg nyitva van,
-      // visszamenőleg a történelmi fájlban a 'close' a végleges záróár. Ezt kell hozzáilleszteni a múltbeli tickhez.
-      while(idx_1m < copied_1m && rates_1m[idx_1m].time <= tick_array[i].time)
+      // MTF szinkronizáció
+      while(idx_1m < copied_1m - 1 && rates_1m[idx_1m + 1].time <= tick_time_sec)
         {
-         last_1m_close = rates_1m[idx_1m].close;
          idx_1m++;
+         last_1m_close = rates_1m[idx_1m].close;
         }
-      while(idx_5m < copied_5m && rates_5m[idx_5m].time <= tick_array[i].time)
+      while(idx_5m < copied_5m - 1 && rates_5m[idx_5m + 1].time <= tick_time_sec)
         {
-         last_5m_close = rates_5m[idx_5m].close;
          idx_5m++;
+         last_5m_close = rates_5m[idx_5m].close;
         }
-      while(idx_15m < copied_15m && rates_15m[idx_15m].time <= tick_array[i].time)
+      while(idx_15m < copied_15m - 1 && rates_15m[idx_15m + 1].time <= tick_time_sec)
         {
-         last_15m_close = rates_15m[idx_15m].close;
          idx_15m++;
+         last_15m_close = rates_15m[idx_15m].close;
         }
 
-      // Vödör lezárása és kiírása, ha másodpercet váltottunk
       if(current_second_bucket != tick_second)
         {
          if(tick_count_in_bucket > 0)
            {
-            string line = StringFormat("%I64u,%.5f,%.5f,%I64u,%I64u,%.5f,%.5f,%.5f",
-                                       current_second_bucket * 1000,
-                                       bucket_bid,
-                                       bucket_ask,
-                                       bucket_bid_vol,
-                                       bucket_ask_vol,
-                                       last_1m_close,
-                                       last_5m_close,
-                                       last_15m_close);
+            string time_str = FormatTime(current_second_bucket * 1000);
+            string line = StringFormat("%s,%.5f,%.5f,%I64u,%I64u,%.5f,%.5f,%.5f",
+                                       time_str, bucket_bid, bucket_ask,
+                                       bucket_bid_vol, bucket_ask_vol,
+                                       last_1m_close, last_5m_close, last_15m_close);
             FileWrite(file_handle, line);
            }
 
@@ -140,31 +128,39 @@ void OnStart()
       if(tick_array[i].bid > 0) bucket_bid = tick_array[i].bid;
       if(tick_array[i].ask > 0) bucket_ask = tick_array[i].ask;
 
-      // Trade Tick Volume kalkulációja a BUY/SELL flag alapján
-      if((tick_array[i].flags & TICK_FLAG_BUY) == TICK_FLAG_BUY)
+      // FIX: Precíz Trade Tick Volume kinyerés a Flag-ek alapján
+      // A VPS szerveren lévő CSV (@GCE_202607170000_202607172003.csv) bebizonyította,
+      // hogy az AMP szerveren a kötésekhez tartozik TICK_FLAG_BUY (32) és TICK_FLAG_SELL (64).
+      // Viszont a korábbi kód (i.flags & TICK_FLAG_BUY == TICK_FLAG_BUY) szintaxis hibás lehet,
+      // mert az MqlTick.volume_real (vagy volume) csak akkor érvényes, ha ez a flag kombinálódik
+      // a TICK_FLAG_VOLUME (16) vagy LAST (8) flaggel, illetve önmagában is létezhet.
+
+      ulong trade_vol = (ulong)tick_array[i].volume;
+
+      // Az új MT5 build-eknél a volumen a volume_real property-ben is szerepelhet, de ulong cast-tal jó a volume.
+      // Szigorú maszkolás
+      if (trade_vol > 0 && (tick_array[i].flags & TICK_FLAG_VOLUME) != 0)
         {
-         bucket_ask_vol += tick_array[i].volume; // Market Buy -> felemésztette az Ask volument
-        }
-      else if((tick_array[i].flags & TICK_FLAG_SELL) == TICK_FLAG_SELL)
-        {
-         bucket_bid_vol += tick_array[i].volume; // Market Sell -> felemésztette a Bid volument
+         if ((tick_array[i].flags & TICK_FLAG_BUY) != 0)
+           {
+            bucket_ask_vol += trade_vol; // Market Buy felébresztette az Askot (vételi nyomás)
+           }
+         else if ((tick_array[i].flags & TICK_FLAG_SELL) != 0)
+           {
+            bucket_bid_vol += trade_vol; // Market Sell felébresztette a Bidet (eladási nyomás)
+           }
         }
 
       tick_count_in_bucket++;
      }
 
-   // Az utolsó vödör kiírása a ciklus után
    if(tick_count_in_bucket > 0)
      {
-      string line = StringFormat("%I64u,%.5f,%.5f,%I64u,%I64u,%.5f,%.5f,%.5f",
-                                 current_second_bucket * 1000,
-                                 bucket_bid,
-                                 bucket_ask,
-                                 bucket_bid_vol,
-                                 bucket_ask_vol,
-                                 last_1m_close,
-                                 last_5m_close,
-                                 last_15m_close);
+      string time_str = FormatTime(current_second_bucket * 1000);
+      string line = StringFormat("%s,%.5f,%.5f,%I64u,%I64u,%.5f,%.5f,%.5f",
+                                 time_str, bucket_bid, bucket_ask,
+                                 bucket_bid_vol, bucket_ask_vol,
+                                 last_1m_close, last_5m_close, last_15m_close);
       FileWrite(file_handle, line);
      }
 
