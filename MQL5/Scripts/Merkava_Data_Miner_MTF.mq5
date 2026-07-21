@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules"
 #property link      ""
-#property version   "1.03"
+#property version   "1.04"
 #property strict
 #property script_show_inputs
 
@@ -74,8 +74,11 @@ void OnStart()
    ulong current_second_bucket = 0;
    double bucket_bid = 0.0;
    double bucket_ask = 0.0;
-   ulong bucket_bid_vol = 0;
-   ulong bucket_ask_vol = 0;
+
+   // FIX: Volumen változók Double típusra (double volume_real támogatáshoz)
+   double bucket_bid_vol = 0.0;
+   double bucket_ask_vol = 0.0;
+
    ulong tick_count_in_bucket = 0;
 
    double last_1m_close = rates_1m[0].close;
@@ -109,8 +112,9 @@ void OnStart()
         {
          if(tick_count_in_bucket > 0)
            {
+            // Oszlop formátumok javítása %.8f-re a volume miatt (pl. 1.00000000)
             string time_str = FormatTime(current_second_bucket * 1000);
-            string line = StringFormat("%s,%.5f,%.5f,%I64u,%I64u,%.5f,%.5f,%.5f",
+            string line = StringFormat("%s,%.5f,%.5f,%.8f,%.8f,%.5f,%.5f,%.5f",
                                        time_str, bucket_bid, bucket_ask,
                                        bucket_bid_vol, bucket_ask_vol,
                                        last_1m_close, last_5m_close, last_15m_close);
@@ -120,34 +124,26 @@ void OnStart()
          current_second_bucket = tick_second;
          bucket_bid = tick_array[i].bid;
          bucket_ask = tick_array[i].ask;
-         bucket_bid_vol = 0;
-         bucket_ask_vol = 0;
+         bucket_bid_vol = 0.0;
+         bucket_ask_vol = 0.0;
          tick_count_in_bucket = 0;
         }
 
       if(tick_array[i].bid > 0) bucket_bid = tick_array[i].bid;
       if(tick_array[i].ask > 0) bucket_ask = tick_array[i].ask;
 
-      // FIX: Precíz Trade Tick Volume kinyerés a Flag-ek alapján
-      // A VPS szerveren lévő CSV (@GCE_202607170000_202607172003.csv) bebizonyította,
-      // hogy az AMP szerveren a kötésekhez tartozik TICK_FLAG_BUY (32) és TICK_FLAG_SELL (64).
-      // Viszont a korábbi kód (i.flags & TICK_FLAG_BUY == TICK_FLAG_BUY) szintaxis hibás lehet,
-      // mert az MqlTick.volume_real (vagy volume) csak akkor érvényes, ha ez a flag kombinálódik
-      // a TICK_FLAG_VOLUME (16) vagy LAST (8) flaggel, illetve önmagában is létezhet.
+      // FIX: Szuperszigorú Trade Tick Volume (Double - volume_real)
+      double trade_vol = tick_array[i].volume_real;
 
-      ulong trade_vol = (ulong)tick_array[i].volume;
-
-      // Az új MT5 build-eknél a volumen a volume_real property-ben is szerepelhet, de ulong cast-tal jó a volume.
-      // Szigorú maszkolás
-      if (trade_vol > 0 && (tick_array[i].flags & TICK_FLAG_VOLUME) != 0)
+      if (trade_vol > 0.0 && (tick_array[i].flags & TICK_FLAG_VOLUME) != 0)
         {
          if ((tick_array[i].flags & TICK_FLAG_BUY) != 0)
            {
-            bucket_ask_vol += trade_vol; // Market Buy felébresztette az Askot (vételi nyomás)
+            bucket_ask_vol += trade_vol; // Market Buy (vételi nyomás)
            }
          else if ((tick_array[i].flags & TICK_FLAG_SELL) != 0)
            {
-            bucket_bid_vol += trade_vol; // Market Sell felébresztette a Bidet (eladási nyomás)
+            bucket_bid_vol += trade_vol; // Market Sell (eladási nyomás)
            }
         }
 
@@ -157,7 +153,7 @@ void OnStart()
    if(tick_count_in_bucket > 0)
      {
       string time_str = FormatTime(current_second_bucket * 1000);
-      string line = StringFormat("%s,%.5f,%.5f,%I64u,%I64u,%.5f,%.5f,%.5f",
+      string line = StringFormat("%s,%.5f,%.5f,%.8f,%.8f,%.5f,%.5f,%.5f",
                                  time_str, bucket_bid, bucket_ask,
                                  bucket_bid_vol, bucket_ask_vol,
                                  last_1m_close, last_5m_close, last_15m_close);
