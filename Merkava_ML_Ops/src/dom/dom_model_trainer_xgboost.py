@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
-from catboost import CatBoostClassifier
+import xgboost as xgb
 from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score
+from sklearn.utils.class_weight import compute_sample_weight
 import os
 import sys
 
@@ -20,14 +21,12 @@ def get_purged_kfold_splits(df, n_splits=5, embargo_pct=0.01):
 
     return splits
 
-def compute_sample_weights(df):
-    class_counts = df['Target_Label'].value_counts()
-    total_samples = len(df)
-    weights = df['Target_Label'].map(lambda x: total_samples / (len(class_counts) * class_counts[x]))
-    return weights
+def compute_sample_weights(y):
+    # XGBoost esetében az sklearn balance használható
+    return compute_sample_weight('balanced', y)
 
-def train_catboost_model(data_path, model_out_dir):
-    print(f"🚀 CatBoost Tanítás indítása (Purged K-Fold & Embargo): {data_path}")
+def train_xgboost_model(data_path, model_out_dir):
+    print(f"🚀 XGBoost Tanítás indítása (Purged K-Fold & Embargo): {data_path}")
 
     df = pd.read_csv(data_path).dropna()
 
@@ -48,7 +47,7 @@ def train_catboost_model(data_path, model_out_dir):
     y_raw = df_cv[target].values
     y = y_raw + 1
 
-    weights = compute_sample_weights(df_cv).values
+    weights = compute_sample_weights(y)
     splits = get_purged_kfold_splits(df_cv, n_splits=5, embargo_pct=0.01)
 
     best_model = None
@@ -57,7 +56,7 @@ def train_catboost_model(data_path, model_out_dir):
 
     os.makedirs(model_out_dir, exist_ok=True)
 
-    print("\n🌲 K-Fold Keresztvalidáció indítása (CatBoost):")
+    print("\n🌲 K-Fold Keresztvalidáció indítása (XGBoost):")
     for fold, (train_idx, test_idx) in enumerate(splits):
         if len(train_idx) == 0:
             continue
@@ -65,21 +64,21 @@ def train_catboost_model(data_path, model_out_dir):
         X_train, y_train, w_train = X[train_idx], y[train_idx], weights[train_idx]
         X_test, y_test = X[test_idx], y[test_idx]
 
-        model = CatBoostClassifier(
-            iterations=300,
+        # XGBoost Classifier
+        model = xgb.XGBClassifier(
+            n_estimators=300,
             learning_rate=0.01,
-            depth=4,
-            loss_function='MultiClass',
-            random_seed=42,
-            verbose=False,
-            thread_count=2
+            max_depth=4,
+            random_state=42,
+            n_jobs=2,
+            early_stopping_rounds=30
         )
 
         model.fit(
             X_train, y_train,
             sample_weight=w_train,
-            eval_set=(X_test, y_test),
-            early_stopping_rounds=30
+            eval_set=[(X_test, y_test)],
+            verbose=False
         )
 
         preds = model.predict(X_test)
@@ -95,11 +94,18 @@ def train_catboost_model(data_path, model_out_dir):
     print(f"\n📊 Átlagos CV (K-Fold) Accuracy: {np.mean(fold_scores):.4f}")
 
     if best_model is not None:
-        model_path = os.path.join(model_out_dir, 'catboost_copilot_model.cbm')
-        best_model.save_model(model_path)
+        import joblib
+        model_path = os.path.join(model_out_dir, 'xgboost_copilot_model.json')
+        # Use joblib to save the scikit-learn wrapper API properly
+        joblib.dump(best_model, os.path.join(model_out_dir, 'xgboost_copilot_model.pkl'))
+        # Try to save the core booster as well for generic use
+        try:
+            best_model.get_booster().save_model(model_path)
+        except Exception:
+            pass
         print(f"💾 A legjobb modell elmentve: {model_path}")
 
-        importance = best_model.get_feature_importance()
+        importance = best_model.feature_importances_
         print("\n🔬 Feature Importance (A legjobb modell alapján):")
         for i, (feat, imp) in enumerate(zip(features, importance)):
             print(f"   - {feat}: {imp:.4f}")
@@ -113,4 +119,4 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         data_path = sys.argv[1]
 
-    train_catboost_model(data_path, model_out_dir)
+    train_xgboost_model(data_path, model_out_dir)

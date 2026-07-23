@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
-from catboost import CatBoostClassifier
+import lightgbm as lgb
 from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, classification_report
+import joblib
 import os
 import sys
 
@@ -23,13 +24,15 @@ def get_purged_kfold_splits(df, n_splits=5, embargo_pct=0.01):
 def compute_sample_weights(df):
     class_counts = df['Target_Label'].value_counts()
     total_samples = len(df)
+
     weights = df['Target_Label'].map(lambda x: total_samples / (len(class_counts) * class_counts[x]))
     return weights
 
-def train_catboost_model(data_path, model_out_dir):
-    print(f"🚀 CatBoost Tanítás indítása (Purged K-Fold & Embargo): {data_path}")
+def train_lgbm_model(data_path, model_out_dir):
+    print(f"🚀 LightGBM Tanítás indítása (Purged K-Fold & Embargo): {data_path}")
 
-    df = pd.read_csv(data_path).dropna()
+    df = pd.read_csv(data_path)
+    df = df.dropna()
 
     features = [
         'OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy',
@@ -44,7 +47,6 @@ def train_catboost_model(data_path, model_out_dir):
 
     X = df_cv[features].values
 
-    # Kategóriák eltolása: -1, 0, 1 -> 0, 1, 2
     y_raw = df_cv[target].values
     y = y_raw + 1
 
@@ -57,7 +59,7 @@ def train_catboost_model(data_path, model_out_dir):
 
     os.makedirs(model_out_dir, exist_ok=True)
 
-    print("\n🌲 K-Fold Keresztvalidáció indítása (CatBoost):")
+    print("\n🌲 K-Fold Keresztvalidáció indítása:")
     for fold, (train_idx, test_idx) in enumerate(splits):
         if len(train_idx) == 0:
             continue
@@ -65,21 +67,20 @@ def train_catboost_model(data_path, model_out_dir):
         X_train, y_train, w_train = X[train_idx], y[train_idx], weights[train_idx]
         X_test, y_test = X[test_idx], y[test_idx]
 
-        model = CatBoostClassifier(
-            iterations=300,
+        model = lgb.LGBMClassifier(
+            n_estimators=300,
             learning_rate=0.01,
-            depth=4,
-            loss_function='MultiClass',
-            random_seed=42,
-            verbose=False,
-            thread_count=2
+            max_depth=4,
+            class_weight='balanced',
+            random_state=42,
+            n_jobs=2
         )
 
         model.fit(
             X_train, y_train,
             sample_weight=w_train,
-            eval_set=(X_test, y_test),
-            early_stopping_rounds=30
+            eval_set=[(X_test, y_test)],
+            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)]
         )
 
         preds = model.predict(X_test)
@@ -95,14 +96,14 @@ def train_catboost_model(data_path, model_out_dir):
     print(f"\n📊 Átlagos CV (K-Fold) Accuracy: {np.mean(fold_scores):.4f}")
 
     if best_model is not None:
-        model_path = os.path.join(model_out_dir, 'catboost_copilot_model.cbm')
-        best_model.save_model(model_path)
+        model_path = os.path.join(model_out_dir, 'lgbm_copilot_model.txt')
+        best_model.booster_.save_model(model_path)
         print(f"💾 A legjobb modell elmentve: {model_path}")
 
-        importance = best_model.get_feature_importance()
+        importance = best_model.feature_importances_
         print("\n🔬 Feature Importance (A legjobb modell alapján):")
         for i, (feat, imp) in enumerate(zip(features, importance)):
-            print(f"   - {feat}: {imp:.4f}")
+            print(f"   - {feat}: {imp}")
 
     return best_model
 
@@ -113,4 +114,4 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         data_path = sys.argv[1]
 
-    train_catboost_model(data_path, model_out_dir)
+    train_lgbm_model(data_path, model_out_dir)
