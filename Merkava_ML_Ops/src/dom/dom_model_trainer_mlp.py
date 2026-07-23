@@ -51,16 +51,17 @@ def train_mlp_model(data_path, model_out_dir):
     features = ['OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy']
     target = 'Target_Label'
 
-    X_raw = df[features].values
+    X = df[features].values
     y = df[target].values # Itt hagyhatjuk a -1, 0, 1 osztályokat
 
-    # MLP esetén kötelező a Standard Scaling (Z-Score)
-    scaler = StandardScaler()
-    X = scaler.fit_transform(X_raw)
+    # Szigorú Hold-Out Test set elkülönítése a K-Fold elől a valódi OOS teszthez (Utolsó 20%)
+    holdout_idx = int(len(df) * 0.8)
+    df_cv = df.iloc[:holdout_idx].copy()
 
-    splits = get_purged_kfold_splits(df, n_splits=5, embargo_pct=0.01)
+    splits = get_purged_kfold_splits(df_cv, n_splits=5, embargo_pct=0.01)
 
     best_model = None
+    best_scaler = None
     best_score = 0
     fold_scores = []
 
@@ -71,8 +72,13 @@ def train_mlp_model(data_path, model_out_dir):
         if len(train_idx) == 0:
             continue
 
-        X_train, y_train = X[train_idx], y[train_idx]
-        X_test, y_test = X[test_idx], y[test_idx]
+        # StandardScaler csak a Train halmazon illesztve (Data Leakage elkerülése)
+        scaler = StandardScaler()
+        X_train = scaler.fit_transform(X[train_idx])
+        y_train = y[train_idx]
+
+        X_test = scaler.transform(X[test_idx])
+        y_test = y[test_idx]
 
         # Egyszerű sekély háló (pl. két rejtett réteg)
         # Az MLPClassifier önmagában tudja kezelni a többmagos CPU-t a BLAS/LAPACK (numpy) hívásokon keresztül
@@ -102,15 +108,16 @@ def train_mlp_model(data_path, model_out_dir):
         if score > best_score:
             best_score = score
             best_model = model
+            best_scaler = scaler
 
     avg_score = np.mean(fold_scores)
-    log(f"\n📊 Átlagos OOS (Out-of-Sample) Accuracy: {avg_score:.4f}")
+    log(f"\n📊 Átlagos CV (K-Fold) Accuracy: {avg_score:.4f}")
 
     if best_model is not None:
         model_path = os.path.join(model_out_dir, 'mlp_copilot_model.pkl')
         scaler_path = os.path.join(model_out_dir, 'mlp_scaler.pkl')
         joblib.dump(best_model, model_path)
-        joblib.dump(scaler, scaler_path)
+        joblib.dump(best_scaler, scaler_path)
         log(f"💾 A legjobb modell elmentve: {model_path}")
         log(f"💾 A hozzá tartozó Scaler elmentve: {scaler_path}")
         # MLP esetében nincs közvetlen feature importance érték.
