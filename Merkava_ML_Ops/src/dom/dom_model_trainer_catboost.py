@@ -66,7 +66,6 @@ def train_catboost_model(data_path, model_out_dir):
             learning_rate=0.01,
             depth=4,
             loss_function='MultiClass',
-            auto_class_weights='Balanced',
             random_seed=42,
             verbose=False,
             thread_count=2

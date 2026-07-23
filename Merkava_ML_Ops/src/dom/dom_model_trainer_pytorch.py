@@ -133,7 +133,7 @@ def train_pytorch_model(data_path, model_out_dir):
 
             if current_score > best_fold_score:
                 best_fold_score = current_score
-                best_fold_model = model.state_dict().copy()
+                best_fold_model = {k: v.cpu().clone() for k, v in model.state_dict().items()}
                 no_improve_epochs = 0
             else:
                 no_improve_epochs += 1
