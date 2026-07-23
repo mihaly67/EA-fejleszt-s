@@ -58,7 +58,11 @@ def train_pytorch_model(data_path, model_out_dir):
     log(f"🚀 PyTorch MLP Tanítás indítása (Purged K-Fold & Embargo): {data_path}")
 
     df = pd.read_csv(data_path).dropna()
-    features = ['OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy']
+    features = [
+        'OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy',
+        'Micro_RSI_14', 'Micro_MACD_Hist', 'Micro_BB_ZScore',
+        'M15_RSI_14', 'M15_MACD_Hist', 'M15_BB_ZScore'
+    ]
 
     # Hold-out halmaz az igazi OOS teszthez (80%)
     holdout_idx = int(len(df) * 0.8)

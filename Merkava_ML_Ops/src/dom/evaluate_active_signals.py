@@ -9,7 +9,11 @@ from sklearn.metrics import classification_report
 def evaluate_active_signals(data_path, model_dir):
     print(f"🔄 Adatok betöltése: {data_path}")
     df = pd.read_csv(data_path).dropna()
-    features = ['OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy']
+    features = [
+        'OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy',
+        'Micro_RSI_14', 'Micro_MACD_Hist', 'Micro_BB_ZScore',
+        'M15_RSI_14', 'M15_MACD_Hist', 'M15_BB_ZScore'
+    ]
     target = 'Target_Label'
 
     # Eltoljuk az osztályokat 0, 1, 2-re, ahogy a modellek betanultak
@@ -23,11 +27,11 @@ def evaluate_active_signals(data_path, model_dir):
     X_test = X[split_idx:]
     y_test = y_true[split_idx:]
 
+    # A 3 fa értékelése
     models = {
         'LightGBM': os.path.join(model_dir, 'lgbm_copilot_model.txt'),
         'CatBoost': os.path.join(model_dir, 'catboost_copilot_model.cbm'),
-        'sklearn_MLP': os.path.join(model_dir, 'mlp_copilot_model.pkl'),
-        'PyTorch_MLP': os.path.join(model_dir, 'pytorch_copilot_model.pt')
+        'XGBoost': os.path.join(model_dir, 'xgboost_copilot_model.pkl')
     }
 
     for name, path in models.items():
@@ -47,31 +51,9 @@ def evaluate_active_signals(data_path, model_dir):
             elif name == 'CatBoost':
                 model = CatBoostClassifier().load_model(path)
                 preds = model.predict(X_test).flatten()
-            elif name == 'sklearn_MLP':
+            elif name == 'XGBoost':
                 model = joblib.load(path)
-                scaler_path = os.path.join(model_dir, 'mlp_scaler.pkl')
-                scaler = joblib.load(scaler_path)
-                X_test_scaled = scaler.transform(X_test)
-                preds_raw = model.predict(X_test_scaled)
-                preds = preds_raw + 1 # -1, 0, 1 -> 0, 1, 2
-            elif name == 'PyTorch_MLP':
-                import torch
-                from dom_model_trainer_pytorch import CopilotMLP
-
-                model_state = torch.load(path)
-                model = CopilotMLP(input_size=len(features), num_classes=3)
-                model.load_state_dict(model_state)
-                model.eval()
-
-                scaler_path = os.path.join(model_dir, 'pytorch_scaler.pt')
-                scaler = joblib.load(scaler_path)
-                X_test_scaled = scaler.transform(X_test)
-
-                with torch.no_grad():
-                    X_test_t = torch.FloatTensor(X_test_scaled)
-                    outputs = model(X_test_t)
-                    _, predicted = torch.max(outputs.data, 1)
-                    preds = predicted.numpy()
+                preds = model.predict(X_test)
 
             # Az osztályok jelentése:
             # 0: Short (-1)

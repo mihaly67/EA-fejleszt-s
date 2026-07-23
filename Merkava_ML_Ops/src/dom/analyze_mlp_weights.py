@@ -15,7 +15,11 @@ def analyze_mlp(model_path):
         print(f"❌ Hiba a modell betöltésekor: {e}")
         return
 
-    features = ['OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy']
+    features = [
+        'OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy',
+        'Micro_RSI_14', 'Micro_MACD_Hist', 'Micro_BB_ZScore',
+        'M15_RSI_14', 'M15_MACD_Hist', 'M15_BB_ZScore'
+    ]
 
     if not hasattr(model, 'coefs_'):
         print("❌ Hiba: A betöltött modellnek nincsenek súlymátrixai (nem MLPClassifier).")
