@@ -27,12 +27,34 @@ def evaluate_active_signals(data_path, model_dir):
     X_test = X[split_idx:]
     y_test = y_true[split_idx:]
 
-    # A 3 fa értékelése
+    # A 3 fa és a Meta-Modell értékelése
     models = {
         'LightGBM': os.path.join(model_dir, 'lgbm_copilot_model.txt'),
         'CatBoost': os.path.join(model_dir, 'catboost_copilot_model.cbm'),
-        'XGBoost': os.path.join(model_dir, 'xgboost_copilot_model.pkl')
+        'XGBoost': os.path.join(model_dir, 'xgboost_copilot_model.pkl'),
+        'Meta_RandomForest': os.path.join(model_dir, 'rf_meta_copilot_model.pkl')
     }
+
+    # Meta Feature generáláshoz kell egy Booster a memóriába
+    try:
+        lgbm_booster = lgb.Booster(model_file=models['LightGBM'])
+        meta_probs_test = lgbm_booster.predict(X_test)
+
+        # Meta feature-ök (P_Short, P_Noise, P_Long, P_Diff, P_Velocity, P_Acceleration, P_Exhaustion) szimulálása teszt adatokra
+        # (Figyelem: vektorosan számoljuk az egyszerűség kedvéért)
+        p_short = meta_probs_test[:, 0]
+        p_noise = meta_probs_test[:, 1]
+        p_long = meta_probs_test[:, 2]
+        p_diff = p_long - p_short
+        p_velocity = np.insert(np.diff(p_diff), 0, 0)
+        p_accel = np.insert(np.diff(p_velocity), 0, 0)
+        p_exh = np.where((p_long > 0.7) & (p_accel < 0), 1, np.where((p_short > 0.7) & (p_accel > 0), -1, 0))
+
+        X_test_meta = np.column_stack([p_short, p_noise, p_long, p_diff, p_velocity, p_accel, p_exh])
+
+    except Exception as e:
+        print(f"Hiba a Meta feature-ök generálásánál: {e}")
+        X_test_meta = None
 
     for name, path in models.items():
         if not os.path.exists(path):
@@ -54,6 +76,11 @@ def evaluate_active_signals(data_path, model_dir):
             elif name == 'XGBoost':
                 model = joblib.load(path)
                 preds = model.predict(X_test)
+            elif name == 'Meta_RandomForest':
+                if X_test_meta is None:
+                    continue
+                model = joblib.load(path)
+                preds = model.predict(X_test_meta)
 
             # Az osztályok jelentése:
             # 0: Short (-1)
