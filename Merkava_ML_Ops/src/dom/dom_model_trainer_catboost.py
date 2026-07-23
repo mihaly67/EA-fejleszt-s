@@ -29,20 +29,23 @@ def compute_sample_weights(df):
 def train_catboost_model(data_path, model_out_dir):
     print(f"🚀 CatBoost Tanítás indítása (Purged K-Fold & Embargo): {data_path}")
 
-    df = pd.read_csv(data_path)
-    df = df.dropna()
+    df = pd.read_csv(data_path).dropna()
 
     features = ['OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy']
     target = 'Target_Label'
 
-    X = df[features].values
+    # Szigorú Hold-Out Test set elkülönítése a valódi OOS teszthez (Utolsó 20%)
+    holdout_idx = int(len(df) * 0.8)
+    df_cv = df.iloc[:holdout_idx].copy()
+
+    X = df_cv[features].values
 
     # Kategóriák eltolása: -1, 0, 1 -> 0, 1, 2
-    y_raw = df[target].values
+    y_raw = df_cv[target].values
     y = y_raw + 1
 
-    weights = compute_sample_weights(df).values
-    splits = get_purged_kfold_splits(df, n_splits=5, embargo_pct=0.01)
+    weights = compute_sample_weights(df_cv).values
+    splits = get_purged_kfold_splits(df_cv, n_splits=5, embargo_pct=0.01)
 
     best_model = None
     best_score = 0
@@ -86,7 +89,7 @@ def train_catboost_model(data_path, model_out_dir):
             best_score = score
             best_model = model
 
-    print(f"\n📊 Átlagos OOS (Out-of-Sample) Accuracy: {np.mean(fold_scores):.4f}")
+    print(f"\n📊 Átlagos CV (K-Fold) Accuracy: {np.mean(fold_scores):.4f}")
 
     if best_model is not None:
         model_path = os.path.join(model_out_dir, 'catboost_copilot_model.cbm')
