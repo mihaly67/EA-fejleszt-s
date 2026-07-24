@@ -15,11 +15,17 @@ def analyze_mlp(model_path):
         print(f"❌ Hiba a modell betöltésekor: {e}")
         return
 
-    features = [
-        'OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy',
-        'Micro_RSI_14', 'Micro_MACD_Hist', 'Micro_BB_ZScore',
-        'M15_RSI_14', 'M15_MACD_Hist', 'M15_BB_ZScore'
-    ]
+    # Dinamikus dummy dataframe a feature nevekhez (mert az MLP nem menti el őket)
+    # Figyelem: feltételezi, hogy van egy training data file.
+    train_path = '/home/misi/Merkava_ML_Ops/data/processed/features_dollar_bars.csv'
+    try:
+        import pandas as pd
+        from hud_logic_prep import get_dynamic_features
+        df = pd.read_csv(train_path, nrows=5)
+        features = get_dynamic_features(df)
+    except Exception as e:
+        print(f"Hiba a feature nevek betöltésekor: {e}")
+        features = [f"Feature_{i}" for i in range(model.coefs_[0].shape[0])]
 
     if not hasattr(model, 'coefs_'):
         print("❌ Hiba: A betöltött modellnek nincsenek súlymátrixai (nem MLPClassifier).")

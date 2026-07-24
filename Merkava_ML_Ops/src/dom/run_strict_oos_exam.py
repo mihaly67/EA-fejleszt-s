@@ -46,7 +46,8 @@ def run_pipeline(raw_csv_path):
          os.rename(default_feat_out, features_csv)
 
     # 3. Lépés: Címkézés (Hogy legyen mihez viszonyítani a pontosságot)
-    run_cmd(f"/home/misi/ML_Ops/venv/bin/python3 /home/misi/Merkava_ML_Ops/src/dom/dom_labeler_mtf.py {features_csv}")
+    # BEKAPCSOLVA: Dinamikus ATR a vizsgában is!
+    run_cmd(f"/home/misi/ML_Ops/venv/bin/python3 /home/misi/Merkava_ML_Ops/src/dom/dom_labeler_mtf.py {features_csv} --dynamic_atr")
 
     default_labeled_out = os.path.join(exam_dir, 'labeled_dollar_bars.csv')
     if os.path.exists(default_labeled_out):

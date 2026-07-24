@@ -30,11 +30,8 @@ def train_xgboost_model(data_path, model_out_dir):
 
     df = pd.read_csv(data_path).dropna()
 
-    features = [
-        'OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy',
-        'Micro_RSI_14', 'Micro_MACD_Hist', 'Micro_BB_ZScore',
-        'M15_RSI_14', 'M15_MACD_Hist', 'M15_BB_ZScore'
-    ]
+    from hud_logic_prep import get_dynamic_features
+    features = get_dynamic_features(df)
     target = 'Target_Label'
 
     # Szigorú Hold-Out Test set elkülönítése a valódi OOS teszthez (Utolsó 20%)

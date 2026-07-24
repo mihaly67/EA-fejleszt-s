@@ -12,11 +12,8 @@ def run_diagnostics(train_path, exam_path, model_path):
     df_train = pd.read_csv(train_path).dropna()
     df_exam = pd.read_csv(exam_path).dropna()
 
-    features = [
-        'OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy',
-        'Micro_RSI_14', 'Micro_MACD_Hist', 'Micro_BB_ZScore',
-        'M15_RSI_14', 'M15_MACD_Hist', 'M15_BB_ZScore'
-    ]
+    from hud_logic_prep import get_dynamic_features
+    features = get_dynamic_features(df_train)
 
     print("\n1. FEATURE ELOSZLÁSOK ÖSSZEHASONLÍTÁSA (Átlag és Szórás)")
     print(f"{'Feature':<20} | {'Tanító Átlag':<15} | {'Vizsga Átlag':<15} | {'Eltérés (%)':<15}")

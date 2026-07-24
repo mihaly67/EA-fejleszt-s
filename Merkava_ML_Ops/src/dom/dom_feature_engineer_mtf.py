@@ -53,6 +53,9 @@ class MTFFeatureEngineer:
         df['Micro_MACD_Hist'] = macd.macd_diff().shift(1)
         bb = ta.volatility.BollingerBands(df['Close'], window=20, window_dev=2)
         df['Micro_BB_ZScore'] = ((df['Close'] - bb.bollinger_mavg()) / (df['Close'].rolling(20).std() + 1e-9)).shift(1)
+        df['Micro_ROC_5'] = ta.momentum.ROCIndicator(df['Close'], window=5).roc().shift(1)
+        # MFI (Money Flow Index) Requires High, Low, Close, Volume
+        df['Micro_MFI_5'] = ta.volume.MFIIndicator(high=df['High'], low=df['Low'], close=df['Close'], volume=df['Total_Volume'], window=5).money_flow_index().shift(1)
 
         # --- MAKRO M15 INDIKÁTOROK KISZÁMÍTÁSA HELYESEN ---
         print("🔨 Feature Engineering: Macro (M15) Oscillators (Resampled)")
@@ -60,39 +63,60 @@ class MTFFeatureEngineer:
         df_temp = df.copy()
         df_temp.set_index('End_Timestamp', inplace=True)
 
-        # M15 aggregáció (Igazi OHLC gyertyák)
+        # M15 aggregáció (Igazi OHLC gyertyák a volume-mal)
         # Fontos: label='right', closed='right' garantálja, hogy a gyertya csak a 15. perc végén jön létre,
         # megakadályozva a jövőbe látást (Data Leakage) a merge során.
-        m15_ohlc = df_temp['Close'].resample('15Min', label='right', closed='right').ohlc()
-        m15_ohlc = m15_ohlc.dropna()
+        # Itt hozzáadjuk az 'agg' funkciót, hogy az idősíkban a High, Low, és Volume is meglegyen az MFI számára.
+        m15_ohlcv = df_temp.resample('15Min', label='right', closed='right').agg({
+            'Open': 'first',
+            'High': 'max',
+            'Low': 'min',
+            'Close': 'last',
+            'Total_Volume': 'sum'
+        })
+        m15_ohlcv = m15_ohlcv.dropna()
 
-        if len(m15_ohlc) > 30:
-            m15_ohlc['M15_RSI_14_Raw'] = ta.momentum.RSIIndicator(m15_ohlc['close'], window=14).rsi()
-            macd_m15 = ta.trend.MACD(m15_ohlc['close'], window_slow=26, window_fast=12, window_sign=9)
-            m15_ohlc['M15_MACD_Hist_Raw'] = macd_m15.macd_diff()
-            bb_m15 = ta.volatility.BollingerBands(m15_ohlc['close'], window=20, window_dev=2)
-            m15_ohlc['M15_BB_ZScore_Raw'] = (m15_ohlc['close'] - bb_m15.bollinger_mavg()) / (m15_ohlc['close'].rolling(20).std() + 1e-9)
+        if len(m15_ohlcv) > 30:
+            m15_ohlcv['M15_RSI_14_Raw'] = ta.momentum.RSIIndicator(m15_ohlcv['Close'], window=14).rsi()
+            macd_m15 = ta.trend.MACD(m15_ohlcv['Close'], window_slow=26, window_fast=12, window_sign=9)
+            m15_ohlcv['M15_MACD_Hist_Raw'] = macd_m15.macd_diff()
+            bb_m15 = ta.volatility.BollingerBands(m15_ohlcv['Close'], window=20, window_dev=2)
+            m15_ohlcv['M15_BB_ZScore_Raw'] = (m15_ohlcv['Close'] - bb_m15.bollinger_mavg()) / (m15_ohlcv['Close'].rolling(20).std() + 1e-9)
+            m15_ohlcv['M15_ROC_5_Raw'] = ta.momentum.ROCIndicator(m15_ohlcv['Close'], window=5).roc()
+            m15_ohlcv['M15_MFI_5_Raw'] = ta.volume.MFIIndicator(high=m15_ohlcv['High'], low=m15_ohlcv['Low'], close=m15_ohlcv['Close'], volume=m15_ohlcv['Total_Volume'], window=5).money_flow_index()
 
             # Forward Fill rá a Dollar Barokra
             # Indexet visszaállítjuk
-            m15_ohlc = m15_ohlc.reset_index()
+            m15_ohlcv = m15_ohlcv.reset_index()
             # Csatlakozás "asof" (azaz a legutolsó lezárt M15 értéket kapja meg a Dollar Bar)
-            df = pd.merge_asof(df.sort_values('End_Timestamp'), m15_ohlc[['End_Timestamp', 'M15_RSI_14_Raw', 'M15_MACD_Hist_Raw', 'M15_BB_ZScore_Raw']], on='End_Timestamp', direction='backward')
+            df = pd.merge_asof(df.sort_values('End_Timestamp'), m15_ohlcv[['End_Timestamp', 'M15_RSI_14_Raw', 'M15_MACD_Hist_Raw', 'M15_BB_ZScore_Raw', 'M15_ROC_5_Raw', 'M15_MFI_5_Raw']], on='End_Timestamp', direction='backward')
 
             # Data Leakage védelem: A Macro értékeket is shifeljük, hogy biztosan csak a MÚLTAT lássa a modell
             df['M15_RSI_14'] = df['M15_RSI_14_Raw'].shift(1)
             df['M15_MACD_Hist'] = df['M15_MACD_Hist_Raw'].shift(1)
             df['M15_BB_ZScore'] = df['M15_BB_ZScore_Raw'].shift(1)
+            df['M15_ROC_5'] = df['M15_ROC_5_Raw'].shift(1)
+            df['M15_MFI_5'] = df['M15_MFI_5_Raw'].shift(1)
 
-            df.drop(['M15_RSI_14_Raw', 'M15_MACD_Hist_Raw', 'M15_BB_ZScore_Raw'], axis=1, inplace=True)
+            df.drop(['M15_RSI_14_Raw', 'M15_MACD_Hist_Raw', 'M15_BB_ZScore_Raw', 'M15_ROC_5_Raw', 'M15_MFI_5_Raw'], axis=1, inplace=True)
         else:
             print("⚠️ Nincs elég adat az M15 resample-hez, kimarad.")
             df['M15_RSI_14'] = 0
             df['M15_MACD_Hist'] = 0
             df['M15_BB_ZScore'] = 0
+            df['M15_ROC_5'] = 0
+            df['M15_MFI_5'] = 0
 
         # Drop NaN-s caused by rolling windows and shifts
         df = df.dropna().copy()
+
+        # --- IDŐSZAK SZŰRÉS (Bemelegítés és Éjszakai piac kivágása) ---
+        print("🔨 Filtering Trading Hours (08:00 - 23:59)")
+        df['Hour'] = df['End_Timestamp'].dt.hour
+
+        # Eldobjuk az éjszakai (00:00 - 07:59) illikvid, oldalazó szakaszokat
+        df = df[df['Hour'] >= 8].copy()
+        df.drop(['Hour'], axis=1, inplace=True)
 
         print(f"💾 Saving processed features: {self.output_path} ({len(df)} rows)")
         df.to_csv(self.output_path, index=False)

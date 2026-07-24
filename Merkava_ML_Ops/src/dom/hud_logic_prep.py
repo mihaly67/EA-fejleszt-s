@@ -1,3 +1,10 @@
-# This script documents the preparation steps for the ML logic
-# In a real model, the output uses Predict_Proba for [0, 1, 2] corresponding to [Noise, Long, Short]
-# Signal = P_Long - P_Short. If P_Zero > threshold, Signal = 0.
+def get_dynamic_features(df):
+    ignore_cols = [
+        'Start_Timestamp', 'End_Timestamp', 'Target_Label',
+        'Open', 'High', 'Low', 'Close',
+        'Bid_Volume', 'Ask_Volume', 'Total_Volume', 'Total_Dollar_Value',
+        '1m_Close', '5m_Close', '15m_Close',
+        'Bar_Time_Seconds', 'OBI_Raw',
+        'P_Short', 'P_Noise', 'P_Long', 'Signal'
+    ]
+    return [col for col in df.columns if col not in ignore_cols]
