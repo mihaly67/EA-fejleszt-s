@@ -14,11 +14,9 @@ def evaluate_strict_oos(data_path, model_dir):
     # amíg a 100-as mozgóátlagok és M15 shiftek "bemelegszenek" (Warm-up).
     # Ezen a ponton ami a dataframe-ben van, az már mind tiszta, skálázható adat!
 
-    features = [
-        'OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_1m', 'Dist_5m', 'Dist_15m', 'ATR_Proxy',
-        'Micro_RSI_14', 'Micro_MACD_Hist', 'Micro_BB_ZScore',
-        'M15_RSI_14', 'M15_MACD_Hist', 'M15_BB_ZScore'
-    ]
+    from hud_logic_prep import get_dynamic_features
+    features = get_dynamic_features(df)
+    features = [f for f in features if f in df.columns]
     target = 'Target_Label'
 
     # Eltoljuk az osztályokat 0, 1, 2-re, ahogy a modellek betanultak
