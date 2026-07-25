@@ -44,9 +44,9 @@ def create_dollar_bars(filepath, threshold=444000, output_path=None):
             current_bar['Close'] = row['Mid_Price']
 
             # Forward filled MTF features attached to the end of the bar
-            current_bar['1m_Close'] = row['1m_Close']
             current_bar['5m_Close'] = row['5m_Close']
             current_bar['15m_Close'] = row['15m_Close']
+            current_bar['30m_Close'] = row.get('30m_Close', row['15m_Close']) # Fallback if data lacks 30m
 
             bars.append(current_bar)
             current_dollar_val = 0.0

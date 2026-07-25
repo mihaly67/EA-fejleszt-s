@@ -14,6 +14,9 @@ def visualize_decisions(data_path, model_path, output_dir):
     from hud_logic_prep import get_dynamic_features
     features = get_dynamic_features(df)
 
+    # Biztonsági szűrés: csak azokat a feature-öket kérjük, amik tényleg benne vannak a df-ben
+    features = [f for f in features if f in df.columns]
+
     X = df[features].values
 
     print(f"🧠 Modell betöltése és predikció: {model_path}")

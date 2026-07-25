@@ -16,6 +16,7 @@ def evaluate_strict_oos(data_path, model_dir):
 
     from hud_logic_prep import get_dynamic_features
     features = get_dynamic_features(df)
+    features = [f for f in features if f in df.columns]
     target = 'Target_Label'
 
     # Eltoljuk az osztályokat 0, 1, 2-re, ahogy a modellek betanultak
