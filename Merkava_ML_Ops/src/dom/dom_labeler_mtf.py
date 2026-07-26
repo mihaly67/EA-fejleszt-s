@@ -49,14 +49,13 @@ def apply_copilot_triple_barrier(filepath, output_path, tp_barrier=1.5, sl_barri
         long_status = 0
         short_status = 0
 
-        # A jövőt pásztázzuk (j > i) a kiütésekhez
-        # Szigorúan csak a jövőbeli Záróárakat (Close) vizsgáljuk, hogy kiküszöböljük a Whipsaw zajt!
         for j in range(i + 1, len(df)):
             future_time = timestamps[j]
             future_close = close_prices[j]
 
             if (future_time - start_time).astype('timedelta64[ns]').astype(float) > max_time_ns:
-                break # Idő lejárt
+                # 92-es timeout hiba javítása: Ha lejárt az idő és eddig nem lett státusz, az 0 marad
+                break
 
             # LONG forgatókönyv értékelése
             if long_status == 0:
@@ -72,8 +71,14 @@ def apply_copilot_triple_barrier(filepath, output_path, tp_barrier=1.5, sl_barri
                 elif future_close >= short_upper_barrier:
                     short_status = -1
 
-            # Ha mindkettő forgatókönyv véget ért, kilépünk
-            if long_status != 0 and short_status != 0:
+            # KRITIKUS JAVÍTÁS:
+            # Ha legalább az EGYIK forgatókönyv SIKERESEN (TP) lezárult, azonnal megállunk!
+            # Nem várjuk meg, hogy a jövőben a másik stop is kiütődjön és felülírja a jó jelet.
+            if long_status == 1 or short_status == 1:
+                break
+
+            # Ha mindkettő forgatókönyv ELBUKOTT (SL), akkor is megállunk.
+            if long_status == -1 and short_status == -1:
                 break
 
         # A végső címke megállapítása

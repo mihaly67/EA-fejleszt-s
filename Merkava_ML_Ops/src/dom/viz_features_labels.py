@@ -51,20 +51,32 @@ def generate_visualization(input_file, output_html, hours=24):
         fig.add_trace(go.Scatter(x=df_subset['Start_Timestamp'], y=df_subset['15m_Close'], line=dict(color='#FFA500', width=2), name='15m Close (Makro)'), row=1, col=1)
 
     # Címkék (Labels)
-    long_points = df_subset[df_subset['Target_Label'] == 1]
-    short_points = df_subset[df_subset['Target_Label'] == -1]
-    noise_points = df_subset[df_subset['Target_Label'] == 0]
+    # A JAVÍTÁS: A jelzéseket a valós belépési ponthoz (i+1 Open) igazítjuk!
+    # Ahhoz, hogy ez működjön df_subset-en, shifteljük a labelt egy sorral VISSZA.
+    # Mivel a df_subset tartalmazza a Target_Label-t az 'i'-edik sorban, ami az 'i+1'-edik gyertya Open-jére vonatkozik,
+    # egyszerűen az i+1 gyertya Timestamp-jét és Open árát használjuk a rajzoláshoz.
 
-    # Jól látható rikító markerek a sötét háttéren
-    fig.add_trace(go.Scatter(x=long_points['Start_Timestamp'], y=long_points['Close'],
+    # Létrehozunk ideiglenes oszlopokat a rajzoláshoz:
+    df_subset['Next_Timestamp'] = df_subset['Start_Timestamp'].shift(-1)
+    df_subset['Next_Open'] = df_subset['Open'].shift(-1)
+
+    # Csak azokat a sorokat tartjuk meg, ahol van jövő (nem az utolsó sor)
+    df_labels = df_subset.dropna(subset=['Next_Timestamp'])
+
+    long_points = df_labels[df_labels['Target_Label'] == 1]
+    short_points = df_labels[df_labels['Target_Label'] == -1]
+    noise_points = df_labels[df_labels['Target_Label'] == 0]
+
+    # Jól látható rikító markerek a sötét háttéren, a KÖVETKEZŐ gyertya NYITÓÁRÁN
+    fig.add_trace(go.Scatter(x=long_points['Next_Timestamp'], y=long_points['Next_Open'],
                              mode='markers', marker=dict(symbol='triangle-up', color='#00FF00', size=10, line=dict(color='white', width=1)),
                              name='Long (+1)'), row=1, col=1)
 
-    fig.add_trace(go.Scatter(x=short_points['Start_Timestamp'], y=short_points['Close'],
+    fig.add_trace(go.Scatter(x=short_points['Next_Timestamp'], y=short_points['Next_Open'],
                              mode='markers', marker=dict(symbol='triangle-down', color='#FF00FF', size=10, line=dict(color='white', width=1)),
                              name='Short (-1)'), row=1, col=1)
 
-    fig.add_trace(go.Scatter(x=noise_points['Start_Timestamp'], y=noise_points['Close'],
+    fig.add_trace(go.Scatter(x=noise_points['Next_Timestamp'], y=noise_points['Next_Open'],
                              mode='markers', marker=dict(symbol='x', color='gray', size=6),
                              name='Zaj (0)'), row=1, col=1)
 
@@ -77,18 +89,17 @@ def generate_visualization(input_file, output_html, hours=24):
     if 'Price_Velocity' in df_subset.columns:
         fig.add_trace(go.Scatter(x=df_subset['Start_Timestamp'], y=df_subset['Price_Velocity'], fill='tozeroy', line=dict(color='#00FFFF', width=1), name='Price Velocity'), row=3, col=1)
 
-    # Fekete háttér és dizájn frissítés (Referencia HTML alapján)
+    # Fekete háttér és dizájn frissítés
     fig.update_layout(
         height=1000,
         width=1600,
         title_text=f"Merkava ML-Ops: Feature & Címke Elemzés ({hours} Óra)",
         xaxis_rangeslider_visible=False,
-        plot_bgcolor='#111111', # Sötétszürke/fekete rajzterület
-        paper_bgcolor='#000000', # Fekete teljes háttér
-        font=dict(color='white')  # Fehér betűk
+        plot_bgcolor='#111111',
+        paper_bgcolor='#000000',
+        font=dict(color='white')
     )
 
-    # Rácsvonalak halványítása a fekete háttéren
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#333333', type='date')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#333333')
 
