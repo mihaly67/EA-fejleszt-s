@@ -19,8 +19,6 @@ def apply_copilot_triple_barrier(filepath, output_path, tp_barrier=1.5, sl_barri
 
     close_prices = df['Close'].values
     open_prices = df['Open'].values
-    high_prices = df['High'].values
-    low_prices = df['Low'].values
     timestamps = df['Start_Timestamp'].values
 
     if dynamic_atr and 'ATR_Proxy' in df.columns:
@@ -34,8 +32,8 @@ def apply_copilot_triple_barrier(filepath, output_path, tp_barrier=1.5, sl_barri
     success_short = 0
     timeout_noise = 0
 
-    for i in range(len(df) - 1): # Az utolsó gyertyánál nincs jövő, nem tudjuk felcímkézni
-        # A valós belépés (Copilot szignál után) a következő gyertya nyitásakor (Open) történik
+    for i in range(len(df) - 1): # Az utolsó gyertyánál nincs jövő
+        # A belépés szigorúan a JÖVŐBELI (i+1) gyertya Nyitóárán történik
         start_time = timestamps[i+1]
         entry_price = open_prices[i+1]
 
@@ -48,48 +46,33 @@ def apply_copilot_triple_barrier(filepath, output_path, tp_barrier=1.5, sl_barri
         short_lower_barrier = entry_price - current_tp
         short_upper_barrier = entry_price + current_sl
 
-        # Független állapotok
-        long_status = 0   # 0: Még tart, 1: TP elért, -1: SL elért
-        short_status = 0  # 0: Még tart, 1: TP elért, -1: SL elért
+        long_status = 0
+        short_status = 0
 
-        # A vizsgálat a belépési gyertyától (i+1) kezdődik, mert már ott is lehet akkora mozgás (High/Low), ami kiüti
+        # A jövőt pásztázzuk (j > i) a kiütésekhez
+        # Szigorúan csak a jövőbeli Záróárakat (Close) vizsgáljuk, hogy kiküszöböljük a Whipsaw zajt!
         for j in range(i + 1, len(df)):
             future_time = timestamps[j]
-            future_high = high_prices[j]
-            future_low = low_prices[j]
+            future_close = close_prices[j]
 
-            if (future_time - timestamps[i]).astype('timedelta64[ns]').astype(float) > max_time_ns:
-                break # Idő lejárt a szignál generálásától számítva
+            if (future_time - start_time).astype('timedelta64[ns]').astype(float) > max_time_ns:
+                break # Idő lejárt
 
             # LONG forgatókönyv értékelése
             if long_status == 0:
-                hit_long_tp = future_high >= long_upper_barrier
-                hit_long_sl = future_low <= long_lower_barrier
-
-                # Szigorú útvonal-függőség a gyertyán belül (Whipsaw):
-                # Ha a gyertyán belül a Low lejjebb van a Stopnál, ÉS a High is feljebb a TP-nél,
-                # konzervatívként (Mivel nem látunk bele a bárba) úgy vesszük, hogy a Stop ütődött ki előbb.
-                # Kivétel: Ha a Nyitóár (Open) már eleve túl volt a TP-n (Gap Up)
-                if hit_long_tp and hit_long_sl:
-                    long_status = -1
-                elif hit_long_sl:
-                    long_status = -1
-                elif hit_long_tp:
+                if future_close >= long_upper_barrier:
                     long_status = 1
+                elif future_close <= long_lower_barrier:
+                    long_status = -1
 
             # SHORT forgatókönyv értékelése
             if short_status == 0:
-                hit_short_tp = future_low <= short_lower_barrier
-                hit_short_sl = future_high >= short_upper_barrier
-
-                if hit_short_tp and hit_short_sl:
-                    short_status = -1 # Ha mindkettő kiüti, konzervatívan a bukást feltételezzük a gyertyán belül
-                elif hit_short_sl:
-                    short_status = -1
-                elif hit_short_tp:
+                if future_close <= short_lower_barrier:
                     short_status = 1
+                elif future_close >= short_upper_barrier:
+                    short_status = -1
 
-            # Ha mindkettő forgatókönyv véget ért
+            # Ha mindkettő forgatókönyv véget ért, kilépünk
             if long_status != 0 and short_status != 0:
                 break
 
@@ -109,7 +92,7 @@ def apply_copilot_triple_barrier(filepath, output_path, tp_barrier=1.5, sl_barri
     print("\n✅ Címkézés Kész!")
     print(f"📈 Tiszta Long (+1): {success_long} db")
     print(f"📉 Tiszta Short (-1): {success_short} db")
-    print(f"⚪ Kipattintás/Zaj (0): {timeout_noise} db")
+    print(f"⚪ Zaj/Holttér (0): {timeout_noise} db")
 
     df.to_csv(output_path, index=False)
     print(f"💾 Címkézett adatok elmentve: {output_path}")
