@@ -12,10 +12,15 @@ def apply_copilot_triple_barrier(filepath, output_path, tp_barrier=1.5, sl_barri
 
     df = pd.read_csv(filepath)
     df['Start_Timestamp'] = pd.to_datetime(df['Start_Timestamp'])
-    df['End_Timestamp'] = pd.to_datetime(df['End_Timestamp'])
+    if 'End_Timestamp' in df.columns:
+        df['End_Timestamp'] = pd.to_datetime(df['End_Timestamp'])
 
     labels = np.zeros(len(df))
+
+    # Extract arrays for fast iteration
     close_prices = df['Close'].values
+    high_prices = df['High'].values
+    low_prices = df['Low'].values
     timestamps = df['Start_Timestamp'].values
 
     if dynamic_atr and 'ATR_Proxy' in df.columns:
@@ -50,32 +55,40 @@ def apply_copilot_triple_barrier(filepath, output_path, tp_barrier=1.5, sl_barri
         # Jövőbeli iteráció
         for j in range(i + 1, len(df)):
             future_time = timestamps[j]
-            future_price = close_prices[j]
+            future_high = high_prices[j]
+            future_low = low_prices[j]
 
             # Időkorlát ellenőrzés
             if (future_time - start_time).astype('timedelta64[ns]').astype(float) > max_time_ns:
                 break # Kifutottunk az időből, marad a 0
 
-            # LONG ESET VIZSGÁLATA
-            hit_long_tp = future_price >= long_upper_barrier
-            hit_long_sl = future_price <= long_lower_barrier
+            # LONG ESET VIZSGÁLATA (Path dependency javítva: High/Low vizsgálat)
+            hit_long_tp = future_high >= long_upper_barrier
+            hit_long_sl = future_low <= long_lower_barrier
 
-            # SHORT ESET VIZSGÁLATA
-            hit_short_tp = future_price <= short_lower_barrier
-            hit_short_sl = future_price >= short_upper_barrier
+            # SHORT ESET VIZSGÁLATA (Path dependency javítva: High/Low vizsgálat)
+            hit_short_tp = future_low <= short_lower_barrier
+            hit_short_sl = future_high >= short_upper_barrier
 
             # Logikai Döntés: Melyik ütődik ki előbb?
-            # Ha egy gyertya (vagy nagyon gyors elmozdulás) egyszerre érinti a TP-t és SL-t
-            # (bár a Close árak ritkán ugranak ekkorát, de a biztonság kedvéért): a biztonság javára döntünk (0).
+            # Ha egyetlen bar alatt (Whipsaw) mind a stop, mind a TP kiütődik, az túl kockázatos -> Zaj (0)
+            if hit_long_tp and hit_long_sl:
+                label = 0
+                break
+            elif hit_short_tp and hit_short_sl:
+                label = 0
+                break
 
-            if hit_long_tp and not hit_long_sl:
+            # Ha tiszta találat van:
+            if hit_long_tp:
                 label = 1
                 break
-            elif hit_short_tp and not hit_short_sl:
+            elif hit_short_tp:
                 label = -1
                 break
-            elif hit_long_sl or hit_short_sl:
-                # Elértük a megengedett maximális visszaesést bármelyik irányban (Kipattintott a piac)
+
+            # Ha tiszta Stop Loss találat van:
+            if hit_long_sl or hit_short_sl:
                 label = 0
                 break
 
@@ -103,10 +116,13 @@ if __name__ == '__main__':
     parser.add_argument('--tp', type=float, default=1.5, help='Take Profit Barrier')
     parser.add_argument('--sl', type=float, default=1.0, help='Stop Loss Barrier')
     parser.add_argument('--dynamic_atr', action='store_true', help='Use ATR proxy scaling for barriers')
+    parser.add_argument('--output_file', default=None, help='Kimeneti file neve')
 
     args = parser.parse_args()
 
-    output_dir = os.path.dirname(args.input_file)
-    output_file = os.path.join(output_dir, 'labeled_dollar_bars.csv')
+    output_file = args.output_file
+    if not output_file:
+        output_dir = os.path.dirname(args.input_file)
+        output_file = os.path.join(output_dir, 'labeled_dollar_bars.csv')
 
     apply_copilot_triple_barrier(args.input_file, output_file, tp_barrier=args.tp, sl_barrier=args.sl, dynamic_atr=args.dynamic_atr)
