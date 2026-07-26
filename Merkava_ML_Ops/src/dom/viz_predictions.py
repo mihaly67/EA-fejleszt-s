@@ -18,7 +18,7 @@ def generate_visualization(input_file, output_html, hours=24):
 
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True,
                         vertical_spacing=0.05,
-                        subplot_titles=('Prado Dollar Bars & ML Copilot Predikciók (OOS)', 'Copilot Valószínűségek (P_Long vs P_Short)', 'Microstructure: Price Velocity'),
+                        subplot_titles=('Prado Dollar Bars & ML Copilot Predikciók (OOS)', 'Copilot Valószínűségek (P_Long vs P_Short vs P_Noise)', 'Microstructure: Price Velocity'),
                         row_heights=[0.6, 0.2, 0.2])
 
     # 1. Dollar Bars
@@ -58,6 +58,7 @@ def generate_visualization(input_file, output_html, hours=24):
     # 2. Copilot Probabilities (A jövőbeli irányerősség)
     fig.add_trace(go.Scatter(x=df_subset['Start_Timestamp'], y=df_subset['P_Long'], line=dict(color='#00FF00', width=1), name='P(Long)'), row=2, col=1)
     fig.add_trace(go.Scatter(x=df_subset['Start_Timestamp'], y=df_subset['P_Short'], line=dict(color='#FF00FF', width=1), name='P(Short)'), row=2, col=1)
+    fig.add_trace(go.Scatter(x=df_subset['Start_Timestamp'], y=df_subset['P_Noise'], line=dict(color='gray', width=1, dash='dash'), name='P(Noise)'), row=2, col=1)
 
     # 3. Price Velocity (Mint input feature)
     if 'Price_Velocity' in df_subset.columns:
