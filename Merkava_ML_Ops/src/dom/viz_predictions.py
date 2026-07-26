@@ -40,14 +40,20 @@ def generate_visualization(input_file, output_html, hours=24):
 
     long_points = df_labels[df_labels['Copilot_Signal'] == 1]
     short_points = df_labels[df_labels['Copilot_Signal'] == -1]
+    noise_points = df_labels[df_labels['Copilot_Signal'] == 0]
 
     fig.add_trace(go.Scatter(x=long_points['Next_Timestamp'], y=long_points['Next_Open'],
                              mode='markers', marker=dict(symbol='triangle-up', color='#00FF00', size=12, line=dict(color='white', width=1)),
-                             name='Predicted Long'), row=1, col=1)
+                             name='Predicted Long (+1)'), row=1, col=1)
 
     fig.add_trace(go.Scatter(x=short_points['Next_Timestamp'], y=short_points['Next_Open'],
                              mode='markers', marker=dict(symbol='triangle-down', color='#FF00FF', size=12, line=dict(color='white', width=1)),
-                             name='Predicted Short'), row=1, col=1)
+                             name='Predicted Short (-1)'), row=1, col=1)
+
+    fig.add_trace(go.Scatter(x=noise_points['Next_Timestamp'], y=noise_points['Next_Open'],
+                             mode='markers', marker=dict(symbol='x', color='gray', size=6),
+                             name='Predicted Noise/Hold (0)'), row=1, col=1)
+
 
     # 2. Copilot Probabilities (A jövőbeli irányerősség)
     fig.add_trace(go.Scatter(x=df_subset['Start_Timestamp'], y=df_subset['P_Long'], line=dict(color='#00FF00', width=1), name='P(Long)'), row=2, col=1)
