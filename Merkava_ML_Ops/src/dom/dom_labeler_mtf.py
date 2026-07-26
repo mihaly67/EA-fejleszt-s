@@ -17,7 +17,6 @@ def apply_copilot_triple_barrier(filepath, output_path, tp_barrier=1.5, sl_barri
 
     labels = np.zeros(len(df))
 
-    # Extract arrays for fast iteration
     close_prices = df['Close'].values
     high_prices = df['High'].values
     low_prices = df['Low'].values
@@ -26,9 +25,8 @@ def apply_copilot_triple_barrier(filepath, output_path, tp_barrier=1.5, sl_barri
     if dynamic_atr and 'ATR_Proxy' in df.columns:
         atr_values = df['ATR_Proxy'].values
     else:
-        atr_values = np.ones(len(df)) # Fallback, no scaling
+        atr_values = np.ones(len(df))
 
-    # 15 perces időkorlát milliszekundumban
     max_time_ns = max_time_minutes * 60 * 1e9
 
     success_long = 0
@@ -42,61 +40,67 @@ def apply_copilot_triple_barrier(filepath, output_path, tp_barrier=1.5, sl_barri
         current_tp = tp_barrier * atr_values[i] if dynamic_atr else tp_barrier
         current_sl = sl_barrier * atr_values[i] if dynamic_atr else sl_barrier
 
-        # Aszimmetrikus határok (LONG esetre)
         long_upper_barrier = start_price + current_tp
         long_lower_barrier = start_price - current_sl
 
-        # Aszimmetrikus határok (SHORT esetre)
         short_lower_barrier = start_price - current_tp
         short_upper_barrier = start_price + current_sl
 
-        label = 0 # Default: Zaj / Holttér
+        # Független állapotok
+        long_status = 0   # 0: Még tart, 1: TP elért, -1: SL elért
+        short_status = 0  # 0: Még tart, 1: TP elért, -1: SL elért
 
-        # Jövőbeli iteráció
         for j in range(i + 1, len(df)):
             future_time = timestamps[j]
             future_high = high_prices[j]
             future_low = low_prices[j]
 
-            # Időkorlát ellenőrzés
             if (future_time - start_time).astype('timedelta64[ns]').astype(float) > max_time_ns:
-                break # Kifutottunk az időből, marad a 0
+                break # Idő lejárt
 
-            # LONG ESET VIZSGÁLATA (Path dependency javítva: High/Low vizsgálat)
-            hit_long_tp = future_high >= long_upper_barrier
-            hit_long_sl = future_low <= long_lower_barrier
+            # LONG forgatókönyv értékelése
+            if long_status == 0:
+                hit_long_tp = future_high >= long_upper_barrier
+                hit_long_sl = future_low <= long_lower_barrier
 
-            # SHORT ESET VIZSGÁLATA (Path dependency javítva: High/Low vizsgálat)
-            hit_short_tp = future_low <= short_lower_barrier
-            hit_short_sl = future_high >= short_upper_barrier
+                if hit_long_tp and hit_long_sl:
+                    long_status = -1 # Whipsaw = Bukás
+                elif hit_long_tp:
+                    long_status = 1
+                elif hit_long_sl:
+                    long_status = -1
 
-            # Logikai Döntés: Melyik ütődik ki előbb?
-            # Ha egyetlen bar alatt (Whipsaw) mind a stop, mind a TP kiütődik, az túl kockázatos -> Zaj (0)
-            if hit_long_tp and hit_long_sl:
-                label = 0
-                break
-            elif hit_short_tp and hit_short_sl:
-                label = 0
-                break
+            # SHORT forgatókönyv értékelése
+            if short_status == 0:
+                hit_short_tp = future_low <= short_lower_barrier
+                hit_short_sl = future_high >= short_upper_barrier
 
-            # Ha tiszta találat van:
-            if hit_long_tp:
-                label = 1
-                break
-            elif hit_short_tp:
-                label = -1
-                break
+                if hit_short_tp and hit_short_sl:
+                    short_status = -1 # Whipsaw = Bukás
+                elif hit_short_tp:
+                    short_status = 1
+                elif hit_short_sl:
+                    short_status = -1
 
-            # Ha tiszta Stop Loss találat van:
-            if hit_long_sl or hit_short_sl:
-                label = 0
+            # Ha mindkettő forgatókönyv véget ért (valamilyen módon lezárult), kilépünk a belső ciklusból
+            if long_status != 0 and short_status != 0:
                 break
 
-        labels[i] = label
+        # A végső címke megállapítása
+        # Mivel Copilotról van szó (nem robotról, amely fixen egyik irányba lép),
+        # az adott pillanat "Momentum potenciálját" keressük.
+        # Ha a jövőben KIZÁRÓLAG a Long út sikeres (a Short elbukott vagy időtúllépéses), akkor a címke +1.
 
-        if label == 1: success_long += 1
-        elif label == -1: success_short += 1
-        else: timeout_noise += 1
+        if long_status == 1 and short_status != 1:
+            labels[i] = 1
+            success_long += 1
+        elif short_status == 1 and long_status != 1:
+            labels[i] = -1
+            success_short += 1
+        else:
+            # Ha mindkettő elbukott, vagy mindkettő sikeres lenne (óriási volatilitás / whipsaw), az zaj.
+            labels[i] = 0
+            timeout_noise += 1
 
     df['Target_Label'] = labels
 

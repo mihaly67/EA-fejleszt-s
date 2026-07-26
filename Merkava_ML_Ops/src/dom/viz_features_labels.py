@@ -25,7 +25,7 @@ def generate_visualization(input_file, output_html, hours=24):
         end_time = start_time + pd.Timedelta(hours=hours)
         df_subset = df[(df['Start_Timestamp'] >= start_time) & (df['Start_Timestamp'] <= end_time)].copy()
 
-    print(f"Kiválasztott sorok száma a 24 órás ablakban: {len(df_subset)}")
+    print(f"Kiválasztott sorok száma a {hours} órás ablakban: {len(df_subset)}")
 
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True,
                         vertical_spacing=0.05,
@@ -33,8 +33,10 @@ def generate_visualization(input_file, output_html, hours=24):
                         row_heights=[0.6, 0.2, 0.2])
 
     # 1. Dollar Bars
+    # Referencia színek és sötét mód a korábbi HTML és a kérés alapján
     colors = ['#228B22' if row['Close'] >= row['Open'] else '#B22222' for _, row in df_subset.iterrows()]
 
+    # Függőleges vonalak generálása Scatter-el
     for i, row in df_subset.iterrows():
         fig.add_trace(go.Scatter(
             x=[row['Start_Timestamp'], row['Start_Timestamp']],
@@ -46,38 +48,49 @@ def generate_visualization(input_file, output_html, hours=24):
 
     # MTF Makro Trend (pl. 15 perces záróár)
     if '15m_Close' in df_subset.columns:
-        fig.add_trace(go.Scatter(x=df_subset['Start_Timestamp'], y=df_subset['15m_Close'], line=dict(color='orange', width=2), name='15m Close (Makro)'), row=1, col=1)
+        fig.add_trace(go.Scatter(x=df_subset['Start_Timestamp'], y=df_subset['15m_Close'], line=dict(color='#FFA500', width=2), name='15m Close (Makro)'), row=1, col=1)
 
     # Címkék (Labels)
     long_points = df_subset[df_subset['Target_Label'] == 1]
     short_points = df_subset[df_subset['Target_Label'] == -1]
     noise_points = df_subset[df_subset['Target_Label'] == 0]
 
+    # Jól látható rikító markerek a sötét háttéren
     fig.add_trace(go.Scatter(x=long_points['Start_Timestamp'], y=long_points['Close'],
-                             mode='markers', marker=dict(symbol='triangle-up', color='lime', size=12, line=dict(color='darkgreen', width=1)),
-                             name='Long Célba Ért (+1)'), row=1, col=1)
+                             mode='markers', marker=dict(symbol='triangle-up', color='#00FF00', size=10, line=dict(color='white', width=1)),
+                             name='Long (+1)'), row=1, col=1)
 
     fig.add_trace(go.Scatter(x=short_points['Start_Timestamp'], y=short_points['Close'],
-                             mode='markers', marker=dict(symbol='triangle-down', color='magenta', size=12, line=dict(color='darkred', width=1)),
-                             name='Short Célba Ért (-1)'), row=1, col=1)
+                             mode='markers', marker=dict(symbol='triangle-down', color='#FF00FF', size=10, line=dict(color='white', width=1)),
+                             name='Short (-1)'), row=1, col=1)
 
     fig.add_trace(go.Scatter(x=noise_points['Start_Timestamp'], y=noise_points['Close'],
-                             mode='markers', marker=dict(symbol='x', color='black', size=6, opacity=0.5),
-                             name='Zaj / Stop Loss (0)'), row=1, col=1)
+                             mode='markers', marker=dict(symbol='x', color='gray', size=6),
+                             name='Zaj (0)'), row=1, col=1)
 
     # 2. OBI Z-Score
     if 'OBI_ZScore' in df_subset.columns:
-        obi_colors = ['green' if val >= 0 else 'red' for val in df_subset['OBI_ZScore']]
+        obi_colors = ['#228B22' if val >= 0 else '#B22222' for val in df_subset['OBI_ZScore']]
         fig.add_trace(go.Bar(x=df_subset['Start_Timestamp'], y=df_subset['OBI_ZScore'], marker_color=obi_colors, name='OBI Z-Score', showlegend=False), row=2, col=1)
 
     # 3. Price Velocity
     if 'Price_Velocity' in df_subset.columns:
-        fig.add_trace(go.Scatter(x=df_subset['Start_Timestamp'], y=df_subset['Price_Velocity'], fill='tozeroy', line=dict(color='cyan', width=2), name='Price Velocity'), row=3, col=1)
+        fig.add_trace(go.Scatter(x=df_subset['Start_Timestamp'], y=df_subset['Price_Velocity'], fill='tozeroy', line=dict(color='#00FFFF', width=1), name='Price Velocity'), row=3, col=1)
 
-    fig.update_layout(height=1000, width=1600, title_text=f"Merkava ML-Ops: Feature & Címke Elemzés ({hours} Óra)", xaxis_rangeslider_visible=False, plot_bgcolor='white')
+    # Fekete háttér és dizájn frissítés (Referencia HTML alapján)
+    fig.update_layout(
+        height=1000,
+        width=1600,
+        title_text=f"Merkava ML-Ops: Feature & Címke Elemzés ({hours} Óra)",
+        xaxis_rangeslider_visible=False,
+        plot_bgcolor='#111111', # Sötétszürke/fekete rajzterület
+        paper_bgcolor='#000000', # Fekete teljes háttér
+        font=dict(color='white')  # Fehér betűk
+    )
 
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray', type='date')
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    # Rácsvonalak halványítása a fekete háttéren
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#333333', type='date')
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#333333')
 
     fig.write_html(output_html)
     print(f"Chart saved to {output_html}")
@@ -85,7 +98,7 @@ def generate_visualization(input_file, output_html, hours=24):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file', nargs='?', default='/home/misi/Merkava_ML_Ops/data/processed/labeled_train_features_dollar_bars.csv')
-    parser.add_argument('--output', default='/home/misi/Merkava_ML_Ops/data/processed/feature_label_chart.html')
+    parser.add_argument('--output', default='/home/misi/Merkava_ML_Ops/data/processed/feature_label_chart_dark.html')
     parser.add_argument('--hours', type=int, default=24)
     args = parser.parse_args()
 
