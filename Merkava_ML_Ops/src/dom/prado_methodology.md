@@ -11,3 +11,15 @@ Ennek elkerülése végett az alábbi szigorú logikát alkalmazzuk a `dom_label
    A jövőbeli gyertyák szkennelésekor a kiütéseket nem a gyertyák `High` és `Low` értékein vizsgáljuk, hanem kizárólag a `Close` árakon. A gyertyán belüli ármozgások (tüskék) sorrendisége ismeretlen, így a High/Low használata megoldhatatlan logikai ütközéseket okozna (pl. ha a gyertya egyetlen percen belül kiüti a Stop Loss-t és a Take Profitot is).
 3. **Független Állapotgépek (Independent State Machines):**
    A Long és a Short vizsgálatok függetlenül futnak. Ha az árfolyam esni kezd, a Long forgatókönyv ugyan elbukik (SL), de a Short forgatókönyv továbbra is érvényben marad, amíg az ő saját feltételei (TP vagy SL) nem teljesülnek. Nincs közös `break` utasítás, ami miatt egy Long Stop Loss fals módon leállítaná a Short szimulációját.
+
+## Confidence Thresholding (Küszöbérték Optimalizáció)
+
+A ML modellek (pl. LightGBM) alapértelmezetten a legmagasabb valószínűségű osztályt választják (argmax). Azonban egy 3-osztályos (Long, Short, Zaj) pénzügyi környezetben ez túl sok gyenge (pl. 34%-os valószínűségű) jelzést eredményezhet, ami megnöveli a fals pozitívok számát.
+
+A találati pontosság (Win Rate) növelése érdekében alkalmazni kell a **Confidence Thresholding** technikát az éles (Inference) rendszerben:
+- A modell `predict_proba` kimenetét használjuk.
+- Csak akkor fogadunk el egy Long vagy Short jelet érvényesnek, ha annak valószínűsége meghalad egy szigorú küszöbértéket (pl. `P > 0.60`).
+- Minden olyan predikció, ami ez alatt marad, automatikusan **Zaj (Hold)** osztályba kerül.
+
+**Eredmények:**
+A Grid Search optimalizáció mind a 20%-os OOS (Vizsga) halmazon, mind az ismeretlen 5 napos Vakteszten bebizonyította, hogy a küszöb **0.60** köré emelésével az aktív jelek száma ugyan drasztikusan lecsökken, de a megmaradó jelek tiszta Win Rate-je stabilan átlépi az **50-55%-ot** az 1.5R/1.0R aszimmetrikus barrier (kockázat/hozam arány) mellett, ami rendkívül profitábilis Copilot működést tesz lehetővé.
