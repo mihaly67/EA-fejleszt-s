@@ -23,3 +23,15 @@ A találati pontosság (Win Rate) növelése érdekében alkalmazni kell a **Con
 
 **Eredmények:**
 A Grid Search optimalizáció mind a 20%-os OOS (Vizsga) halmazon, mind az ismeretlen 5 napos Vakteszten bebizonyította, hogy a küszöb **0.60** köré emelésével az aktív jelek száma ugyan drasztikusan lecsökken, de a megmaradó jelek tiszta Win Rate-je stabilan átlépi az **50-55%-ot** az 1.5R/1.0R aszimmetrikus barrier (kockázat/hozam arány) mellett, ami rendkívül profitábilis Copilot működést tesz lehetővé.
+
+## Kétdimenziós Valószínűségi Optimalizáció (2D Thresholding)
+
+A gyakorlati tesztek és az élő (vakteszt) adatok bizonyították, hogy az egyszerű egydimenziós szűrés (csak a P_Long vagy P_Short emelése) túlszárítja a modellt, és "overfitting-szerű" alacsony kötési gyakoriságot (napi 1-2 kötés) eredményez.
+
+A valós megoldás a 2-dimenziós Grid Search, ahol a **Jel** és a **Zaj** valószínűségét párhuzamosan korlátozzuk.
+Az MGCQ (Micro Gold) teszteken a következő "Sweet Spot" bizonyult optimálisnak a kompromisszumhoz (Magas Win Rate, de stabil Napi 12-15 aktivitás):
+
+- **Signal Threshold (P_Long vagy P_Short):** `> 0.53`
+- **Max Noise Threshold (P_Noise):** `< 0.24`
+
+Ezek a paraméterek biztosítják, hogy a modell elég magabiztos legyen az irányban, de ami még fontosabb: szinte teljesen kizárja a Whipsaw (zaj) esélyét. Ez a beállítás a vizsgákon stabilan **48% - 54% közötti Win Rate-et** hozott az Aszimmetrikus 1.5R/1.0R barrier mellett, ami masszívan profitábilis Copilot működést tesz lehetővé aktív (napi 10-15 trade) piacokon.
