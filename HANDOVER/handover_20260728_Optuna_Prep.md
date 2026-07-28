@@ -22,3 +22,10 @@ A meglévő, letisztított adathalmazon és környezetben elindítani egy **Optu
 4. A legjobb paraméterek elmentése és a modell újra-tanítása ezen paraméterekkel.
 
 **FIGYELEM AZ ÚJ AGENTNEK:** Ebből az állapotból TILOS visszalépni. A címkézési szabályokat, az adathalmazt, a könyvtárat és a 3MTF konvenciót TILOS módosítani vagy felülírni. Csak az Optuna fejlesztésre szabad fókuszálni!
+
+## 3. Optuna Tesztelési Fájlok (24 Órás Szeletek)
+A felhasználó kérésére az Optuna hyperparaméter hangolást és a jövőbeli teszteléseket **NEM** kell a teljes, nehézkes 5 napos fájlon végezni. Ehelyett két gondosan szeparált 24 órás szelet áll rendelkezésre a `/home/misi/LGBM_mlops/data/` mappában:
+- `exam_24h_volatile_3MTF.csv`: Extrém magas volatilitású nap (~1595 Dollar Bar, rengeteg wihpsaw és "Soft Win").
+- `exam_24h_calm_3MTF.csv`: Nyugodt, közepes volatilitású nap (~1441 Dollar Bar).
+
+**A következő session célja**, hogy az Optunával olyan paramétereket találjon, amik mindkét piaci rezsimet (viharos és nyugodt) stabil >50%-os (vagy az elérhető legmagasabb "Soft Win"-nel kompenzált) pontossággal tudják lekereskedni.
