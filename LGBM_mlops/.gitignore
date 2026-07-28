@@ -1,0 +1,8 @@
+# Ignore large data and model files
+data/*.csv
+models/*.pkl
+models/*.txt
+models/*.cbm
+venv_3MTF/
+__pycache__/
+*.html
