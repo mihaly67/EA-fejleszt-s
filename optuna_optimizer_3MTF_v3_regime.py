@@ -6,7 +6,7 @@ import json
 import os
 from sklearn.model_selection import GroupKFold
 
-DATA_PATH = "data/labeled_dollar_bars_3MTF_v2.csv"
+DATA_PATH = "data/labeled_dollar_bars_3MTF.csv"
 OUTPUT_DIR = "models"
 N_TRIALS = 30
 N_SPLITS = 3
