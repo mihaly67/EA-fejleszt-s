@@ -7,7 +7,7 @@ import sys
 
 DATA_PATH = "data/exam_24h_volatile_3MTF.csv"
 MODEL_PATH = "models/lgbm_model_3MTF_v2_asym.pkl"
-PARAMS_PATH = "models/optuna_regime_params_3MTF_v3.json"
+PARAMS_PATH = "models/optuna_tuned_thresholds.json"
 OUTPUT_CSV = "data/trade_analysis_report_v2.csv"
 
 def determine_trend(rsi):
@@ -25,7 +25,7 @@ def main():
 
     X_test = df[features]
     y_true = df['Target_Label'].values
-    if y_true.min() == -1: y_true += 1 # 0: Short, 1: Noise, 2: Long
+    if y_true.min() == -1: y_true = y_true + 1 # 0: Short, 1: Noise, 2: Long
 
     df['Macro_Trend'] = df['M15_RSI_14'].apply(determine_trend)
 
@@ -56,10 +56,13 @@ def main():
 
     # Kiértékelés az aktuális paraméterekkel
     preds = np.ones(len(df))
-    long_cond = (df['P_Long'] > df['Thr_Long']) & (df['P_Long'] > df['P_Short']) & (df['P_Noise'] < df['Max_Noise'])
-    short_cond = (df['P_Short'] > df['Thr_Short']) & (df['P_Short'] > df['P_Long']) & (df['P_Noise'] < df['Max_Noise'])
+    long_cond = (df['P_Long'] > df['Thr_Long']) & (df['P_Noise'] < df['Max_Noise'])
+    short_cond = (df['P_Short'] > df['Thr_Short']) & (df['P_Noise'] < df['Max_Noise'])
 
     preds[long_cond] = 2
+    # Erőszakos szűrő utólag is:
+    preds[(df['Macro_Trend'] == 'Uptrend') & (preds == 0)] = 1
+    preds[(df['Macro_Trend'] == 'Downtrend') & (preds == 2)] = 1
     preds[short_cond] = 0
     df['Signal'] = preds
 

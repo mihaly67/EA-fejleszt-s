@@ -63,10 +63,13 @@ def objective(trial):
 
     preds = np.ones_like(y_true_g)
 
-    long_cond = (p_long_g > thr_long) & (p_long_g > p_short_g) & (p_noise_g < max_noise)
-    short_cond = (p_short_g > thr_short) & (p_short_g > p_long_g) & (p_noise_g < max_noise)
+    long_cond = (p_long_g > thr_long) & (p_noise_g < max_noise)
+    short_cond = (p_short_g > thr_short) & (p_noise_g < max_noise)
 
     preds[long_cond] = 2
+    # Erőszakos szűrő utólag is:
+    preds[(trends_g == 'Uptrend') & (preds == 0)] = 1
+    preds[(trends_g == 'Downtrend') & (preds == 2)] = 1
     preds[short_cond] = 0
 
     active_mask = (preds == 0) | (preds == 2)
@@ -87,7 +90,7 @@ def objective(trial):
 
     # Ha van kontratrend, azt kegyetlenül büntetjük, hogy a gép ne is próbálkozzon vele.
     # A missed szakaszokat szintén büntetjük, hogy vigye le a küszöböt a 0.30 - 0.40 sáv aljára.
-    score = (win_rate * 5000) + (total_active * 2) - (counter_trend * 100) - (missed * 10)
+    score = (win_rate * 100) + (total_active * 1.0) - (missed * 2.0)
 
     return score
 

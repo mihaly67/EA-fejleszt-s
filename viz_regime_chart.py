@@ -19,6 +19,8 @@ def main():
 
     ignore_cols = ['Start_Timestamp', 'End_Timestamp', 'Target_Label', 'Open', 'High', 'Low', 'Close', 'Bid_Volume', 'Ask_Volume', 'Total_Volume', 'Total_Dollar_Value', '1m_Close', 'Dist_1m', '5m_Close', '10m_Close', '15m_Close', '30m_Close', '60m_Close', 'Bar_Time_Seconds', 'OBI_Raw', 'P_Short', 'P_Noise', 'P_Long', 'Signal']
     features = [col for col in df.columns if col not in ignore_cols]
+    ignore_cols = ['Start_Timestamp', 'End_Timestamp', 'Target_Label', 'Open', 'High', 'Low', 'Close', 'Bid_Volume', 'Ask_Volume', 'Total_Volume', 'Total_Dollar_Value', '1m_Close', 'Dist_1m', '5m_Close', '10m_Close', '15m_Close', '30m_Close', '60m_Close', 'Bar_Time_Seconds', 'OBI_Raw', 'P_Short', 'P_Noise', 'P_Long', 'Signal']
+    features = [col for col in df.columns if col not in ignore_cols]
     X_test = df[features]
 
     df['Macro_Trend'] = 'Sideways'
@@ -50,8 +52,8 @@ def main():
                       np.where(df['Macro_Trend'] == 'Downtrend', p['down_max_noise'], p['side_max_noise']))
 
     preds = np.ones(len(df))
-    long_cond = (df['P_Long'] > df['Thr_Long']) & (df['P_Long'] > df['P_Short']) & (df['P_Noise'] < df['Max_Noise'])
-    short_cond = (df['P_Short'] > df['Thr_Short']) & (df['P_Short'] > df['P_Long']) & (df['P_Noise'] < df['Max_Noise'])
+    long_cond = (df['P_Long'] > df['Thr_Long']) & (df['P_Noise'] < df['Max_Noise'])
+    short_cond = (df['P_Short'] > df['Thr_Short']) & (df['P_Noise'] < df['Max_Noise'])
 
     preds[long_cond] = 2
     preds[short_cond] = 0

@@ -19,7 +19,9 @@ def evaluate_exam(data_path, model_path, params_path):
     ]
     features = [col for col in df.columns if col not in ignore_cols]
 
-    X_test = df[features]
+    ignore_cols = ['Start_Timestamp', 'End_Timestamp', 'Open', 'High', 'Low', 'Close', '5m_Close', '15m_Close', '30m_Close', 'Target_Label', 'Bar_Time_Seconds', 'Total_Dollar_Value', 'Bid_Volume', 'Ask_Volume', 'Total_Volume']
+    features = [col for col in df.columns if col not in ignore_cols]
+    X_test = df[['OBI_ZScore', 'Price_Velocity', 'Tick_Speed', 'Dist_5m', 'Dist_15m', 'Dist_30m', 'ATR_Proxy', 'Micro_RSI_14', 'Micro_MACD_Hist', 'Micro_BB_ZScore', 'Micro_ROC_5', 'Micro_MFI_5', 'M15_RSI_14', 'M15_MACD_Hist', 'M15_BB_ZScore', 'M15_ROC_5', 'M15_MFI_5', 'M30_RSI_14', 'M30_MACD_Hist', 'M30_BB_ZScore', 'M30_ROC_5', 'M30_MFI_5']]
     y_test = df['Target_Label'].values
     if y_test.min() == -1:
         y_test = y_test + 1
@@ -46,8 +48,8 @@ def evaluate_exam(data_path, model_path, params_path):
     p_long = probs[:, 2]
 
     preds = np.ones_like(y_test)
-    long_cond = (p_long > threshold_long) & (p_long > p_short) & (p_noise < max_noise)
-    short_cond = (p_short > threshold_short) & (p_short > p_long) & (p_noise < max_noise)
+    long_cond = (p_long > threshold_long) & (p_noise < max_noise)
+    short_cond = (p_short > threshold_short) & (p_noise < max_noise)
 
     preds[long_cond] = 2
     preds[short_cond] = 0
