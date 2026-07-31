@@ -6,7 +6,7 @@ import json
 
 DATA_PATH = "data/exam_24h_volatile_3MTF.csv"
 MODEL_PATH = "models/lgbm_model_3MTF_v2_asym.pkl"
-PARAMS_PATH = "models/optuna_regime_params_3MTF_v3.json"
+PARAMS_PATH = "models/optuna_strict_thresholds.json"
 OUTPUT_TXT = "data/deepdive_report.txt"
 
 def determine_trend(rsi):
@@ -29,7 +29,7 @@ def main():
 
         X_test = df[features]
         y_true = df['Target_Label'].values
-        if y_true.min() == -1: y_true += 1 # 0: Short, 1: Noise, 2: Long
+        if y_true.min() == -1: y_true = y_true + 1 # 0: Short, 1: Noise, 2: Long
 
         df['Macro_Trend'] = df['M15_RSI_14'].apply(determine_trend)
 
@@ -49,8 +49,8 @@ def main():
         df['Max_Noise'] = np.where(df['Macro_Trend'] == 'Uptrend', p['up_max_noise'], np.where(df['Macro_Trend'] == 'Downtrend', p['down_max_noise'], p['side_max_noise']))
 
         preds = np.ones(len(df))
-        long_cond = (df['P_Long'] > df['Thr_Long']) & (df['P_Long'] > df['P_Short']) & (df['P_Noise'] < df['Max_Noise'])
-        short_cond = (df['P_Short'] > df['Thr_Short']) & (df['P_Short'] > df['P_Long']) & (df['P_Noise'] < df['Max_Noise'])
+        long_cond = (df['P_Long'] > df['Thr_Long']) & (df['P_Noise'] < df['Max_Noise'])
+        short_cond = (df['P_Short'] > df['Thr_Short']) & (df['P_Noise'] < df['Max_Noise'])
 
         preds[long_cond] = 2
         preds[short_cond] = 0
@@ -125,11 +125,11 @@ def main():
                     log_print("  ❌ Döntés oka: A Zajszint (P_Noise) túllépte a megengedett Max_Noise korlátot!")
                 else:
                     if trend == 'Uptrend':
-                        diff = row['Thr_Long'] - row['P_Long']
-                        log_print(f"  ❌ Döntés oka: P_Long alacsonyabb volt a küszöbnél {diff:.4f} ponttal.")
+                        diff = row['P_Long'] - row['Thr_Long']
+                        log_print(f"  ❌ Döntés oka: P_Long alacsonyabb volt a küszöbnél {row['Thr_Long'] - row['P_Long']:.4f} ponttal.")
                     else:
-                        diff = row['Thr_Short'] - row['P_Short']
-                        log_print(f"  ❌ Döntés oka: P_Short alacsonyabb volt a küszöbnél {diff:.4f} ponttal.")
+                        diff = row['P_Short'] - row['Thr_Short']
+                        log_print(f"  ❌ Döntés oka: P_Short alacsonyabb volt a küszöbnél {row['Thr_Short'] - row['P_Short']:.4f} ponttal.")
 
 if __name__ == "__main__":
     main()
