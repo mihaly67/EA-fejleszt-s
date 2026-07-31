@@ -5,21 +5,23 @@ import joblib
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-DATA_PATH = "data/exam_24h_volatile_3MTF_v3.csv"
-MODEL_PATH = "models/lgbm_model_default.pkl" # A tiszta gyári modell!
-OUTPUT_HTML = "data/volatile_RAW_decision_chart.html" # A kért pontos fájlnév
-# KIVETTEM A LIMIT_BARS VÁLTOZÓT: a teljes fájlt dolgozzuk fel!
+# Visszatérünk az EREDETI fájlokhoz (Nem _v3!)
+DATA_PATH = "data/exam_24h_volatile_3MTF.csv"
+MODEL_PATH = "models/lgbm_model_3MTF_v2_asym.pkl" # A tegnap kiképzett legerősebb fánk
+OUTPUT_HTML = "data/volatile_RAW_original_chart.html"
+LIMIT_BARS = 1600 # Limitet teszünk, mert különben 30MB-os akadós fájl lesz
 
 def main():
-    print(f"Adatok betöltése (TELJES 24 ÓRA): {DATA_PATH}")
+    print(f"Adatok betöltése (EREDETI ADATHALMAZ): {DATA_PATH}")
     df = pd.read_csv(DATA_PATH).dropna().reset_index(drop=True)
+    #df = df.head(LIMIT_BARS).copy()
     df['Start_Timestamp'] = pd.to_datetime(df['Start_Timestamp'], format='mixed', utc=True)
 
-    ignore_cols = ['Start_Timestamp', 'End_Timestamp', 'Target_Label', 'Open', 'High', 'Low', 'Close', 'Bid_Volume', 'Ask_Volume', 'Total_Volume', 'Total_Dollar_Value', '1m_Close', 'Dist_1m', '5m_Close', '10m_Close', '15m_Close', '30m_Close', '60m_Close', 'Bar_Time_Seconds', 'P_Short', 'P_Noise', 'P_Long', 'Signal']
+    ignore_cols = ['Start_Timestamp', 'End_Timestamp', 'Target_Label', 'Open', 'High', 'Low', 'Close', 'Bid_Volume', 'Ask_Volume', 'Total_Volume', 'Total_Dollar_Value', '1m_Close', 'Dist_1m', '5m_Close', '10m_Close', '15m_Close', '30m_Close', '60m_Close', 'Bar_Time_Seconds', 'P_Short', 'P_Noise', 'P_Long', 'Signal', 'OBI_Raw']
     features = [col for col in df.columns if col not in ignore_cols]
     X_test = df[features]
 
-    print(f"Szűz modell betöltése: {MODEL_PATH}")
+    print(f"Modell betöltése: {MODEL_PATH}")
     try:
         model = joblib.load(MODEL_PATH)
         probs = model.predict_proba(X_test)
@@ -38,7 +40,7 @@ def main():
     fig = make_subplots(
         rows=2, cols=1, shared_xaxes=True,
         row_heights=[0.7, 0.3], vertical_spacing=0.03,
-        subplot_titles=("Price & PURE Argmax ML Signals (Full Day)", "Model Probabilities (Default LGBM)")
+        subplot_titles=("Price & PURE Argmax ML Signals (Original Baseline)", "Model Probabilities")
     )
 
     colors = np.where(df['Close'] >= df['Open'], '#228B22', '#B22222')
@@ -65,7 +67,7 @@ def main():
     fig.add_trace(go.Scatter(x=df['Start_Timestamp'], y=df['P_Noise'], mode='lines', line=dict(color='gray', width=1, dash='dot'), name='P(Noise)'), row=2, col=1)
 
     fig.update_layout(
-        title="Full Day Pure Raw Argmax Evaluation (Default Model, No Optuna)",
+        title="Pure Raw Argmax Evaluation (Original Model, Original Data)",
         xaxis_rangeslider_visible=False, template='plotly_dark', height=900, showlegend=True
     )
     fig.write_html(OUTPUT_HTML)

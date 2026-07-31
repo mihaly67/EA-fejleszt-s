@@ -30,8 +30,8 @@ def load_data():
     y_true_g = y_true
 
     trends = np.full(len(df), 'Sideways', dtype=object)
-    trends[df['Micro_RSI_14'] > 55] = 'Uptrend'
-    trends[df['Micro_RSI_14'] < 45] = 'Downtrend'
+    trends[df['M15_RSI_14'] > 55] = 'Uptrend'
+    trends[df['M15_RSI_14'] < 45] = 'Downtrend'
     trends_g = trends
 
     model = joblib.load(MODEL_PATH)
