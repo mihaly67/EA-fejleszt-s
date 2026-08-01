@@ -1,65 +1,39 @@
 import pandas as pd
 import numpy as np
-from sklearn.neighbors import KernelDensity
-from scipy.signal import find_peaks
-
-def calculate_kde_support_resistance(df, bandwidth=2.0, num_levels=5):
-    """
-    Calculates statistical Support/Resistance levels using Kernel Density Estimation
-    on the Close prices over the rolling window.
-    """
-    prices = df['Close'].values.reshape(-1, 1)
-
-    # Fit KDE
-    kde = KernelDensity(kernel='gaussian', bandwidth=bandwidth).fit(prices)
-
-    # Evaluate KDE over the price range
-    price_range = np.linspace(prices.min(), prices.max(), 1000).reshape(-1, 1)
-    log_dens = kde.score_samples(price_range)
-
-    # Find peaks in the density (these are the S&R levels)
-    peaks, _ = find_peaks(log_dens, distance=20)
-
-    levels = price_range[peaks].flatten()
-
-    # If we have more levels than requested, take the ones with highest density
-    if len(levels) > num_levels:
-        peak_densities = log_dens[peaks]
-        top_indices = np.argsort(peak_densities)[-num_levels:]
-        levels = levels[top_indices]
-
-    levels.sort()
-    return levels
+import ta
 
 def process_macro_features(df):
     """
-    Calculates purely structural features for the Macro/Regime Ridge Classifier.
+    Ingests the Master ZigZag M1 CSV and computes ATR-normalized geometric distances
+    from the current price to the exact ZigZag Pivot Support/Resistance levels.
     """
-    print("Engineer: Calculating Structural Features...")
+    print("Engineer: Generating ZigZag-Driven Geometric Features...")
     df = df.copy()
 
-    # Ensure Time is datetime
     if 'Time' in df.columns:
         df['Time'] = pd.to_datetime(df['Time'])
         df.sort_values('Time', inplace=True)
 
-    # 1. Fractional Differentiation Proxy (Returns or log returns as a simple stationary proxy for now)
-    df['Log_Return'] = np.log(df['Close'] / df['Close'].shift(1))
+    df['ATR_14'] = ta.volatility.AverageTrueRange(high=df['High'], low=df['Low'], close=df['Close'], window=14).average_true_range()
 
-    # 2. Rolling Volatility
-    df['Rolling_Vol_20'] = df['Log_Return'].rolling(window=20).std()
+    # Calculate Distances to the MQL5 ZigZag Pivots, normalized by ATR
+    # Positive distance means price is below resistance (or above support)
+    df['Dist_Micro_R'] = (df['Micro_R'] - df['Close']) / (df['ATR_14'] + 1e-8)
+    df['Dist_Micro_S'] = (df['Close'] - df['Micro_S']) / (df['ATR_14'] + 1e-8)
 
-    # 3. Structural Swing Metrics (Distance to rolling min/max)
-    df['Rolling_Max_50'] = df['High'].rolling(window=50).max()
-    df['Rolling_Min_50'] = df['Low'].rolling(window=50).min()
+    df['Dist_Sec_R'] = (df['Sec_R'] - df['Close']) / (df['ATR_14'] + 1e-8)
+    df['Dist_Sec_S'] = (df['Close'] - df['Sec_S']) / (df['ATR_14'] + 1e-8)
 
-    df['Dist_to_Max_50'] = (df['Rolling_Max_50'] - df['Close']) / df['Close']
-    df['Dist_to_Min_50'] = (df['Close'] - df['Rolling_Min_50']) / df['Close']
+    df['Dist_Ter_R'] = (df['Ter_R'] - df['Close']) / (df['ATR_14'] + 1e-8)
+    df['Dist_Ter_S'] = (df['Close'] - df['Ter_S']) / (df['ATR_14'] + 1e-8)
 
-    # 4. KDE Support/Resistance Distances (Global approximation for baseline)
-    global_levels = calculate_kde_support_resistance(df)
+    # ---------------------------------------------------------
+    # Momentum confirmation: Ultra-fast Stochastic
+    # ---------------------------------------------------------
+    stoch_m1 = ta.momentum.StochasticOscillator(high=df['High'], low=df['Low'], close=df['Close'], window=2, smooth_window=3)
+    df['Stoch_State_M1'] = (stoch_m1.stoch() - 50.0) / 50.0
 
-    df['Dist_Nearest_Level'] = df['Close'].apply(lambda x: min(abs(x - lvl) for lvl in global_levels) if len(global_levels) > 0 else 0)
-
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df.dropna(inplace=True)
+
     return df
