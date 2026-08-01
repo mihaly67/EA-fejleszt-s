@@ -11,7 +11,7 @@ from macro_feature_engineer import process_macro_features
 from macro_labeler import label_macro_regime
 
 def main():
-    print("=== 🏗️ STRUCTURAL MACRO REGIME MODEL (MULTI-PARAM AMA GEOMETRY) ===")
+    print("=== 🏗️ STRUCTURAL MACRO REGIME MODEL (AMA + FAST STOCHASTIC) ===")
 
     # Load Real M1 Data (Raw OHLCV)
     data_path = "../data/Macro_GCEQ26_PERIOD_M1.csv"
@@ -24,15 +24,16 @@ def main():
 
     print(f"Loaded {len(df)} rows.")
 
-    # 2. Engineer Multi-Param AMA Geometric Features
+    # 2. Engineer AMA + Stoch Geometric Features
     df_features = process_macro_features(df)
 
     # 3. Apply Dynamic Labels
     # Lookahead=5 (5 minutes on M1 timeframe). atr_multiplier=1.0.
     df_labeled = label_macro_regime(df_features, lookahead=5, atr_multiplier=1.0)
 
-    # Define explicitly the new AMA Array features
+    # Define explicitly the new combined feature array
     feature_cols = [
+        'Stoch_State_M1', 'Stoch_State_M5', 'Stoch_State_M15',
         'X_micro_ama1_dist', 'X_micro_ama2_dist',
         'X_int_ama1_dist', 'X_int_ama2_dist',
         'X_macro_ama1_dist',
@@ -59,7 +60,7 @@ def main():
     X_test_scaled = scaler.transform(X_test)
 
     # 6. Train Ridge Classifier
-    print("\nTraining Multi-Param AMA Ridge Classifier...")
+    print("\nTraining Ridge Classifier (AMA + Fast Stochastic)...")
     clf = RidgeClassifier(alpha=1.0, class_weight='balanced')
     clf.fit(X_train_scaled, y_train)
 
@@ -67,21 +68,21 @@ def main():
     y_pred = clf.predict(X_test_scaled)
     acc = accuracy_score(y_test, y_pred)
 
-    print(f"\n--- EVALUATION RESULTS (MULTI-PARAM AMA RIDGE) ---")
+    print(f"\n--- EVALUATION RESULTS (AMA + FAST STOCHASTIC) ---")
     print(f"Accuracy: {acc*100:.2f}%")
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred, zero_division=0))
 
-    print("\nFeature Coefficients (Weights) - The Ridge Model's Chosen AMA Parameters:")
+    print("\nFeature Coefficients (Weights) - Geometry vs. Momentum:")
     for i, col in enumerate(feature_cols):
         importance = np.mean(np.abs(clf.coef_[:, i]))
         print(f"  {col}: {importance:.4f}")
 
     # 8. Save Pipeline
     os.makedirs("../models", exist_ok=True)
-    joblib.dump(scaler, '../models/macro_scaler_M1_ama.pkl')
-    joblib.dump(clf, '../models/macro_ridge_M1_ama.pkl')
-    print("\n✅ Multi-Param AMA Pipeline saved to Macro_Regime/models/")
+    joblib.dump(scaler, '../models/macro_scaler_M1_stoch.pkl')
+    joblib.dump(clf, '../models/macro_ridge_M1_stoch.pkl')
+    print("\n✅ AMA+Stoch Pipeline saved to Macro_Regime/models/")
 
 if __name__ == "__main__":
     main()

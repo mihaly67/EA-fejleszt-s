@@ -21,10 +21,10 @@ def calculate_kde_support_resistance(df, bandwidth=2.0, num_levels=5):
 
 def process_macro_features(df):
     """
-    Computes multiple variations of the AMA across simulated timeframes
-    directly from raw M1 data to let the Ridge Classifier find the optimal parameters.
+    Computes multiple variations of the AMA across simulated timeframes,
+    plus ultra-fast Scalper Stochastic (2,3,3) states.
     """
-    print("Engineer: Generating Multi-Param AMA Geometric Coordinates...")
+    print("Engineer: Generating Multi-Param AMA + Fast Stochastic Features...")
     df = df.copy()
 
     if 'Time' in df.columns:
@@ -34,24 +34,33 @@ def process_macro_features(df):
     df['ATR_5'] = ta.volatility.AverageTrueRange(high=df['High'], low=df['Low'], close=df['Close'], window=5).average_true_range()
 
     # ---------------------------------------------------------
-    # Generate AMA Variants (Period, Fast, Slow)
+    # 1. ULTRA-FAST SCALPER STOCHASTIC (2, 3, 3 base)
+    # Normalized around 50: +1.0 (Strong Long), -1.0 (Strong Short)
     # ---------------------------------------------------------
-    # M1 Timeframe Variants (Micro)
+    # M1 (Micro)
+    stoch_m1 = ta.momentum.StochasticOscillator(high=df['High'], low=df['Low'], close=df['Close'], window=2, smooth_window=3)
+    df['Stoch_State_M1'] = (stoch_m1.stoch() - 50.0) / 50.0
+
+    # M5 (Intermediate) - Simulated (2*5, 3*5)
+    stoch_m5 = ta.momentum.StochasticOscillator(high=df['High'], low=df['Low'], close=df['Close'], window=10, smooth_window=15)
+    df['Stoch_State_M5'] = (stoch_m5.stoch() - 50.0) / 50.0
+
+    # M15 (Macro) - Simulated (2*15, 3*15)
+    stoch_m15 = ta.momentum.StochasticOscillator(high=df['High'], low=df['Low'], close=df['Close'], window=30, smooth_window=45)
+    df['Stoch_State_M15'] = (stoch_m15.stoch() - 50.0) / 50.0
+
+    # ---------------------------------------------------------
+    # 2. AMA Variants (Period, Fast, Slow)
+    # ---------------------------------------------------------
     df['AMA_M1_20_2_30'] = calculate_kama(df['Close'], period=20, fast_ema=2, slow_ema=30)
     df['AMA_M1_10_2_20'] = calculate_kama(df['Close'], period=10, fast_ema=2, slow_ema=20)
 
-    # Simulated M5 Timeframe Variants (Intermediate)
-    # Period * 5
     df['AMA_M5_20_2_30'] = calculate_kama(df['Close'], period=100, fast_ema=10, slow_ema=150)
     df['AMA_M5_30_5_50'] = calculate_kama(df['Close'], period=150, fast_ema=25, slow_ema=250)
 
-    # Simulated M15 Timeframe Variants (Macro)
-    # Period * 15
     df['AMA_M15_20_2_30'] = calculate_kama(df['Close'], period=300, fast_ema=30, slow_ema=450)
 
-    # ---------------------------------------------------------
     # Convert ALL AMAs to ATR-Normalized Geometric Distances
-    # ---------------------------------------------------------
     df['X_micro_ama1_dist'] = (df['Close'] - df['AMA_M1_20_2_30']) / (df['ATR_5'] + 1e-8)
     df['X_micro_ama2_dist'] = (df['Close'] - df['AMA_M1_10_2_20']) / (df['ATR_5'] + 1e-8)
 
@@ -60,15 +69,13 @@ def process_macro_features(df):
 
     df['X_macro_ama1_dist'] = (df['Close'] - df['AMA_M15_20_2_30']) / (df['ATR_5'] + 1e-8)
 
-    # ---------------------------------------------------------
     # AMA Slopes (Velocities)
-    # ---------------------------------------------------------
     df['Slope_AMA_M1'] = (df['AMA_M1_20_2_30'] - df['AMA_M1_20_2_30'].shift(5)) / (df['ATR_5'] + 1e-8)
     df['Slope_AMA_M5'] = (df['AMA_M5_20_2_30'] - df['AMA_M5_20_2_30'].shift(25)) / (df['ATR_5'] + 1e-8)
     df['Slope_AMA_M15'] = (df['AMA_M15_20_2_30'] - df['AMA_M15_20_2_30'].shift(75)) / (df['ATR_5'] + 1e-8)
 
     # ---------------------------------------------------------
-    # Structural KDE Pivots
+    # 3. Structural KDE Pivots
     # ---------------------------------------------------------
     global_levels = calculate_kde_support_resistance(df)
     def get_nearest_pivot(price):
@@ -78,7 +85,6 @@ def process_macro_features(df):
     df['Nearest_Pivot'] = df['Close'].apply(get_nearest_pivot)
     df['X_pivot_dist'] = (df['Close'] - df['Nearest_Pivot']) / (df['ATR_5'] + 1e-8)
 
-    # Labeler needs ATR_14
     df['ATR_14'] = ta.volatility.AverageTrueRange(high=df['High'], low=df['Low'], close=df['Close'], window=14).average_true_range()
 
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
