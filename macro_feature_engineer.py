@@ -4,10 +4,6 @@ from sklearn.neighbors import KernelDensity
 from scipy.signal import find_peaks
 
 def calculate_kde_support_resistance(df, bandwidth=2.0, num_levels=5):
-    """
-    Calculates statistical Support/Resistance levels using Kernel Density Estimation
-    on the Close prices over the rolling window.
-    """
     prices = df['Close'].values.reshape(-1, 1)
 
     # Fit KDE
@@ -35,31 +31,40 @@ def process_macro_features(df):
     """
     Calculates purely structural features for the Macro/Regime Ridge Classifier.
     """
-    print("Engineer: Calculating Structural Features...")
+    print("Engineer: Calculating Structural Features (V2)...")
     df = df.copy()
 
-    # Ensure Time is datetime
     if 'Time' in df.columns:
         df['Time'] = pd.to_datetime(df['Time'])
         df.sort_values('Time', inplace=True)
 
-    # 1. Fractional Differentiation Proxy (Returns or log returns as a simple stationary proxy for now)
+    # 1. ATR (Average True Range) - Used later for dynamic labeling and volatility
+    high_low = df['High'] - df['Low']
+    high_close = np.abs(df['High'] - df['Close'].shift())
+    low_close = np.abs(df['Low'] - df['Close'].shift())
+    ranges = pd.concat([high_low, high_close, low_close], axis=1)
+    true_range = np.max(ranges, axis=1)
+    df['ATR_14'] = true_range.rolling(14).mean()
+
+    # Fractional Return Proxy
     df['Log_Return'] = np.log(df['Close'] / df['Close'].shift(1))
 
-    # 2. Rolling Volatility
-    df['Rolling_Vol_20'] = df['Log_Return'].rolling(window=20).std()
+    # 2. ATR Normalized Volatility State (Replaces simple standard deviation)
+    df['Vol_State'] = df['ATR_14'] / df['Close']
 
     # 3. Structural Swing Metrics (Distance to rolling min/max)
     df['Rolling_Max_50'] = df['High'].rolling(window=50).max()
     df['Rolling_Min_50'] = df['Low'].rolling(window=50).min()
 
-    df['Dist_to_Max_50'] = (df['Rolling_Max_50'] - df['Close']) / df['Close']
-    df['Dist_to_Min_50'] = (df['Close'] - df['Rolling_Min_50']) / df['Close']
+    # Normalize swing distances by ATR to make them volatility-invariant
+    df['Dist_to_Max_50_ATR'] = (df['Rolling_Max_50'] - df['Close']) / df['ATR_14']
+    df['Dist_to_Min_50_ATR'] = (df['Close'] - df['Rolling_Min_50']) / df['ATR_14']
 
-    # 4. KDE Support/Resistance Distances (Global approximation for baseline)
+    # 4. KDE Support/Resistance Distances
     global_levels = calculate_kde_support_resistance(df)
-
     df['Dist_Nearest_Level'] = df['Close'].apply(lambda x: min(abs(x - lvl) for lvl in global_levels) if len(global_levels) > 0 else 0)
+    # Normalize by ATR
+    df['Dist_Nearest_Level_ATR'] = df['Dist_Nearest_Level'] / df['ATR_14']
 
     df.dropna(inplace=True)
     return df
