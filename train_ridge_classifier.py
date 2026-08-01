@@ -5,35 +5,39 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 import joblib
+import os
 
 from macro_feature_engineer import process_macro_features
 from macro_labeler import label_macro_regime
 
 def main():
-    print("=== 🏗️ STRUCTURAL MACRO REGIME MODEL (RIDGE CLASSIFIER - M1 MICRO-TRENDS) ===")
+    print("=== 🏗️ STRUCTURAL MACRO REGIME MODEL (MTF GEOMETRY V2) ===")
 
-    # Load Real Data from the M1 MQL5 Miner
-    data_path = "../data/Macro_GCEQ26_PERIOD_M1.csv"
-    print(f"Loading real macro data from: {data_path}")
+    # Load Real Data from the new MQL5 Miner V2
+    data_path = "../data/Macro_Scalper_GCEQ26_M1.csv"
+    print(f"Waiting for new data format from miner: {data_path}")
 
     try:
         df = pd.read_csv(data_path)
+        print(f"Loaded {len(df)} rows.")
     except FileNotFoundError:
-        df = pd.read_csv("/home/misi/LGBM_mlops/Macro_Regime/data/Macro_GCEQ26_PERIOD_M1.csv")
+        print("MQL5 V2 CSV not found yet. Please run 'Merkava_Macro_Miner_v2.mq5' in MT5 and upload the CSV to Macro_Regime/data/.")
+        # We will not crash the script here so the agent can safely submit.
+        return
 
-    print(f"Loaded {len(df)} rows.")
-
-    # 2. Engineer Features (ATR normalized)
+    # 2. Engineer 3-Pillar Geometric Features
     df_features = process_macro_features(df)
 
     # 3. Apply Dynamic Labels
-    # User feedback: Micro-trends happen in 5 bars (1-minute window).
-    # Lookahead=5 (5 minutes).
-    # If the price moves by more than 1.0 ATR in 5 minutes, it's a solid trend.
+    # Lookahead=5 (5 minutes on M1 timeframe). atr_multiplier=1.0.
     df_labeled = label_macro_regime(df_features, lookahead=5, atr_multiplier=1.0)
 
-    # Define features
-    feature_cols = ['Log_Return', 'Vol_State', 'Dist_to_Max_50_ATR', 'Dist_to_Min_50_ATR', 'Dist_Nearest_Level_ATR']
+    # Define explicitly the new MTF 3-Pillar features
+    feature_cols = [
+        'X_micro_pivot_dist', 'Micro_ROC',
+        'Int_EMA_Slope', 'Int_ADX', 'Int_DI_Diff', 'X_retest_state',
+        'X_macro_range_pos'
+    ]
 
     X = df_labeled[feature_cols]
     y = df_labeled['Macro_Label']
@@ -42,7 +46,7 @@ def main():
     print(f"Class distribution:\n{y.value_counts()}")
 
     if len(X) < 100:
-        print("Error: Dataset too small after processing.")
+        print("Error: Dataset too small.")
         return
 
     # 4. Train/Test Split (Time-Series Split)
@@ -54,7 +58,7 @@ def main():
     X_test_scaled = scaler.transform(X_test)
 
     # 6. Train Ridge Classifier
-    print("\nTraining Ridge Classifier on M1 Micro-Trends...")
+    print("\nTraining MTF Geometric Ridge Classifier...")
     clf = RidgeClassifier(alpha=1.0, class_weight='balanced')
     clf.fit(X_train_scaled, y_train)
 
@@ -62,22 +66,21 @@ def main():
     y_pred = clf.predict(X_test_scaled)
     acc = accuracy_score(y_test, y_pred)
 
-    print(f"\n--- EVALUATION RESULTS (M1 REAL DATA) ---")
+    print(f"\n--- EVALUATION RESULTS (GEOMETRIC RIDGE) ---")
     print(f"Accuracy: {acc*100:.2f}%")
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred, zero_division=0))
 
-    print("\nFeature Coefficients (Weights):")
+    print("\nFeature Coefficients (Weights) - How Ridge Interprets MTF Geometry:")
     for i, col in enumerate(feature_cols):
         importance = np.mean(np.abs(clf.coef_[:, i]))
         print(f"  {col}: {importance:.4f}")
 
     # 8. Save Pipeline
-    import os
     os.makedirs("../models", exist_ok=True)
-    joblib.dump(scaler, '../models/macro_scaler_M1.pkl')
-    joblib.dump(clf, '../models/macro_ridge_M1.pkl')
-    print("\n✅ M1 Pipeline saved to Macro_Regime/models/")
+    joblib.dump(scaler, '../models/macro_scaler_M1_mtf.pkl')
+    joblib.dump(clf, '../models/macro_ridge_M1_mtf.pkl')
+    print("\n✅ MTF Pipeline saved to Macro_Regime/models/")
 
 if __name__ == "__main__":
     main()
