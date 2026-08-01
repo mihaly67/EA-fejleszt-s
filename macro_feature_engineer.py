@@ -38,9 +38,12 @@ def process_macro_features(df):
     print("Engineer: Calculating Structural Features...")
     df = df.copy()
 
+    # Ensure Time is datetime
+    if 'Time' in df.columns:
+        df['Time'] = pd.to_datetime(df['Time'])
+        df.sort_values('Time', inplace=True)
+
     # 1. Fractional Differentiation Proxy (Returns or log returns as a simple stationary proxy for now)
-    # Full fractional differentiation requires statsmodels and is computationally heavy,
-    # we use log returns as a basic structural stationary feature for Ridge.
     df['Log_Return'] = np.log(df['Close'] / df['Close'].shift(1))
 
     # 2. Rolling Volatility
@@ -53,13 +56,9 @@ def process_macro_features(df):
     df['Dist_to_Max_50'] = (df['Rolling_Max_50'] - df['Close']) / df['Close']
     df['Dist_to_Min_50'] = (df['Close'] - df['Rolling_Min_50']) / df['Close']
 
-    # 4. KDE Support/Resistance Distances (Calculated on a rolling window)
-    # Note: Computing KDE on every row is O(N^2) and very slow. We approximate by updating levels periodically
-    # For this baseline script, we calculate static levels for the whole dataset as an example.
-    # In production, this should be rolling.
+    # 4. KDE Support/Resistance Distances (Global approximation for baseline)
     global_levels = calculate_kde_support_resistance(df)
 
-    # Distance to nearest KDE level
     df['Dist_Nearest_Level'] = df['Close'].apply(lambda x: min(abs(x - lvl) for lvl in global_levels) if len(global_levels) > 0 else 0)
 
     df.dropna(inplace=True)
