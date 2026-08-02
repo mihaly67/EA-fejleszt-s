@@ -6,19 +6,18 @@ from sklearn.metrics import accuracy_score, classification_report
 import joblib
 
 def main():
-    print("=== 🌲 LIGHTGBM FUSION COPILOT (V4 LABELS + OPTUNA TUNED) ===")
+    print("=== 🌲 LIGHTGBM FUSION COPILOT V5 (WICK-AWARE) ===")
 
     data_path = "../data/fused_features_dollar_bars.csv"
     print(f"Loading fused data from: {data_path}")
     df = pd.read_csv(data_path)
 
-    label_path = "../data/labeled_dollar_bars_v4_5bar.csv"
-    print(f"Loading Strict 5-Bar Labels from: {label_path}")
+    label_path = "../data/labeled_dollar_bars_v5_strict.csv"
+    print(f"Loading Strict V5 Labels from: {label_path}")
     df_labels = pd.read_csv(label_path)
 
     df = pd.merge(df, df_labels[['Target_Label']], left_index=True, right_index=True)
 
-    # PURGED RSI FEATURES (M15_RSI_14 and M5_RSI_7 are GONE)
     features = [
         'Tick_Speed', 'Micro_Trend', 'Macro_Trend', 'Imbalance_L1', 'Imbalance_L2',
         'Imbalance_L3', 'Imbalance_L4', 'Imbalance_L5', 'Imbalance_L6',
@@ -29,27 +28,26 @@ def main():
         'Dist_Micro_R', 'Dist_Micro_S',
         'Dist_Sec_R', 'Dist_Sec_S',
         'Dist_Ter_R', 'Dist_Ter_S',
-        'Stoch_State_M1'
+        'Stoch_State_M1',
+        'Upper_Wick_ATR', 'Lower_Wick_ATR'
     ]
 
     existing_features = [f for f in features if f in df.columns]
-
     X = df[existing_features]
     y = df['Target_Label']
-
     y_shifted = y + 1
 
     X_train, X_test, y_train, y_test = train_test_split(X, y_shifted, test_size=0.2, shuffle=False)
 
-    print("\nTraining Tuned LightGBM Copilot (RSI Removed)...")
+    print("\nTraining Tuned LightGBM Copilot V5...")
 
-    # Optuna informed parameters
     clf = lgb.LGBMClassifier(
-        n_estimators=850,
-        learning_rate=0.035,
-        num_leaves=60,
-        max_depth=7,
-        min_child_samples=45,
+        n_estimators=781,
+        learning_rate=0.0142,
+        num_leaves=57,
+        max_depth=6,
+        min_child_samples=24,
+        colsample_bytree=0.566,
         class_weight='balanced',
         objective='multiclass',
         random_state=42,
@@ -61,13 +59,13 @@ def main():
     y_pred = clf.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
 
-    print(f"\n--- EVALUATION RESULTS (TUNED FUSION LGBM V4) ---")
+    print(f"\n--- EVALUATION RESULTS (FUSION LGBM V5) ---")
     print(f"Accuracy: {acc*100:.2f}%")
     print("\nClassification Report (0=Downtrend, 1=Range, 2=Uptrend):")
     print(classification_report(y_test, y_pred, zero_division=0))
 
-    joblib.dump(clf, '../models/lgbm_model_fusion_v4_tuned.pkl')
-    print("\n✅ Tuned Fusion Model saved to Micro_LGBM/models/lgbm_model_fusion_v4_tuned.pkl")
+    joblib.dump(clf, '../models/lgbm_model_fusion_v5_tuned.pkl')
+    print("\n✅ V5 Fusion Model saved to Micro_LGBM/models/lgbm_model_fusion_v5_tuned.pkl")
 
 if __name__ == "__main__":
     main()
