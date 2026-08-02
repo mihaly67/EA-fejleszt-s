@@ -3,9 +3,6 @@ import numpy as np
 import ta
 
 def process_zigzag_features(df):
-    """
-    Converts raw M1 ZigZag CSV into ATR-normalized distances.
-    """
     df = df.copy()
     if 'Time' in df.columns:
         df['Time'] = pd.to_datetime(df['Time'])
@@ -13,7 +10,7 @@ def process_zigzag_features(df):
 
     df['ATR_14'] = ta.volatility.AverageTrueRange(high=df['High'], low=df['Low'], close=df['Close'], window=14).average_true_range()
 
-    # Positive distance means price is below resistance (or above support)
+    # Existing Geometric Distances
     df['Dist_Micro_R'] = (df['Micro_R'] - df['Close']) / (df['ATR_14'] + 1e-8)
     df['Dist_Micro_S'] = (df['Close'] - df['Micro_S']) / (df['ATR_14'] + 1e-8)
     df['Dist_Sec_R'] = (df['Sec_R'] - df['Close']) / (df['ATR_14'] + 1e-8)
@@ -21,56 +18,51 @@ def process_zigzag_features(df):
     df['Dist_Ter_R'] = (df['Ter_R'] - df['Close']) / (df['ATR_14'] + 1e-8)
     df['Dist_Ter_S'] = (df['Close'] - df['Ter_S']) / (df['ATR_14'] + 1e-8)
 
+    # NEW WICK GEOMETRY (Giving the model explicit awareness of dangerous wicks)
+    df['Upper_Wick'] = df['High'] - np.maximum(df['Open'], df['Close'])
+    df['Lower_Wick'] = np.minimum(df['Open'], df['Close']) - df['Low']
+
+    df['Upper_Wick_ATR'] = df['Upper_Wick'] / (df['ATR_14'] + 1e-8)
+    df['Lower_Wick_ATR'] = df['Lower_Wick'] / (df['ATR_14'] + 1e-8)
+
     stoch_m1 = ta.momentum.StochasticOscillator(high=df['High'], low=df['Low'], close=df['Close'], window=2, smooth_window=3)
     df['Stoch_State_M1'] = (stoch_m1.stoch() - 50.0) / 50.0
 
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df.dropna(inplace=True)
 
-    # We only need the timestamps and the new structural columns
-    cols_to_keep = ['Time', 'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S', 'Stoch_State_M1']
+    cols_to_keep = ['Time', 'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S', 'Stoch_State_M1', 'Upper_Wick_ATR', 'Lower_Wick_ATR']
     return df[cols_to_keep]
 
 def main():
-    print("=== 🧬 LGBM FEATURE FUSION (DOLLAR BARS + ZIGZAG MACRO) ===")
+    print("=== 🧬 LGBM FEATURE FUSION V2 (WICK GEOMETRY ADDED) ===")
 
-    # 1. Load Micro Dollar Bars (Contains OBI, Velocity, etc.)
-    dollar_bars_path = "../data/features_dollar_bars_3MTF_v3.csv"
-    print(f"Loading Micro Dollar Bars: {dollar_bars_path}")
-    df_micro = pd.read_csv(dollar_bars_path)
-    df_micro['End_Timestamp'] = pd.to_datetime(df_micro['End_Timestamp'])
-    df_micro.sort_values('End_Timestamp', inplace=True)
+    # FUSE HISTORICAL
+    print("\n[1] Fusing Historical Data...")
+    df_micro_hist = pd.read_csv("../data/features_dollar_bars_3MTF_v3.csv")
+    df_micro_hist['End_Timestamp'] = pd.to_datetime(df_micro_hist['End_Timestamp'])
+    df_micro_hist.sort_values('End_Timestamp', inplace=True)
 
-    # 2. Load Raw ZigZag M1 Data
-    macro_path = "../../Macro_Regime/data/Master_ZigZag_GCEQ26_M1.csv"
-    print(f"Loading Macro ZigZag Data: {macro_path}")
-    df_macro_raw = pd.read_csv(macro_path)
-
-    # Process ZigZag to exact geometric features
-    print("Engineering ZigZag distances...")
+    df_macro_raw = pd.read_csv("../../Macro_Regime/data/Master_ZigZag_GCEQ26_M1.csv")
     df_macro = process_zigzag_features(df_macro_raw)
 
-    # 3. Perform AsOf Merge (Forward-Fill)
-    # For every Dollar Bar, we look BACKWARDS to the most recent M1 structural data
-    print("Fusing datasets (merge_asof)...")
-    df_fused = pd.merge_asof(
-        df_micro,
-        df_macro,
-        left_on='End_Timestamp',
-        right_on='Time',
-        direction='backward'
-    )
+    df_fused_hist = pd.merge_asof(df_micro_hist, df_macro, left_on='End_Timestamp', right_on='Time', direction='backward')
+    if 'Time' in df_fused_hist.columns: df_fused_hist.drop(columns=['Time'], inplace=True)
+    df_fused_hist.dropna(inplace=True)
+    df_fused_hist.to_csv("../data/fused_features_dollar_bars.csv", index=False)
 
-    # Clean up redundant Time column from merge
-    if 'Time' in df_fused.columns:
-        df_fused.drop(columns=['Time'], inplace=True)
+    # FUSE EXAM (July 20-24)
+    print("\n[2] Fusing Exam Data...")
+    df_micro_exam = pd.read_csv("../data/exam_blind_features.csv")
+    df_micro_exam['End_Timestamp'] = pd.to_datetime(df_micro_exam['End_Timestamp'])
+    df_micro_exam.sort_values('End_Timestamp', inplace=True)
 
-    df_fused.dropna(inplace=True)
+    df_fused_exam = pd.merge_asof(df_micro_exam, df_macro, left_on='End_Timestamp', right_on='Time', direction='backward')
+    if 'Time' in df_fused_exam.columns: df_fused_exam.drop(columns=['Time'], inplace=True)
+    df_fused_exam.dropna(inplace=True)
+    df_fused_exam.to_csv("../data/exam_blind_fused.csv", index=False)
 
-    # 4. Save Fused Dataset
-    out_path = "../data/fused_features_dollar_bars.csv"
-    df_fused.to_csv(out_path, index=False)
-    print(f"✅ Fusion Complete! Saved to: {out_path} ({len(df_fused)} rows)")
+    print(f"\n✅ Fusion Complete! Both Historical and Exam datasets updated with Wick Features.")
 
 if __name__ == "__main__":
     main()
