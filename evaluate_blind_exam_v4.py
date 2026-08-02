@@ -7,9 +7,8 @@ import joblib
 from sklearn.metrics import accuracy_score, classification_report
 
 def main():
-    print("=== 🎓 FUSION LGBM BLIND EXAM (JULY 23, 2026) ===")
+    print("=== 🎓 TUNED FUSION LGBM BLIND EXAM (JULY 23, 2026) ===")
 
-    # Load Labeled Exam Data
     data_path = "../data/exam_blind_labeled.csv"
     df = pd.read_csv(data_path)
     df['End_Timestamp'] = pd.to_datetime(df['End_Timestamp'])
@@ -20,7 +19,6 @@ def main():
 
     if len(exam_raw) == 0:
         print(f"Error: Exam day {target_date} is empty.")
-        print(df['DateOnly'].unique())
         return
 
     print(f"Selecting BLIND EXAM DAY: {target_date} (0-24h)")
@@ -31,7 +29,7 @@ def main():
         'Imbalance_L7', 'Imbalance_L8', 'Imbalance_L9', 'Imbalance_L10',
         'CVD_Raw', 'CVD_Rolling_10', 'Cancel_Rate_Rolling_10',
         'Trade_Size_Imbalance', 'Spread_ZScore',
-        'M5_RSI_7', 'M15_RSI_14', 'ATR_Micro', 'Velocity_Micro',
+        'ATR_Micro', 'Velocity_Micro',
         'Dist_Micro_R', 'Dist_Micro_S',
         'Dist_Sec_R', 'Dist_Sec_S',
         'Dist_Ter_R', 'Dist_Ter_S',
@@ -39,12 +37,11 @@ def main():
     ]
 
     existing_features = [f for f in features if f in exam_raw.columns]
-
     X_exam = exam_raw[existing_features]
-    y_exam_true = exam_raw['Target_Label'] + 1 # 0, 1, 2
+    y_exam_true = exam_raw['Target_Label'] + 1
 
-    print("Loading Pre-trained Fusion LGBM Model (Trained exclusively up to July 17)...")
-    clf = joblib.load('../models/lgbm_model_fusion_v4.pkl')
+    print("Loading Pre-trained Tuned Fusion LGBM Model...")
+    clf = joblib.load('../models/lgbm_model_fusion_v4_tuned.pkl')
 
     print("Running Inference on Blind Exam Day...")
     probs = clf.predict_proba(X_exam)
@@ -64,7 +61,8 @@ def main():
     exam_raw['P_Noise'] = P_Noise
     exam_raw['P_Long'] = P_Long
 
-    THRESHOLD = 0.55 # Setting a strict threshold to filter noise
+    # We use a standard 0.50 threshold to let the model speak for itself natively.
+    THRESHOLD = 0.50
     signals = []
     for i in range(len(probs)):
         if P_Long[i] > THRESHOLD and P_Long[i] > P_Short[i]:
@@ -114,12 +112,12 @@ def main():
     fig.add_hline(y=THRESHOLD, line_dash="dash", line_color="white", row=2, col=1)
 
     fig.update_layout(
-        title=f"LGBM Fusion Blind Exam (07/23/2026) | DOM + ZigZag Pivot Walls",
+        title=f"LGBM Tuned Fusion Blind Exam (07/23/2026) | RSI Removed",
         yaxis_title="Price", yaxis2_title="Probability",
         xaxis_rangeslider_visible=False, template="plotly_dark", height=1000
     )
 
-    html_path = "../data/lgbm_blind_exam_July23.html"
+    html_path = "../data/lgbm_blind_exam_July23_Tuned.html"
     fig.write_html(html_path)
     print(f"✅ Visualization saved to {html_path}")
 
