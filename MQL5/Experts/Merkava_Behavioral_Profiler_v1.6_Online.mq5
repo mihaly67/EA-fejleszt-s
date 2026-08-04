@@ -124,7 +124,7 @@ input int    InpHistoryTicks       = 10000;        // Number of Ticks to send on
 
 //--- Socket Variables
 int          g_socket = INVALID_HANDLE;       // Vaku 3.0 Socket
-int          g_dom_socket = INVALID_HANDLE;   // DOM HUD Socket
+int          g_dom_socket = INVALID_HANDLE;   // LGBM Tick Bridge Socket
 bool         g_socket_connected = false;
 bool         g_dom_socket_connected = false;
 datetime     g_last_reconnect_time = 0;
@@ -190,14 +190,14 @@ bool ConnectToPython() {
     // Ezt a függvényt csak legelső induláskor futtatjuk, az OnTick önállóan kezeli a reconnectet!
     bool result = false;
 
-    // 1. Connect Vaku 3.0 Dashboard (Port 5555)
+    // 1. Connect LGBM Macro Bridge (Port 5555)
     if(!g_socket_connected) {
         if(g_socket != INVALID_HANDLE) SocketClose(g_socket);
         g_socket = SocketCreate();
         if(g_socket != INVALID_HANDLE) {
             if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 50)) { // Extrem rovid blokkolas (50ms) initkor is
                 g_socket_connected = true;
-                Print("✅ Successfully connected to Vaku 3.0 Dashboard on ", InpBridgeHost, ":", InpBridgePort);
+                Print("✅ Successfully connected to LGBM Macro Bridge on ", InpBridgeHost, ":", InpBridgePort);
                 result = true;
             } else {
                 SocketClose(g_socket);
@@ -206,14 +206,14 @@ bool ConnectToPython() {
         }
     }
 
-    // 2. Connect DOM HUD (Port 5556)
+    // 2. Connect LGBM Tick Bridge (Port 5556)
     if(!g_dom_socket_connected) {
         if(g_dom_socket != INVALID_HANDLE) SocketClose(g_dom_socket);
         g_dom_socket = SocketCreate();
         if(g_dom_socket != INVALID_HANDLE) {
             if(SocketConnect(g_dom_socket, InpBridgeHost, InpDomBridgePort, 50)) { // Extrem rovid blokkolas (50ms) initkor is
                 g_dom_socket_connected = true;
-                Print("✅ Successfully connected to DOM HUD on ", InpBridgeHost, ":", InpDomBridgePort);
+                Print("✅ Successfully connected to LGBM Tick Bridge on ", InpBridgeHost, ":", InpDomBridgePort);
                 result = true;
             } else {
                 SocketClose(g_dom_socket);
@@ -273,7 +273,7 @@ void SendTickToPython(long time_msc, double bid, double ask, int pos_type, doubl
     // Alap Vaku payload (rövidebb, hogy kompatibilis maradjon a Vaku3 kóddal)
     string payload_vaku = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "|" + IntegerToString(pos_type) + "|" + DoubleToString(pos_price, _Digits) + "|" + DoubleToString(pos_profit, 2) + "\n";
 
-    // Teljes DOM payload a DOM HUD számára
+    // Teljes DOM payload a LGBM Tick Bridge számára
     string payload_dom = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "|" + IntegerToString(pos_type) + "|" + DoubleToString(pos_price, _Digits) + "|" + DoubleToString(pos_profit, 2) + "|" + IntegerToString(av1) + "|" + IntegerToString(av2) + "|" + IntegerToString(bv1) + "|" + IntegerToString(bv2) + "|" + DoubleToString(ap1, _Digits) + "|" + DoubleToString(ap2, _Digits) + "|" + DoubleToString(bp1, _Digits) + "|" + DoubleToString(bp2, _Digits) + "\n";
 
     if(g_socket_connected) {
@@ -289,7 +289,7 @@ void SendTickToPython(long time_msc, double bid, double ask, int pos_type, doubl
         StringToCharArray(payload_dom, buffer_dom);
         if(SocketSend(g_dom_socket, buffer_dom, ArraySize(buffer_dom) - 1) < 0) {
             g_dom_socket_connected = false;
-            Print("❌ DOM HUD Kapcsolat megszakadt küldés közben.");
+            Print("❌ LGBM Tick Bridge Kapcsolat megszakadt küldés közben.");
         }
     }
 }
@@ -668,7 +668,7 @@ void OnTick()
            if(g_socket != INVALID_HANDLE) {
                if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 1)) { // 1ms non-blocking
                    g_socket_connected = true;
-                   Print("✅ Vaku 3.0 Dashboard Reconnected on ", InpBridgePort);
+                   Print("✅ LGBM Macro Bridge Reconnected on ", InpBridgePort);
                } else {
                    SocketClose(g_socket);
                    g_socket = INVALID_HANDLE;
@@ -683,7 +683,7 @@ void OnTick()
            if(g_dom_socket != INVALID_HANDLE) {
                if(SocketConnect(g_dom_socket, InpBridgeHost, InpDomBridgePort, 1)) { // 1ms non-blocking
                    g_dom_socket_connected = true;
-                   Print("✅ DOM HUD Reconnected on ", InpDomBridgePort);
+                   Print("✅ LGBM Tick Bridge Reconnected on ", InpDomBridgePort);
                } else {
                    SocketClose(g_dom_socket);
                    g_dom_socket = INVALID_HANDLE;
