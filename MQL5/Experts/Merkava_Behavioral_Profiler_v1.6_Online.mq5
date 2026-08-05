@@ -606,11 +606,13 @@ void CheckForPythonPredictions()
     uint len = SocketIsReadable(g_dom_socket);
     if(len > 0) {
         uchar buf[];
-        if(SocketRead(g_dom_socket, buf, len, 50) > 0) {
+        if(SocketRead(g_dom_socket, buf, len, 1) > 0) { // Timeout to 1ms to prevent blocking OnTick
             string response = CharArrayToString(buf);
-            // Expected format: PRED|Signal|P_Long|P_Short|P_Noise\n
+            // Expected format: PRED|Signal|P_Long|P_Short|P_Noise
+
             string lines[];
-            int count = StringSplit(response, '\n', lines);
+            int count = StringSplit(response, '
+', lines);
             for(int i = 0; i < count; i++) {
                 if(StringFind(lines[i], "PRED|") == 0) {
                     string parts[];
@@ -630,6 +632,11 @@ void CheckForPythonPredictions()
                     }
                 }
             }
+        } else {
+            // SocketRead < 0 means the connection was actually dropped/closed by the other side
+            int err = GetLastError();
+            Print("❌ LGBM Tick Bridge Read Error: ", err);
+            g_dom_socket_connected = false;
         }
     }
 }

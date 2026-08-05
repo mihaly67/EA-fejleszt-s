@@ -22,7 +22,7 @@ macro_cache = {
 macro_lock = threading.Lock()
 
 # Globals for Dollar Bars
-DOLLAR_BAR_THRESHOLD = 444000.0 # for MGC
+DOLLAR_BAR_THRESHOLD = 4440000.0 # for MGC
 current_dollar_volume = 0.0
 current_bar_ticks = []
 
@@ -44,13 +44,7 @@ def initialize_copilot():
 
 def evaluate_tick_state(clf, current_features_dict):
     features = [
-        'Tick_Speed', 'Micro_Trend', 'Macro_Trend', 'Imbalance_L1', 'Imbalance_L2',
-        'Imbalance_L3', 'Imbalance_L4', 'Imbalance_L5', 'Imbalance_L6',
-        'Imbalance_L7', 'Imbalance_L8', 'Imbalance_L9', 'Imbalance_L10',
-        'CVD_Raw', 'CVD_Rolling_10', 'Cancel_Rate_Rolling_10',
-        'Trade_Size_Imbalance', 'Spread_ZScore',
-        'ATR_Micro', 'Velocity_Micro',
-        'Dist_Micro_R', 'Dist_Micro_S',
+        'Tick_Speed', 'Dist_Micro_R', 'Dist_Micro_S',
         'Dist_Sec_R', 'Dist_Sec_S',
         'Dist_Ter_R', 'Dist_Ter_S',
         'Stoch_State_M1',
@@ -89,54 +83,89 @@ def evaluate_tick_state(clf, current_features_dict):
 
     return signal, p_long, p_short, p_noise
 
+
 class MacroReceiver(threading.Thread):
     def __init__(self, host='0.0.0.0', port=5555):
         super().__init__()
-        self.host = host
-        self.port = port
         self.running = True
 
     def run(self):
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.bind((self.host, self.port))
-        server.listen(1)
-        print(f"[MACRO] Server listening on {self.host}:{self.port}")
+        import glob
+        import time
+        import os
+
+        print("[MACRO] Starting background task to read MT5 CSV for macro state...")
+        # Path to MT5 Files directory
+        mt5_dir = "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/"
+
+        last_file = ""
+        last_mtime = 0
 
         while self.running:
             try:
-                server.settimeout(2.0)
-                client, addr = server.accept()
-                client.settimeout(None)
-                print(f"[MACRO] EA Connected from {addr}")
-                buffer = ""
-                while self.running:
-                    data = client.recv(4096)
-                    if not data:
-                        break
-                    buffer += data.decode('utf-8', errors='ignore')
-                    while "\n" in buffer:
-                        line, buffer = buffer.split("\n", 1)
-                        if line.startswith("MACRO|"):
-                            # If EA starts sending macro payload: MACRO|Dist_Micro_R|...
-                            parts = line.split("|")
-                            if len(parts) >= 8:
+                # Find the most recently updated Merkava_MGCZ26_v1.10_*.csv file
+                files = glob.glob(mt5_dir + "Merkava_MGCZ26_v1.10_*.csv")
+                if not files:
+                    time.sleep(2)
+                    continue
+
+                latest_file = max(files, key=os.path.getmtime)
+
+                # We simply read the last line of the file to get the most up-to-date state
+                with open(latest_file, "r") as f:
+                    f.seek(0, 2)
+                    size = f.tell()
+                    # Go back a bit to grab the last line
+                    f.seek(max(size - 1024, 0))
+                    lines = f.readlines()
+                    if len(lines) > 1:
+                        last_line = lines[-1]
+                        parts = last_line.split(",")
+
+                        # Headers: Time,TickMSC,...,Mic_P,Mic_R,Mic_S,Sec_P,Sec_R,Sec_S,Ter_P,Ter_R,Ter_S,...,Stoch_K
+                        # Indices (0-based):
+                        # 23 = Mic_R, 24 = Mic_S
+                        # 26 = Sec_R, 27 = Sec_S
+                        # 29 = Ter_R, 30 = Ter_S
+                        # 36 = Stoch_K
+
+                        if len(parts) > 40:
+                            try:
+                                mic_r = float(parts[23])
+                                mic_s = float(parts[24])
+                                sec_r = float(parts[26])
+                                sec_s = float(parts[27])
+                                ter_r = float(parts[29])
+                                ter_s = float(parts[30])
+                                stoch_k = float(parts[36])
+
+                                # Convert to Distances and Stoch State (as done in offline feature fusion)
+                                # The current price for distance can be the Bid price from the same line (Index 5)
+                                current_price = float(parts[5])
+
+                                # Need an ATR proxy. We will just use the ATR from the tick receiver for now or approximate.
+                                # Actually, distance is usually normalized by ATR. We can leave it un-normalized here and let the tick receiver normalize it before passing to the model, OR we normalize here if we have ATR.
+                                # The offline script: df['Dist_Micro_R'] = (df['Micro_R'] - df['Close']) / (df['ATR_14'] + 1e-8)
+                                # Let's store raw values in cache and let TickReceiver normalize them when it evaluates the tick state, since TickReceiver calculates ATR_Micro!
+
                                 with macro_lock:
-                                    try:
-                                        macro_cache['Dist_Micro_R'] = float(parts[1])
-                                        macro_cache['Dist_Micro_S'] = float(parts[2])
-                                        macro_cache['Dist_Sec_R'] = float(parts[3])
-                                        macro_cache['Dist_Sec_S'] = float(parts[4])
-                                        macro_cache['Dist_Ter_R'] = float(parts[5])
-                                        macro_cache['Dist_Ter_S'] = float(parts[6])
-                                        macro_cache['Stoch_State_M1'] = float(parts[7])
-                                    except ValueError:
-                                        pass
-                client.close()
-            except socket.timeout:
-                continue
+                                    macro_cache['Raw_Mic_R'] = mic_r
+                                    macro_cache['Raw_Mic_S'] = mic_s
+                                    macro_cache['Raw_Sec_R'] = sec_r
+                                    macro_cache['Raw_Sec_S'] = sec_s
+                                    macro_cache['Raw_Ter_R'] = ter_r
+                                    macro_cache['Raw_Ter_S'] = ter_s
+                                    macro_cache['Current_Macro_Price'] = current_price
+
+                                    # Stoch_State_M1 = (stoch_k - 50.0) / 50.0
+                                    macro_cache['Stoch_State_M1'] = (stoch_k - 50.0) / 50.0
+                            except ValueError:
+                                pass
             except Exception as e:
-                print(f"[MACRO] Error: {e}")
+                pass
+
+            time.sleep(1.0) # Check every 1 second
+
 
 class TickReceiver(threading.Thread):
     def __init__(self, clf, host='0.0.0.0', port=5556):
@@ -156,7 +185,7 @@ class TickReceiver(threading.Thread):
 
             # Simplified features for the tick
             mid_price = (bid + ask) / 2.0
-            tick_vol = av1 + bv1 # approx
+            tick_vol = 1.0 # 1 tick = 1 volume unit to prevent instant threshold overflow from resting DOM sizes
             dollar_vol = tick_vol * mid_price
 
             imb_l1 = (av1 - bv1) / (av1 + bv1 + 1e-9)
@@ -192,7 +221,7 @@ class TickReceiver(threading.Thread):
                 bar_closes = collections.deque(maxlen=15)
 
                 while self.running:
-                    data = client.recv(4096)
+                    data = client.recv(65536)
                     if not data:
                         break
                     buffer += data.decode('utf-8', errors='ignore')
@@ -235,17 +264,36 @@ class TickReceiver(threading.Thread):
                                     'Lower_Wick_ATR': lower_wick / atr,
                                 }
 
+
                                 # Fuse Macro State (O(1) Memory Lookup)
                                 with macro_lock:
-                                    for k, v in macro_cache.items():
-                                        f_dict[k] = v
+                                    # Normalize distances with ATR
+                                    mic_r = macro_cache.get('Raw_Mic_R', close_p)
+                                    mic_s = macro_cache.get('Raw_Mic_S', close_p)
+                                    sec_r = macro_cache.get('Raw_Sec_R', close_p)
+                                    sec_s = macro_cache.get('Raw_Sec_S', close_p)
+                                    ter_r = macro_cache.get('Raw_Ter_R', close_p)
+                                    ter_s = macro_cache.get('Raw_Ter_S', close_p)
+
+                                    f_dict['Dist_Micro_R'] = (mic_r - close_p) / atr
+                                    f_dict['Dist_Micro_S'] = (close_p - mic_s) / atr
+                                    f_dict['Dist_Sec_R'] = (sec_r - close_p) / atr
+                                    f_dict['Dist_Sec_S'] = (close_p - sec_s) / atr
+                                    f_dict['Dist_Ter_R'] = (ter_r - close_p) / atr
+                                    f_dict['Dist_Ter_S'] = (close_p - ter_s) / atr
+                                    f_dict['Stoch_State_M1'] = macro_cache.get('Stoch_State_M1', 0.0)
 
                                 # Predict
+
                                 sig, pl, ps, pn = evaluate_tick_state(self.clf, f_dict)
 
                                 # Send back to EA
                                 msg = f"PRED|{sig}|{pl:.4f}|{ps:.4f}|{pn:.4f}\n"
-                                client.send(msg.encode('utf-8'))
+                                try:
+                                    client.sendall(msg.encode('utf-8'))
+                                except Exception as e:
+                                    print(f"[TICK] Error sending prediction: {e}")
+                                    self.running = False
 
                                 # Reset bar
                                 current_dollar_volume = 0.0
