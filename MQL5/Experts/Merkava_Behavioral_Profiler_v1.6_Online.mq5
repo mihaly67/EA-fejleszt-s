@@ -307,7 +307,7 @@ int OnInit()
    StringReplace(csv_name, ".", "-");
    g_csv_handle = FileOpen(csv_name, FILE_WRITE|FILE_CSV|FILE_ANSI, ",");
    if(g_csv_handle != INVALID_HANDLE) {
-       FileWrite(g_csv_handle, "TimeMsc", "P_Long", "P_Short", "P_Noise", "Signal");
+       FileWrite(g_csv_handle, "ServerTime", "P_Long", "P_Short", "P_Noise", "Signal");
        Print("✅ LGBM CSV Opened: ", csv_name);
    } else {
        Print("❌ Failed to open LGBM CSV!");
@@ -598,7 +598,7 @@ void CheckForNewDeals()
     }
 }
 
-void CheckForPythonPredictions()
+void CheckForPythonPredictions(long current_time_msc)
 {
     if(!g_dom_socket_connected || g_dom_socket == INVALID_HANDLE || g_csv_handle == INVALID_HANDLE) return;
 
@@ -611,21 +611,25 @@ void CheckForPythonPredictions()
             // Expected format: PRED|Signal|P_Long|P_Short|P_Noise
 
             string lines[];
-            int count = StringSplit(response, '
-', lines);
+            int count = StringSplit(response, '\n', lines);
             for(int i = 0; i < count; i++) {
                 if(StringFind(lines[i], "PRED|") == 0) {
                     string parts[];
                     StringSplit(lines[i], '|', parts);
                     if(ArraySize(parts) == 5) {
-                        long time_msc = (long)TimeCurrent() * 1000 + GetTickCount() % 1000;
+                        long time_msc = current_time_msc;
+                        datetime srv_time = (datetime)(time_msc / 1000);
+                        int msc = (int)(time_msc % 1000);
+                        string time_str = TimeToString(srv_time, TIME_DATE|TIME_SECONDS) + "." + IntegerToString(msc, 3, '0');
+
                         string signal = parts[1];
                         string p_long = parts[2];
                         string p_short = parts[3];
                         string p_noise = parts[4];
 
                         // Write to CSV
-                        FileWrite(g_csv_handle, IntegerToString(time_msc), p_long, p_short, p_noise, signal);
+                        FileWrite(g_csv_handle, time_str, p_long, p_short, p_noise, signal);
+
                         FileFlush(g_csv_handle); // Ensure it's saved immediately
 
                         Print("🤖 LGBM Predikt: ", signal, " (L:", p_long, " S:", p_short, " N:", p_noise, ")");
@@ -656,7 +660,7 @@ void OnTick()
 
    // Check for incoming predictions from Python
    if(InpEnablePythonBridge) {
-       CheckForPythonPredictions();
+       CheckForPythonPredictions(tick.time_msc);
    }
 
 
