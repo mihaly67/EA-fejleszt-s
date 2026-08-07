@@ -1,13 +1,13 @@
 //+------------------------------------------------------------------+
-//|                             Merkava_Behavioral_Profiler_v1.6_Online.mq5 |
+//|                             Merkava_Behavioral_Profiler_v1.7_Online.mq5 |
 //|                                    Copyright 2026, Jules (Mimic) |
 //|                                             For Project Merkava  |
-//|                                                   Version 1.6 (Added DOM MarketBookGet + Socket payload support)    |
+//|                                                   Version 1.7 (Added DOM MarketBookGet + Socket payload support)    |
 //|        (Integration: Context v3.28 4 EMAs, Native EMA removed)   |
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
 #property link      "https://github.com/MimicProject"
-#property version   "1.60"
+#property version   "1.70"
 #property strict
 
 #include "../Indicators/Types_v2_16.mqh"
@@ -611,7 +611,7 @@ void CheckForPythonPredictions(long current_time_msc)
             // Expected format: PRED|Signal|P_Long|P_Short|P_Noise
 
             string lines[];
-            int count = StringSplit(response, '\n', lines);
+            int count = StringSplit(response, 10, lines); // 10 is ASCII for \n
             for(int i = 0; i < count; i++) {
                 if(StringFind(lines[i], "PRED|") == 0) {
                     string parts[];
@@ -672,20 +672,7 @@ void OnTick()
        static datetime last_vaku_reconnect = 0;
        static datetime last_dom_reconnect = 0;
 
-       if(!g_socket_connected && (TimeCurrent() - last_vaku_reconnect > 10)) {
-           last_vaku_reconnect = TimeCurrent();
-           if(g_socket != INVALID_HANDLE) SocketClose(g_socket);
-           g_socket = SocketCreate();
-           if(g_socket != INVALID_HANDLE) {
-               if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 1)) { // 1ms non-blocking
-                   g_socket_connected = true;
-                   Print("✅ LGBM Macro Bridge Reconnected on ", InpBridgePort);
-               } else {
-                   SocketClose(g_socket);
-                   g_socket = INVALID_HANDLE;
-               }
-           }
-       }
+       // Macro Socket removed, Python reads CSV directly
 
        if(!g_dom_socket_connected && (TimeCurrent() - last_dom_reconnect > 10)) {
            last_dom_reconnect = TimeCurrent();
