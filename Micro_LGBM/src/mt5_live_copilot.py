@@ -30,7 +30,7 @@ def initialize_copilot():
     print("=== 🟢 STARTING MT5 ONLINE COPILOT ===")
     print("Loading Pre-Trained V5 Fusion Model...")
     try:
-        clf = joblib.load('../models/lgbm_model_fusion_v5_tuned.pkl')
+        clf = joblib.load('/home/misi/LGBM_mlops/Micro_LGBM/models/lgbm_model_fusion_v5_tuned.pkl')
     except Exception as e:
         print(f"Error loading model: {e}")
         # Return a dummy model if file doesn't exist to allow testing
@@ -96,15 +96,15 @@ class MacroReceiver(threading.Thread):
 
         print("[MACRO] Starting background task to read MT5 CSV for macro state...")
         # Path to MT5 Files directory
-        mt5_dir = "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/"
+        mt5_dir = '/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/'
 
         last_file = ""
         last_mtime = 0
 
         while self.running:
             try:
-                # Find the most recently updated Merkava_MGCZ26_v1.10_*.csv file
-                files = glob.glob(mt5_dir + "Merkava_MGCZ26_v1.10_*.csv")
+                # Find the most recently updated Merkava_MGCV26_v1.10_*.csv file
+                files = glob.glob(mt5_dir + "Merkava_MGCV26_v1.10_*.csv")
                 if not files:
                     time.sleep(2)
                     continue
