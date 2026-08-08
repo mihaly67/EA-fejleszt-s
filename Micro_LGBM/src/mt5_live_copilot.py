@@ -8,6 +8,8 @@ import socket
 import threading
 from datetime import datetime
 import collections
+import zmq
+import json
 
 # Globals for Macro Cache
 macro_cache = {
@@ -21,6 +23,12 @@ macro_cache = {
 }
 macro_lock = threading.Lock()
 
+zmq_context = zmq.Context()
+zmq_publisher = zmq_context.socket(zmq.PUB)
+zmq_publisher.bind("tcp://0.0.0.0:5557")
+
+signal_history = collections.deque(maxlen=3)
+
 # Globals for Dollar Bars
 DOLLAR_BAR_THRESHOLD = 4440000.0 # for MGC
 current_dollar_volume = 0.0
@@ -30,7 +38,7 @@ def initialize_copilot():
     print("=== 🟢 STARTING MT5 ONLINE COPILOT ===")
     print("Loading Pre-Trained V5 Fusion Model...")
     try:
-        clf = joblib.load('/home/misi/LGBM_mlops/Micro_LGBM/models/lgbm_model_fusion_v5_tuned.pkl')
+        clf = joblib.load('../models/lgbm_model_fusion_v5_tuned.pkl')
     except Exception as e:
         print(f"Error loading model: {e}")
         # Return a dummy model if file doesn't exist to allow testing
@@ -80,6 +88,32 @@ def evaluate_tick_state(clf, current_features_dict):
 
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{current_time}] | SIGNAL: {signal_str:<18} | P_Long: {p_long*100:.1f}% | P_Short: {p_short*100:.1f}% | P_Noise: {p_noise*100:.1f}%")
+
+    # Stability Calculation
+    signal_history.append(signal)
+    is_stable = (len(signal_history) == 3 and len(set(signal_history)) == 1)
+
+    # Broadcast to HUD via ZMQ
+    with macro_lock:
+        current_price = macro_cache.get('Current_Macro_Price', 0.0)
+
+    hud_data = {
+        "timestamp": time.time(),
+        "price": current_price,
+        "open": current_features_dict.get('Open', current_price),
+        "high": current_features_dict.get('High', current_price),
+        "low": current_features_dict.get('Low', current_price),
+        "close": current_features_dict.get('Close', current_price),
+        "signal": signal,
+        "p_long": p_long,
+        "p_short": p_short,
+        "p_noise": p_noise,
+        "is_stable": is_stable
+    }
+    try:
+        zmq_publisher.send_string(f"HUD {json.dumps(hud_data)}")
+    except Exception as e:
+        print(f"[ZMQ] Error publishing HUD data: {e}")
 
     return signal, p_long, p_short, p_noise
 
@@ -285,6 +319,10 @@ class TickReceiver(threading.Thread):
 
                                 # Predict
 
+                                f_dict['Open'] = open_p
+                                f_dict['High'] = high_p
+                                f_dict['Low'] = low_p
+                                f_dict['Close'] = close_p
                                 sig, pl, ps, pn = evaluate_tick_state(self.clf, f_dict)
 
                                 # Send back to EA
