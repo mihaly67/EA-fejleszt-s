@@ -191,6 +191,8 @@ bool ConnectToPython() {
     bool result = false;
 
     // 1. Connect LGBM Macro Bridge (Port 5555)
+    // Disabled: Python reads CSV directly
+    /*
     if(!g_socket_connected) {
         if(g_socket != INVALID_HANDLE) SocketClose(g_socket);
         g_socket = SocketCreate();
@@ -205,6 +207,7 @@ bool ConnectToPython() {
             }
         }
     }
+    */
 
     // 2. Connect LGBM Tick Bridge (Port 5556)
     if(!g_dom_socket_connected) {
@@ -268,7 +271,7 @@ void SendHistoryToPython() {
 }
 
 void SendTickToPython(long time_msc, double bid, double ask, int pos_type, double pos_price, double pos_profit, long av1, long av2, long bv1, long bv2, double ap1, double ap2, double bp1, double bp2) {
-    if(!g_socket_connected && !g_dom_socket_connected) return;
+    if(!g_dom_socket_connected) return;
 
     // Alap Vaku payload (rövidebb, hogy kompatibilis maradjon a Vaku3 kóddal)
     string payload_vaku = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "|" + IntegerToString(pos_type) + "|" + DoubleToString(pos_price, _Digits) + "|" + DoubleToString(pos_profit, 2) + "\n";
@@ -276,13 +279,7 @@ void SendTickToPython(long time_msc, double bid, double ask, int pos_type, doubl
     // Teljes DOM payload a LGBM Tick Bridge számára
     string payload_dom = "TICK|" + IntegerToString(time_msc) + "|" + DoubleToString(bid, _Digits) + "|" + DoubleToString(ask, _Digits) + "|" + IntegerToString(pos_type) + "|" + DoubleToString(pos_price, _Digits) + "|" + DoubleToString(pos_profit, 2) + "|" + IntegerToString(av1) + "|" + IntegerToString(av2) + "|" + IntegerToString(bv1) + "|" + IntegerToString(bv2) + "|" + DoubleToString(ap1, _Digits) + "|" + DoubleToString(ap2, _Digits) + "|" + DoubleToString(bp1, _Digits) + "|" + DoubleToString(bp2, _Digits) + "\n";
 
-    if(g_socket_connected) {
-        uchar buffer_vaku[];
-        StringToCharArray(payload_vaku, buffer_vaku);
-        if(SocketSend(g_socket, buffer_vaku, ArraySize(buffer_vaku) - 1) < 0) {
-            g_socket_connected = false;
-        }
-    }
+    /* Vaku payload disabled */
 
     if(g_dom_socket_connected) {
         uchar buffer_dom[];
@@ -689,7 +686,7 @@ void OnTick()
            }
        }
 
-       if(g_socket_connected || g_dom_socket_connected) {
+       if(g_dom_socket_connected) {
            int pos_type = 0;
            double pos_price = 0.0;
            double pos_profit = 0.0;

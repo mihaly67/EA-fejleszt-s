@@ -256,13 +256,15 @@ class TickReceiver(threading.Thread):
                 bar_closes = collections.deque(maxlen=15)
 
                 while self.running:
-                    data = client.recv(65536)
-                    if not data:
-                        break
-                    buffer += data.decode('utf-8', errors='ignore')
+                    try:
+                        data = client.recv(65536)
+                        if not data:
+                            print("[TICK] Connection closed by EA.")
+                            break
+                        buffer += data.decode('utf-8', errors='ignore')
 
-                    while "\n" in buffer:
-                        line, buffer = buffer.split("\n", 1)
+                        while "\n" in buffer:
+                            line, buffer = buffer.split("\n", 1)
                         if line.startswith("TICK|"):
                             parts = line.split("|")
                             tick_data = self.extract_dom_features(parts)
@@ -332,11 +334,14 @@ class TickReceiver(threading.Thread):
                                     client.sendall(msg.encode('utf-8'))
                                 except Exception as e:
                                     print(f"[TICK] Error sending prediction: {e}")
-                                    self.running = False
+                                    break
 
                                 # Reset bar
                                 current_dollar_volume = 0.0
                                 current_bar_ticks = []
+                    except Exception as inner_e:
+                        print(f"[TICK] Read error: {inner_e}")
+                        break
 
                 client.close()
             except socket.timeout:
