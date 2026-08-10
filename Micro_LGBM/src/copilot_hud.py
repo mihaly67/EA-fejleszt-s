@@ -134,8 +134,12 @@ class CopilotHUD(QMainWindow):
             if self.candle_data:
                 self.candle_data.pop(0)
 
-        idx = self.times[-1] + 1 if self.times else 0
-        self.times.append(idx)
+        is_new_candle = data.get("new_candle", False)
+        if not self.times or is_new_candle:
+            idx = self.times[-1] + 1 if self.times else 0
+            self.times.append(idx)
+        else:
+            idx = self.times[-1]
 
         current_price = data.get("price", 0.0)
         self.prices.append(current_price)
@@ -149,13 +153,37 @@ class CopilotHUD(QMainWindow):
         h = data.get("high", current_price)
         l = data.get("low", current_price)
         c = data.get("close", current_price)
-        self.candle_data.append((idx, o, c, l, h))
+
+        # If this is the very first candle
+        if not self.candle_data:
+            self.candle_data.append([idx, o, c, l, h])
+        else:
+            # Check if we should update the current candle or start a new one
+            is_new_candle = data.get("new_candle", False)
+            if is_new_candle:
+                self.candle_data.append([idx, o, c, l, h])
+            else:
+                # Update the last candle in place (Tick evolution)
+                self.candle_data[-1] = [self.candle_data[-1][0], o, c, l, h]
+                # Keep idx aligned with the current candle being updated
+                idx = self.candle_data[-1][0]
+
+                # The self.times array was already appended to, so we need to fix it
+                # to not grow infinitely on every tick, only on new candles.
+                self.times[-1] = idx
 
         if self.candlestick_item is not None:
             self.price_plot.removeItem(self.candlestick_item)
 
         self.candlestick_item = CandlestickItem(self.candle_data)
         self.price_plot.addItem(self.candlestick_item)
+
+        # Maintain scrolling window of 100 bars
+        view_size = 100
+        if len(self.candle_data) > 0:
+            current_x = self.candle_data[-1][0]
+            min_x = max(0, current_x - view_size)
+            self.price_plot.setXRange(min_x, min_x + view_size + 10, padding=0)
 
         self.p_long_curve.setData(self.times, self.p_long_data)
         self.p_short_curve.setData(self.times, self.p_short_data)

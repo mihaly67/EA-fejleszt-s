@@ -105,6 +105,7 @@ def evaluate_tick_state(clf, current_features_dict):
         "low": current_features_dict.get('Low', current_price),
         "close": current_features_dict.get('Close', current_price),
         "signal": signal,
+        "new_candle": True,
         "p_long": p_long,
         "p_short": p_short,
         "p_noise": p_noise,
