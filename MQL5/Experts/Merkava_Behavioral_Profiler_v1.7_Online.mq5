@@ -233,8 +233,7 @@ void SendHistoryToPython() {
 
     if(copied > 0) {
         // Kezdő üzenet
-        string start_msg = "HISTORY_START|" + IntegerToString(copied) + "
-";
+        string start_msg = "HISTORY_START|" + IntegerToString(copied) + "\n";
         uchar s_buf[];
         StringToCharArray(start_msg, s_buf);
         SocketSend(g_dom_socket, s_buf, ArraySize(s_buf) - 1);
@@ -249,9 +248,9 @@ void SendHistoryToPython() {
             if(i % chunk_size == 0 || i == copied - 1) {
                 uchar buffer[];
                 StringToCharArray(chunk_payload, buffer);
-                if(SocketSend(g_socket, buffer, ArraySize(buffer) - 1) < 0) {
+                if(SocketSend(g_dom_socket, buffer, ArraySize(buffer) - 1) < 0) {
                     Print("❌ Failed to send History Chunk. Error: ", GetLastError());
-                    g_socket_connected = false;
+                    g_dom_socket_connected = false;
                     return;
                 }
                 chunk_payload = ""; // Reset
@@ -259,8 +258,7 @@ void SendHistoryToPython() {
         }
 
         // Záró üzenet
-        string end_msg = "HISTORY_END
-";
+        string end_msg = "HISTORY_END\n";
         uchar e_buf[];
         StringToCharArray(end_msg, e_buf);
         SocketSend(g_dom_socket, e_buf, ArraySize(e_buf) - 1);
@@ -609,6 +607,9 @@ void CheckForPythonPredictions(long current_time_msc)
             string lines[];
             int count = StringSplit(response, 10, lines); // 10 is ASCII for \n
             for(int i = 0; i < count; i++) {
+                if(StringFind(lines[i], "PING|") == 0) {
+                    continue; // Skip keep-alive messages
+                }
                 if(StringFind(lines[i], "PRED|") == 0) {
                     string parts[];
                     StringSplit(lines[i], '|', parts);
