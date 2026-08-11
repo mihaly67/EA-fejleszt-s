@@ -324,7 +324,7 @@ class TickReceiver(threading.Thread):
                                     # Throttle the PING to prevent overwhelming EA buffer
                                     if len(current_bar_ticks) % 10 == 0:
                                         try:
-                                            client.sendall("PRED|0|0.33|0.33|0.34\n".encode('utf-8'))
+                                            client.sendall("PING|0|0.0|0.0|0.0\n".encode('utf-8'))
                                         except:
                                             pass
                     except Exception as inner_e:
