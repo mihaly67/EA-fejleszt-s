@@ -265,80 +265,85 @@ class TickReceiver(threading.Thread):
 
                         while "\n" in buffer:
                             line, buffer = buffer.split("\n", 1)
-                        if line.startswith("TICK|"):
-                            parts = line.split("|")
-                            tick_data = self.extract_dom_features(parts)
+                            if line.startswith("TICK|"):
+                                parts = line.split("|")
+                                tick_data = self.extract_dom_features(parts)
 
-                            if not tick_data:
-                                continue
+                                if not tick_data:
+                                    continue
 
-                            current_bar_ticks.append(tick_data)
-                            current_dollar_volume += tick_data['dollar_vol']
+                                current_bar_ticks.append(tick_data)
+                                current_dollar_volume += tick_data['dollar_vol']
 
-                            if current_dollar_volume >= DOLLAR_BAR_THRESHOLD:
-                                # Bar Closed!
-                                df_bar = pd.DataFrame(current_bar_ticks)
-                                open_p = df_bar['mid_price'].iloc[0]
-                                high_p = df_bar['mid_price'].max()
-                                low_p = df_bar['mid_price'].min()
-                                close_p = df_bar['mid_price'].iloc[-1]
+                                if current_dollar_volume >= DOLLAR_BAR_THRESHOLD:
+                                    # Bar Closed!
+                                    df_bar = pd.DataFrame(current_bar_ticks)
+                                    open_p = df_bar['mid_price'].iloc[0]
+                                    high_p = df_bar['mid_price'].max()
+                                    low_p = df_bar['mid_price'].min()
+                                    close_p = df_bar['mid_price'].iloc[-1]
 
-                                bar_closes.append(close_p)
+                                    bar_closes.append(close_p)
 
-                                # Calc features
-                                atr = (high_p - low_p) if len(bar_closes) < 2 else np.mean([abs(bar_closes[i] - bar_closes[i-1]) for i in range(1, len(bar_closes))])
-                                if atr == 0: atr = 0.001
+                                    # Calc features
+                                    atr = (high_p - low_p) if len(bar_closes) < 2 else np.mean([abs(bar_closes[i] - bar_closes[i-1]) for i in range(1, len(bar_closes))])
+                                    if atr == 0: atr = 0.001
 
-                                upper_wick = high_p - max(open_p, close_p)
-                                lower_wick = min(open_p, close_p) - low_p
+                                    upper_wick = high_p - max(open_p, close_p)
+                                    lower_wick = min(open_p, close_p) - low_p
 
-                                f_dict = {
-                                    'Tick_Speed': len(current_bar_ticks), # Proxy
-                                    'Imbalance_L1': tick_data['imb_l1'],
-                                    'Velocity_Micro': (close_p - open_p),
-                                    'ATR_Micro': atr,
-                                    'Upper_Wick_ATR': upper_wick / atr,
-                                    'Lower_Wick_ATR': lower_wick / atr,
-                                }
+                                    f_dict = {
+                                        'Tick_Speed': len(current_bar_ticks), # Proxy
+                                        'Imbalance_L1': tick_data['imb_l1'],
+                                        'Velocity_Micro': (close_p - open_p),
+                                        'ATR_Micro': atr,
+                                        'Upper_Wick_ATR': upper_wick / atr,
+                                        'Lower_Wick_ATR': lower_wick / atr,
+                                    }
 
 
-                                # Fuse Macro State (O(1) Memory Lookup)
-                                with macro_lock:
-                                    # Normalize distances with ATR
-                                    mic_r = macro_cache.get('Raw_Mic_R', close_p)
-                                    mic_s = macro_cache.get('Raw_Mic_S', close_p)
-                                    sec_r = macro_cache.get('Raw_Sec_R', close_p)
-                                    sec_s = macro_cache.get('Raw_Sec_S', close_p)
-                                    ter_r = macro_cache.get('Raw_Ter_R', close_p)
-                                    ter_s = macro_cache.get('Raw_Ter_S', close_p)
+                                    # Fuse Macro State (O(1) Memory Lookup)
+                                    with macro_lock:
+                                        # Normalize distances with ATR
+                                        mic_r = macro_cache.get('Raw_Mic_R', close_p)
+                                        mic_s = macro_cache.get('Raw_Mic_S', close_p)
+                                        sec_r = macro_cache.get('Raw_Sec_R', close_p)
+                                        sec_s = macro_cache.get('Raw_Sec_S', close_p)
+                                        ter_r = macro_cache.get('Raw_Ter_R', close_p)
+                                        ter_s = macro_cache.get('Raw_Ter_S', close_p)
 
-                                    f_dict['Dist_Micro_R'] = (mic_r - close_p) / atr
-                                    f_dict['Dist_Micro_S'] = (close_p - mic_s) / atr
-                                    f_dict['Dist_Sec_R'] = (sec_r - close_p) / atr
-                                    f_dict['Dist_Sec_S'] = (close_p - sec_s) / atr
-                                    f_dict['Dist_Ter_R'] = (ter_r - close_p) / atr
-                                    f_dict['Dist_Ter_S'] = (close_p - ter_s) / atr
-                                    f_dict['Stoch_State_M1'] = macro_cache.get('Stoch_State_M1', 0.0)
+                                        f_dict['Dist_Micro_R'] = (mic_r - close_p) / atr
+                                        f_dict['Dist_Micro_S'] = (close_p - mic_s) / atr
+                                        f_dict['Dist_Sec_R'] = (sec_r - close_p) / atr
+                                        f_dict['Dist_Sec_S'] = (close_p - sec_s) / atr
+                                        f_dict['Dist_Ter_R'] = (ter_r - close_p) / atr
+                                        f_dict['Dist_Ter_S'] = (close_p - ter_s) / atr
+                                        f_dict['Stoch_State_M1'] = macro_cache.get('Stoch_State_M1', 0.0)
 
-                                # Predict
+                                    # Predict
 
-                                f_dict['Open'] = open_p
-                                f_dict['High'] = high_p
-                                f_dict['Low'] = low_p
-                                f_dict['Close'] = close_p
-                                sig, pl, ps, pn = evaluate_tick_state(self.clf, f_dict)
+                                    f_dict['Open'] = open_p
+                                    f_dict['High'] = high_p
+                                    f_dict['Low'] = low_p
+                                    f_dict['Close'] = close_p
+                                    sig, pl, ps, pn = evaluate_tick_state(self.clf, f_dict)
 
-                                # Send back to EA
-                                msg = f"PRED|{sig}|{pl:.4f}|{ps:.4f}|{pn:.4f}\n"
-                                try:
-                                    client.sendall(msg.encode('utf-8'))
-                                except Exception as e:
-                                    print(f"[TICK] Error sending prediction: {e}")
-                                    break
+                                    # Send back to EA
+                                    msg = f"PRED|{sig}|{pl:.4f}|{ps:.4f}|{pn:.4f}\n"
+                                    try:
+                                        client.sendall(msg.encode('utf-8'))
+                                    except Exception as e:
+                                        print(f"[TICK] Error sending prediction: {e}")
+                                        break
 
-                                # Reset bar
-                                current_dollar_volume = 0.0
-                                current_bar_ticks = []
+                                    # Reset bar
+                                    current_dollar_volume = 0.0
+                                    current_bar_ticks = []
+                                else:
+                                    try:
+                                        client.sendall("PING\n".encode('utf-8'))
+                                    except:
+                                        pass
                     except Exception as inner_e:
                         print(f"[TICK] Read error: {inner_e}")
                         break
