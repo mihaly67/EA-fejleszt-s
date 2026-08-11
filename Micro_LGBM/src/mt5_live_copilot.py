@@ -265,6 +265,7 @@ class TickReceiver(threading.Thread):
 
                         while "\n" in buffer:
                             line, buffer = buffer.split("\n", 1)
+
                             if line.startswith("TICK|"):
                                 parts = line.split("|")
                                 tick_data = self.extract_dom_features(parts)
@@ -340,10 +341,12 @@ class TickReceiver(threading.Thread):
                                     current_dollar_volume = 0.0
                                     current_bar_ticks = []
                                 else:
-                                    try:
-                                        client.sendall("PING\n".encode('utf-8'))
-                                    except:
-                                        pass
+                                    # Throttle the PING to prevent overwhelming EA buffer
+                                    if len(current_bar_ticks) % 10 == 0:
+                                        try:
+                                            client.sendall("PRED|0|0.33|0.33|0.34\n".encode('utf-8'))
+                                        except:
+                                            pass
                     except Exception as inner_e:
                         print(f"[TICK] Read error: {inner_e}")
                         break
