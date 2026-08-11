@@ -191,8 +191,6 @@ bool ConnectToPython() {
     bool result = false;
 
     // 1. Connect LGBM Macro Bridge (Port 5555)
-    // Disabled: Python reads CSV directly
-    /*
     if(!g_socket_connected) {
         if(g_socket != INVALID_HANDLE) SocketClose(g_socket);
         g_socket = SocketCreate();
@@ -207,7 +205,6 @@ bool ConnectToPython() {
             }
         }
     }
-    */
 
     // 2. Connect LGBM Tick Bridge (Port 5556)
     if(!g_dom_socket_connected) {
@@ -642,6 +639,41 @@ void CheckForPythonPredictions(long current_time_msc)
     }
 }
 
+void SendMacroToPython(double current_price) {
+    if(!g_socket_connected || g_socket == INVALID_HANDLE) return;
+
+    // We only need to send this occasionally or when it changes, but for simplicity we can send it every tick or filter by time.
+    // Given the Python server handles it O(1) in a dict, every tick is fine, but let's throttle it to max 1 per second to avoid flooding.
+    static datetime last_send = 0;
+    if(TimeCurrent() - last_send < 1) return;
+    last_send = TimeCurrent();
+
+    double mic_r = m_nav_system.GetMicR();
+    double mic_s = m_nav_system.GetMicS();
+    double sec_r = m_nav_system.GetSecR();
+    double sec_s = m_nav_system.GetSecS();
+    double ter_r = m_nav_system.GetTerR();
+    double ter_s = m_nav_system.GetTerS();
+    double stoch_k = m_nav_system.GetStochK();
+
+    // Construct JSON string manually
+    string json = "{\"mic_r\": " + DoubleToString(mic_r, 5) +
+                  ", \"mic_s\": " + DoubleToString(mic_s, 5) +
+                  ", \"sec_r\": " + DoubleToString(sec_r, 5) +
+                  ", \"sec_s\": " + DoubleToString(sec_s, 5) +
+                  ", \"ter_r\": " + DoubleToString(ter_r, 5) +
+                  ", \"ter_s\": " + DoubleToString(ter_s, 5) +
+                  ", \"stoch_k\": " + DoubleToString(stoch_k, 5) +
+                  ", \"price\": " + DoubleToString(current_price, 5) + "}\n";
+
+    uchar buffer[];
+    StringToCharArray(json, buffer);
+    if(SocketSend(g_socket, buffer, ArraySize(buffer) - 1) < 0) {
+        g_socket_connected = false;
+        Print("❌ LGBM Macro Bridge Connection lost during send.");
+    }
+}
+
 void OnTick()
 {
    MqlTick tick;
@@ -658,6 +690,7 @@ void OnTick()
    // Check for incoming predictions from Python
    if(InpEnablePythonBridge) {
        CheckForPythonPredictions(tick.time_msc);
+       SendMacroToPython(tick.bid);
    }
 
 
@@ -669,7 +702,20 @@ void OnTick()
        static datetime last_vaku_reconnect = 0;
        static datetime last_dom_reconnect = 0;
 
-       // Macro Socket removed, Python reads CSV directly
+       if(!g_socket_connected && (TimeCurrent() - last_vaku_reconnect > 10)) {
+           last_vaku_reconnect = TimeCurrent();
+           if(g_socket != INVALID_HANDLE) SocketClose(g_socket);
+           g_socket = SocketCreate();
+           if(g_socket != INVALID_HANDLE) {
+               if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 1)) { // 1ms non-blocking
+                   g_socket_connected = true;
+                   Print("✅ LGBM Macro Bridge Reconnected on ", InpBridgePort);
+               } else {
+                   SocketClose(g_socket);
+                   g_socket = INVALID_HANDLE;
+               }
+           }
+       }
 
        if(!g_dom_socket_connected && (TimeCurrent() - last_dom_reconnect > 10)) {
            last_dom_reconnect = TimeCurrent();

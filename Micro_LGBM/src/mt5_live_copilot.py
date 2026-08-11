@@ -123,86 +123,67 @@ def evaluate_tick_state(clf, current_features_dict):
 class MacroReceiver(threading.Thread):
     def __init__(self, host='0.0.0.0', port=5555):
         super().__init__()
+        self.host = host
+        self.port = port
         self.running = True
 
     def run(self):
-        import glob
-        import time
-        import os
-
-        print("[MACRO] Starting background task to read MT5 CSV for macro state...")
-        # Path to MT5 Files directory
-        mt5_dir = '/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/'
-
-        last_file = ""
-        last_mtime = 0
+        import socket
+        import json
+        print(f"[MACRO] Server listening on {self.host}:{self.port}")
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind((self.host, self.port))
+        server.listen(1)
 
         while self.running:
             try:
-                # Find the most recently updated Merkava_MGCV26_v1.10_*.csv file
-                files = glob.glob(mt5_dir + "Merkava_MGCV26_v1.10_*.csv")
-                if not files:
-                    time.sleep(2)
-                    continue
+                server.settimeout(2.0)
+                client, addr = server.accept()
+                client.settimeout(None)
+                print(f"[MACRO] EA Connected from {addr}")
+                buffer = ""
 
-                latest_file = max(files, key=os.path.getmtime)
+                while self.running:
+                    try:
+                        data = client.recv(65536)
+                        if not data:
+                            print("[MACRO] Connection closed by EA.")
+                            break
 
-                # We simply read the last line of the file to get the most up-to-date state
-                with open(latest_file, "r") as f:
-                    f.seek(0, 2)
-                    size = f.tell()
-                    # Go back a bit to grab the last line
-                    f.seek(max(size - 1024, 0))
-                    lines = f.readlines()
-                    if len(lines) > 1:
-                        last_line = lines[-1]
-                        parts = last_line.split(",")
+                        buffer += data.decode('utf-8', errors='ignore')
 
-                        # Headers: Time,TickMSC,...,Mic_P,Mic_R,Mic_S,Sec_P,Sec_R,Sec_S,Ter_P,Ter_R,Ter_S,...,Stoch_K
-                        # Indices (0-based):
-                        # 23 = Mic_R, 24 = Mic_S
-                        # 26 = Sec_R, 27 = Sec_S
-                        # 29 = Ter_R, 30 = Ter_S
-                        # 36 = Stoch_K
+                        while "\n" in buffer:
+                            line, buffer = buffer.split("\n", 1)
+                            line = line.strip()
+                            if not line:
+                                continue
 
-                        if len(parts) > 40:
                             try:
-                                mic_r = float(parts[23])
-                                mic_s = float(parts[24])
-                                sec_r = float(parts[26])
-                                sec_s = float(parts[27])
-                                ter_r = float(parts[29])
-                                ter_s = float(parts[30])
-                                stoch_k = float(parts[36])
-
-                                # Convert to Distances and Stoch State (as done in offline feature fusion)
-                                # The current price for distance can be the Bid price from the same line (Index 5)
-                                current_price = float(parts[5])
-
-                                # Need an ATR proxy. We will just use the ATR from the tick receiver for now or approximate.
-                                # Actually, distance is usually normalized by ATR. We can leave it un-normalized here and let the tick receiver normalize it before passing to the model, OR we normalize here if we have ATR.
-                                # The offline script: df['Dist_Micro_R'] = (df['Micro_R'] - df['Close']) / (df['ATR_14'] + 1e-8)
-                                # Let's store raw values in cache and let TickReceiver normalize them when it evaluates the tick state, since TickReceiver calculates ATR_Micro!
-
+                                payload = json.loads(line)
                                 with macro_lock:
+                                    macro_cache['Raw_Mic_R'] = payload.get('mic_r', 0.0)
+                                    macro_cache['Raw_Mic_S'] = payload.get('mic_s', 0.0)
+                                    macro_cache['Raw_Sec_R'] = payload.get('sec_r', 0.0)
+                                    macro_cache['Raw_Sec_S'] = payload.get('sec_s', 0.0)
+                                    macro_cache['Raw_Ter_R'] = payload.get('ter_r', 0.0)
+                                    macro_cache['Raw_Ter_S'] = payload.get('ter_s', 0.0)
+                                    macro_cache['Current_Macro_Price'] = payload.get('price', 0.0)
 
-                                    macro_cache['Raw_Mic_R'] = mic_r
-                                    macro_cache['Raw_Mic_S'] = mic_s
-                                    macro_cache['Raw_Sec_R'] = sec_r
-                                    macro_cache['Raw_Sec_S'] = sec_s
-                                    macro_cache['Raw_Ter_R'] = ter_r
-                                    macro_cache['Raw_Ter_S'] = ter_s
-                                    macro_cache['Current_Macro_Price'] = current_price
-
-                                    # Stoch_State_M1 = (stoch_k - 50.0) / 50.0
+                                    stoch_k = payload.get('stoch_k', 50.0)
                                     macro_cache['Stoch_State_M1'] = (stoch_k - 50.0) / 50.0
-                            except ValueError:
-                                pass
+                            except json.JSONDecodeError:
+                                print(f"[MACRO] Failed to parse JSON: {line}")
+
+                    except Exception as inner_e:
+                        print(f"[MACRO] Read error: {inner_e}")
+                        break
+
+                client.close()
+            except socket.timeout:
+                continue
             except Exception as e:
-                pass
-
-            time.sleep(1.0) # Check every 1 second
-
+                print(f"[MACRO] Error: {e}")
 
 class TickReceiver(threading.Thread):
     def __init__(self, clf, host='0.0.0.0', port=5556):
@@ -300,7 +281,6 @@ class TickReceiver(threading.Thread):
                                         'Upper_Wick_ATR': upper_wick / atr,
                                         'Lower_Wick_ATR': lower_wick / atr,
                                     }
-
 
                                     # Fuse Macro State (O(1) Memory Lookup)
                                     with macro_lock:
