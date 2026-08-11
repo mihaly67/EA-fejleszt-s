@@ -52,7 +52,13 @@ def initialize_copilot():
 
 def evaluate_tick_state(clf, current_features_dict):
     features = [
-        'Tick_Speed', 'Dist_Micro_R', 'Dist_Micro_S',
+        'Tick_Speed', 'Micro_Trend', 'Macro_Trend', 'Imbalance_L1', 'Imbalance_L2',
+        'Imbalance_L3', 'Imbalance_L4', 'Imbalance_L5', 'Imbalance_L6',
+        'Imbalance_L7', 'Imbalance_L8', 'Imbalance_L9', 'Imbalance_L10',
+        'CVD_Raw', 'CVD_Rolling_10', 'Cancel_Rate_Rolling_10',
+        'Trade_Size_Imbalance', 'Spread_ZScore',
+        'ATR_Micro', 'Velocity_Micro',
+        'Dist_Micro_R', 'Dist_Micro_S',
         'Dist_Sec_R', 'Dist_Sec_S',
         'Dist_Ter_R', 'Dist_Ter_S',
         'Stoch_State_M1',
@@ -295,7 +301,23 @@ class TickReceiver(threading.Thread):
 
                                     f_dict = {
                                         'Tick_Speed': len(current_bar_ticks), # Proxy
-                                        'Imbalance_L1': tick_data['imb_l1'],
+                                        'Imbalance_L1': tick_data.get('imb_l1', 0.0),
+                                        'Imbalance_L2': tick_data.get('Imbalance_L2', 0.0),
+                                        'Imbalance_L3': tick_data.get('Imbalance_L3', 0.0),
+                                        'Imbalance_L4': tick_data.get('Imbalance_L4', 0.0),
+                                        'Imbalance_L5': tick_data.get('Imbalance_L5', 0.0),
+                                        'Imbalance_L6': tick_data.get('Imbalance_L6', 0.0),
+                                        'Imbalance_L7': tick_data.get('Imbalance_L7', 0.0),
+                                        'Imbalance_L8': tick_data.get('Imbalance_L8', 0.0),
+                                        'Imbalance_L9': tick_data.get('Imbalance_L9', 0.0),
+                                        'Imbalance_L10': tick_data.get('Imbalance_L10', 0.0),
+                                        'Micro_Trend': tick_data.get('Micro_Trend', 0.0),
+                                        'Macro_Trend': tick_data.get('Macro_Trend', 0.0),
+                                        'CVD_Raw': tick_data.get('CVD_Raw', 0.0),
+                                        'CVD_Rolling_10': tick_data.get('CVD_Rolling_10', 0.0),
+                                        'Cancel_Rate_Rolling_10': tick_data.get('Cancel_Rate_Rolling_10', 0.0),
+                                        'Trade_Size_Imbalance': tick_data.get('Trade_Size_Imbalance', 0.0),
+                                        'Spread_ZScore': tick_data.get('Spread_ZScore', 0.0),
                                         'Velocity_Micro': (close_p - open_p),
                                         'ATR_Micro': atr,
                                         'Upper_Wick_ATR': upper_wick / atr,
