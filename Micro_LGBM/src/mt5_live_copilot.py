@@ -331,6 +331,7 @@ class TickReceiver(threading.Thread):
 
                                     # Send back to EA
                                     msg = f"PRED|{sig}|{pl:.4f}|{ps:.4f}|{pn:.4f}\n"
+                                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 🔥 DOLLAR BAR PREDICTION GENERATED! {msg}")
                                     try:
                                         client.sendall(msg.encode('utf-8'))
                                     except Exception as e:
