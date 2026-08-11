@@ -226,17 +226,18 @@ bool ConnectToPython() {
 }
 
 void SendHistoryToPython() {
-    if(!g_socket_connected) return;
+    if(!g_dom_socket_connected) return;
 
     MqlTick ticks[];
     int copied = CopyTicks(_Symbol, ticks, COPY_TICKS_ALL, 0, InpHistoryTicks);
 
     if(copied > 0) {
         // Kezdő üzenet
-        string start_msg = "HISTORY_START|" + IntegerToString(copied) + "\n";
+        string start_msg = "HISTORY_START|" + IntegerToString(copied) + "
+";
         uchar s_buf[];
         StringToCharArray(start_msg, s_buf);
-        SocketSend(g_socket, s_buf, ArraySize(s_buf) - 1);
+        SocketSend(g_dom_socket, s_buf, ArraySize(s_buf) - 1);
 
         // Csomagokban küldjük, hogy elkerüljük az MQL5 string fagyást (O(N^2) concatenation lag)
         int chunk_size = 500;
@@ -258,10 +259,11 @@ void SendHistoryToPython() {
         }
 
         // Záró üzenet
-        string end_msg = "HISTORY_END\n";
+        string end_msg = "HISTORY_END
+";
         uchar e_buf[];
         StringToCharArray(end_msg, e_buf);
-        SocketSend(g_socket, e_buf, ArraySize(e_buf) - 1);
+        SocketSend(g_dom_socket, e_buf, ArraySize(e_buf) - 1);
 
         Print("📤 History Sent (", copied, " ticks) to Python in chunks.");
     }
