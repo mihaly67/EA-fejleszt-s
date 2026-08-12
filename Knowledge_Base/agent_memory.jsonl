@@ -179,3 +179,5 @@
 {"timestamp": "2026-08-12T19:57:18.065552", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
 {"timestamp": "2026-08-12T21:44:47.670325", "category": "Context_Summary", "content": "Completed isolated Optuna tuning on the Python Beta ZigZag Engine. To optimize the Secondary pivot distance (seeking actionable secondary breakout targets post-1.5pt TP), the ideal parameters for GC (Gold) are Depth=20, Deviation=22. The baseline MT5 setup rendered secondary pivots too distant, which explains why the SHAP analysis showed the LightGBM model ignoring them."}
 {"timestamp": "2026-08-12T21:45:58.973337", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
+{"timestamp": "2026-08-12T22:26:49.715002", "category": "Context_Summary", "content": "Created v1.9 Beta pipeline (EA and Python Copilot) implementing full Python-side ZigZag calculation based on live OHLC streaming from MT5. Applied optimized parameters (Micro=12/5, Sec=20/22, Ter=36/40) while strictly preserving the live v1.8 system as requested."}
+{"timestamp": "2026-08-12T22:26:52.885446", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
