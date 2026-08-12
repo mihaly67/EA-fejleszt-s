@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                             Merkava_Behavioral_Profiler_v1.7_Online.mq5 |
+//|                             Merkava_Behavioral_Profiler_v1.8_Online.mq5 |
 //|                                    Copyright 2026, Jules (Mimic) |
 //|                                             For Project Merkava  |
 //|                                                   Version 1.7 (Added DOM MarketBookGet + Socket payload support)    |
@@ -7,7 +7,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Jules (Mimic)"
 #property link      "https://github.com/MimicProject"
-#property version   "1.70"
+#property version   "1.80"
 #property strict
 
 #include "../Indicators/Types_v2_16.mqh"
