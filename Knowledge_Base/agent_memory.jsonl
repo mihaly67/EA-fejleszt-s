@@ -175,3 +175,5 @@
 {"timestamp": "2026-08-12T19:21:28.091213", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
 {"timestamp": "2026-08-12T19:30:58.271286", "category": "Context_Summary", "content": "Implemented Triple-Barrier logic in live_forward_test_analyzer.py. Evaluated 797 active trades on recent live data (TP=1.5, SL=1.0, MaxBars=5). Results: 270 Wins, 501 Losses, 26 Timeouts. Estimated Clean Win Rate: 33.88%."}
 {"timestamp": "2026-08-12T19:31:20.089108", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
+{"timestamp": "2026-08-12T19:56:54.612915", "category": "Context_Summary", "content": "Completed SHAP isolated analysis on v5_tuned model using a synthetic background dataset. Revealed that the model heavily relies on only 3 features (Tick_Speed, Dist_Micro_S, Dist_Micro_R). Stoch_State_M1 is virtually ignored (bottom rank), proving the model suppressed its noisy behavior autonomously."}
+{"timestamp": "2026-08-12T19:57:18.065552", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
