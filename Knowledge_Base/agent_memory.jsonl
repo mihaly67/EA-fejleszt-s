@@ -152,3 +152,5 @@
 {"timestamp": "2026-08-11T23:07:18.354732", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
 {"timestamp": "2026-08-11T23:57:48.069725", "category": "Context_Summary", "content": "Updated live Copilot thresholds to Optuna optimized asymmetric values (P_Long_Min=0.55, P_Short_Min=0.45). Versioned the MQL5 EA to v1.8 to reflect the completed Dual-Socket Memory Fusion architecture. The Python server is actively running on the VPS."}
 {"timestamp": "2026-08-11T23:57:50.908211", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
+{"timestamp": "2026-08-12T03:39:20.674069", "category": "Context_Summary", "content": "Restarted the Python Copilot server on the VPS to apply the Optuna Thresholds and Ping filtering. Verified clean logs, stable dual-socket connection on ports 5555/5556, and background execution via nohup. Ready for all-day forward testing."}
+{"timestamp": "2026-08-12T03:39:23.273123", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
