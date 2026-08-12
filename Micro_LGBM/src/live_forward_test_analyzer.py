@@ -9,20 +9,29 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def load_and_merge_data(pred_file, m1_file):
-    print(f"📥 Loading M1 OHLC Data: {m1_file}")
-    df_m1 = pd.read_csv(m1_file)
+    print(f"📥 Loading Raw Tick Data from: {m1_file}")
+    df_raw = pd.read_csv(m1_file, on_bad_lines='skip')
 
-    # Assuming M1 CSV has headers like Time, Open, High, Low, Close (from Merkava_Data_Miner)
-    # Check actual headers
-    time_col = 'Time' if 'Time' in df_m1.columns else df_m1.columns[0]
+    if 'Time' not in df_raw.columns or 'Bid' not in df_raw.columns or 'Ask' not in df_raw.columns:
+        print("❌ Could not find required 'Time', 'Bid', 'Ask' columns in the MT5 data file.")
+        return None, None, None
 
     # Convert Time to datetime
-    if df_m1[time_col].dtype == 'object':
-        df_m1['Datetime'] = pd.to_datetime(df_m1[time_col], format='mixed')
-    else:
-        df_m1['Datetime'] = pd.to_datetime(df_m1[time_col], unit='s')
+    df_raw['Datetime'] = pd.to_datetime(df_raw['Time'], format='mixed', errors='coerce')
+    df_raw = df_raw.dropna(subset=['Datetime']).sort_values('Datetime')
 
-    df_m1 = df_m1.sort_values('Datetime').reset_index(drop=True)
+    # Calculate Mid Price
+    df_raw['Mid'] = (df_raw['Bid'] + df_raw['Ask']) / 2.0
+
+    print("⏳ Resampling tick data into M1 (1-Minute) OHLC candlesticks...")
+    df_raw.set_index('Datetime', inplace=True)
+    df_m1 = df_raw['Mid'].resample('1min').ohlc()
+    df_m1.dropna(inplace=True)
+    df_m1.reset_index(inplace=True)
+
+    # Rename for plotly compatibility
+    df_m1.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close'}, inplace=True)
+    print(f"✅ Generated {len(df_m1)} M1 candlesticks.")
 
     print(f"📥 Loading Predictions Data: {pred_file}")
     df_pred = pd.read_csv(pred_file)
@@ -30,13 +39,17 @@ def load_and_merge_data(pred_file, m1_file):
     # EA writes: ServerTime,P_Long,P_Short,P_Noise,Signal
     # Format of ServerTime: "2026.08.12 00:38:04"
     if 'ServerTime' in df_pred.columns:
-        df_pred['Datetime'] = pd.to_datetime(df_pred['ServerTime'], format='%Y.%m.%d %H:%M:%S', errors='coerce')
+        df_pred['Datetime'] = pd.to_datetime(df_pred['ServerTime'], format='mixed', errors='coerce')
+        df_m1['Datetime'] = pd.to_datetime(df_m1['Datetime']).astype('datetime64[us]')
+        df_pred['Datetime'] = df_pred['Datetime'].astype('datetime64[us]')
     else:
         print("❌ Could not find ServerTime column in predictions CSV.")
         return None
 
     df_pred = df_pred.dropna(subset=['Datetime']).sort_values('Datetime').reset_index(drop=True)
 
+    print(f"Loaded {len(df_pred)} raw prediction rows.")
+    print(f"Unique signals found in file: {df_pred['Signal'].unique()}")
     # Remove any HOLD/Noise signals from the chart markers, keep active ones
     active_preds = df_pred[df_pred['Signal'] != 0].copy()
 
