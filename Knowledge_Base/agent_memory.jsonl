@@ -154,3 +154,7 @@
 {"timestamp": "2026-08-11T23:57:50.908211", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
 {"timestamp": "2026-08-12T03:39:20.674069", "category": "Context_Summary", "content": "Restarted the Python Copilot server on the VPS to apply the Optuna Thresholds and Ping filtering. Verified clean logs, stable dual-socket connection on ports 5555/5556, and background execution via nohup. Ready for all-day forward testing."}
 {"timestamp": "2026-08-12T03:39:23.273123", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
+{"timestamp": "2026-08-12T06:08:07.849162", "category": "Context_Summary", "content": "MILESTONE STABLE: The Dual-Socket Memory Fusion architecture (v1.8) is running live and is considered UNTOUCHABLE (Golden version). A 10-hour forward test has commenced. No modifications are permitted to the live MT5 EA or the running python copilot. All future development (e.g., Python ZigZag engine extraction) must occur in isolated 'beta' parallel scripts using dummy CSV data."}
+{"timestamp": "2026-08-12T06:08:14.860598", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
+{"timestamp": "2026-08-12T06:14:29.565348", "category": "Context_Summary", "content": "Initiated isolated python porting of the MT5 CZigZagEngine to enable future Optuna parameter tuning (Depth, Deviation, Backstep) without touching the live v1.8 Dual-Socket pipeline. Placed scaffolding in Micro_LGBM/src/beta_tools/."}
+{"timestamp": "2026-08-12T06:14:32.158254", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
