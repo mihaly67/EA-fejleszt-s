@@ -71,9 +71,9 @@ def evaluate_tick_state(clf, current_features_dict):
     p_noise = probs[1]
     p_long  = probs[2]
 
-    P_LONG_MIN = 0.55
+    P_LONG_MIN = 0.45
     P_NOISE_MAX_LONG = 0.35
-    P_SHORT_MIN = 0.45
+    P_SHORT_MIN = 0.37
     P_NOISE_MAX_SHORT = 0.35
 
     signal = 0
