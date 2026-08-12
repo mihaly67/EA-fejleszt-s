@@ -9,20 +9,29 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def load_and_merge_data(pred_file, m1_file):
-    print(f"📥 Loading M1 OHLC Data: {m1_file}")
-    df_m1 = pd.read_csv(m1_file)
+    print(f"📥 Loading Raw Tick Data from: {m1_file}")
+    df_raw = pd.read_csv(m1_file, on_bad_lines='skip')
 
-    # Assuming M1 CSV has headers like Time, Open, High, Low, Close (from Merkava_Data_Miner)
-    # Check actual headers
-    time_col = 'Time' if 'Time' in df_m1.columns else df_m1.columns[0]
+    if 'Time' not in df_raw.columns or 'Bid' not in df_raw.columns or 'Ask' not in df_raw.columns:
+        print("❌ Could not find required 'Time', 'Bid', 'Ask' columns in the MT5 data file.")
+        return None, None, None
 
     # Convert Time to datetime
-    if df_m1[time_col].dtype == 'object':
-        df_m1['Datetime'] = pd.to_datetime(df_m1[time_col], format='mixed')
-    else:
-        df_m1['Datetime'] = pd.to_datetime(df_m1[time_col], unit='s')
+    df_raw['Datetime'] = pd.to_datetime(df_raw['Time'], format='mixed', errors='coerce')
+    df_raw = df_raw.dropna(subset=['Datetime']).sort_values('Datetime')
 
-    df_m1 = df_m1.sort_values('Datetime').reset_index(drop=True)
+    # Calculate Mid Price
+    df_raw['Mid'] = (df_raw['Bid'] + df_raw['Ask']) / 2.0
+
+    print("⏳ Resampling tick data into M1 (1-Minute) OHLC candlesticks...")
+    df_raw.set_index('Datetime', inplace=True)
+    df_m1 = df_raw['Mid'].resample('1min').ohlc()
+    df_m1.dropna(inplace=True)
+    df_m1.reset_index(inplace=True)
+
+    # Rename for plotly compatibility
+    df_m1.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close'}, inplace=True)
+    print(f"✅ Generated {len(df_m1)} M1 candlesticks.")
 
     print(f"📥 Loading Predictions Data: {pred_file}")
     df_pred = pd.read_csv(pred_file)
@@ -30,13 +39,17 @@ def load_and_merge_data(pred_file, m1_file):
     # EA writes: ServerTime,P_Long,P_Short,P_Noise,Signal
     # Format of ServerTime: "2026.08.12 00:38:04"
     if 'ServerTime' in df_pred.columns:
-        df_pred['Datetime'] = pd.to_datetime(df_pred['ServerTime'], format='%Y.%m.%d %H:%M:%S', errors='coerce')
+        df_pred['Datetime'] = pd.to_datetime(df_pred['ServerTime'], format='mixed', errors='coerce')
+        df_m1['Datetime'] = pd.to_datetime(df_m1['Datetime']).astype('datetime64[us]')
+        df_pred['Datetime'] = df_pred['Datetime'].astype('datetime64[us]')
     else:
         print("❌ Could not find ServerTime column in predictions CSV.")
         return None
 
     df_pred = df_pred.dropna(subset=['Datetime']).sort_values('Datetime').reset_index(drop=True)
 
+    print(f"Loaded {len(df_pred)} raw prediction rows.")
+    print(f"Unique signals found in file: {df_pred['Signal'].unique()}")
     # Remove any HOLD/Noise signals from the chart markers, keep active ones
     active_preds = df_pred[df_pred['Signal'] != 0].copy()
 
@@ -119,6 +132,71 @@ def generate_visualization(merged_df, df_m1, df_pred):
     fig.write_html(out_file)
     print(f"✅ Visualization saved to {out_file}")
 
+def evaluate_win_rate(merged_df, df_m1, tp_pts=1.5, sl_pts=1.0, max_bars=5):
+    print(f"\n🎯 --- FORWARD TEST WIN RATE ANALYSIS ---")
+    print(f"Parameters: TP={tp_pts} pts, SL={sl_pts} pts, Timeout={max_bars} bars")
+
+    wins = 0
+    losses = 0
+    timeouts = 0
+
+    # We iterate over every active signal and simulate the trade
+    for index, row in merged_df.iterrows():
+        signal = row['Signal']
+        entry_time = row['Datetime']
+        entry_price = row['Close'] # Assuming entry is roughly at the close of the matching bar
+
+        if signal == 0: continue
+
+        # Find the index of the M1 bar where this signal occurred
+        # Since merged_df used merge_asof backward, the entry_time matches exactly an M1 Datetime
+        # merge_asof matches exactly OR backward. If backward, `entry_time` won't exactly equal `df_m1['Datetime']`.
+        # So we should find the closest preceding M1 bar directly using searchsorted.
+        m1_start_idx = df_m1['Datetime'].searchsorted(entry_time, side='right') - 1
+        if m1_start_idx < 0:
+            m1_start_idx = 0
+
+        # Look ahead max_bars
+        outcome = "TIMEOUT"
+        for i in range(1, max_bars + 1):
+            if m1_start_idx + i >= len(df_m1):
+                break
+
+            future_bar = df_m1.iloc[m1_start_idx + i]
+            high_price = future_bar['High']
+            low_price = future_bar['Low']
+
+            if signal == 1: # Long
+                if low_price <= entry_price - sl_pts:
+                    outcome = "LOSS"
+                    break
+                elif high_price >= entry_price + tp_pts:
+                    outcome = "WIN"
+                    break
+            elif signal == -1: # Short
+                if high_price >= entry_price + sl_pts:
+                    outcome = "LOSS"
+                    break
+                elif low_price <= entry_price - tp_pts:
+                    outcome = "WIN"
+                    break
+
+        if outcome == "WIN":
+            wins += 1
+        elif outcome == "LOSS":
+            losses += 1
+        else:
+            timeouts += 1
+
+    total_trades = wins + losses + timeouts
+    win_rate = (wins / total_trades * 100) if total_trades > 0 else 0.0
+
+    print(f"Total Evaluated Trades: {total_trades}")
+    print(f"  - 🟩 WINS (Hit TP {tp_pts}): {wins}")
+    print(f"  - 🟥 LOSSES (Hit SL {sl_pts}): {losses}")
+    print(f"  - 🟨 TIMEOUTS ({max_bars} bars expired): {timeouts}")
+    print(f"\n⭐ ESTIMATED CLEAN WIN RATE: {win_rate:.2f}%")
+
 def generate_statistics(merged_df, df_pred):
     print("\n📊 --- FORWARD TEST STATISTICS ---")
     total_preds = len(df_pred)
@@ -172,6 +250,8 @@ def main():
 
     if merged_df is not None:
         generate_statistics(merged_df, df_pred)
+        # Evaluate strict Prado Win Rate
+        evaluate_win_rate(merged_df[merged_df['Signal'] != 0], df_m1)
         generate_visualization(merged_df, df_m1, df_pred)
 
 if __name__ == "__main__":
