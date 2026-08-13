@@ -86,6 +86,19 @@ def evaluate_tick_state(clf, current_features_dict):
         signal = -1
         signal_str = "🔴 SELL (DOWNTREND)"
 
+    # --- STOCHASTIC HARD FILTER ENFORCEMENT ---
+    # The model ignores Stoch_K internally, so we enforce it here as an overriding physical rule
+    # to filter out false breakouts based on momentum.
+    stoch_state = current_features_dict.get('Stoch_State_M1', 0.0)
+    # Stoch_State_M1 is normalized [-1, 1], where 0 is the 50 line.
+
+    if signal == 1 and stoch_state < 0.0:
+        signal = 0
+        signal_str = "HOLD (STOCH BLOCKED LONG)"
+    elif signal == -1 and stoch_state > 0.0:
+        signal = 0
+        signal_str = "HOLD (STOCH BLOCKED SHORT)"
+
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{current_time}] | SIGNAL: {signal_str:<18} | P_Long: {p_long*100:.1f}% | P_Short: {p_short*100:.1f}% | P_Noise: {p_noise*100:.1f}%")
 
