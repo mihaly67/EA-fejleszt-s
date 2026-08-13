@@ -26,6 +26,12 @@ def load_and_merge_data(pred_file, m1_file):
     print("⏳ Resampling tick data into M1 (1-Minute) OHLC candlesticks...")
     df_raw.set_index('Datetime', inplace=True)
     df_m1 = df_raw['Mid'].resample('1min').ohlc()
+
+    if 'Stoch_K' in df_raw.columns:
+        # Scale Stoch_K from 0-100 to 0-1 so it fits on the probability chart
+        stoch_series = df_raw['Stoch_K'].resample('1min').last() / 100.0
+        df_m1['Stoch_K'] = stoch_series
+
     df_m1.dropna(inplace=True)
     df_m1.reset_index(inplace=True)
 
@@ -61,7 +67,7 @@ def load_and_merge_data(pred_file, m1_file):
 
     return merged, df_m1, df_pred
 
-def generate_visualization(merged_df, df_m1, df_pred):
+def generate_visualization(merged_df, df_m1, df_pred, out_file='live_forward_test_results.html'):
     print("🎨 Generating Dark Mode Plotly Visualization...")
 
     # To keep the chart readable, we might limit it to a 24h window around the predictions
@@ -114,9 +120,13 @@ def generate_visualization(merged_df, df_m1, df_pred):
     fig.add_trace(go.Scatter(x=df_pred['Datetime'], y=df_pred['P_Short'], mode='lines', line=dict(color='red', width=1.5), name='P_Short'), row=2, col=1)
     fig.add_trace(go.Scatter(x=df_pred['Datetime'], y=df_pred['P_Noise'], mode='lines', line=dict(color='gray', width=1, dash='dot'), name='P_Noise'), row=2, col=1)
 
+    if 'Stoch_K' in df_m1_plot.columns:
+        fig.add_trace(go.Scatter(x=df_m1_plot['Datetime'], y=df_m1_plot['Stoch_K'], mode='lines', line=dict(color='rgba(200, 200, 180, 0.4)', width=1), name='Stoch_K (Scaled)'), row=2, col=1)
+
     # Threshold Lines
-    fig.add_hline(y=0.55, line_dash="dash", line_color="lime", row=2, col=1, annotation_text="Long Threshold (0.55)")
-    fig.add_hline(y=0.45, line_dash="dash", line_color="red", row=2, col=1, annotation_text="Short Threshold (0.45)")
+    fig.add_hline(y=0.45, line_dash="dash", line_color="lime", row=2, col=1, annotation_text="Long Threshold (0.45)")
+    fig.add_hline(y=0.37, line_dash="dash", line_color="red", row=2, col=1, annotation_text="Short Threshold (0.37)")
+    fig.add_hline(y=0.35, line_dash="dash", line_color="gray", row=2, col=1, annotation_text="Noise Max (0.35)")
 
     fig.update_layout(
         title="Copilot Forward-Test Live Evaluation",
@@ -128,7 +138,6 @@ def generate_visualization(merged_df, df_m1, df_pred):
         hovermode='x unified'
     )
 
-    out_file = "live_forward_test_results.html"
     fig.write_html(out_file)
     print(f"✅ Visualization saved to {out_file}")
 
@@ -219,6 +228,7 @@ def main():
     parser = argparse.ArgumentParser(description="Live Copilot Forward-Test Analyzer")
     parser.add_argument('--pred', type=str, help="Path to LGBM_Live_Predictions CSV", default=None)
     parser.add_argument('--m1', type=str, help="Path to Merkava_M1 CSV", default=None)
+    parser.add_argument('--out', type=str, help="Output HTML filename", default="live_forward_test_results.html")
     args = parser.parse_args()
 
     pred_file = args.pred
@@ -252,7 +262,7 @@ def main():
         generate_statistics(merged_df, df_pred)
         # Evaluate strict Prado Win Rate
         evaluate_win_rate(merged_df[merged_df['Signal'] != 0], df_m1)
-        generate_visualization(merged_df, df_m1, df_pred)
+        generate_visualization(merged_df, df_m1, df_pred, args.out)
 
 if __name__ == "__main__":
     main()
