@@ -160,13 +160,14 @@ def generate_visualization(merged_df, df_m1, df_pred, out_file='live_forward_tes
     fig.write_html(out_file)
     print(f"✅ Visualization saved to {out_file}")
 
-def evaluate_win_rate(merged_df, df_m1, tp_pts=1.5, sl_pts=1.0, max_bars=5):
+def evaluate_win_rate(merged_df, df_m1, tp_pts=1.5, sl_pts=1.5, be_trigger_pts=1.0, max_bars=5):
     print(f"\n🎯 --- FORWARD TEST PROFIT & WIN RATE ANALYSIS ---")
-    print(f"Parameters: Minimum TP={tp_pts} pts, SL={sl_pts} pts, Timeout={max_bars} bars")
+    print(f"Parameters: Minimum TP={tp_pts} pts, SL={sl_pts} pts, Break-Even Trigger={be_trigger_pts} pts, Timeout={max_bars} bars")
 
     wins = 0
     losses = 0
     timeouts = 0
+    break_evens = 0
 
     total_potential_profit = 0.0
     total_deficit = 0.0
@@ -195,32 +196,44 @@ def evaluate_win_rate(merged_df, df_m1, tp_pts=1.5, sl_pts=1.0, max_bars=5):
 
         outcome = "TIMEOUT"
         max_favorable_price = entry_price
+        be_active = False
 
         for i in range(1, max_bars + 1):
-            if m1_start_idx + i >= len(df_m1):
-                break
-
+            if m1_start_idx + i >= len(df_m1): break
             future_bar = df_m1.iloc[m1_start_idx + i]
             high_price = future_bar['High']
             low_price = future_bar['Low']
 
             if signal == 1: # Long
                 if high_price > max_favorable_price: max_favorable_price = high_price
-                if low_price <= entry_price - sl_pts:
-                    outcome = "LOSS"
+                # Check BE Trigger first
+                if high_price >= entry_price + be_trigger_pts: be_active = True
+
+                # If BE is active, our SL moves to entry_price
+                current_sl = entry_price if be_active else entry_price - sl_pts
+
+                if low_price <= current_sl:
+                    outcome = "BREAK_EVEN" if be_active else "LOSS"
                     break
                 elif high_price >= entry_price + tp_pts:
                     outcome = "WIN"
+                    break
             elif signal == -1: # Short
                 if low_price < max_favorable_price: max_favorable_price = low_price
-                if high_price >= entry_price + sl_pts:
-                    outcome = "LOSS"
+                # Check BE Trigger
+                if low_price <= entry_price - be_trigger_pts: be_active = True
+
+                current_sl = entry_price if be_active else entry_price + sl_pts
+
+                if high_price >= current_sl:
+                    outcome = "BREAK_EVEN" if be_active else "LOSS"
                     break
                 elif low_price <= entry_price - tp_pts:
                     outcome = "WIN"
+                    break
 
         actual_mfe = 0.0
-        if outcome != "LOSS":
+        if outcome != "LOSS" and outcome != "BREAK_EVEN":
             mfe_price = entry_price
             for i in range(1, max_bars + 1):
                 if m1_start_idx + i >= len(df_m1): break
@@ -242,17 +255,21 @@ def evaluate_win_rate(merged_df, df_m1, tp_pts=1.5, sl_pts=1.0, max_bars=5):
             losses += 1
             total_deficit += sl_pts
             if not stoch_allowed: stoch_saved_losses += 1
+        elif outcome == "BREAK_EVEN":
+            break_evens += 1
+            # Deficit is 0 for BE
         else:
             timeouts += 1
             total_potential_profit += actual_mfe
 
         if not stoch_allowed: stoch_filtered_trades += 1
 
-    total_trades = wins + losses + timeouts
+    total_trades = wins + losses + timeouts + break_evens
     win_rate = (wins / total_trades * 100) if total_trades > 0 else 0.0
 
     print(f"Total Evaluated Trades: {total_trades}")
     print(f"  - 🟩 WINS (Hit TP {tp_pts}): {wins}")
+    print(f"  - 🟦 BREAK-EVENS (Hit BE Trigger {be_trigger_pts} -> Stopped at Entry): {break_evens}")
     print(f"  - 🟥 LOSSES (Hit SL {sl_pts}): {losses}")
     print(f"  - 🟨 TIMEOUTS ({max_bars} bars expired): {timeouts}")
     print(f"\n⭐ ESTIMATED CLEAN WIN RATE: {win_rate:.2f}%")
@@ -303,6 +320,9 @@ def main():
     parser.add_argument('--plong', type=float, default=0.35)
     parser.add_argument('--pshort', type=float, default=0.36)
     parser.add_argument('--pnoise', type=float, default=0.47)
+    parser.add_argument('--sl', type=float, default=1.5)
+    parser.add_argument('--tp', type=float, default=1.5)
+    parser.add_argument('--be', type=float, default=1.0)
     args = parser.parse_args()
 
     pred_file = args.pred
@@ -361,7 +381,7 @@ def main():
         merged_df_stats = merged_df.copy()
         merged_df_stats['Signal'] = merged_df_stats['Raw_Signal']
         generate_statistics(merged_df_stats, df_pred)
-        evaluate_win_rate(merged_df_stats[merged_df_stats['Signal'] != 0].copy(), df_m1)
+        evaluate_win_rate(merged_df_stats[merged_df_stats['Signal'] != 0].copy(), df_m1, tp_pts=args.tp, sl_pts=args.sl, be_trigger_pts=args.be)
 
         # Now pass the STRICTLY FILTERED dataframe to the visualizer
         active_filtered = merged_df[merged_df['Signal'] != 0].copy()
