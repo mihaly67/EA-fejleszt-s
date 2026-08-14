@@ -71,10 +71,10 @@ def evaluate_tick_state(clf, current_features_dict):
     p_noise = probs[1]
     p_long  = probs[2]
 
-    P_LONG_MIN = 0.45
-    P_NOISE_MAX_LONG = 0.35
-    P_SHORT_MIN = 0.37
-    P_NOISE_MAX_SHORT = 0.35
+    P_LONG_MIN = 0.350
+    P_NOISE_MAX_LONG = 0.470
+    P_SHORT_MIN = 0.360
+    P_NOISE_MAX_SHORT = 0.470
 
     signal = 0
     signal_str = "HOLD (NOISE)"
@@ -281,6 +281,7 @@ class MacroReceiver(threading.Thread):
 
                                     with macro_lock:
                                         macro_cache['Stoch_State_M1'] = (stoch_k - 50.0) / 50.0
+                                        macro_cache['Raw_Stoch_K'] = stoch_k / 100.0 # Standard 0.0-1.0 scale
 
                                     self.update_macro_cache(price)
 
@@ -411,6 +412,7 @@ class TickReceiver(threading.Thread):
                                         f_dict['Dist_Ter_R'] = (ter_r - close_p) / atr
                                         f_dict['Dist_Ter_S'] = (close_p - ter_s) / atr
                                         f_dict['Stoch_State_M1'] = macro_cache.get('Stoch_State_M1', 0.0)
+                                        f_dict['Raw_Stoch_K'] = macro_cache.get('Raw_Stoch_K', 0.5)
 
                                     # Predict
 
