@@ -121,8 +121,8 @@ class CopilotHUD(QMainWindow):
         self.curve_stoch = self.pw_osc.plot(pen=pg.mkPen(color=(200, 180, 100, 150), width=1.5), name="Stoch_K")
 
         # Threshold Lines
-        self.pw_osc.addItem(pg.InfiniteLine(pos=0.45, angle=0, pen=pg.mkPen('forestgreen', width=1, style=Qt.DotLine)))
-        self.pw_osc.addItem(pg.InfiniteLine(pos=0.37, angle=0, pen=pg.mkPen('firebrick', width=1, style=Qt.DotLine)))
+        self.pw_osc.addItem(pg.InfiniteLine(pos=0.35, angle=0, pen=pg.mkPen('forestgreen', width=1, style=Qt.DotLine)))
+        self.pw_osc.addItem(pg.InfiniteLine(pos=0.36, angle=0, pen=pg.mkPen('firebrick', width=1, style=Qt.DotLine)))
         self.pw_osc.addItem(pg.InfiniteLine(pos=0.47, angle=0, pen=pg.mkPen(color=(220, 220, 220, 100), width=1, style=Qt.DotLine)))
 
     def update_data(self):

@@ -209,3 +209,7 @@
 {"timestamp": "2026-08-14T19:52:02.714862", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
 {"timestamp": "2026-08-14T20:12:50.497711", "category": "Context_Summary", "content": "Fixed PyQtGraph object referencing bugs in copilot_hud.py. The UI now securely imports QPicture, QPainter, QRectF, and QPointF from PyQt5.QtGui/QtCore, enabling the CandlestickItem to render solid dark-mode M1 bodies without crashing the UI thread. The system is fully operational."}
 {"timestamp": "2026-08-14T20:12:58.309965", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
+{"timestamp": "2026-08-14T20:56:25.827756", "category": "Context_Summary", "content": "Fixed HUD missing PyQt5 dependencies and display detection. Modified start_hud.sh to automatically detect active xrdp display and launch copilot_hud.py in the background. The HUD successfully rendered on the user's VPS desktop, connecting to the ZMQ data stream from the Copilot. Provided the user with complete system startup instructions."}
+{"timestamp": "2026-08-14T20:56:28.964125", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
+{"timestamp": "2026-08-14T21:16:37.493549", "category": "Context_Summary", "content": "Synchronized the visual reference lines in copilot_hud.py with the final live Optuna thresholds (Long: 0.35, Short: 0.36, Noise: 0.47) to perfectly match the deployed prediction engine parameters."}
+{"timestamp": "2026-08-14T21:16:40.052565", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
