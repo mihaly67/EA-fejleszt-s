@@ -118,12 +118,15 @@ def evaluate_tick_state(clf, current_features_dict):
         "high": current_features_dict.get('High', current_price),
         "low": current_features_dict.get('Low', current_price),
         "close": current_features_dict.get('Close', current_price),
+        "bid": current_features_dict.get('Bid', current_price),
+        "ask": current_features_dict.get('Ask', current_price),
+        "stoch_k": current_features_dict.get('Raw_Stoch_K', 0.5) * 100.0, # Send as 0-100 for HUD processing
         "signal": signal,
         "new_candle": True,
-        "p_long": p_long,
-        "p_short": p_short,
-        "p_noise": p_noise,
-        "is_stable": is_stable
+        "p_long": float(p_long),
+        "p_short": float(p_short),
+        "p_noise": float(p_noise),
+        "is_stable": bool(is_stable)
     }
     try:
         zmq_publisher.send_string(f"HUD {json.dumps(hud_data)}")
@@ -420,6 +423,8 @@ class TickReceiver(threading.Thread):
                                     f_dict['High'] = high_p
                                     f_dict['Low'] = low_p
                                     f_dict['Close'] = close_p
+                                    f_dict['Bid'] = tick_data.get('bid', close_p)
+                                    f_dict['Ask'] = tick_data.get('ask', close_p)
                                     sig, pl, ps, pn = evaluate_tick_state(self.clf, f_dict)
 
                                     # Send back to EA
