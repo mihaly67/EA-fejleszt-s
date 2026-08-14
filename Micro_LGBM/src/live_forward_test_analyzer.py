@@ -67,7 +67,7 @@ def load_and_merge_data(pred_file, m1_file):
 
     return merged, df_m1, df_pred
 
-def generate_visualization(merged_df, df_m1, df_pred, out_file='live_forward_test_results.html'):
+def generate_visualization(merged_df, df_m1, df_pred, out_file='live_forward_test_results.html', p_long=0.35, p_short=0.36, p_noise=0.47):
     print("🎨 Generating Dark Mode Plotly Visualization...")
 
     # To keep the chart readable, we might limit it to a 24h window around the predictions
@@ -93,9 +93,27 @@ def generate_visualization(merged_df, df_m1, df_pred, out_file='live_forward_tes
         increasing_line_color='#228B22', decreasing_line_color='#B22222'
     ), row=1, col=1)
 
-    # 2. Add Signals
-    longs = merged_df[merged_df['Signal'] == 1]
-    shorts = merged_df[merged_df['Signal'] == -1]
+    # 2. Add Signals (Strictly Recalculated for Visualization)
+    # We ignore the raw Signal column and strictly enforce the user's thresholds and Stoch hard filter.
+    df_viz = merged_df.copy()
+
+    # Calculate RAW signals
+    cond_long_raw = (df_viz['P_Long'] > p_long) & (df_viz['P_Noise'] < p_noise) & (df_viz['P_Long'] > df_viz['P_Short'])
+    cond_short_raw = (df_viz['P_Short'] > p_short) & (df_viz['P_Noise'] < p_noise) & (df_viz['P_Short'] > df_viz['P_Long'])
+
+    # Apply Stoch Filter
+    if 'Stoch_K' not in df_viz.columns:
+        df_viz['Stoch_K'] = 0.5
+
+    cond_long_filtered = cond_long_raw & (df_viz['Stoch_K'] >= 0.50)
+    cond_short_filtered = cond_short_raw & (df_viz['Stoch_K'] <= 0.50)
+
+    longs = df_viz[cond_long_filtered]
+    shorts = df_viz[cond_short_filtered]
+
+    print(f"\n🖌️ VISUALIZATION DATA:")
+    print(f"  - Plotted Longs: {len(longs)}")
+    print(f"  - Plotted Shorts: {len(shorts)}")
 
     if not longs.empty:
         fig.add_trace(go.Scatter(
@@ -124,14 +142,15 @@ def generate_visualization(merged_df, df_m1, df_pred, out_file='live_forward_tes
         fig.add_trace(go.Scatter(x=df_m1_plot['Datetime'], y=df_m1_plot['Stoch_K'], mode='lines', line=dict(color='rgba(200, 200, 180, 0.4)', width=1), name='Stoch_K (Scaled)'), row=2, col=1)
 
     # Threshold Lines
-    fig.add_hline(y=0.45, line_dash="dash", line_color="lime", row=2, col=1, annotation_text="Long Threshold (0.45)")
-    fig.add_hline(y=0.37, line_dash="dash", line_color="red", row=2, col=1, annotation_text="Short Threshold (0.37)")
-    fig.add_hline(y=0.35, line_dash="dash", line_color="gray", row=2, col=1, annotation_text="Noise Max (0.35)")
+    fig.add_hline(y=p_long, line_dash="dash", line_color="lime", row=2, col=1, annotation_text=f"Long Threshold ({p_long})")
+    fig.add_hline(y=p_short, line_dash="dash", line_color="red", row=2, col=1, annotation_text=f"Short Threshold ({p_short})")
+    fig.add_hline(y=p_noise, line_dash="dash", line_color="gray", row=2, col=1, annotation_text=f"Max Noise ({p_noise})")
 
     fig.update_layout(
         title="Copilot Forward-Test Live Evaluation",
         yaxis_title="Price",
         yaxis2_title="Probability",
+        yaxis2=dict(range=[0, 1]), # Force Y-axis scale to 0.0 - 1.0 for Stoch & Probs
         xaxis_rangeslider_visible=False,
         template="plotly_dark",
         height=900,
@@ -260,10 +279,10 @@ def evaluate_win_rate(merged_df, df_m1, tp_pts=1.5, sl_pts=1.0, max_bars=5):
 
 def generate_statistics(merged_df, df_pred):
     print("\n📊 --- FORWARD TEST STATISTICS ---")
-    total_preds = len(df_pred)
-    long_count = len(df_pred[df_pred['Signal'] == 1])
-    short_count = len(df_pred[df_pred['Signal'] == -1])
-    noise_count = len(df_pred[df_pred['Signal'] == 0])
+    total_preds = len(merged_df)
+    long_count = len(merged_df[merged_df['Signal'] == 1])
+    short_count = len(merged_df[merged_df['Signal'] == -1])
+    noise_count = len(merged_df[merged_df['Signal'] == 0])
 
     print(f"Total Model Inferences (Dollar Bars Closed): {total_preds}")
     print(f"Total Active Signals Triggered: {long_count + short_count}")
@@ -281,6 +300,9 @@ def main():
     parser.add_argument('--pred', type=str, help="Path to LGBM_Live_Predictions CSV", default=None)
     parser.add_argument('--m1', type=str, help="Path to Merkava_M1 CSV", default=None)
     parser.add_argument('--out', type=str, help="Output HTML filename", default="live_forward_test_results.html")
+    parser.add_argument('--plong', type=float, default=0.35)
+    parser.add_argument('--pshort', type=float, default=0.36)
+    parser.add_argument('--pnoise', type=float, default=0.47)
     args = parser.parse_args()
 
     pred_file = args.pred
@@ -311,10 +333,44 @@ def main():
     merged_df, df_m1, df_pred = load_and_merge_data(pred_file, m1_file)
 
     if merged_df is not None:
-        generate_statistics(merged_df, df_pred)
-        # Evaluate strict Prado Win Rate
-        evaluate_win_rate(merged_df[merged_df['Signal'] != 0], df_m1)
-        generate_visualization(merged_df, df_m1, df_pred, args.out)
+        print(f"\n⚙️ Applying Custom Thresholds: Long={args.plong}, Short={args.pshort}, MaxNoise={args.pnoise}")
+
+        # Calculate RAW signals purely based on Optuna thresholds (no stoch)
+        cond_long_raw = (merged_df['P_Long'] > args.plong) & (merged_df['P_Noise'] < args.pnoise) & (merged_df['P_Long'] > merged_df['P_Short'])
+        cond_short_raw = (merged_df['P_Short'] > args.pshort) & (merged_df['P_Noise'] < args.pnoise) & (merged_df['P_Short'] > merged_df['P_Long'])
+
+        merged_df['Raw_Signal'] = 0
+        merged_df.loc[cond_long_raw, 'Raw_Signal'] = 1
+        merged_df.loc[cond_short_raw, 'Raw_Signal'] = -1
+
+        # Calculate FILTERED signals (incorporating Stoch_K logic)
+        # Note: Stoch_K is 0-1 scaled. 50 level = 0.50
+        # Long allowed ONLY IF Stoch_K >= 0.50
+        # Short allowed ONLY IF Stoch_K <= 0.50
+        merged_df['Stoch_K'] = merged_df['Stoch_K'].fillna(0.5) # Default neutral if missing
+
+        cond_long_filtered = cond_long_raw & (merged_df['Stoch_K'] >= 0.50)
+        cond_short_filtered = cond_short_raw & (merged_df['Stoch_K'] <= 0.50)
+
+        merged_df['Signal'] = 0
+        merged_df.loc[cond_long_filtered, 'Signal'] = 1
+        merged_df.loc[cond_short_filtered, 'Signal'] = -1
+
+        # Display Statistics on RAW signals to calculate "Sacrificed Wins / Saved Losses" correctly
+        # We need to temporarily set the 'Signal' column to RAW so evaluate_win_rate calculates MFE correctly
+        merged_df_stats = merged_df.copy()
+        merged_df_stats['Signal'] = merged_df_stats['Raw_Signal']
+        generate_statistics(merged_df_stats, df_pred)
+        evaluate_win_rate(merged_df_stats[merged_df_stats['Signal'] != 0].copy(), df_m1)
+
+        # Now pass the STRICTLY FILTERED dataframe to the visualizer
+        active_filtered = merged_df[merged_df['Signal'] != 0].copy()
+
+        longs_count = len(active_filtered[active_filtered['Signal'] == 1])
+        shorts_count = len(active_filtered[active_filtered['Signal'] == -1])
+        print(f"\n🖌️ Visualizing strictly Stoch-Filtered signals: {longs_count} Longs, {shorts_count} Shorts")
+
+        generate_visualization(active_filtered, df_m1, df_pred, args.out, args.plong, args.pshort, args.pnoise)
 
 if __name__ == "__main__":
     main()
