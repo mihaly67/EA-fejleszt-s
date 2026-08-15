@@ -204,10 +204,8 @@ class MacroReceiver(threading.Thread):
         self.ter_zz = FullZigZagEngine(depth=36, deviation=40) # Closer tertiary
 
         self.m1_times = []
-        self.m1_opens = []
         self.m1_highs = []
         self.m1_lows = []
-        self.m1_closes = []
 
     def update_macro_cache(self, current_price):
         if len(self.m1_highs) < 50: return
@@ -262,56 +260,30 @@ class MacroReceiver(threading.Thread):
 
                                 if msg_type == 'init':
                                     self.m1_times = payload.get('times', [])
-                                    self.m1_opens = payload.get('opens', [])
                                     self.m1_highs = payload.get('highs', [])
                                     self.m1_lows = payload.get('lows', [])
-                                    self.m1_closes = payload.get('closes', [])
                                     print(f"[MACRO] Received init buffer with {len(self.m1_highs)} candles.")
                                     self.update_macro_cache(self.m1_highs[-1])
 
-                                    # Send the entire history immediately to the HUD
-                                    with macro_lock:
-                                        history_data = {
-                                            "type": "history",
-                                            "times": self.m1_times[-100:],
-                                            "opens": self.m1_opens[-100:],
-                                            "highs": self.m1_highs[-100:],
-                                            "lows": self.m1_lows[-100:],
-                                            "closes": self.m1_closes[-100:]
-                                        }
-                                        try:
-                                            import json
-                                            zmq_publisher.send_string(f"HUD {json.dumps(history_data)}")
-                                        except Exception as e:
-                                            print("HUD history send err:", e)
-
                                 elif msg_type == 'update':
                                     t = payload.get('time')
-                                    o = payload.get('open', payload.get('high'))
                                     h = payload.get('high')
                                     l = payload.get('low')
-                                    c = payload.get('close', payload.get('high'))
                                     price = payload.get('price', h)
                                     stoch_k = payload.get('stoch_k', 50.0)
 
                                     # Update rolling M1 cache
                                     if len(self.m1_times) > 0 and self.m1_times[-1] == t:
-                                        self.m1_opens[-1] = o
                                         self.m1_highs[-1] = h
                                         self.m1_lows[-1] = l
-                                        self.m1_closes[-1] = c
                                     else:
                                         self.m1_times.append(t)
-                                        self.m1_opens.append(o)
                                         self.m1_highs.append(h)
                                         self.m1_lows.append(l)
-                                        self.m1_closes.append(c)
                                         if len(self.m1_times) > 200:
                                             self.m1_times.pop(0)
-                                            self.m1_opens.pop(0)
                                             self.m1_highs.pop(0)
                                             self.m1_lows.pop(0)
-                                            self.m1_closes.pop(0)
 
                                     with macro_lock:
                                         macro_cache['Stoch_State_M1'] = (stoch_k - 50.0) / 50.0
@@ -322,13 +294,12 @@ class MacroReceiver(threading.Thread):
                                     # Continuous HUD Broadcast (M1 Data)
                                     with macro_lock:
                                         hud_data = {
-                                            "type": "update",
                                             "timestamp": t,
                                             "price": price,
-                                            "open": o,
+                                            "open": price, # Approximate Open for smooth UI
                                             "high": h,
                                             "low": l,
-                                            "close": c,
+                                            "close": price,
                                             "bid": price,
                                             "ask": price,
                                             "stoch_k": stoch_k,
