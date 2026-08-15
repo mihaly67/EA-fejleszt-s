@@ -318,6 +318,9 @@ int OnInit()
 
    if(!m_symbol.Name(_Symbol)) return INIT_FAILED;
    m_symbol.RefreshRates();
+
+   // Enable Timer for weekend offline testing updates
+   EventSetTimer(1);
    if(MarketBookAdd(_Symbol)) g_book_subscribed = true;
 
    // --- INITIALIZE STEALTH ENGINE ---
@@ -400,6 +403,7 @@ int OnInit()
 
 void OnDeinit(const int reason)
 {
+   EventKillTimer();
    if(InpEnablePythonBridge) { MarketBookRelease(_Symbol); }
    m_panel.Destroy();
    ObjectsDeleteAll(0, Prefix);
@@ -659,9 +663,15 @@ void SendMacroToPython(double current_price) {
     // Check if we need to send history (init) or just the current update
 
 
+    double open[], close[];
     if(!g_zigzag_init_sent) {
-        if(CopyHigh(_Symbol, PERIOD_M1, 0, 150, high) > 0 && CopyLow(_Symbol, PERIOD_M1, 0, 150, low) > 0 && CopyTime(_Symbol, PERIOD_M1, 0, 150, time) > 0) {
-            string json = "{\"type\": \"init\", \"highs\": [";
+        if(CopyOpen(_Symbol, PERIOD_M1, 0, 150, open) > 0 && CopyHigh(_Symbol, PERIOD_M1, 0, 150, high) > 0 && CopyLow(_Symbol, PERIOD_M1, 0, 150, low) > 0 && CopyClose(_Symbol, PERIOD_M1, 0, 150, close) > 0 && CopyTime(_Symbol, PERIOD_M1, 0, 150, time) > 0) {
+            string json = "{\"type\": \"init\", \"opens\": [";
+            for(int i=0; i<ArraySize(open); i++) {
+                json += DoubleToString(open[i], 5);
+                if(i < ArraySize(open) - 1) json += ",";
+            }
+            json += "], \"highs\": [";
             for(int i=0; i<ArraySize(high); i++) {
                 json += DoubleToString(high[i], 5);
                 if(i < ArraySize(high) - 1) json += ",";
@@ -670,6 +680,11 @@ void SendMacroToPython(double current_price) {
             for(int i=0; i<ArraySize(low); i++) {
                 json += DoubleToString(low[i], 5);
                 if(i < ArraySize(low) - 1) json += ",";
+            }
+            json += "], \"closes\": [";
+            for(int i=0; i<ArraySize(close); i++) {
+                json += DoubleToString(close[i], 5);
+                if(i < ArraySize(close) - 1) json += ",";
             }
             json += "], \"times\": [";
             for(int i=0; i<ArraySize(time); i++) {
@@ -689,11 +704,13 @@ void SendMacroToPython(double current_price) {
         }
     } else {
         // Send fast update for the current forming M1 candle
-        if(CopyHigh(_Symbol, PERIOD_M1, 0, 1, high) > 0 && CopyLow(_Symbol, PERIOD_M1, 0, 1, low) > 0 && CopyTime(_Symbol, PERIOD_M1, 0, 1, time) > 0) {
+        if(CopyOpen(_Symbol, PERIOD_M1, 0, 1, open) > 0 && CopyHigh(_Symbol, PERIOD_M1, 0, 1, high) > 0 && CopyLow(_Symbol, PERIOD_M1, 0, 1, low) > 0 && CopyClose(_Symbol, PERIOD_M1, 0, 1, close) > 0 && CopyTime(_Symbol, PERIOD_M1, 0, 1, time) > 0) {
             double stoch_k = m_nav_system.GetStochK();
             string json = "{\"type\": \"update\", \"time\": " + IntegerToString(time[0]) +
+                          ", \"open\": " + DoubleToString(open[0], 5) +
                           ", \"high\": " + DoubleToString(high[0], 5) +
                           ", \"low\": " + DoubleToString(low[0], 5) +
+                          ", \"close\": " + DoubleToString(close[0], 5) +
                           ", \"stoch_k\": " + DoubleToString(stoch_k, 5) +
                           ", \"price\": " + DoubleToString(current_price, 5) + "}\n";
 
@@ -706,6 +723,17 @@ void SendMacroToPython(double current_price) {
             }
         }
     }
+}
+
+void OnTimer()
+{
+   // Fallback for offline weekend testing
+   if(InpEnablePythonBridge) {
+       MqlTick tick;
+       if(SymbolInfoTick(_Symbol, tick)) {
+           SendMacroToPython(tick.bid);
+       }
+   }
 }
 
 void OnTick()

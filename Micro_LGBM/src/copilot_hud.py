@@ -147,8 +147,56 @@ class CopilotHUD(QMainWindow):
             pass # No message available
 
     def process_payload(self, p):
+        msg_type = p.get('type', 'update')
+
+        if msg_type == 'history':
+            self.ohlc_data.clear()
+            self.p_long_data.clear()
+            self.p_short_data.clear()
+            self.p_noise_data.clear()
+            self.stoch_k_data.clear()
+            self.time_indices.clear()
+
+            times = p.get('times', [])
+            opens = p.get('opens', [])
+            highs = p.get('highs', [])
+            lows = p.get('lows', [])
+            closes = p.get('closes', [])
+
+            min_y = float('inf')
+            max_y = float('-inf')
+
+            for i in range(len(times)):
+                t = times[i]
+                o = opens[i]
+                h = highs[i]
+                l = lows[i]
+                c = closes[i]
+
+                self.ohlc_data.append((t, o, c, l, h))
+                self.time_indices.append(t)
+                # Fill probability arrays with 0 for historical data
+                self.p_long_data.append(0.0)
+                self.p_short_data.append(0.0)
+                self.p_noise_data.append(0.0)
+                self.stoch_k_data.append(0.5) # Default stoch
+
+                if l < min_y: min_y = l
+                if h > max_y: max_y = h
+
+            if len(self.ohlc_data) > 0 and min_y != float('inf'):
+                # Auto-scale Y axis
+                padding = (max_y - min_y) * 0.1
+                self.pw_candles.setYRange(min_y - padding, max_y + padding)
+
+            if self.candle_item:
+                self.pw_candles.removeItem(self.candle_item)
+            self.candle_item = CandlestickItem(self.ohlc_data)
+            self.pw_candles.addItem(self.candle_item)
+            return
+
+        # Update type
         self.current_idx += 1
-        idx = self.current_idx
 
         o = p.get('open', 0)
         h = p.get('high', 0)
@@ -165,16 +213,22 @@ class CopilotHUD(QMainWindow):
 
         sig = p.get('signal', 0)
 
-        # Update buffers
         t_stamp = p.get('timestamp', time.time())
-        self.ohlc_data.append((t_stamp, o, c, l, h))
-        self.p_long_data.append(p_long)
-        self.p_short_data.append(p_short)
-        self.p_noise_data.append(p_noise)
-        self.stoch_k_data.append(stoch_k)
-        # Use exact timestamp for X axis
-        t_stamp = p.get('timestamp', time.time())
-        self.time_indices.append(t_stamp)
+
+        # Check if we are updating the current candle or adding a new one
+        if len(self.time_indices) > 0 and self.time_indices[-1] == t_stamp:
+            self.ohlc_data[-1] = (t_stamp, o, c, l, h)
+            self.p_long_data[-1] = p_long
+            self.p_short_data[-1] = p_short
+            self.p_noise_data[-1] = p_noise
+            self.stoch_k_data[-1] = stoch_k
+        else:
+            self.ohlc_data.append((t_stamp, o, c, l, h))
+            self.p_long_data.append(p_long)
+            self.p_short_data.append(p_short)
+            self.p_noise_data.append(p_noise)
+            self.stoch_k_data.append(stoch_k)
+            self.time_indices.append(t_stamp)
 
         if len(self.ohlc_data) > self.max_candles:
             self.ohlc_data.pop(0)
@@ -183,6 +237,14 @@ class CopilotHUD(QMainWindow):
             self.p_noise_data.pop(0)
             self.stoch_k_data.pop(0)
             self.time_indices.pop(0)
+
+        # Dynamically adjust Y range based on current view
+        if len(self.ohlc_data) > 0:
+            min_y = min([d[3] for d in self.ohlc_data])
+            max_y = max([d[4] for d in self.ohlc_data])
+            padding = (max_y - min_y) * 0.1
+            if padding == 0: padding = 0.0001
+            self.pw_candles.setYRange(min_y - padding, max_y + padding)
 
         # Draw Candles
         if self.candle_item:
