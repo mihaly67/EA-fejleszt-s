@@ -14,15 +14,19 @@
 - Külön kérés volt, hogy fontoljuk meg a `DearPyGui` használatát is, amely szintén le lett klónozva a VPS-re. Ezt is vizsgáld meg, mielőtt elköteleződsz a `lightweight-charts-python` mellett.
 
 ## 3. Fejlesztői Környezet a Lokális (Sandbox) és VPS gépen
-- Ne a `Live_Trading` éles fájljait szerkeszd elsőre!
-- Egy új, elszigetelt könyvtár jött létre a fejlesztésre a root mappában: **`HUD_Development/`**.
-- A klónozott harmadik féltől származó GUI könyvtárak itt találhatók: `Knowledge_Base/External_Repos/`
-- Ebben a könyvtárban található egy SQLite FTS5 RAG script: `gui_rag_builder.py`.
-- **Keresés a RAG-ban:** Navigálj be a `Knowledge_Base/External_Repos/` mappába és futtasd le a következő parancsot: `python3 gui_rag_builder.py --query realtime tick` (vagy bármilyen más keresőszót).
+- **MUNKAMÓDSZER (Szigorú Szabály):** A kódolást és fejlesztést a lokális "sandbox" környezetedben végezd, de a **FUTTATÁST** és a tesztelést minden esetben a VPS-en (5.189.163.88) hajtsd végre `sshpass` (jelszó: 1104) vagy `vps_bridge.py` segítségével, ahogy eddig is tettük! Sose próbálj komoly MQL5 vagy GUI kódokat futtatni a headless lokális konténeredben!
+- Ne a `Live_Trading` éles fájljait szerkeszd elsőre! Egy új, elszigetelt könyvtár jött létre a VPS-en a root mappában a fejlesztésre: **`/home/misi/LGBM_mlops/HUD_Development/`**.
+- A klónozott harmadik féltől származó GUI könyvtárak itt találhatók a VPS-en: **`/home/misi/LGBM_mlops/Knowledge_Base/External_Repos/`**
 
-## 4. Instrukciók a Következő Ügynöknek
+## 4. Fejlett Kontextuális RAG Kereső (FTS5)
+- Az `External_Repos` mappában egy `gui_rag.db` (SQLite FTS5) adatbázis generálódott a 5 klónozott repóból.
+- Ebben a könyvtárban található egy rendkívül erős kontextuális RAG script is a VPS-en: **`hud_rag_agent.py`**.
+- Ez a kereső nem csak a kulcsszavas sort dobja ki, hanem beolvassa a kódkörnyezetet is (előtte 5, utána 15 sor), ezáltal bonyolult lekérdezések is értelmezhetőek vele.
+- **Használat a VPS-en:** `sshpass -p '1104' ssh -o StrictHostKeyChecking=no misi@5.189.163.88 'python3 /home/misi/LGBM_mlops/Knowledge_Base/External_Repos/hud_rag_agent.py "how to add realtime candlestick QWebEngineView"'`
+
+## 5. Instrukciók a Következő Ügynöknek
 1. Olvasd el ezt a fájlt és a `memory.jsonl`-t.
-2. Navigálj a `HUD_Development/` mappába.
-3. Készíts egy izolált, tesztelhető HUD prototípust (pl. `test_tv_hud.py`), amelyik feliratkozik a ZMQ 5557-es portjára, és PyQtWebEngine használatával rendereli a `lightweight-charts-python` chartot.
-4. Használd a RAG eszközt (`python3 Knowledge_Base/External_Repos/gui_rag_builder.py --query update_from_tick`), hogy megértsd a beágyazási logikát.
+2. Navigálj be a `/home/misi/LGBM_mlops/HUD_Development/` mappába a VPS-en.
+3. Készíts egy izolált, tesztelhető HUD prototípust a Sandboxodban, de a VPS-en futtasd és teszteld, amelyik feliratkozik a ZMQ 5557-es portjára, és PyQtWebEngine használatával rendereli a `lightweight-charts-python` chartot.
+4. Használd a VPS-en a RAG eszközt (`hud_rag_agent.py`), hogy megértsd a beágyazási logikát az `update_from_tick()` metódusra fókuszálva.
 5. Csak akkor integráld be a fő `copilot_hud.py`-ba, ha a prototípus már stabilan rajzolja a gyertyákat.
