@@ -32,6 +32,10 @@ class CandlestickItem(pg.GraphicsObject):
         # Calculate dynamic width based on time difference, fallback to 15 seconds
         w = (self.data[-1][0] - self.data[-2][0]) * 0.3 if len(self.data) > 1 else 15.0
         for (t, open_p, close_p, min_p, max_p) in self.data:
+            # Enforce visual minimum body for DOJI candles
+            if abs(close_p - open_p) < 0.00001:
+                close_p = open_p + 0.00001
+
             if close_p >= open_p:
                 p.setPen(pg.mkPen('forestgreen'))
                 p.setBrush(pg.mkBrush('forestgreen'))
@@ -41,8 +45,11 @@ class CandlestickItem(pg.GraphicsObject):
 
             # Draw wick
             p.drawLine(QPointF(t, min_p), QPointF(t, max_p))
-            # Draw body
-            p.drawRect(QRectF(t - w, open_p, w * 2, close_p - open_p))
+            # Draw body (PyQt QRectF top left x,y, width, height)
+            if close_p >= open_p:
+                p.drawRect(QRectF(t - w, open_p, w * 2, close_p - open_p))
+            else:
+                p.drawRect(QRectF(t - w, close_p, w * 2, open_p - close_p))
 
         p.end()
 
@@ -150,10 +157,20 @@ class CopilotHUD(QMainWindow):
         self.current_idx += 1
         idx = self.current_idx
 
-        o = p.get('open', 0)
-        h = p.get('high', 0)
-        l = p.get('low', 0)
-        c = p.get('close', 0)
+        # If open/close is missing, fallback to current price or previous close
+        default_price = p.get('price', 0)
+
+        # Try to intelligently fill missing OHLC data
+        prev_close = self.ohlc_data[-1][2] if len(self.ohlc_data) > 0 else default_price
+
+        o = p.get('open', prev_close)
+        h = p.get('high', default_price)
+        l = p.get('low', default_price)
+        c = p.get('close', default_price)
+
+        # Validate logic: high must be highest, low lowest
+        h = max(h, o, c)
+        l = min(l, o, c)
 
         bid = p.get('bid', c)
         ask = p.get('ask', c)
@@ -167,14 +184,25 @@ class CopilotHUD(QMainWindow):
 
         # Update buffers
         t_stamp = p.get('timestamp', time.time())
-        self.ohlc_data.append((t_stamp, o, c, l, h))
-        self.p_long_data.append(p_long)
-        self.p_short_data.append(p_short)
-        self.p_noise_data.append(p_noise)
-        self.stoch_k_data.append(stoch_k)
-        # Use exact timestamp for X axis
-        t_stamp = p.get('timestamp', time.time())
-        self.time_indices.append(t_stamp)
+
+        # Check if we are updating the current candle (same timestamp)
+        if len(self.time_indices) > 0 and self.time_indices[-1] == t_stamp:
+            # Update current candle high/low/close
+            prev_o = self.ohlc_data[-1][1]
+            new_h = max(self.ohlc_data[-1][4], h)
+            new_l = min(self.ohlc_data[-1][3], l)
+            self.ohlc_data[-1] = (t_stamp, prev_o, c, new_l, new_h)
+            self.p_long_data[-1] = p_long
+            self.p_short_data[-1] = p_short
+            self.p_noise_data[-1] = p_noise
+            self.stoch_k_data[-1] = stoch_k
+        else:
+            self.ohlc_data.append((t_stamp, o, c, l, h))
+            self.p_long_data.append(p_long)
+            self.p_short_data.append(p_short)
+            self.p_noise_data.append(p_noise)
+            self.stoch_k_data.append(stoch_k)
+            self.time_indices.append(t_stamp)
 
         if len(self.ohlc_data) > self.max_candles:
             self.ohlc_data.pop(0)
@@ -183,6 +211,14 @@ class CopilotHUD(QMainWindow):
             self.p_noise_data.pop(0)
             self.stoch_k_data.pop(0)
             self.time_indices.pop(0)
+
+        # Dynamically Adjust Y Range for Bitcoin / Any instrument
+        if len(self.ohlc_data) > 0:
+            min_y = min([d[3] for d in self.ohlc_data])
+            max_y = max([d[4] for d in self.ohlc_data])
+            padding = (max_y - min_y) * 0.1
+            if padding == 0: padding = 0.0001
+            self.pw_candles.setYRange(min_y - padding, max_y + padding)
 
         # Draw Candles
         if self.candle_item:
