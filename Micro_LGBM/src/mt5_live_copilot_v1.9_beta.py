@@ -31,6 +31,7 @@ signal_history = collections.deque(maxlen=3)
 
 # Globals for Dollar Bars
 DOLLAR_BAR_THRESHOLD = 444000.0 # Match exactly with Prado logic!
+latest_prob = {'p_long': 0.0, 'p_short': 0.0, 'p_noise': 0.0, 'signal': 0, 'stable': False}
 current_dollar_volume = 0.0
 current_bar_ticks = []
 
@@ -111,8 +112,11 @@ def evaluate_tick_state(clf, current_features_dict):
     with macro_lock:
         current_price = macro_cache.get('Current_Macro_Price', 0.0)
 
+    # Fetch correct tick time if available
+    tick_time = current_features_dict.get('Time', time.time())
+
     hud_data = {
-        "timestamp": time.time(),
+        "timestamp": tick_time, # Send actual MT5 server time
         "price": current_price,
         "open": current_features_dict.get('Open', current_price),
         "high": current_features_dict.get('High', current_price),
@@ -120,9 +124,8 @@ def evaluate_tick_state(clf, current_features_dict):
         "close": current_features_dict.get('Close', current_price),
         "bid": current_features_dict.get('Bid', current_price),
         "ask": current_features_dict.get('Ask', current_price),
-        "stoch_k": current_features_dict.get('Raw_Stoch_K', 0.5) * 100.0, # Send as 0-100 for HUD processing
+        "stoch_k": current_features_dict.get('Raw_Stoch_K', 0.5) * 100.0,
         "signal": signal,
-        "new_candle": True,
         "p_long": float(p_long),
         "p_short": float(p_short),
         "p_noise": float(p_noise),
@@ -288,6 +291,28 @@ class MacroReceiver(threading.Thread):
 
                                     self.update_macro_cache(price)
 
+                                    # Continuous HUD Broadcast (M1 Data)
+                                    with macro_lock:
+                                        hud_data = {
+                                            "timestamp": t,
+                                            "price": price,
+                                            "open": price, # Approximate Open for smooth UI
+                                            "high": h,
+                                            "low": l,
+                                            "close": price,
+                                            "bid": price,
+                                            "ask": price,
+                                            "stoch_k": stoch_k,
+                                            "signal": latest_prob['signal'],
+                                            "p_long": latest_prob['p_long'],
+                                            "p_short": latest_prob['p_short'],
+                                            "p_noise": latest_prob['p_noise'],
+                                            "is_stable": latest_prob['stable']
+                                        }
+                                    try:
+                                        zmq_publisher.send_string(f"HUD {json.dumps(hud_data)}")
+                                    except: pass
+
                             except json.JSONDecodeError:
                                 print(f"[MACRO] Failed to parse JSON: {line}")
 
@@ -312,6 +337,7 @@ class TickReceiver(threading.Thread):
     def extract_dom_features(self, parts):
         # Parts: TICK|time_msc|bid|ask|pos_type|pos_price|pos_profit|av1|av2|bv1|bv2|ap1|ap2|bp1|bp2
         try:
+            time_msc = float(parts[1]) / 1000.0 if len(parts) > 1 else time.time()
             bid = float(parts[2])
             ask = float(parts[3])
             av1 = float(parts[7]) if len(parts) > 7 else 0.0
@@ -329,7 +355,8 @@ class TickReceiver(threading.Thread):
                 'dollar_vol': dollar_vol,
                 'imb_l1': imb_l1,
                 'bid': bid,
-                'ask': ask
+                'ask': ask,
+                'time': time_msc
             }
         except Exception:
             return None
@@ -425,6 +452,8 @@ class TickReceiver(threading.Thread):
                                     f_dict['Close'] = close_p
                                     f_dict['Bid'] = tick_data.get('bid', close_p)
                                     f_dict['Ask'] = tick_data.get('ask', close_p)
+                                    # Extract time from the last tick in the bar
+                                    f_dict['Time'] = current_bar_ticks[-1].get('time', time.time())
                                     sig, pl, ps, pn = evaluate_tick_state(self.clf, f_dict)
 
                                     # Send back to EA

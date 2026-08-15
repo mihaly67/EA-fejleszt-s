@@ -1,10 +1,13 @@
 import sys
+import time
 import zmq
 import json
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel
 from PyQt5.QtGui import QPicture, QPainter
 from PyQt5.QtCore import QTimer, Qt, QRectF, QPointF
+import pyqtgraph as pg
+from pyqtgraph import DateAxisItem
 from PyQt5.QtCore import QTimer, Qt
 import pyqtgraph as pg
 
@@ -26,6 +29,8 @@ class CandlestickItem(pg.GraphicsObject):
         # Colors requested by user: Forest Green and Brick Red, Solid bodies
         w = (self.data[1][0] - self.data[0][0]) / 3.0 if len(self.data) > 1 else 0.5
 
+        # Calculate dynamic width based on time difference, fallback to 15 seconds
+        w = (self.data[-1][0] - self.data[-2][0]) * 0.3 if len(self.data) > 1 else 15.0
         for (t, open_p, close_p, min_p, max_p) in self.data:
             if close_p >= open_p:
                 p.setPen(pg.mkPen('forestgreen'))
@@ -75,7 +80,7 @@ class CopilotHUD(QMainWindow):
         self.current_idx = 0
 
         self.last_signal = 0
-        self.entry_price = 0.0
+        self.entry_price = None
 
         self.init_ui()
 
@@ -92,21 +97,22 @@ class CopilotHUD(QMainWindow):
         self.layout.addWidget(self.status_label)
 
         # Top Plot: Candles
-        self.pw_candles = pg.PlotWidget(title="M1 Price Action & Entry Levels")
+        date_axis_candles = DateAxisItem(orientation='bottom')
+        self.pw_candles = pg.PlotWidget(title="M1 Price Action & Entry Levels", axisItems={'bottom': date_axis_candles})
         self.layout.addWidget(self.pw_candles, stretch=7)
         self.pw_candles.showGrid(x=True, y=True, alpha=0.3)
 
         self.candle_item = None
         self.bid_line = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen(color='gray', width=1, dash=[2, 2]))
         self.ask_line = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen(color='lightgray', width=1, dash=[2, 2]))
-        self.entry_line = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen(color='yellow', width=2))
+        self.entry_line = None
 
         self.pw_candles.addItem(self.bid_line)
         self.pw_candles.addItem(self.ask_line)
-        self.pw_candles.addItem(self.entry_line)
 
         # Bottom Plot: Oscillators
-        self.pw_osc = pg.PlotWidget(title="Probabilities & Stoch_K")
+        date_axis_osc = DateAxisItem(orientation='bottom')
+        self.pw_osc = pg.PlotWidget(title="Probabilities & Stoch_K", axisItems={'bottom': date_axis_osc})
         self.layout.addWidget(self.pw_osc, stretch=3)
         self.pw_osc.showGrid(x=True, y=True, alpha=0.3)
         self.pw_osc.setYRange(0, 1.0, padding=0)
@@ -160,12 +166,15 @@ class CopilotHUD(QMainWindow):
         sig = p.get('signal', 0)
 
         # Update buffers
-        self.ohlc_data.append((idx, o, c, l, h))
+        t_stamp = p.get('timestamp', time.time())
+        self.ohlc_data.append((t_stamp, o, c, l, h))
         self.p_long_data.append(p_long)
         self.p_short_data.append(p_short)
         self.p_noise_data.append(p_noise)
         self.stoch_k_data.append(stoch_k)
-        self.time_indices.append(idx)
+        # Use exact timestamp for X axis
+        t_stamp = p.get('timestamp', time.time())
+        self.time_indices.append(t_stamp)
 
         if len(self.ohlc_data) > self.max_candles:
             self.ohlc_data.pop(0)
@@ -205,18 +214,23 @@ class CopilotHUD(QMainWindow):
             # We don't reset entry line immediately, let it stay to see how the trade plays out
             pass
 
-        if self.entry_price > 0:
+        if self.entry_price is not None:
+            if not self.entry_line:
+                self.entry_line = pg.InfiniteLine(angle=0, movable=False)
+                self.pw_candles.addItem(self.entry_line)
             self.entry_line.setValue(self.entry_price)
-            # Color the entry line based on direction
             color = 'lime' if self.last_signal == 1 else 'red'
             self.entry_line.setPen(pg.mkPen(color=color, width=2))
 
         # Set X Range to leave 15% empty space on the right
         # Total view = 100 candles.
-        # If current max index is idx, we show from idx - 100 to idx + 15
-        if len(self.time_indices) > 0:
+        # We calculate the time span and add 15% to the right.
+        if len(self.time_indices) > 1:
             min_x = self.time_indices[0]
-            max_x = idx + 15
+            current_x = self.time_indices[-1]
+            time_span = current_x - min_x
+            max_x = current_x + (time_span * 0.15) # 15% padding
+
             self.pw_candles.setXRange(min_x, max_x, padding=0)
             self.pw_osc.setXRange(min_x, max_x, padding=0)
 
