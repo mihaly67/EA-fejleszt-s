@@ -1,0 +1,44 @@
+--- Starting Knowledge Base Overlap Analysis ---
+Scanning THIEFS (Knowledge_Base/knowledge_base_thiefs_library.jsonl)...
+Scanning COLUMBO (Knowledge_Base/knowledge_base_columbo.jsonl)...
+Scanning DATA_ENG (Knowledge_Base/data_eng/github_data_engeneer.jsonl)...
+Scanning SYS_INTEGR (Knowledge_Base/sys_integr/Github System Integrity & Evolution Layer.jsonl)...
+Scanning MONITORING (Knowledge_Base/monitoring/github_monitoring_pack.jsonl)...
+Scanning EXT_THIEFS (Knowledge_Base/extended_thiefs/knowledge_base_thiefs_library.jsonl)...
+Scanning EXT_COLUMBO (Knowledge_Base/extended_columbo/knowledge_base_columbo.jsonl)...
+
+--- Repository Distribution ---
+[UNIQUE]  ArcticDB-master                -> Found in: SYS_INTEGR
+[OVERLAP] FinRL-master                   -> Found in: DATA_ENG, EXT_THIEFS, THIEFS
+[UNIQUE]  QuantLib-SWIG-master           -> Found in: EXT_THIEFS
+[UNIQUE]  RoffildLibrary-master          -> Found in: EXT_THIEFS
+[UNIQUE]  Technical-Analysis-Indicators---Pandas-master -> Found in: DATA_ENG
+[UNIQUE]  ccxt-master                    -> Found in: EXT_THIEFS
+[OVERLAP] context7-master                -> Found in: EXT_THIEFS, THIEFS
+[UNIQUE]  cryptofeed-master              -> Found in: EXT_THIEFS
+[UNIQUE]  dwx-zeromq-connector-master    -> Found in: EXT_THIEFS
+[UNIQUE]  freqtrade-develop              -> Found in: EXT_THIEFS
+[OVERLAP] hummingbot-master              -> Found in: EXT_THIEFS, THIEFS
+[UNIQUE]  kungfu-main                    -> Found in: EXT_THIEFS
+[UNIQUE]  loguru-master                  -> Found in: MONITORING
+[OVERLAP] nautilus_trader-develop        -> Found in: EXT_THIEFS, THIEFS
+[UNIQUE]  optuna-master                  -> Found in: SYS_INTEGR
+[UNIQUE]  pafish-master                  -> Found in: EXT_THIEFS
+[UNIQUE]  prefect-main                   -> Found in: MONITORING
+[UNIQUE]  pyautogui-master               -> Found in: EXT_THIEFS
+[UNIQUE]  pydantic-main                  -> Found in: SYS_INTEGR
+[UNIQUE]  qlib-main                      -> Found in: DATA_ENG
+[UNIQUE]  quickfix-master                -> Found in: EXT_THIEFS
+[UNIQUE]  selenium-stealth-main          -> Found in: EXT_THIEFS
+[UNIQUE]  stochastic-master              -> Found in: EXT_THIEFS
+[UNIQUE]  streamlit-develop              -> Found in: MONITORING
+[UNIQUE]  tensorboard-master             -> Found in: MONITORING
+[UNIQUE]  tensortrade-master             -> Found in: DATA_ENG
+[OVERLAP] vectorbt-master                -> Found in: EXT_THIEFS, SYS_INTEGR, THIEFS
+
+--- Summary ---
+THIEFS: 5449 documents
+DATA_ENG: 1132 documents
+SYS_INTEGR: 3046 documents
+MONITORING: 7175 documents
+EXT_THIEFS: 10157 documents

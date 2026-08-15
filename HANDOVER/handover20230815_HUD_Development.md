@@ -10,16 +10,19 @@
 - A felhasználó kutatómunkája és a klónozott RAG tudásbázis (`Knowledge_Base/External_Repos/`) alapján a **PyQtGraph lecserélésre kerül**.
 - Az új grafikus motor a **`lightweight-charts-python`** lesz (a TradingView hivatalos API-jának python wrappere).
 - **Miért?** Ez a könyvtár rendelkezik egy `update_from_tick()` metódussal, ami alapból megoldja a makro/mikro problémát. Ha az időbélyeg ugyanaz, a grafikon nem rajzol új x-koordinátát, csak a meglévő gyertya High/Low/Close értékeit frissíti folyamatosan, felépítve a formát.
-- **Integráció:** A `lightweight-charts-python` beágyazható a meglévő PyQt5 ablakba egy `QWebEngineView` segítségével. (A VPS-en futó sandbox környezet miatt lehet, hogy szükséges telepíteni a `PyQtWebEngine` modult a virtulális környezetbe).
+- **Integráció:** A `lightweight-charts-python` beágyazható a meglévő PyQt5 ablakba egy `QWebEngineView` segítségével.
+- Külön kérés volt, hogy fontoljuk meg a `DearPyGui` használatát is, amely szintén le lett klónozva a VPS-re. Ezt is vizsgáld meg, mielőtt elköteleződsz a `lightweight-charts-python` mellett.
 
-## 3. Fejlesztői Környezet
+## 3. Fejlesztői Környezet a Lokális (Sandbox) és VPS gépen
 - Ne a `Live_Trading` éles fájljait szerkeszd elsőre!
-- Egy új, elszigetelt könyvtár jött létre a fejlesztéshez: **`HUD_Development/`**.
-- Ebben a könyvtárban található a `hud_rag_search.py` is, amivel keresni tudsz az összegyűjtött repók (lightweight-charts, finplot, pyqtgraph, DearPyGui) forráskódjaiban. Példa futtatás: `python3 hud_rag_search.py realtime tick`.
+- Egy új, elszigetelt könyvtár jött létre a fejlesztésre a root mappában: **`HUD_Development/`**.
+- A klónozott harmadik féltől származó GUI könyvtárak itt találhatók: `Knowledge_Base/External_Repos/`
+- Ebben a könyvtárban található egy SQLite FTS5 RAG script: `gui_rag_builder.py`.
+- **Keresés a RAG-ban:** Navigálj be a `Knowledge_Base/External_Repos/` mappába és futtasd le a következő parancsot: `python3 gui_rag_builder.py --query realtime tick` (vagy bármilyen más keresőszót).
 
 ## 4. Instrukciók a Következő Ügynöknek
 1. Olvasd el ezt a fájlt és a `memory.jsonl`-t.
 2. Navigálj a `HUD_Development/` mappába.
 3. Készíts egy izolált, tesztelhető HUD prototípust (pl. `test_tv_hud.py`), amelyik feliratkozik a ZMQ 5557-es portjára, és PyQtWebEngine használatával rendereli a `lightweight-charts-python` chartot.
-4. Teszteld az `update_from_tick` függvény használatával. Ha megérkezik a 100 gyertyás "history" json payload, használd a `chart.set()` metódust. Ha "update" tick érkezik, használd a `chart.update_from_tick()` metódust!
+4. Használd a RAG eszközt (`python3 Knowledge_Base/External_Repos/gui_rag_builder.py --query update_from_tick`), hogy megértsd a beágyazási logikát.
 5. Csak akkor integráld be a fő `copilot_hud.py`-ba, ha a prototípus már stabilan rajzolja a gyertyákat.

@@ -57,3 +57,4 @@ ANALYSIS_TOOLS/ML_Ops/Gemini_ML_Research_Summary.txt
 # SWAT RAG Database (FAISS)
 Knowledge_Base/SWAT_DB/
 venv/
+Knowledge_Base/External_Repos/
