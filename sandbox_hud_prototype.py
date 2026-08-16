@@ -4,10 +4,7 @@ import zmq
 import pandas as pd
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
-from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtCore import QThread, pyqtSignal, QTimer
-
-# Megjegyzés: Lightweight charts importálása a GUI futtatása előtt (szükséges a sandbox-ban / vps-en lévő csomagból)
+from PyQt5.QtCore import QThread, pyqtSignal
 from lightweight_charts.widgets import QtChart
 
 class ZMQReceiverThread(QThread):
@@ -59,9 +56,6 @@ class HUDWindow(QMainWindow):
         self.chart = QtChart(inner_width=1, inner_height=1)
         layout.addWidget(self.chart.get_webview())
 
-        # DataFrame a lokális tick adat konverzióhoz (kötelező format)
-        self.current_bar = None
-
         # Start ZMQ Thread
         self.zmq_thread = ZMQReceiverThread()
         self.zmq_thread.data_received.connect(self.on_data_received)
@@ -69,8 +63,6 @@ class HUDWindow(QMainWindow):
 
     def on_data_received(self, data):
         # Format the incoming dict into a pandas Series as expected by lightweight-charts update_from_tick
-        # Expected keys: time, open, high, low, close
-
         # Convert MT5 numeric timestamp (seconds) to datetime
         ts = pd.to_datetime(data['timestamp'], unit='s')
 
@@ -82,9 +74,8 @@ class HUDWindow(QMainWindow):
             'close': data['close']
         })
 
-        # Using update_from_tick to handle intra-bar micro movements
         try:
-            self.chart.update_from_tick(tick_data)
+            self.chart.update(tick_data)
         except Exception as e:
             print(f"Chart update error: {e}")
 
@@ -93,6 +84,7 @@ class HUDWindow(QMainWindow):
         event.accept()
 
 if __name__ == '__main__':
+    from PyQt5.QtCore import QThread, pyqtSignal, QTimer
     app = QApplication(sys.argv)
     window = HUDWindow()
     window.show()
