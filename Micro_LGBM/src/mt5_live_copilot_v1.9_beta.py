@@ -469,6 +469,33 @@ class TickReceiver(threading.Thread):
                                     current_dollar_volume = 0.0
                                     current_bar_ticks = []
                                 else:
+                                    # Send real-time TICK updates to HUD to build the current candle dynamically
+                                    df_bar_tmp = pd.DataFrame(current_bar_ticks)
+                                    open_p_tmp = df_bar_tmp['mid_price'].iloc[0]
+                                    high_p_tmp = df_bar_tmp['mid_price'].max()
+                                    low_p_tmp = df_bar_tmp['mid_price'].min()
+                                    close_p_tmp = df_bar_tmp['mid_price'].iloc[-1]
+
+                                    hud_data = {
+                                        "timestamp": tick_data.get('time', time.time()),
+                                        "price": close_p_tmp,
+                                        "open": open_p_tmp,
+                                        "high": high_p_tmp,
+                                        "low": low_p_tmp,
+                                        "close": close_p_tmp,
+                                        "bid": tick_data.get('bid', close_p_tmp),
+                                        "ask": tick_data.get('ask', close_p_tmp),
+                                        "stoch_k": macro_cache.get('Raw_Stoch_K', 0.5) * 100.0,
+                                        "signal": latest_prob['signal'],
+                                        "p_long": latest_prob['p_long'],
+                                        "p_short": latest_prob['p_short'],
+                                        "p_noise": latest_prob['p_noise'],
+                                        "is_stable": latest_prob['stable']
+                                    }
+                                    try:
+                                        zmq_publisher.send_string(f"HUD {json.dumps(hud_data)}")
+                                    except: pass
+
                                     # Throttle the PING to prevent overwhelming EA buffer
                                     if len(current_bar_ticks) % 10 == 0:
                                         try:
