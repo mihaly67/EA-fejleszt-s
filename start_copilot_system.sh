@@ -29,5 +29,5 @@ else
     export DISPLAY=:${ACTIVE_DISPLAY}.0
 fi
 
-python3 copilot_hud.py > hud.log 2>&1 &
+python3 ../../advanced_hud.py > hud.log 2>&1 &
 echo "✅ Copilot System Successfully Launched!"

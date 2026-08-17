@@ -102,7 +102,12 @@ class AdvancedHUD(QMainWindow):
         QTimer.singleShot(1000, self.zmq_thread.start)
 
     def on_data_received(self, data):
-        ts = pd.to_datetime(data['timestamp'], unit='s')
+        # Kerüljük a natív datetime objektumokat a lightweight-charts JS híd miatt
+        ts = pd.to_datetime(data['timestamp'], unit='s').strftime('%Y-%m-%d %H:%M:%S')
+
+        # Jelenlegi tick adatok
+        bid = data.get('bid', data['close'])
+        ask = data.get('ask', data['close'])
 
         # DataFrame készítése a set() számára, vagy Series az update() számára
         tick_df = pd.DataFrame([{
@@ -125,12 +130,20 @@ class AdvancedHUD(QMainWindow):
                 self.p_long_line.set(p_long_df)
                 self.p_short_line.set(p_short_df)
                 self.p_noise_line.set(p_noise_df)
+
+                # Átváltunk watermark (vízjel) alapú ár-megjelenítésre, mert a horizontal_line
+                # update() parancsa nem támogatott dinamikusan a JS híd miatt
+                self.chart.watermark(f"BID: {bid:.5f} | ASK: {ask:.5f}", color='rgba(255, 255, 255, 0.5)')
+
                 self.is_initialized = True
             else:
                 self.chart.update(tick_series)
                 self.p_long_line.update(p_long_df.iloc[0])
                 self.p_short_line.update(p_short_df.iloc[0])
                 self.p_noise_line.update(p_noise_df.iloc[0])
+
+                # Frissítjük a vízjelet a legújabb árakkal
+                self.chart.watermark(f"BID: {bid:.5f} | ASK: {ask:.5f}", color='rgba(255, 255, 255, 0.5)')
         except Exception as e:
             print(f"Update error: {e}")
 
