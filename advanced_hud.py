@@ -102,7 +102,8 @@ class AdvancedHUD(QMainWindow):
         QTimer.singleShot(1000, self.zmq_thread.start)
 
     def on_data_received(self, data):
-        ts = pd.to_datetime(data['timestamp'], unit='s')
+        # Kerüljük a natív datetime objektumokat a lightweight-charts JS híd miatt
+        ts = pd.to_datetime(data['timestamp'], unit='s').strftime('%Y-%m-%d %H:%M:%S')
 
         # DataFrame készítése a set() számára, vagy Series az update() számára
         tick_df = pd.DataFrame([{
