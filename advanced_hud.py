@@ -116,6 +116,24 @@ class AdvancedHUD(QMainWindow):
         self.chart.time_scale(time_visible=True, seconds_visible=True)
         self.subchart.time_scale(time_visible=True, seconds_visible=True)
 
+        # Enable visible right scale, set precision, and bind 0-1 range via autoscaleInfoProvider on series
+
+
+        for line in [self.p_long_line, self.p_short_line, self.p_noise_line, self.dummy_min, self.dummy_max]:
+            self.subchart.run_script(f'''
+            if (typeof {line.id} !== 'undefined' && {line.id} !== null) {{
+                {line.id}.series.applyOptions({{
+                    autoscaleInfoProvider: () => ({{ priceRange: {{ minValue: 0, maxValue: 1 }} }}),
+                    priceFormat: {{ type: 'price', precision: 1, minMove: 0.1 }}
+                }});
+            }}
+            ''')
+
+        self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{ visible: true, autoScale: false }});")
+
+
+
+
 
         self.is_initialized = False
         self.last_candle_time = None
