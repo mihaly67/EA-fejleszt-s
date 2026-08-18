@@ -110,8 +110,6 @@ class AdvancedHUD(QMainWindow):
         self.dummy_min = self.subchart.create_line('DummyMin', color='rgba(0,0,0,0)', width=1, price_label=False)
         self.dummy_max = self.subchart.create_line('DummyMax', color='rgba(0,0,0,0)', width=1, price_label=False)
 
-        self.subchart.horizontal_line(0.40, color='forestgreen', width=1, style='dashed', text='L_Thr')
-        self.subchart.horizontal_line(0.40, color='firebrick', width=1, style='dashed', text='S_Thr')
 
         self.chart.time_scale(time_visible=True, seconds_visible=True)
         self.subchart.time_scale(time_visible=True, seconds_visible=True)
