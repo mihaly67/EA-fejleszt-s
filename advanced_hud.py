@@ -89,6 +89,7 @@ class AdvancedHUD(QMainWindow):
         self.subchart.run_script(f"""\
         {self.subchart.id}.chart.priceScale('right').applyOptions({{
             autoScale: false,
+            visible: true,
             scaleMargins: {{top: 0, bottom: 0}}
         }});
         {self.subchart.id}.chart.timeScale().applyOptions({{
@@ -127,10 +128,10 @@ class AdvancedHUD(QMainWindow):
             }}
             ''')
 
+        # Hivatalos Python wrapper API hívás a jobb oldali skála megjelenítésére és autoscale kikapcsolására
+        self.subchart.price_scale(auto_scale=False, visible=True)
+        # Javascript fallback opció (biztonság kedvéért, ha a wrapper nem adná át rendesen subchartnak)
         self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{ visible: true, autoScale: false }});")
-
-
-
 
 
         self.is_initialized = False
@@ -177,9 +178,11 @@ class AdvancedHUD(QMainWindow):
         tick_series = tick_df.iloc[0].copy()
         tick_series.name = None
 
-        p_long_df = pd.DataFrame([{'time': ts_str, 'P_Long': data.get('p_long', 0.0)}])
-        p_short_df = pd.DataFrame([{'time': ts_str, 'P_Short': data.get('p_short', 0.0)}])
-        p_noise_df = pd.DataFrame([{'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)}])
+        # A dataframe-ben a "value" oszlopot használjuk, ez garantálja, hogy a lightweight-charts
+        # mindenképpen megtalálja a megjelenítendő értéket az update és a set során is.
+        p_long_df = pd.DataFrame([{'time': ts_str, 'value': data.get('p_long', 0.0)}])
+        p_short_df = pd.DataFrame([{'time': ts_str, 'value': data.get('p_short', 0.0)}])
+        p_noise_df = pd.DataFrame([{'time': ts_str, 'value': data.get('p_noise', 0.0)}])
 
         try:
 
@@ -190,8 +193,8 @@ class AdvancedHUD(QMainWindow):
                 self.p_noise_line.set(p_noise_df)
 
                 # Set dummy anchors for 0 and 1 scale
-                d_min = pd.DataFrame([{'time': ts_str, 'DummyMin': 0.0}])
-                d_max = pd.DataFrame([{'time': ts_str, 'DummyMax': 1.0}])
+                d_min = pd.DataFrame([{'time': ts_str, 'value': 0.0}])
+                d_max = pd.DataFrame([{'time': ts_str, 'value': 1.0}])
                 self.dummy_min.set(d_min)
                 self.dummy_max.set(d_max)
 
@@ -212,8 +215,10 @@ class AdvancedHUD(QMainWindow):
                 s_n.name = None
                 self.p_noise_line.update(s_n)
 
-                s_min = pd.Series({'time': ts_str, 'DummyMin': 0.0})
-                s_max = pd.Series({'time': ts_str, 'DummyMax': 1.0})
+                s_min = pd.Series({'time': ts_str, 'value': 0.0})
+                s_max = pd.Series({'time': ts_str, 'value': 1.0})
+                s_min.name = None
+                s_max.name = None
                 self.dummy_min.update(s_min)
                 self.dummy_max.update(s_max)
 
