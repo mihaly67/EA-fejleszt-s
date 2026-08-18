@@ -86,16 +86,52 @@ class AdvancedHUD(QMainWindow):
         self.subchart = self.chart.create_subchart(width=1, height=0.4, sync=True)
         self.subchart.layout(background_color='#121212', text_color='#ffffff')
         self.subchart.grid(vert_enabled=False, horz_enabled=False)
+        self.subchart.run_script(f"""\
+        {self.subchart.id}.chart.priceScale('right').applyOptions({{
+            autoScale: false,
+            scaleMargins: {{top: 0, bottom: 0}}
+        }});
+        {self.subchart.id}.chart.timeScale().applyOptions({{
+            timeVisible: true,
+            secondsVisible: true
+        }});
+        """)
+        self.chart.time_scale(time_visible=True, seconds_visible=True)
 
         # Scale options if library supports
         # self.subchart.price_scale(auto_scale=False, min_max=True)
+
 
         self.p_long_line = self.subchart.create_line('P_Long', color='forestgreen', width=2)
         self.p_short_line = self.subchart.create_line('P_Short', color='firebrick', width=2)
         self.p_noise_line = self.subchart.create_line('P_Noise', color='gray', width=1, style='dotted')
 
-        self.subchart.horizontal_line(0.40, color='forestgreen', width=1, style='dashed', text='L_Thr')
-        self.subchart.horizontal_line(0.40, color='firebrick', width=1, style='dashed', text='S_Thr')
+        # Dummy min-max lines to force 0 to 1 scaling natively.
+        self.dummy_min = self.subchart.create_line('DummyMin', color='rgba(0,0,0,0)', width=1, price_label=False)
+        self.dummy_max = self.subchart.create_line('DummyMax', color='rgba(0,0,0,0)', width=1, price_label=False)
+
+
+        self.chart.time_scale(time_visible=True, seconds_visible=True)
+        self.subchart.time_scale(time_visible=True, seconds_visible=True)
+
+        # Enable visible right scale, set precision, and bind 0-1 range via autoscaleInfoProvider on series
+
+
+        for line in [self.p_long_line, self.p_short_line, self.p_noise_line, self.dummy_min, self.dummy_max]:
+            self.subchart.run_script(f'''
+            if (typeof {line.id} !== 'undefined' && {line.id} !== null) {{
+                {line.id}.series.applyOptions({{
+                    autoscaleInfoProvider: () => ({{ priceRange: {{ minValue: 0, maxValue: 1 }} }}),
+                    priceFormat: {{ type: 'price', precision: 1, minMove: 0.1 }}
+                }});
+            }}
+            ''')
+
+        self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{ visible: true, autoScale: false }});")
+
+
+
+
 
         self.is_initialized = False
         self.last_candle_time = None
@@ -146,11 +182,19 @@ class AdvancedHUD(QMainWindow):
         p_noise_df = pd.DataFrame([{'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)}])
 
         try:
+
             if not self.is_initialized:
                 self.chart.set(tick_df)
                 self.p_long_line.set(p_long_df)
                 self.p_short_line.set(p_short_df)
                 self.p_noise_line.set(p_noise_df)
+
+                # Set dummy anchors for 0 and 1 scale
+                d_min = pd.DataFrame([{'time': ts_str, 'DummyMin': 0.0}])
+                d_max = pd.DataFrame([{'time': ts_str, 'DummyMax': 1.0}])
+                self.dummy_min.set(d_min)
+                self.dummy_max.set(d_max)
+
                 self.chart.watermark(f"BID: {bid:.5f} | ASK: {ask:.5f}", color='rgba(255, 255, 255, 0.5)')
                 self.is_initialized = True
             else:
@@ -167,6 +211,12 @@ class AdvancedHUD(QMainWindow):
                 s_n = p_noise_df.iloc[0].copy()
                 s_n.name = None
                 self.p_noise_line.update(s_n)
+
+                s_min = pd.Series({'time': ts_str, 'DummyMin': 0.0})
+                s_max = pd.Series({'time': ts_str, 'DummyMax': 1.0})
+                self.dummy_min.update(s_min)
+                self.dummy_max.update(s_max)
+
 
                 self.chart.watermark(f"BID: {bid:.5f} | ASK: {ask:.5f}", color='rgba(255, 255, 255, 0.5)')
         except Exception as e:
