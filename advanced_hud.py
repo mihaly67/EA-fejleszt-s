@@ -86,6 +86,7 @@ class AdvancedHUD(QMainWindow):
         self.subchart = self.chart.create_subchart(width=1, height=0.4, sync=True)
         self.subchart.layout(background_color='#121212', text_color='#ffffff')
         self.subchart.grid(vert_enabled=False, horz_enabled=False)
+        self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{ visible: false, autoScale: false, scaleMargins: {{top: 0.1, bottom: 0.1}} }});")
 
         # Scale options if library supports
         # self.subchart.price_scale(auto_scale=False, min_max=True)
