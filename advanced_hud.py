@@ -89,7 +89,6 @@ class AdvancedHUD(QMainWindow):
         self.subchart.run_script(f"""\
         {self.subchart.id}.chart.priceScale('right').applyOptions({{
             autoScale: false,
-            visible: true,
             scaleMargins: {{top: 0, bottom: 0}}
         }});
         {self.subchart.id}.chart.timeScale().applyOptions({{
@@ -128,10 +127,10 @@ class AdvancedHUD(QMainWindow):
             }}
             ''')
 
-        # Hivatalos Python wrapper API hívás a jobb oldali skála megjelenítésére és autoscale kikapcsolására
-        self.subchart.price_scale(auto_scale=False, visible=True)
-        # Javascript fallback opció (biztonság kedvéért, ha a wrapper nem adná át rendesen subchartnak)
         self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{ visible: true, autoScale: false }});")
+
+
+
 
 
         self.is_initialized = False
