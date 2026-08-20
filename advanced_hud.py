@@ -150,10 +150,14 @@ class AdvancedHUD(QMainWindow):
         self.chart.get_webview().loadFinished.connect(lambda: QTimer.singleShot(1000, self.zmq_thread.start))
 
     def on_data_received(self, data):
-        # 1. Floor the timestamp to the current minute (creates 1-minute candle boundaries)
-        raw_ts = pd.to_datetime(data['timestamp'], unit='s')
-        minute_ts_dt = raw_ts.floor('min')
-        ts_str = minute_ts_dt.strftime('%Y-%m-%d %H:%M:%S')
+        # 1. Use continuous float/int timestamps for intraday ticks to satisfy lightweight-charts requirements
+        current_time = pd.Timestamp.now().timestamp()
+        ts_int = int(current_time)
+
+        # Ensure strict monotonicity for lightweight-charts
+        if hasattr(self, 'last_ts_int') and ts_int <= self.last_ts_int:
+            ts_int = self.last_ts_int + 1
+        self.last_ts_int = ts_int
 
         # Jelenlegi tick adatok
         bid = data.get('bid', data['close'])
@@ -161,19 +165,19 @@ class AdvancedHUD(QMainWindow):
         price = data['close']
 
         # Aggregation Logic
-        if self.last_candle_time != ts_str:
+        if self.last_candle_time != ts_int:
             # Új 1 perces gyertya indul
             self.current_open = data.get('open', price)
             self.current_high = data.get('high', price)
             self.current_low = data.get('low', price)
-            self.last_candle_time = ts_str
+            self.last_candle_time = ts_int
         else:
             # Tick frissíti a jelenlegi perces gyertyát
             self.current_high = max(self.current_high, price)
             self.current_low = min(self.current_low, price)
 
         tick_df = pd.DataFrame([{
-            'time': ts_str,
+            'time': ts_int,
             'open': self.current_open,
             'high': self.current_high,
             'low': self.current_low,
@@ -183,9 +187,9 @@ class AdvancedHUD(QMainWindow):
         tick_series = tick_df.iloc[0].copy()
         tick_series.name = None
 
-        p_long_df = pd.DataFrame([{'time': ts_str, 'P_Long': data.get('p_long', 0.0)}])
-        p_short_df = pd.DataFrame([{'time': ts_str, 'P_Short': data.get('p_short', 0.0)}])
-        p_noise_df = pd.DataFrame([{'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)}])
+        p_long_df = pd.DataFrame([{'time': ts_int, 'P_Long': data.get('p_long', 0.0)}])
+        p_short_df = pd.DataFrame([{'time': ts_int, 'P_Short': data.get('p_short', 0.0)}])
+        p_noise_df = pd.DataFrame([{'time': ts_int, 'P_Noise': data.get('p_noise', 0.0)}])
 
         try:
 
@@ -193,7 +197,7 @@ class AdvancedHUD(QMainWindow):
                 self.chart.set(tick_df)
 
                 # The subchart needs a dataframe (candles) to initialize its time scale
-                dummy_df = pd.DataFrame([{'time': ts_str, 'open': 0, 'high': 1, 'low': 0, 'close': 0.5}])
+                dummy_df = pd.DataFrame([{'time': ts_int, 'open': 0, 'high': 1, 'low': 0, 'close': 0.5}])
                 self.subchart.set(dummy_df)
 
                 self.p_long_line.set(p_long_df)
@@ -201,8 +205,8 @@ class AdvancedHUD(QMainWindow):
                 self.p_noise_line.set(p_noise_df)
 
                 # Set dummy anchors for 0 and 1 scale
-                d_min = pd.DataFrame([{'time': ts_str, 'DummyMin': 0.0}])
-                d_max = pd.DataFrame([{'time': ts_str, 'DummyMax': 1.0}])
+                d_min = pd.DataFrame([{'time': ts_int, 'DummyMin': 0.0}])
+                d_max = pd.DataFrame([{'time': ts_int, 'DummyMax': 1.0}])
                 self.dummy_min.set(d_min)
                 self.dummy_max.set(d_max)
 
@@ -212,22 +216,22 @@ class AdvancedHUD(QMainWindow):
                 self.chart.update(tick_series)
 
                 # We must also update the subchart's main series (candles) to move the time scale forward
-                dummy_df2 = pd.DataFrame([{'time': ts_str, 'open': 0, 'high': 1, 'low': 0, 'close': 0.5}])
+                dummy_df2 = pd.DataFrame([{'time': ts_int, 'open': 0, 'high': 1, 'low': 0, 'close': 0.5}])
                 dummy_s = dummy_df2.iloc[0].copy()
                 dummy_s.name = None
                 self.subchart.update(dummy_s)
 
-                s_l = pd.Series({'time': ts_str, 'P_Long': data.get('p_long', 0.0)})
+                s_l = pd.Series({'time': ts_int, 'value': float(data.get('p_long', 0.0))}); s_l.name = None
                 self.p_long_line.update(s_l)
 
-                s_s = pd.Series({'time': ts_str, 'P_Short': data.get('p_short', 0.0)})
+                s_s = pd.Series({'time': ts_int, 'value': float(data.get('p_short', 0.0))}); s_s.name = None
                 self.p_short_line.update(s_s)
 
-                s_n = pd.Series({'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)})
+                s_n = pd.Series({'time': ts_int, 'value': float(data.get('p_noise', 0.0))}); s_n.name = None
                 self.p_noise_line.update(s_n)
 
-                s_min = pd.Series({'time': ts_str, 'DummyMin': 0.0})
-                s_max = pd.Series({'time': ts_str, 'DummyMax': 1.0})
+                s_min = pd.Series({'time': ts_int, 'value': 0.0}); s_min.name = None
+                s_max = pd.Series({'time': ts_int, 'value': 1.0}); s_max.name = None
                 self.dummy_min.update(s_min)
                 self.dummy_max.update(s_max)
 
