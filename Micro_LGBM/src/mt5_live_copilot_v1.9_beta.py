@@ -455,6 +455,12 @@ class TickReceiver(threading.Thread):
                                     # Extract time from the last tick in the bar
                                     f_dict['Time'] = current_bar_ticks[-1].get('time', time.time())
                                     sig, pl, ps, pn = evaluate_tick_state(self.clf, f_dict)
+                                    global latest_prob
+                                    latest_prob['signal'] = sig
+                                    latest_prob['p_long'] = float(pl)
+                                    latest_prob['p_short'] = float(ps)
+                                    latest_prob['p_noise'] = float(pn)
+                                    latest_prob['stable'] = (len(signal_history) == 3 and len(set(signal_history)) == 1)
 
                                     # Send back to EA
                                     msg = f"PRED|{sig}|{pl:.4f}|{ps:.4f}|{pn:.4f}\n"
