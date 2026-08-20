@@ -89,7 +89,8 @@ class AdvancedHUD(QMainWindow):
         self.subchart.run_script(f"""\
         {self.subchart.id}.chart.priceScale('right').applyOptions({{
             autoScale: false,
-            scaleMargins: {{top: 0, bottom: 0}}
+            scaleMargins: {{top: 0, bottom: 0}},
+            minimumWidth: 80
         }});
         {self.subchart.id}.chart.timeScale().applyOptions({{
             timeVisible: true,
@@ -97,6 +98,11 @@ class AdvancedHUD(QMainWindow):
         }});
         """)
         self.chart.time_scale(time_visible=True, seconds_visible=True)
+        self.chart.run_script(f"""\
+        {self.chart.id}.chart.priceScale('right').applyOptions({{
+            minimumWidth: 80
+        }});
+        """)
 
         # Scale options if library supports
         # self.subchart.price_scale(auto_scale=False, min_max=True)
@@ -119,8 +125,8 @@ class AdvancedHUD(QMainWindow):
 
         for line in [self.p_long_line, self.p_short_line, self.p_noise_line, self.dummy_min, self.dummy_max]:
             self.subchart.run_script(f'''
-            if (typeof {line.id} !== 'undefined' && {line.id} !== null) {{
-                {line.id}.series.applyOptions({{
+            if (typeof {line.id} !== 'undefined' && typeof {line.id}.applyOptions === 'function') {{
+                {line.id}.applyOptions({{
                     autoscaleInfoProvider: () => ({{ priceRange: {{ minValue: 0, maxValue: 1 }} }}),
                     priceFormat: {{ type: 'price', precision: 1, minMove: 0.1 }}
                 }});
@@ -177,23 +183,26 @@ class AdvancedHUD(QMainWindow):
         tick_series = tick_df.iloc[0].copy()
         tick_series.name = None
 
-        # A dataframe-ben a "value" oszlopot használjuk, ez garantálja, hogy a lightweight-charts
-        # mindenképpen megtalálja a megjelenítendő értéket az update és a set során is.
-        p_long_df = pd.DataFrame([{'time': ts_str, 'value': data.get('p_long', 0.0)}])
-        p_short_df = pd.DataFrame([{'time': ts_str, 'value': data.get('p_short', 0.0)}])
-        p_noise_df = pd.DataFrame([{'time': ts_str, 'value': data.get('p_noise', 0.0)}])
+        p_long_df = pd.DataFrame([{'time': ts_str, 'P_Long': data.get('p_long', 0.0)}])
+        p_short_df = pd.DataFrame([{'time': ts_str, 'P_Short': data.get('p_short', 0.0)}])
+        p_noise_df = pd.DataFrame([{'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)}])
 
         try:
 
             if not self.is_initialized:
                 self.chart.set(tick_df)
+
+                # The subchart needs a dataframe (candles) to initialize its time scale
+                dummy_df = pd.DataFrame([{'time': ts_str, 'open': 0, 'high': 1, 'low': 0, 'close': 0.5}])
+                self.subchart.set(dummy_df)
+
                 self.p_long_line.set(p_long_df)
                 self.p_short_line.set(p_short_df)
                 self.p_noise_line.set(p_noise_df)
 
                 # Set dummy anchors for 0 and 1 scale
-                d_min = pd.DataFrame([{'time': ts_str, 'value': 0.0}])
-                d_max = pd.DataFrame([{'time': ts_str, 'value': 1.0}])
+                d_min = pd.DataFrame([{'time': ts_str, 'DummyMin': 0.0}])
+                d_max = pd.DataFrame([{'time': ts_str, 'DummyMax': 1.0}])
                 self.dummy_min.set(d_min)
                 self.dummy_max.set(d_max)
 
@@ -202,22 +211,23 @@ class AdvancedHUD(QMainWindow):
             else:
                 self.chart.update(tick_series)
 
-                s_l = p_long_df.iloc[0].copy()
-                s_l.name = None
+                # We must also update the subchart's main series (candles) to move the time scale forward
+                dummy_df2 = pd.DataFrame([{'time': ts_str, 'open': 0, 'high': 1, 'low': 0, 'close': 0.5}])
+                dummy_s = dummy_df2.iloc[0].copy()
+                dummy_s.name = None
+                self.subchart.update(dummy_s)
+
+                s_l = pd.Series({'time': ts_str, 'P_Long': data.get('p_long', 0.0)})
                 self.p_long_line.update(s_l)
 
-                s_s = p_short_df.iloc[0].copy()
-                s_s.name = None
+                s_s = pd.Series({'time': ts_str, 'P_Short': data.get('p_short', 0.0)})
                 self.p_short_line.update(s_s)
 
-                s_n = p_noise_df.iloc[0].copy()
-                s_n.name = None
+                s_n = pd.Series({'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)})
                 self.p_noise_line.update(s_n)
 
-                s_min = pd.Series({'time': ts_str, 'value': 0.0})
-                s_max = pd.Series({'time': ts_str, 'value': 1.0})
-                s_min.name = None
-                s_max.name = None
+                s_min = pd.Series({'time': ts_str, 'DummyMin': 0.0})
+                s_max = pd.Series({'time': ts_str, 'DummyMax': 1.0})
                 self.dummy_min.update(s_min)
                 self.dummy_max.update(s_max)
 
