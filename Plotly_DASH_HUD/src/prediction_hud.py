@@ -22,19 +22,27 @@ os.environ["QTWEBENGINE_DISABLE_GPU"] = "1"
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-software-rasterizer"
 
 # Data Cache
-# We severely reduce MAX_POINTS. To have a "rolling window",
-# we only keep the last e.g. 150 ticks in memory for plotting.
-MAX_POINTS = 150
-time_data = deque(maxlen=MAX_POINTS)
-p_long_data = deque(maxlen=MAX_POINTS)
-p_short_data = deque(maxlen=MAX_POINTS)
-p_noise_data = deque(maxlen=MAX_POINTS)
+# We only store the *actual prediction points* (when Dollar Bars close) to connect them with straight lines.
+MAX_PRED_POINTS = 50
+pred_time_data = deque(maxlen=MAX_PRED_POINTS)
+p_long_data = deque(maxlen=MAX_PRED_POINTS)
+p_short_data = deque(maxlen=MAX_PRED_POINTS)
+p_noise_data = deque(maxlen=MAX_PRED_POINTS)
+
+# Track the absolute latest tick time for smooth X-axis panning
+latest_tick_time = None
 
 def zmq_listener():
+    global latest_tick_time
     context = zmq.Context()
     socket = context.socket(zmq.SUB)
     socket.connect("tcp://127.0.0.1:5557")
     socket.setsockopt_string(zmq.SUBSCRIBE, "HUD ")
+
+    last_signal = None
+    last_pl = None
+    last_ps = None
+    last_pn = None
 
     while True:
         try:
@@ -42,19 +50,35 @@ def zmq_listener():
             if msg.startswith("HUD "):
                 data = json.loads(msg[4:])
 
-                # Plotly uses standard datetime objects for time series
+                # Update the continuous time clock for smooth panning
                 ts = datetime.datetime.fromtimestamp(data['timestamp'])
+                latest_tick_time = ts
 
-                time_data.append(ts)
-                p_long_data.append(data.get('p_long', 0.0))
-                p_short_data.append(data.get('p_short', 0.0))
-                p_noise_data.append(data.get('p_noise', 0.0))
+                pl = data.get('p_long', 0.0)
+                ps = data.get('p_short', 0.0)
+                pn = data.get('p_noise', 0.0)
+                sig = data.get('signal', 0)
+
+                # ONLY append a new point if the prediction actually changed!
+                # This ensures we connect point A to point B diagonally, rather than building a staircase
+                if (pl != last_pl or ps != last_ps or pn != last_pn):
+
+                    # Prevent identical timestamps causing back-and-forth loops
+                    if len(pred_time_data) == 0 or ts > pred_time_data[-1]:
+                        pred_time_data.append(ts)
+                        p_long_data.append(pl)
+                        p_short_data.append(ps)
+                        p_noise_data.append(pn)
+
+                        last_pl = pl
+                        last_ps = ps
+                        last_pn = pn
+
         except Exception as e:
             print(f"ZMQ Error: {e}")
 
 # Start ZMQ thread
 threading.Thread(target=zmq_listener, daemon=True).start()
-
 print("ZMQ listener configured and started.")
 
 # --- Dash App Setup ---
@@ -64,7 +88,7 @@ app.layout = html.Div(style={'backgroundColor': '#121212', 'height': '100vh', 'm
     dcc.Graph(id='live-update-graph', style={'height': '100%'}),
     dcc.Interval(
         id='interval-component',
-        interval=500, # 500 ms = 2 updates per second
+        interval=250, # Fast 250ms update for smooth panning
         n_intervals=0
     )
 ])
@@ -74,18 +98,19 @@ app.layout = html.Div(style={'backgroundColor': '#121212', 'height': '100vh', 'm
 def update_graph_live(n):
     fig = go.Figure()
 
-    # Convert deques to lists to plot them
-    t_list = list(time_data)
+    t_list = list(pred_time_data)
     l_list = list(p_long_data)
     s_list = list(p_short_data)
     n_list = list(p_noise_data)
 
     if len(t_list) > 0:
+        # Add actual prediction nodes connected by straight diagonal lines
         fig.add_trace(go.Scatter(
             x=t_list,
             y=l_list,
             name='P_Long',
-            mode='lines',
+            mode='lines+markers',
+            marker=dict(size=6, color='forestgreen'),
             line=dict(color='forestgreen', width=2, shape='linear')
         ))
 
@@ -93,7 +118,8 @@ def update_graph_live(n):
             x=t_list,
             y=s_list,
             name='P_Short',
-            mode='lines',
+            mode='lines+markers',
+            marker=dict(size=6, color='firebrick'),
             line=dict(color='firebrick', width=2, shape='linear')
         ))
 
@@ -101,30 +127,47 @@ def update_graph_live(n):
             x=t_list,
             y=n_list,
             name='P_Noise',
-            mode='lines',
+            mode='lines+markers',
+            marker=dict(size=6, color='gray'),
             line=dict(color='gray', width=1, dash='dot', shape='linear')
         ))
 
-        # Dynamically set X-axis range to enforce the rolling window visually
-        x_min = t_list[0]
-        x_max = t_list[-1]
-    else:
-        # Default empty range if no data yet
-        x_min = None
-        x_max = None
+    # Calculate Smooth Panning Window (e.g., show the last X minutes based on latest tick)
+    x_min = None
+    x_max = None
 
-    # Add dynamic horizontal lines for Asymmetric Thresholds (e.g. 0.45)
-    fig.add_hline(y=0.45, line_dash="dash", line_color="forestgreen", annotation_text="Long Threshold", annotation_position="top right")
-    fig.add_hline(y=0.40, line_dash="dash", line_color="firebrick", annotation_text="Short Threshold", annotation_position="bottom right")
+    if latest_tick_time:
+        # Always pin the right side to the absolute latest tick time (smooth scroll)
+        x_max = latest_tick_time
+        # Show a static rolling window width (e.g., 20 minutes)
+        x_min = latest_tick_time - datetime.timedelta(minutes=20)
+    elif len(t_list) > 0:
+        x_max = t_list[-1]
+        x_min = t_list[0]
+
+    # Add dynamic horizontal lines for Asymmetric Thresholds
+    fig.add_hline(y=0.45, line_dash="dash", line_color="forestgreen", annotation_text="Long Threshold", annotation_position="top left")
+    fig.add_hline(y=0.40, line_dash="dash", line_color="firebrick", annotation_text="Short Threshold", annotation_position="bottom left")
 
     fig.update_layout(
         template='plotly_dark',
         plot_bgcolor='#121212',
         paper_bgcolor='#121212',
         margin=dict(l=0, r=40, t=0, b=0),
-        # By setting the range dynamically, the chart strictly follows the points without auto-scaling all of history
-        xaxis=dict(range=[x_min, x_max] if x_min and x_max else None, showgrid=True, gridcolor='#333333', rangeslider=dict(visible=False)),
-        yaxis=dict(range=[0, 1], showgrid=True, gridcolor='#333333', side='right', tickformat='.2f'),
+        xaxis=dict(
+            range=[x_min, x_max] if x_min and x_max else None,
+            showgrid=True,
+            gridcolor='#333333',
+            rangeslider=dict(visible=False),
+            type='date'
+        ),
+        yaxis=dict(
+            range=[0, 1],
+            showgrid=True,
+            gridcolor='#333333',
+            side='right',
+            tickformat='.2f'
+        ),
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -132,7 +175,7 @@ def update_graph_live(n):
             xanchor="right",
             x=1
         ),
-        # Optimize performance for real-time updates
+        # Optimize performance for real-time panning updates
         uirevision='constant'
     )
 
@@ -151,14 +194,13 @@ class DashHUD(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Merkava Copilot - Plotly Dash HUD")
-        self.resize(1000, 400) # Only probability chart for now
+        self.resize(1000, 400)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Allow Dash server to boot
         time.sleep(1)
 
         self.browser = QWebEngineView()

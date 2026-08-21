@@ -99,6 +99,11 @@ class PredictionHUD(QMainWindow):
         self.p_short_line = self.chart.create_line('P_Short', color='firebrick', width=2)
         self.p_noise_line = self.chart.create_line('P_Noise', color='gray', width=1, style='dotted')
 
+        # === THRESHOLD LINES ===
+        self.thr_long = self.chart.create_line('Thr_Long', color='forestgreen', width=1, style='dashed')
+        self.thr_short = self.chart.create_line('Thr_Short', color='firebrick', width=1, style='dashed')
+        self.thr_noise = self.chart.create_line('Thr_Noise', color='gray', width=1, style='dashed')
+
         # Dummy min-max lines to force 0 to 1 scaling natively.
         self.dummy_min = self.chart.create_line('DummyMin', color='rgba(0,0,0,0)', width=1, price_label=False)
         self.dummy_max = self.chart.create_line('DummyMax', color='rgba(0,0,0,0)', width=1, price_label=False)
@@ -110,10 +115,9 @@ class PredictionHUD(QMainWindow):
         self.chart.get_webview().loadFinished.connect(lambda: QTimer.singleShot(1000, self.zmq_thread.start))
 
     def on_data_received(self, data):
-        # Floor the timestamp to the current minute
+        # Use exact timestamp for tick-by-tick continuous rolling
         raw_ts = pd.to_datetime(data['timestamp'], unit='s')
-        minute_ts_dt = raw_ts.floor('min')
-        ts_str = minute_ts_dt.strftime('%Y-%m-%d %H:%M:%S')
+        ts_str = raw_ts.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] # ms precision
 
         # Provide a dummy candlestick to advance the chart's inner time scale
         # If we don't provide this, lightweight-charts-python will NOT advance the line points
@@ -129,6 +133,11 @@ class PredictionHUD(QMainWindow):
         p_short_df = pd.DataFrame([{'time': ts_str, 'P_Short': data.get('p_short', 0.0)}])
         p_noise_df = pd.DataFrame([{'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)}])
 
+        # Define thresholds (Can be parameterized later based on Optuna 4D thresholds)
+        TH_LONG = 0.45
+        TH_SHORT = 0.40
+        TH_NOISE = 0.35
+
         try:
             if not self.is_initialized:
                 self.chart.set(dummy_df)
@@ -136,6 +145,13 @@ class PredictionHUD(QMainWindow):
                 self.p_long_line.set(p_long_df)
                 self.p_short_line.set(p_short_df)
                 self.p_noise_line.set(p_noise_df)
+
+                t_l_df = pd.DataFrame([{'time': ts_str, 'Thr_Long': TH_LONG}])
+                t_s_df = pd.DataFrame([{'time': ts_str, 'Thr_Short': TH_SHORT}])
+                t_n_df = pd.DataFrame([{'time': ts_str, 'Thr_Noise': TH_NOISE}])
+                self.thr_long.set(t_l_df)
+                self.thr_short.set(t_s_df)
+                self.thr_noise.set(t_n_df)
 
                 d_min = pd.DataFrame([{'time': ts_str, 'DummyMin': 0.0}])
                 d_max = pd.DataFrame([{'time': ts_str, 'DummyMax': 1.0}])
@@ -158,6 +174,18 @@ class PredictionHUD(QMainWindow):
                 s_n = pd.Series({'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)})
                 s_n.name = 'P_Noise'
                 self.p_noise_line.update(s_n)
+
+                s_tl = pd.Series({'time': ts_str, 'Thr_Long': TH_LONG})
+                s_tl.name = 'Thr_Long'
+                self.thr_long.update(s_tl)
+
+                s_ts = pd.Series({'time': ts_str, 'Thr_Short': TH_SHORT})
+                s_ts.name = 'Thr_Short'
+                self.thr_short.update(s_ts)
+
+                s_tn = pd.Series({'time': ts_str, 'Thr_Noise': TH_NOISE})
+                s_tn.name = 'Thr_Noise'
+                self.thr_noise.update(s_tn)
 
                 s_min = pd.Series({'time': ts_str, 'DummyMin': 0.0})
                 s_min.name = 'DummyMin'
