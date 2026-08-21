@@ -99,21 +99,34 @@ class PredictionHUD(QMainWindow):
         self.p_short_line = self.chart.create_line('P_Short', color='firebrick', width=2)
         self.p_noise_line = self.chart.create_line('P_Noise', color='gray', width=1, style='dotted')
 
+        # === THRESHOLD LINES ===
+        # Using built-in horizontal_line instead of continuous pandas updating series to prevent JS mapping errors
+        self.thr_long = self.chart.horizontal_line(0.45, color='forestgreen', width=1, style='dashed', text='Thr_Long')
+        self.thr_short = self.chart.horizontal_line(0.40, color='firebrick', width=1, style='dashed', text='Thr_Short')
+        self.thr_noise = self.chart.horizontal_line(0.35, color='gray', width=1, style='dashed', text='Thr_Noise')
+
         # Dummy min-max lines to force 0 to 1 scaling natively.
         self.dummy_min = self.chart.create_line('DummyMin', color='rgba(0,0,0,0)', width=1, price_label=False)
         self.dummy_max = self.chart.create_line('DummyMax', color='rgba(0,0,0,0)', width=1, price_label=False)
 
         self.is_initialized = False
+        self.last_ts = None
 
         self.zmq_thread = ZMQReceiverThread()
         self.zmq_thread.data_received.connect(self.on_data_received)
         self.chart.get_webview().loadFinished.connect(lambda: QTimer.singleShot(1000, self.zmq_thread.start))
 
     def on_data_received(self, data):
-        # Floor the timestamp to the current minute
+        # Lightweight-charts JS expects strictly increasing timestamps.
+        # We must prevent duplicate timestamps within the same millisecond to avoid "Cannot update oldest data" errors.
         raw_ts = pd.to_datetime(data['timestamp'], unit='s')
-        minute_ts_dt = raw_ts.floor('min')
-        ts_str = minute_ts_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+        # Ensure monotonic increase
+        if self.last_ts is not None and raw_ts <= self.last_ts:
+            raw_ts = self.last_ts + pd.Timedelta(milliseconds=1)
+        self.last_ts = raw_ts
+
+        ts_str = raw_ts.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] # ms precision
 
         # Provide a dummy candlestick to advance the chart's inner time scale
         # If we don't provide this, lightweight-charts-python will NOT advance the line points
