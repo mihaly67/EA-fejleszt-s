@@ -262,3 +262,4 @@
 {"timestamp": "2026-08-21T17:50:57.348346", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
 {"timestamp": "2026-08-21T19:56:19.891769", "category": "Context_Summary", "content": "A k\u00f3dszemle ism\u00e9telten r\u00e1mutatott, hogy a VPS teszt-szkriptek jelszavakkal szennyezt\u00e9k a sandboxot, de ezeket v\u00e9glegesen elt\u00e1vol\u00edtottam. A felhaszn\u00e1l\u00f3 \u00e1ltal k\u00e9rt \u00faj hibrid RAG keres\u0151 (hybrid_rag_builder.py) sikeresen a verzi\u00f3kezel\u0151be ker\u00fclt (a .gitignore megker\u00fcl\u00e9s\u00e9vel git add -f haszn\u00e1lat\u00e1val)."}
 {"timestamp": "2026-08-21T19:57:13.920494", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
+{"timestamp": "2026-08-21T20:22:59.483333", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
