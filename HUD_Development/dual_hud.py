@@ -86,14 +86,13 @@ class DualPaneHUD(QMainWindow):
         self.chart.time_scale(visible=True)
         self.chart.get_webview().setStyleSheet("background-color: #121212;")
 
-        # Add the chart to the layout
-        main_layout.addWidget(self.chart.get_webview(), stretch=1)
+        # Add the chart to the layout (Main Chart = Candlesticks)
+        main_layout.addWidget(self.chart.get_webview(), stretch=3)
 
-        # === SUBCHART (TOP PANE = PREDICTIONS) ===
-        # Create a synchronized subchart, placed "top" (or "left" then resize via css,
-        # but create_subchart creates an embedded pane inside the same webview, so it stacks).
-        # We set sync=True so the crosshair and time scales move together.
-        self.subchart = self.chart.create_subchart(position='top', width=1.0, height=0.4, sync=True)
+        # === SUBCHART (PREDICTIONS) ===
+        # Create a synchronized subchart (bottom pane by default).
+        # We set sync=True so the crosshair and time scales move together perfectly.
+        self.subchart = self.chart.create_subchart(width=1.0, height=0.4, sync=True)
 
         # Hide candlesticks in the subchart because it's for probabilities
         self.subchart.candle_style(
@@ -130,45 +129,29 @@ class DualPaneHUD(QMainWindow):
         self.chart.get_webview().loadFinished.connect(lambda: QTimer.singleShot(1000, self.zmq_thread.start))
 
     def on_data_received(self, data):
-        # We need to maintain strict monotonicity for the exact tick-by-tick subchart updates.
-        # But for the candlestick chart, we want 1-minute aggregated bars.
-        # How to synchronize? Lightweight charts requires matching `time` for sync'd charts.
-
-        # We use the exact tick timestamp for BOTH, but we build the "candlestick" by updating
-        # the same timestamp with the newly formed high/low bounds, OR by creating an artificial
-        # tick-by-tick "trail" that looks like a candle.
-        # Standard approach for synchronised multi-charts with different timeframes is to use
-        # the highest resolution (tick/second) for the base axis, and draw candles at those exact ticks.
+        # 1-MINUTE LOGIC:
+        # The user specifically requested that both the chart and subchart sit on a standard 1-minute X-axis.
+        # The candlestick builds (updates) tick-by-tick on the SAME minute coordinate.
+        # The prediction curve also updates its position on the SAME minute coordinate until the minute closes.
 
         raw_ts = pd.to_datetime(data['timestamp'], unit='s')
-
-        # Ensure monotonic increase for the base X-axis
-        if self.last_ts is not None and raw_ts <= self.last_ts:
-            raw_ts = self.last_ts + pd.Timedelta(milliseconds=1)
-        self.last_ts = raw_ts
-
-        ts_str = raw_ts.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] # ms precision
-
-        # Minute boundary detection for the candlestick
-        minute_floor = raw_ts.floor('min')
+        minute_ts_dt = raw_ts.floor('min')
+        ts_str = minute_ts_dt.strftime('%Y-%m-%d %H:%M:%S')
 
         price = data['close']
 
-        if self.current_minute_ts is None or minute_floor > self.current_minute_ts:
+        if self.current_minute_ts != ts_str:
             # New minute started
-            self.current_minute_ts = minute_floor
+            self.current_minute_ts = ts_str
             self.current_open = data.get('open', price)
             self.current_high = data.get('high', price)
             self.current_low = data.get('low', price)
         else:
-            # Update current minute bounds
+            # Update current minute bounds (tick-by-tick building)
             self.current_high = max(self.current_high, price)
             self.current_low = min(self.current_low, price)
 
-        # Candlestick representation at THIS exact tick.
-        # Because we are plotting it on a tick-by-tick axis, we continually push new candles.
-        # To make it look like a 1-minute aggregation, each tick within the minute has the
-        # *minute's* open, the *minute's* accumulating high/low, and the *current tick's* close.
+        # Candlestick representation updating the CURRENT minute.
         candle_df = pd.DataFrame([{
             'time': ts_str,
             'open': self.current_open,
