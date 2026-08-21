@@ -6,13 +6,8 @@ echo "======================================"
 # Ensure we are in the correct working directory on the VPS
 if [ -d "/home/misi/LGBM_mlops" ]; then
     cd /home/misi/LGBM_mlops
-    source venv/bin/activate
 else
     echo "Warning: /home/misi/LGBM_mlops directory not found. Running in local mode."
-    # Local fallback
-    if [ -f "venv/bin/activate" ]; then
-        source venv/bin/activate
-    fi
 fi
 
 # 1. Kill any existing Copilot and HUD processes
@@ -31,7 +26,8 @@ sleep 2
 # 2. Start the LightGBM Engine
 echo "[2/3] 🧠 Starting LightGBM Data Bridge & Inference Engine..."
 if [ -d "Micro_LGBM/src" ]; then
-    nohup python3 Micro_LGBM/src/mt5_live_copilot_v1.9_beta.py > Micro_LGBM/src/copilot.log 2>&1 &
+    # Strictly use the absolute path to the venv python executable to avoid environment leaks
+    nohup /home/misi/LGBM_mlops/venv/bin/python3 Micro_LGBM/src/mt5_live_copilot_v1.9_beta.py > Micro_LGBM/src/copilot.log 2>&1 &
     echo "   -> LightGBM Engine running in background (PID $!)"
     sleep 3
 
