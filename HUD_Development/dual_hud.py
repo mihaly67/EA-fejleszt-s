@@ -1,0 +1,272 @@
+import sys
+import os
+import json
+import zmq
+import pandas as pd
+from datetime import datetime
+
+# RDP/VNC (xrdp) FEKETE KÉPERNYŐ JAVÍTÁSA
+os.environ["QTWEBENGINE_DISABLE_GPU"] = "1"
+os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu --disable-software-rasterizer"
+
+sys.argv.append("--disable-gpu")
+sys.argv.append("--no-sandbox")
+
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QLabel
+from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer
+from PyQt5.QtWebEngineWidgets import QWebEngineView
+
+from lightweight_charts.widgets import QtChart
+
+class ZMQReceiverThread(QThread):
+    data_received = pyqtSignal(dict)
+
+    def __init__(self, port=5557, host='127.0.0.1'):
+        super().__init__()
+        self.port = port
+        self.host = host
+        self.running = True
+
+    def run(self):
+        context = zmq.Context()
+        socket = context.socket(zmq.SUB)
+        socket.connect(f"tcp://{self.host}:{self.port}")
+        socket.setsockopt_string(zmq.SUBSCRIBE, "HUD")
+
+        self.msleep(2000)
+
+        while self.running:
+            try:
+                msg = socket.recv_string(flags=zmq.NOBLOCK)
+                if msg.startswith("HUD "):
+                    json_data = msg[4:]
+                    data = json.loads(json_data)
+                    self.data_received.emit(data)
+            except zmq.Again:
+                self.msleep(10)
+            except Exception as e:
+                print(f"ZMQ HUD Vételi Hiba: {e}", flush=True)
+
+    def stop(self):
+        self.running = False
+        self.wait()
+
+
+class DualPaneHUD(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("LGBM Copilot - Dual Pane HUD")
+        self.resize(1000, 800)
+        self.setStyleSheet("background-color: #121212; color: #ffffff;")
+
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # === INFO PANEL ===
+        info_layout = QHBoxLayout()
+        self.signal_label = QLabel("Waiting for Prediction...")
+        self.signal_label.setStyleSheet("color: gray; font-size: 18px; font-weight: bold;")
+        self.signal_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+
+        self.prob_label = QLabel("P_Long: 0.00 | P_Short: 0.00 | P_Noise: 0.00")
+        self.prob_label.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
+        self.prob_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        info_layout.addWidget(self.signal_label)
+        info_layout.addWidget(self.prob_label)
+        main_layout.addLayout(info_layout)
+
+        # === CHART INIT (MAIN CHART = CANDLESTICKS) ===
+        # The main chart will hold the candlesticks. We configure it normally.
+        self.chart = QtChart(inner_width=1, inner_height=1)
+        self.chart.layout(background_color='#121212', text_color='#ffffff')
+        self.chart.grid(vert_enabled=False, horz_enabled=False)
+        self.chart.time_scale(visible=True)
+        self.chart.get_webview().setStyleSheet("background-color: #121212;")
+
+        # Add the chart to the layout
+        main_layout.addWidget(self.chart.get_webview(), stretch=1)
+
+        # === SUBCHART (TOP PANE = PREDICTIONS) ===
+        # Create a synchronized subchart, placed "top" (or "left" then resize via css,
+        # but create_subchart creates an embedded pane inside the same webview, so it stacks).
+        # We set sync=True so the crosshair and time scales move together.
+        self.subchart = self.chart.create_subchart(position='top', width=1.0, height=0.4, sync=True)
+
+        # Hide candlesticks in the subchart because it's for probabilities
+        self.subchart.candle_style(
+            up_color='rgba(0,0,0,0)', down_color='rgba(0,0,0,0)',
+            border_up_color='rgba(0,0,0,0)', border_down_color='rgba(0,0,0,0)',
+            wick_up_color='rgba(0,0,0,0)', wick_down_color='rgba(0,0,0,0)'
+        )
+
+        # === PREDICTION LINES (ON SUBCHART) ===
+        self.p_long_line = self.subchart.create_line('P_Long', color='forestgreen', width=2)
+        self.p_short_line = self.subchart.create_line('P_Short', color='firebrick', width=2)
+        self.p_noise_line = self.subchart.create_line('P_Noise', color='gray', width=1, style='dotted')
+
+        # === THRESHOLD LINES (ON SUBCHART) ===
+        self.thr_long = self.subchart.horizontal_line(0.45, color='forestgreen', width=1, style='dashed', text='Thr_Long')
+        self.thr_short = self.subchart.horizontal_line(0.40, color='firebrick', width=1, style='dashed', text='Thr_Short')
+        self.thr_noise = self.subchart.horizontal_line(0.35, color='gray', width=1, style='dashed', text='Thr_Noise')
+
+        # Dummy min-max lines to force 0 to 1 scaling natively on the subchart
+        self.dummy_min = self.subchart.create_line('DummyMin', color='rgba(0,0,0,0)', width=1, price_label=False)
+        self.dummy_max = self.subchart.create_line('DummyMax', color='rgba(0,0,0,0)', width=1, price_label=False)
+
+        self.is_initialized = False
+        self.last_ts = None
+
+        # Candlestick aggregation state
+        self.current_minute_ts = None
+        self.current_open = 0.0
+        self.current_high = 0.0
+        self.current_low = float('inf')
+
+        self.zmq_thread = ZMQReceiverThread()
+        self.zmq_thread.data_received.connect(self.on_data_received)
+        self.chart.get_webview().loadFinished.connect(lambda: QTimer.singleShot(1000, self.zmq_thread.start))
+
+    def on_data_received(self, data):
+        # We need to maintain strict monotonicity for the exact tick-by-tick subchart updates.
+        # But for the candlestick chart, we want 1-minute aggregated bars.
+        # How to synchronize? Lightweight charts requires matching `time` for sync'd charts.
+
+        # We use the exact tick timestamp for BOTH, but we build the "candlestick" by updating
+        # the same timestamp with the newly formed high/low bounds, OR by creating an artificial
+        # tick-by-tick "trail" that looks like a candle.
+        # Standard approach for synchronised multi-charts with different timeframes is to use
+        # the highest resolution (tick/second) for the base axis, and draw candles at those exact ticks.
+
+        raw_ts = pd.to_datetime(data['timestamp'], unit='s')
+
+        # Ensure monotonic increase for the base X-axis
+        if self.last_ts is not None and raw_ts <= self.last_ts:
+            raw_ts = self.last_ts + pd.Timedelta(milliseconds=1)
+        self.last_ts = raw_ts
+
+        ts_str = raw_ts.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] # ms precision
+
+        # Minute boundary detection for the candlestick
+        minute_floor = raw_ts.floor('min')
+
+        price = data['close']
+
+        if self.current_minute_ts is None or minute_floor > self.current_minute_ts:
+            # New minute started
+            self.current_minute_ts = minute_floor
+            self.current_open = data.get('open', price)
+            self.current_high = data.get('high', price)
+            self.current_low = data.get('low', price)
+        else:
+            # Update current minute bounds
+            self.current_high = max(self.current_high, price)
+            self.current_low = min(self.current_low, price)
+
+        # Candlestick representation at THIS exact tick.
+        # Because we are plotting it on a tick-by-tick axis, we continually push new candles.
+        # To make it look like a 1-minute aggregation, each tick within the minute has the
+        # *minute's* open, the *minute's* accumulating high/low, and the *current tick's* close.
+        candle_df = pd.DataFrame([{
+            'time': ts_str,
+            'open': self.current_open,
+            'high': self.current_high,
+            'low': self.current_low,
+            'close': price
+        }])
+
+        # We also need a dummy update for the subchart to pull its time scale forward
+        dummy_df = pd.DataFrame([{
+            'time': ts_str,
+            'open': 0.0,
+            'high': 1.0,
+            'low': 0.0,
+            'close': 0.5
+        }])
+
+        p_long_df = pd.DataFrame([{'time': ts_str, 'P_Long': data.get('p_long', 0.0)}])
+        p_short_df = pd.DataFrame([{'time': ts_str, 'P_Short': data.get('p_short', 0.0)}])
+        p_noise_df = pd.DataFrame([{'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)}])
+
+        try:
+            if not self.is_initialized:
+                # Initialize Main Chart (Candles)
+                self.chart.set(candle_df)
+
+                # Initialize Subchart (Predictions + Time Scale Sync)
+                self.subchart.set(dummy_df)
+                self.p_long_line.set(p_long_df)
+                self.p_short_line.set(p_short_df)
+                self.p_noise_line.set(p_noise_df)
+
+                d_min = pd.DataFrame([{'time': ts_str, 'DummyMin': 0.0}])
+                d_max = pd.DataFrame([{'time': ts_str, 'DummyMax': 1.0}])
+                self.dummy_min.set(d_min)
+                self.dummy_max.set(d_max)
+
+                self.is_initialized = True
+            else:
+                # Update Main Chart (Candles)
+                s_c = candle_df.iloc[0].copy()
+                s_c.name = None
+                self.chart.update(s_c)
+
+                # Update Subchart Dummy to pull X-axis forward
+                dummy_s = dummy_df.iloc[0].copy()
+                dummy_s.name = None
+                self.subchart.update(dummy_s)
+
+                # Update Subchart Lines
+                s_l = pd.Series({'time': ts_str, 'P_Long': data.get('p_long', 0.0)})
+                s_l.name = 'P_Long'
+                self.p_long_line.update(s_l)
+
+                s_s = pd.Series({'time': ts_str, 'P_Short': data.get('p_short', 0.0)})
+                s_s.name = 'P_Short'
+                self.p_short_line.update(s_s)
+
+                s_n = pd.Series({'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)})
+                s_n.name = 'P_Noise'
+                self.p_noise_line.update(s_n)
+
+                s_min = pd.Series({'time': ts_str, 'DummyMin': 0.0})
+                s_min.name = 'DummyMin'
+                self.dummy_min.update(s_min)
+
+                s_max = pd.Series({'time': ts_str, 'DummyMax': 1.0})
+                s_max.name = 'DummyMax'
+                self.dummy_max.update(s_max)
+
+        except Exception as e:
+            print(f"Update error: {e}", flush=True)
+
+        signal = data.get('signal', 0)
+        is_stable = data.get('is_stable', False)
+
+        if signal == 1:
+            sig_text = "BUY (Long)"
+            color = "#228B22"
+        elif signal == -1:
+            sig_text = "SELL (Short)"
+            color = "#B22222"
+        else:
+            sig_text = "WAIT (Hold)"
+            color = "gray"
+
+        stability_text = " [STABLE]" if is_stable else " [UNSTABLE]"
+
+        self.signal_label.setText(f"Signal: {sig_text}{stability_text}")
+        self.signal_label.setStyleSheet(f"color: {color}; font-size: 18px; font-weight: bold;")
+        self.prob_label.setText(f"P_Long: {data.get('p_long', 0.0):.2f} | P_Short: {data.get('p_short', 0.0):.2f} | P_Noise: {data.get('p_noise', 0.0):.2f}")
+
+    def closeEvent(self, event):
+        self.zmq_thread.stop()
+        event.accept()
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = DualPaneHUD()
+    window.show()
+    sys.exit(app.exec_())
