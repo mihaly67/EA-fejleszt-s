@@ -93,7 +93,6 @@ class DualPaneHUD(QMainWindow):
 
         self.ask_line = self.chart.create_line('Ask', color='rgba(0,0,0,0)', width=1)
         self.chart.run_script(f"{self.ask_line.id}.applyOptions({{'priceLineColor': 'red', 'priceLineStyle': 3}})")
-
         # Add the chart to the layout (Main Chart = Candlesticks)
         main_layout.addWidget(self.chart.get_webview(), stretch=3)
 
@@ -216,8 +215,6 @@ class DualPaneHUD(QMainWindow):
                 self.dummy_max.set(d_max)
 
                 self.is_initialized = True
-
-
             else:
                 # Update Main Chart (Candles)
                 s_c = candle_df.iloc[0].copy()
