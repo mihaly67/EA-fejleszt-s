@@ -67,3 +67,7 @@ Mivel az ügynök (MiniLM / LLM alapú rendszer) a nyers kód szintaxisánál so
 *   **KÖTELEZŐ SESSION LEZÁRÁS:** A feladat véglegesítése (submit) előtt, a pre-commit lépés részeként kötelező lefuttatni a `python3 ENVIRONMENT_SETUP/agent_memory_manager.py --action end_session` parancsot a szeparáció biztosítására.
 *   **ÖN-SZABÁLYOZÁS (HALLUCINÁCIÓ ELKERÜLÉSE):** Ha az Agent memória olvasáskor a token riasztó `VESZÉLY`-t jelez (>8000 token), az Agentnek tilos a `--limit` növelésével újabb adatokat beolvasnia, és a rákövetkező turnökben proaktív sűrítést kell végrehajtania.
 *   **FÁJLNÉV KONVENCIÓ:** Szigorú elvárás, hogy a jövőben minden kód, adatfájl és ML modell (pkl/txt) neve tartalmazza a '3MTF' szót (pl. model_3MTF.pkl, prado_3MTF.py). A régi Merkava könyvtárba belépni és fájlokat módosítani tilos.
+
+
+## KÖTELEZŐ SZABÁLY: VPS HOZZÁFÉRÉS (CONTABO VPS)
+A rendszer rendelkezik érvényes, távoli (Contabo) VPS hozzáféréssel. Az IP cím: 5.189.163.88, felhasználónév: misi. A jelszót biztonságosan, hardcodeolás nélkül kell kezelni (pl. környezeti változók használatával).

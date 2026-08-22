@@ -95,17 +95,8 @@ class DualPaneHUD(QMainWindow):
         self.subchart = self.chart.create_subchart(width=1.0, height=0.4, sync=True)
         self.subchart.layout(background_color='#121212', text_color='#ffffff')
         self.subchart.grid(vert_enabled=False, horz_enabled=False)
-        self.subchart.run_script(f"""\
-        {self.subchart.id}.chart.priceScale('right').applyOptions({{
-            autoScale: false,
-            scaleMargins: {{top: 0, bottom: 0}},
-            minimumWidth: 80
-        }});
-        {self.subchart.id}.chart.timeScale().applyOptions({{
-            timeVisible: true,
-            secondsVisible: false
-        }});
-        """)
+        self.subchart.price_scale(auto_scale=False, visible=True)
+        self.subchart.time_scale(visible=True, seconds_visible=False)
 
         # Hide candlesticks in the subchart because it's for probabilities
         self.subchart.candle_style(
