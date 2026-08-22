@@ -9,6 +9,14 @@ import time
 import sqlite3
 import glob
 
+# KÖTELEZŐ VPS KÖRNYEZETI ADATOK BEÁLLÍTÁSA A KÖRNYEZETI VÁLTOZÓKBÓL
+# Ez a script garantálja, hogy a VPS kapcsolódási paraméterek mindig rendelkezésre álljanak.
+if "VPS_HOST" not in os.environ:
+    os.environ["VPS_HOST"] = "5.189.163.88"
+if "VPS_USER" not in os.environ:
+    os.environ["VPS_USER"] = "misi"
+
+
 # --- 0. VPS KÖRNYEZETI ALAPBEÁLLÍTÁSOK ---
 # A jelszavakat és érzékeny adatokat a rendszer környezeti változóiból olvassuk be,
 # szigorúan tilos hardcode-olni őket a forráskódban a Zero Trust protokoll miatt.
