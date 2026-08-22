@@ -3,10 +3,10 @@ echo "======================================"
 echo "🖥️ MERKAVA COPILOT HUD LAUNCHER"
 echo "======================================"
 
-if [ -d "/home/misi/LGBM_mlops" ]; then
-    cd /home/misi/LGBM_mlops
+if [ -d "/app" ]; then
+    cd /app
 else
-    echo "Warning: /home/misi/LGBM_mlops directory not found."
+    echo "Warning: /app directory not found."
     exit 1
 fi
 
@@ -18,7 +18,7 @@ export DISPLAY=:10.0
 export QT_QPA_PLATFORM=xcb
 
 echo "🚀 Starting Dual-Pane HUD..."
-source venv/bin/activate
+#source venv/bin/activate
 nohup python3 HUD_Development/dual_hud.py > hud.log 2>&1 &
 echo "✅ HUD launched in background (PID $!). Check your XRDP desktop."
 echo "======================================"
