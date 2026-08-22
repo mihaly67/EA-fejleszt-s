@@ -93,6 +93,8 @@ class DualPaneHUD(QMainWindow):
         # Create a synchronized subchart (bottom pane by default).
         # We set sync=True so the crosshair and time scales move together perfectly.
         self.subchart = self.chart.create_subchart(width=1.0, height=0.4, sync=True)
+        self.subchart.layout(background_color='#121212', text_color='#ffffff')
+        self.subchart.grid(vert_enabled=False, horz_enabled=False)
 
         # Hide candlesticks in the subchart because it's for probabilities
         self.subchart.candle_style(
@@ -151,9 +153,24 @@ class DualPaneHUD(QMainWindow):
             self.current_high = max(self.current_high, price)
             self.current_low = min(self.current_low, price)
 
+        # For lightweight charts to visually "pan" or build the line at a sub-minute level,
+        # we CANNOT use the floored minute timestamp for the prediction curves, because they
+        # would all stack on the same X-coordinate point.
+        # So we use the precise ms-timestamp for the TICK/PREDICTION data.
+        raw_tick_ts = raw_ts.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+
+        # Ensure monotonic increase for the precise tick timestamp
+        if self.last_ts is not None and raw_ts <= self.last_ts:
+            raw_ts = self.last_ts + pd.Timedelta(milliseconds=1)
+        self.last_ts = raw_ts
+        raw_tick_ts = raw_ts.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+
         # Candlestick representation updating the CURRENT minute.
+        # Since the chart uses `sync=True`, both charts must share the exact same X-axis coordinates.
+        # We advance the entire timeline using `raw_tick_ts`, but keep the candle's OHLC bounds aggregated for the minute.
+        # This draws the "M1" candle tick-by-tick on a continuous sliding timeline.
         candle_df = pd.DataFrame([{
-            'time': ts_str,
+            'time': raw_tick_ts,
             'open': self.current_open,
             'high': self.current_high,
             'low': self.current_low,
@@ -162,16 +179,17 @@ class DualPaneHUD(QMainWindow):
 
         # We also need a dummy update for the subchart to pull its time scale forward
         dummy_df = pd.DataFrame([{
-            'time': ts_str,
+            'time': raw_tick_ts,
             'open': 0.0,
             'high': 1.0,
             'low': 0.0,
             'close': 0.5
         }])
 
-        p_long_df = pd.DataFrame([{'time': ts_str, 'P_Long': data.get('p_long', 0.0)}])
-        p_short_df = pd.DataFrame([{'time': ts_str, 'P_Short': data.get('p_short', 0.0)}])
-        p_noise_df = pd.DataFrame([{'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)}])
+        # Since we use the precise tick timestamp, the lines will draw left-to-right tick-by-tick
+        p_long_df = pd.DataFrame([{'time': raw_tick_ts, 'P_Long': data.get('p_long', 0.0)}])
+        p_short_df = pd.DataFrame([{'time': raw_tick_ts, 'P_Short': data.get('p_short', 0.0)}])
+        p_noise_df = pd.DataFrame([{'time': raw_tick_ts, 'P_Noise': data.get('p_noise', 0.0)}])
 
         try:
             if not self.is_initialized:
@@ -184,8 +202,8 @@ class DualPaneHUD(QMainWindow):
                 self.p_short_line.set(p_short_df)
                 self.p_noise_line.set(p_noise_df)
 
-                d_min = pd.DataFrame([{'time': ts_str, 'DummyMin': 0.0}])
-                d_max = pd.DataFrame([{'time': ts_str, 'DummyMax': 1.0}])
+                d_min = pd.DataFrame([{'time': raw_tick_ts, 'DummyMin': 0.0}])
+                d_max = pd.DataFrame([{'time': raw_tick_ts, 'DummyMax': 1.0}])
                 self.dummy_min.set(d_min)
                 self.dummy_max.set(d_max)
 
@@ -202,23 +220,23 @@ class DualPaneHUD(QMainWindow):
                 self.subchart.update(dummy_s)
 
                 # Update Subchart Lines
-                s_l = pd.Series({'time': ts_str, 'P_Long': data.get('p_long', 0.0)})
+                s_l = pd.Series({'time': raw_tick_ts, 'P_Long': data.get('p_long', 0.0)})
                 s_l.name = 'P_Long'
                 self.p_long_line.update(s_l)
 
-                s_s = pd.Series({'time': ts_str, 'P_Short': data.get('p_short', 0.0)})
+                s_s = pd.Series({'time': raw_tick_ts, 'P_Short': data.get('p_short', 0.0)})
                 s_s.name = 'P_Short'
                 self.p_short_line.update(s_s)
 
-                s_n = pd.Series({'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)})
+                s_n = pd.Series({'time': raw_tick_ts, 'P_Noise': data.get('p_noise', 0.0)})
                 s_n.name = 'P_Noise'
                 self.p_noise_line.update(s_n)
 
-                s_min = pd.Series({'time': ts_str, 'DummyMin': 0.0})
+                s_min = pd.Series({'time': raw_tick_ts, 'DummyMin': 0.0})
                 s_min.name = 'DummyMin'
                 self.dummy_min.update(s_min)
 
-                s_max = pd.Series({'time': ts_str, 'DummyMax': 1.0})
+                s_max = pd.Series({'time': raw_tick_ts, 'DummyMax': 1.0})
                 s_max.name = 'DummyMax'
                 self.dummy_max.update(s_max)
 
