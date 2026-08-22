@@ -107,9 +107,9 @@ class DualPaneHUD(QMainWindow):
         )
 
         # === PREDICTION LINES (ON SUBCHART) ===
-        self.p_long_line = self.subchart.create_line('P_Long', color='forestgreen', width=2)
-        self.p_short_line = self.subchart.create_line('P_Short', color='firebrick', width=2)
-        self.p_noise_line = self.subchart.create_line('P_Noise', color='gray', width=1, style='dotted')
+        self.p_long_line = self.subchart.create_line('P_Long', color='forestgreen', width=2, price_line_visible=False)
+        self.p_short_line = self.subchart.create_line('P_Short', color='firebrick', width=2, price_line_visible=False)
+        self.p_noise_line = self.subchart.create_line('P_Noise', color='gray', width=1, style='dotted', price_line_visible=False)
 
         # === THRESHOLD LINES (ON SUBCHART) ===
         self.thr_long = self.subchart.horizontal_line(0.45, color='forestgreen', width=1, style='dashed', text='Thr_Long')
@@ -117,8 +117,8 @@ class DualPaneHUD(QMainWindow):
         self.thr_noise = self.subchart.horizontal_line(0.35, color='gray', width=1, style='dashed', text='Thr_Noise')
 
         # Dummy min-max lines to force 0 to 1 scaling natively on the subchart
-        self.dummy_min = self.subchart.create_line('DummyMin', color='rgba(0,0,0,0)', width=1, price_label=True)
-        self.dummy_max = self.subchart.create_line('DummyMax', color='rgba(0,0,0,0)', width=1, price_label=True)
+        self.dummy_min = self.subchart.create_line('DummyMin', color='rgba(0,0,0,0)', width=1, price_label=True, price_line_visible=False)
+        self.dummy_max = self.subchart.create_line('DummyMax', color='rgba(0,0,0,0)', width=1, price_label=True, price_line_visible=False)
 
         self.is_initialized = False
         self.last_ts = None
@@ -141,14 +141,13 @@ class DualPaneHUD(QMainWindow):
 
         raw_ts = pd.to_datetime(data['timestamp'], unit='s')
         minute_ts_dt = raw_ts.floor('min')
-        min_ts_str = minute_ts_dt.strftime('%Y-%m-%d %H:%M:%S')
-        ts_str = min_ts_str # Use the minute floor for the X-axis sync!
+        ts_str = minute_ts_dt.strftime('%Y-%m-%d %H:%M:%S')
 
         price = data['close']
 
-        if self.current_minute_ts != min_ts_str:
+        if self.current_minute_ts != ts_str:
             # New minute started
-            self.current_minute_ts = min_ts_str
+            self.current_minute_ts = ts_str
             self.current_open = data.get('open', price)
             self.current_high = data.get('high', price)
             self.current_low = data.get('low', price)
