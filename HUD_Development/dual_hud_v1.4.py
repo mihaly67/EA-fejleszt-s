@@ -86,6 +86,10 @@ class DualPaneHUD(QMainWindow):
         self.chart.time_scale(visible=True, right_offset=15)
         self.chart.get_webview().setStyleSheet("background-color: #121212;")
 
+
+        # === DYNAMIC PRICE LINES (BID/ASK) ON MAIN CHART ===
+        self.bid_line = self.chart.create_line('Bid', color='gray', width=1, style='dotted')
+        self.ask_line = self.chart.create_line('Ask', color='red', width=1, style='dotted')
         # Add the chart to the layout (Main Chart = Candlesticks)
         main_layout.addWidget(self.chart.get_webview(), stretch=3)
 
@@ -112,9 +116,9 @@ class DualPaneHUD(QMainWindow):
         self.p_noise_line = self.subchart.create_line('P_Noise', color='gray', width=1, style='dotted', price_line=False)
 
         # === THRESHOLD LINES (ON SUBCHART) ===
-        self.thr_long = self.subchart.horizontal_line(0.45, color='forestgreen', width=1, style='dashed', text='Thr_Long', axis_label_visible=False)
-        self.thr_short = self.subchart.horizontal_line(0.40, color='firebrick', width=1, style='dashed', text='Thr_Short', axis_label_visible=False)
-        self.thr_noise = self.subchart.horizontal_line(0.35, color='gray', width=1, style='dashed', text='Thr_Noise', axis_label_visible=False)
+        self.thr_long = self.subchart.horizontal_line(0.45, color='forestgreen', width=1, style='dashed', text='Thr_Long')
+        self.thr_short = self.subchart.horizontal_line(0.40, color='firebrick', width=1, style='dashed', text='Thr_Short')
+        self.thr_noise = self.subchart.horizontal_line(0.35, color='gray', width=1, style='dashed', text='Thr_Noise')
 
         # Dummy min-max lines to force 0 to 1 scaling natively on the subchart
         self.dummy_min = self.subchart.create_line('DummyMin', color='rgba(0,0,0,0)', width=1, price_label=True)
@@ -181,6 +185,13 @@ class DualPaneHUD(QMainWindow):
         p_short_df = pd.DataFrame([{'time': ts_str, 'P_Short': data.get('p_short', 0.0)}])
         p_noise_df = pd.DataFrame([{'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)}])
 
+        bid_price = data.get('bid', price)
+        ask_price = data.get('ask', price)
+
+        bid_df = pd.DataFrame([{'time': ts_str, 'Bid': bid_price}])
+        ask_df = pd.DataFrame([{'time': ts_str, 'Ask': ask_price}])
+
+
         try:
             if not self.is_initialized:
                 # Initialize Main Chart (Candles)
@@ -191,6 +202,9 @@ class DualPaneHUD(QMainWindow):
                 self.p_long_line.set(p_long_df)
                 self.p_short_line.set(p_short_df)
                 self.p_noise_line.set(p_noise_df)
+                self.bid_line.set(bid_df)
+                self.ask_line.set(ask_df)
+
 
                 d_min = pd.DataFrame([{'time': ts_str, 'DummyMin': 0.0}])
                 d_max = pd.DataFrame([{'time': ts_str, 'DummyMax': 1.0}])
@@ -221,6 +235,15 @@ class DualPaneHUD(QMainWindow):
                 s_n = pd.Series({'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)})
                 s_n.name = 'P_Noise'
                 self.p_noise_line.update(s_n)
+
+                s_bid = pd.Series({'time': ts_str, 'Bid': bid_price})
+                s_bid.name = 'Bid'
+                self.bid_line.update(s_bid)
+
+                s_ask = pd.Series({'time': ts_str, 'Ask': ask_price})
+                s_ask.name = 'Ask'
+                self.ask_line.update(s_ask)
+
 
                 s_min = pd.Series({'time': ts_str, 'DummyMin': 0.0})
                 s_min.name = 'DummyMin'
