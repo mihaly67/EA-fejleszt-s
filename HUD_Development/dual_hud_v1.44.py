@@ -96,10 +96,8 @@ class DualPaneHUD(QMainWindow):
         self.bid_line = self.chart.horizontal_line(0.0, color='royalblue', width=1, style='dotted')
         self.ask_line = self.chart.horizontal_line(0.0, color='red', width=1, style='dotted')
 
-        # Position (Entry) line. Solid Green line, dynamically displayed when a position is open.
-        self.pos_line = self.chart.horizontal_line(0.0, color='#00FF00', width=2, style='solid', text='Entry')
-        # Initially hide it
-        self.chart.run_script(f"{self.pos_line.id}.applyOptions({{visible: false}})")
+        # Position line reference (created dynamically to ensure stability)
+        self.pos_line = None
 
         # === SUBCHART (PREDICTIONS) ===
         # Create a synchronized subchart (bottom pane by default).
@@ -203,10 +201,14 @@ class DualPaneHUD(QMainWindow):
 
                 pos_type = data.get('pos_type', 0)
                 if pos_type != 0:
-                    self.pos_line.update(data.get('pos_price', price))
-                    self.chart.run_script(f"{self.pos_line.id}.applyOptions({{visible: true}})")
+                    if self.pos_line is None:
+                        self.pos_line = self.chart.horizontal_line(data.get('pos_price', price), color='#00FF00', width=2, style='solid', text='Entry')
+                    else:
+                        self.pos_line.update(data.get('pos_price', price))
                 else:
-                    self.chart.run_script(f"{self.pos_line.id}.applyOptions({{visible: false}})")
+                    if self.pos_line is not None:
+                        self.pos_line.delete()
+                        self.pos_line = None
 
                 # Initialize Subchart (Predictions + Time Scale Sync)
                 self.subchart.set(dummy_df)
@@ -232,10 +234,14 @@ class DualPaneHUD(QMainWindow):
 
                 pos_type = data.get('pos_type', 0)
                 if pos_type != 0:
-                    self.pos_line.update(data.get('pos_price', price))
-                    self.chart.run_script(f"{self.pos_line.id}.applyOptions({{visible: true}})")
+                    if self.pos_line is None:
+                        self.pos_line = self.chart.horizontal_line(data.get('pos_price', price), color='#00FF00', width=2, style='solid', text='Entry')
+                    else:
+                        self.pos_line.update(data.get('pos_price', price))
                 else:
-                    self.chart.run_script(f"{self.pos_line.id}.applyOptions({{visible: false}})")
+                    if self.pos_line is not None:
+                        self.pos_line.delete()
+                        self.pos_line = None
 
                 # Update Subchart Dummy to pull X-axis forward
                 dummy_s = dummy_df.iloc[0].copy()
