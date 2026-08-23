@@ -90,16 +90,11 @@ class DualPaneHUD(QMainWindow):
         main_layout.addWidget(self.chart.get_webview(), stretch=3)
 
         # === PRICE LINES (ON MAIN CHART) ===
-        # color='rgba(0,0,0,0)' makes the historical connecting line invisible.
-        # However, we inject JS to style the active PriceLine stretching from the right axis.
-        self.bid_line = self.chart.create_line('Bid', color='rgba(0,0,0,0)', width=1, price_line=True, price_label=True)
-        self.ask_line = self.chart.create_line('Ask', color='rgba(0,0,0,0)', width=1, price_line=True, price_label=True)
-        self.last_line = self.chart.create_line('Last', color='rgba(0,0,0,0)', width=1, price_line=True, price_label=True)
-
-        # Style the price lines and labels with requested colors (Bid: Blue, Ask: Red, Last: Gray)
-        self.chart.run_script(f"{self.bid_line.id}.applyOptions({{priceLineColor: 'royalblue', priceLineStyle: 2}})") # 2 = Dotted
-        self.chart.run_script(f"{self.ask_line.id}.applyOptions({{priceLineColor: 'red', priceLineStyle: 2}})")
-        self.chart.run_script(f"{self.last_line.id}.applyOptions({{priceLineColor: 'gray', priceLineStyle: 3}})") # 3 = Dashed
+        # Use native horizontal lines to prevent historical path "zigzag" connecting lines.
+        # These lines will move dynamically tick-by-tick.
+        self.bid_line = self.chart.horizontal_line(0.0, color='royalblue', width=1, style='dotted', text='Bid')
+        self.ask_line = self.chart.horizontal_line(0.0, color='red', width=1, style='dotted', text='Ask')
+        self.last_line = self.chart.horizontal_line(0.0, color='gray', width=1, style='dashed', text='Last')
 
         # === SUBCHART (PREDICTIONS) ===
         # Create a synchronized subchart (bottom pane by default).
@@ -189,11 +184,6 @@ class DualPaneHUD(QMainWindow):
             'close': 0.5
         }])
 
-        # For Main Chart Lines (Must use the exact same minute-floored timestamp as the candlestick to prevent X-axis corruption)
-        bid_df = pd.DataFrame([{'time': ts_str, 'Bid': data.get('bid', price)}])
-        ask_df = pd.DataFrame([{'time': ts_str, 'Ask': data.get('ask', price)}])
-        last_df = pd.DataFrame([{'time': ts_str, 'Last': price}])
-
         p_long_df = pd.DataFrame([{'time': ts_str, 'P_Long': data.get('p_long', 0.0)}])
         p_short_df = pd.DataFrame([{'time': ts_str, 'P_Short': data.get('p_short', 0.0)}])
         p_noise_df = pd.DataFrame([{'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)}])
@@ -202,9 +192,10 @@ class DualPaneHUD(QMainWindow):
             if not self.is_initialized:
                 # Initialize Main Chart (Candles)
                 self.chart.set(candle_df)
-                self.bid_line.set(bid_df)
-                self.ask_line.set(ask_df)
-                self.last_line.set(last_df)
+
+                self.bid_line.update(data.get('bid', price))
+                self.ask_line.update(data.get('ask', price))
+                self.last_line.update(price)
 
                 # Initialize Subchart (Predictions + Time Scale Sync)
                 self.subchart.set(dummy_df)
@@ -224,18 +215,10 @@ class DualPaneHUD(QMainWindow):
                 s_c.name = None
                 self.chart.update(s_c)
 
-                # Update Main Chart Lines
-                s_b = bid_df.iloc[0].copy()
-                s_b.name = 'Bid'
-                self.bid_line.update(s_b)
-
-                s_a = ask_df.iloc[0].copy()
-                s_a.name = 'Ask'
-                self.ask_line.update(s_a)
-
-                s_last = last_df.iloc[0].copy()
-                s_last.name = 'Last'
-                self.last_line.update(s_last)
+                # Update Main Chart Horizontal Lines
+                self.bid_line.update(data.get('bid', price))
+                self.ask_line.update(data.get('ask', price))
+                self.last_line.update(price)
 
                 # Update Subchart Dummy to pull X-axis forward
                 dummy_s = dummy_df.iloc[0].copy()
