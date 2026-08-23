@@ -96,8 +96,9 @@ class DualPaneHUD(QMainWindow):
         self.bid_line = self.chart.horizontal_line(0.0, color='royalblue', width=1, style='dotted')
         self.ask_line = self.chart.horizontal_line(0.0, color='red', width=1, style='dotted')
 
-        # Position line reference (created dynamically to ensure stability)
-        self.pos_line = None
+        # Position line reference (Off-screen approach to ensure stability and avoid pred-freezing)
+        # We spawn it at an extremely low price (0.0001) so it stays completely hidden below the auto-scaled chart.
+        self.pos_line = self.chart.horizontal_line(0.0001, color='forestgreen', width=2, style='solid', text='Entry')
 
         # === SUBCHART (PREDICTIONS) ===
         # Create a synchronized subchart (bottom pane by default).
@@ -201,14 +202,9 @@ class DualPaneHUD(QMainWindow):
 
                 pos_type = data.get('pos_type', 0)
                 if pos_type != 0:
-                    if self.pos_line is None:
-                        self.pos_line = self.chart.horizontal_line(data.get('pos_price', price), color='#00FF00', width=2, style='solid', text='Entry')
-                    else:
-                        self.pos_line.update(data.get('pos_price', price))
+                    self.pos_line.update(data.get('pos_price', price))
                 else:
-                    if self.pos_line is not None:
-                        self.pos_line.delete()
-                        self.pos_line = None
+                    self.pos_line.update(0.0001)
 
                 # Initialize Subchart (Predictions + Time Scale Sync)
                 self.subchart.set(dummy_df)
@@ -234,14 +230,9 @@ class DualPaneHUD(QMainWindow):
 
                 pos_type = data.get('pos_type', 0)
                 if pos_type != 0:
-                    if self.pos_line is None:
-                        self.pos_line = self.chart.horizontal_line(data.get('pos_price', price), color='#00FF00', width=2, style='solid', text='Entry')
-                    else:
-                        self.pos_line.update(data.get('pos_price', price))
+                    self.pos_line.update(data.get('pos_price', price))
                 else:
-                    if self.pos_line is not None:
-                        self.pos_line.delete()
-                        self.pos_line = None
+                    self.pos_line.update(0.0001)
 
                 # Update Subchart Dummy to pull X-axis forward
                 dummy_s = dummy_df.iloc[0].copy()

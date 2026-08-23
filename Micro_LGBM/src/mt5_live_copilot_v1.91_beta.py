@@ -19,7 +19,9 @@ macro_cache = {
     'Dist_Sec_S': 0.0,
     'Dist_Ter_R': 0.0,
     'Dist_Ter_S': 0.0,
-    'Stoch_State_M1': 0.0
+    'Stoch_State_M1': 0.0,
+    'pos_type': 0,
+    'pos_price': 0.0
 }
 macro_lock = threading.Lock()
 
@@ -295,6 +297,9 @@ class MacroReceiver(threading.Thread):
 
                                     # Continuous HUD Broadcast (M1 Data)
                                     with macro_lock:
+                                        current_pos_type = macro_cache.get('pos_type', 0)
+                                        current_pos_price = macro_cache.get('pos_price', 0.0)
+
                                         hud_data = {
                                             "timestamp": t,
                                             "price": price,
@@ -304,6 +309,8 @@ class MacroReceiver(threading.Thread):
                                             "close": price,
                                             "bid": price,
                                             "ask": price,
+                                            "pos_type": current_pos_type,
+                                            "pos_price": current_pos_price,
                                             "stoch_k": stoch_k,
                                             "signal": latest_prob['signal'],
                                             "p_long": latest_prob['p_long'],
@@ -404,6 +411,11 @@ class TickReceiver(threading.Thread):
 
                                 if not tick_data:
                                     continue
+
+                                # Globally cache the latest position state so other threads (MacroReceiver) can send it
+                                with macro_lock:
+                                    macro_cache['pos_type'] = tick_data.get('pos_type', 0)
+                                    macro_cache['pos_price'] = tick_data.get('pos_price', 0.0)
 
                                 current_bar_ticks.append(tick_data)
                                 current_dollar_volume += tick_data['dollar_vol']
