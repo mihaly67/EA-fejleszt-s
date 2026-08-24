@@ -47,9 +47,9 @@ def initialize_copilot():
     print("=== 🟢 STARTING MT5 ONLINE COPILOT ===")
     print("Loading Pre-Trained V5 Fusion Model...")
     try:
-        # Load the model from the adjacent 'models' directory in the new independent Jules LGBM Copilot System folder.
+        # Load the model from the adjacent 'models' directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(current_dir, 'models', 'lgbm_model_fusion_v5_tuned.pkl')
+        model_path = os.path.join(current_dir, '..', 'models', 'lgbm_model_fusion_v5_tuned.pkl')
         print(f"Looking for model at: {model_path}")
         clf = joblib.load(model_path)
     except Exception as e:
@@ -138,6 +138,12 @@ def evaluate_tick_state(clf, current_features_dict):
         "ask": current_features_dict.get('Ask', current_price),
         "pos_types": current_features_dict.get('pos_types', [0]),
         "pos_prices": current_features_dict.get('pos_prices', [0.0]),
+        "res_micro": macro_cache.get('Raw_Mic_R', current_price),
+        "sup_micro": macro_cache.get('Raw_Mic_S', current_price),
+        "res_sec": macro_cache.get('Raw_Sec_R', current_price),
+        "sup_sec": macro_cache.get('Raw_Sec_S', current_price),
+        "res_ter": macro_cache.get('Raw_Ter_R', current_price),
+        "sup_ter": macro_cache.get('Raw_Ter_S', current_price),
         "stoch_k": current_features_dict.get('Raw_Stoch_K', 0.5) * 100.0,
         "signal": signal,
         "p_long": float(p_long),
@@ -153,58 +159,6 @@ def evaluate_tick_state(clf, current_features_dict):
     return signal, p_long, p_short, p_noise
 
 
-class FullZigZagEngine:
-    def __init__(self, depth=12, deviation=5, backstep=3):
-        self.depth = depth
-        self.deviation = deviation
-        self.backstep = backstep
-
-    def calculate(self, highs, lows, point_size=0.1):
-        n = len(highs)
-        zigzag = np.zeros(n)
-        high_map = np.zeros(n)
-        low_map = np.zeros(n)
-        if n < self.depth: return zigzag, high_map, low_map
-        for i in range(self.depth, n):
-            start_idx = max(0, i - self.depth + 1)
-            w_high = highs[start_idx:i+1]
-            if len(w_high) > 0:
-                max_val = np.max(w_high)
-                if max_val == highs[i]: high_map[i] = highs[i]
-                else: high_map[i] = 0.0
-            w_low = lows[start_idx:i+1]
-            if len(w_low) > 0:
-                min_val = np.min(w_low)
-                if min_val == lows[i]: low_map[i] = lows[i]
-                else: low_map[i] = 0.0
-        last_high = 0.0
-        last_low = 0.0
-        for i in range(self.depth, n):
-            if low_map[i] != 0:
-                if last_low == 0.0 or low_map[i] < last_low:
-                    last_low = low_map[i]
-                    zigzag[i] = -1
-                elif low_map[i] > last_low + (self.deviation * point_size):
-                    last_low = low_map[i]
-                    zigzag[i] = -1
-            if high_map[i] != 0:
-                if last_high == 0.0 or high_map[i] > last_high:
-                    last_high = high_map[i]
-                    zigzag[i] = 1
-                elif high_map[i] < last_high - (self.deviation * point_size):
-                    last_high = high_map[i]
-                    zigzag[i] = 1
-        rolling_r = np.zeros(n)
-        rolling_s = np.zeros(n)
-        cur_r = highs[0]
-        cur_s = lows[0]
-        for i in range(n):
-            if zigzag[i] == 1: cur_r = highs[i]
-            if zigzag[i] == -1: cur_s = lows[i]
-            rolling_r[i] = cur_r
-            rolling_s[i] = cur_s
-        return rolling_r, rolling_s
-
 class MacroReceiver(threading.Thread):
     def __init__(self, host='0.0.0.0', port=5555):
         super().__init__()
@@ -212,32 +166,8 @@ class MacroReceiver(threading.Thread):
         self.port = port
         self.running = True
 
-        # New Optimal ZigZag Parameters
-        self.mic_zz = FullZigZagEngine(depth=12, deviation=5)
-        self.sec_zz = FullZigZagEngine(depth=20, deviation=22) # Optuna Optimized
-        self.ter_zz = FullZigZagEngine(depth=36, deviation=40) # Closer tertiary
-
-        self.m1_times = []
-        self.m1_highs = []
-        self.m1_lows = []
-
-    def update_macro_cache(self, current_price):
-        if len(self.m1_highs) < 50: return
-        h = np.array(self.m1_highs)
-        l = np.array(self.m1_lows)
-
-        mic_r, mic_s = self.mic_zz.calculate(h, l)
-        sec_r, sec_s = self.sec_zz.calculate(h, l)
-        ter_r, ter_s = self.ter_zz.calculate(h, l)
-
-        with macro_lock:
-            macro_cache['Raw_Mic_R'] = mic_r[-1]
-            macro_cache['Raw_Mic_S'] = mic_s[-1]
-            macro_cache['Raw_Sec_R'] = sec_r[-1]
-            macro_cache['Raw_Sec_S'] = sec_s[-1]
-            macro_cache['Raw_Ter_R'] = ter_r[-1]
-            macro_cache['Raw_Ter_S'] = ter_s[-1]
-            macro_cache['Current_Macro_Price'] = current_price
+        # Note: The Python FullZigZagEngine has been removed.
+        # The Copilot now uses the 100% accurate MT5 Pivot levels sent via JSON.
 
     def run(self):
         print(f"[MACRO v1.9 BETA] Server listening on {self.host}:{self.port}")
@@ -278,11 +208,9 @@ class MacroReceiver(threading.Thread):
                                 msg_type = payload.get('type', 'update')
 
                                 if msg_type == 'init':
-                                    self.m1_times = payload.get('times', [])
-                                    self.m1_highs = payload.get('highs', [])
-                                    self.m1_lows = payload.get('lows', [])
-                                    print(f"[MACRO] Received init buffer with {len(self.m1_highs)} candles.")
-                                    self.update_macro_cache(self.m1_highs[-1])
+                                    # Initialization logic handled primarily by the EA sending the pivot data.
+                                    # Since Python no longer calculates ZigZag, we just acknowledge connection.
+                                    print(f"[MACRO] Received init signal from EA.")
 
                                 elif msg_type == 'update':
                                     t = payload.get('time')
@@ -291,24 +219,24 @@ class MacroReceiver(threading.Thread):
                                     price = payload.get('price', h)
                                     stoch_k = payload.get('stoch_k', 50.0)
 
-                                    # Update rolling M1 cache
-                                    if len(self.m1_times) > 0 and self.m1_times[-1] == t:
-                                        self.m1_highs[-1] = h
-                                        self.m1_lows[-1] = l
-                                    else:
-                                        self.m1_times.append(t)
-                                        self.m1_highs.append(h)
-                                        self.m1_lows.append(l)
-                                        if len(self.m1_times) > 200:
-                                            self.m1_times.pop(0)
-                                            self.m1_highs.pop(0)
-                                            self.m1_lows.pop(0)
+                                    # Extract real MT5 ZigZag Pivots sent by the EA (v2.2)
+                                    mic_r = payload.get('mic_r', price)
+                                    mic_s = payload.get('mic_s', price)
+                                    sec_r = payload.get('sec_r', price)
+                                    sec_s = payload.get('sec_s', price)
+                                    ter_r = payload.get('ter_r', price)
+                                    ter_s = payload.get('ter_s', price)
 
                                     with macro_lock:
                                         macro_cache['Stoch_State_M1'] = (stoch_k - 50.0) / 50.0
                                         macro_cache['Raw_Stoch_K'] = stoch_k / 100.0 # Standard 0.0-1.0 scale
-
-                                    self.update_macro_cache(price)
+                                        macro_cache['Raw_Mic_R'] = mic_r
+                                        macro_cache['Raw_Mic_S'] = mic_s
+                                        macro_cache['Raw_Sec_R'] = sec_r
+                                        macro_cache['Raw_Sec_S'] = sec_s
+                                        macro_cache['Raw_Ter_R'] = ter_r
+                                        macro_cache['Raw_Ter_S'] = ter_s
+                                        macro_cache['Current_Macro_Price'] = price
 
                                     # Continuous HUD Broadcast (M1 Data)
                                     with macro_lock:
@@ -576,6 +504,12 @@ class TickReceiver(threading.Thread):
                                             "ask": tick_data.get('ask', close_p_tmp),
                                             "pos_types": tick_data.get('pos_types', [0]),
                                             "pos_prices": tick_data.get('pos_prices', [0.0]),
+                                            "res_micro": macro_cache.get('Raw_Mic_R', close_p_tmp),
+                                            "sup_micro": macro_cache.get('Raw_Mic_S', close_p_tmp),
+                                            "res_sec": macro_cache.get('Raw_Sec_R', close_p_tmp),
+                                            "sup_sec": macro_cache.get('Raw_Sec_S', close_p_tmp),
+                                            "res_ter": macro_cache.get('Raw_Ter_R', close_p_tmp),
+                                            "sup_ter": macro_cache.get('Raw_Ter_S', close_p_tmp),
                                             "stoch_k": macro_cache.get('Raw_Stoch_K', 0.5) * 100.0,
                                             "signal": current_signal,
                                             "p_long": current_plong,
