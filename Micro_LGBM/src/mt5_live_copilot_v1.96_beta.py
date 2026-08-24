@@ -47,8 +47,7 @@ def initialize_copilot():
     print("=== 🟢 STARTING MT5 ONLINE COPILOT ===")
     print("Loading Pre-Trained V5 Fusion Model...")
     try:
-        # Use an absolute path built dynamically based on the current script's location
-        # to ensure it always finds the model regardless of the CWD (current working directory) of the bash launcher.
+        # Load the model from the adjacent 'models' directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
         model_path = os.path.join(current_dir, '..', 'models', 'lgbm_model_fusion_v5_tuned.pkl')
         print(f"Looking for model at: {model_path}")
@@ -139,6 +138,12 @@ def evaluate_tick_state(clf, current_features_dict):
         "ask": current_features_dict.get('Ask', current_price),
         "pos_types": current_features_dict.get('pos_types', [0]),
         "pos_prices": current_features_dict.get('pos_prices', [0.0]),
+        "res_micro": macro_cache.get('Raw_Mic_R', current_price),
+        "sup_micro": macro_cache.get('Raw_Mic_S', current_price),
+        "res_sec": macro_cache.get('Raw_Sec_R', current_price),
+        "sup_sec": macro_cache.get('Raw_Sec_S', current_price),
+        "res_ter": macro_cache.get('Raw_Ter_R', current_price),
+        "sup_ter": macro_cache.get('Raw_Ter_S', current_price),
         "stoch_k": current_features_dict.get('Raw_Stoch_K', 0.5) * 100.0,
         "signal": signal,
         "p_long": float(p_long),
@@ -577,6 +582,12 @@ class TickReceiver(threading.Thread):
                                             "ask": tick_data.get('ask', close_p_tmp),
                                             "pos_types": tick_data.get('pos_types', [0]),
                                             "pos_prices": tick_data.get('pos_prices', [0.0]),
+                                            "res_micro": macro_cache.get('Raw_Mic_R', close_p_tmp),
+                                            "sup_micro": macro_cache.get('Raw_Mic_S', close_p_tmp),
+                                            "res_sec": macro_cache.get('Raw_Sec_R', close_p_tmp),
+                                            "sup_sec": macro_cache.get('Raw_Sec_S', close_p_tmp),
+                                            "res_ter": macro_cache.get('Raw_Ter_R', close_p_tmp),
+                                            "sup_ter": macro_cache.get('Raw_Ter_S', close_p_tmp),
                                             "stoch_k": macro_cache.get('Raw_Stoch_K', 0.5) * 100.0,
                                             "signal": current_signal,
                                             "p_long": current_plong,

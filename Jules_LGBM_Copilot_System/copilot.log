@@ -1,0 +1,859 @@
+=== 🟢 STARTING MT5 ONLINE COPILOT ===
+Loading Pre-Trained V5 Fusion Model...
+Looking for model at: /home/misi/Jules_LGBM_Copilot_System/models/lgbm_model_fusion_v5_tuned.pkl
+Copilot Engine Armed and Ready.
+[MACRO v1.9 BETA] Server listening on 0.0.0.0:5555
+[TICK] Server listening on 0.0.0.0:5556
+[MACRO] EA Connected from ('127.0.0.1', 57028)
+[TICK] EA Connected from ('127.0.0.1', 60896)
+[MACRO] Received init buffer with 150 candles.
+[MACRO] Connection closed by EA.
+[TICK] Connection closed by EA.
+[MACRO] EA Connected from ('127.0.0.1', 32900)
+[TICK] EA Connected from ('127.0.0.1', 48854)
+[MACRO] Received init buffer with 1440 candles.
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:20:50] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 26.4% | P_Short: 46.1% | P_Noise: 27.5%
+RAW PROBS -> Long: 0.2635 Short: 0.4611 Noise: 0.2754
+[2026-08-24 18:20:50] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2635|0.4611|0.2754
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:21:16] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 55.1% | P_Short: 27.7% | P_Noise: 17.2%
+RAW PROBS -> Long: 0.5507 Short: 0.2769 Noise: 0.1724
+[2026-08-24 18:21:16] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.5507|0.2769|0.1724
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:21:41] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 69.1% | P_Short: 20.6% | P_Noise: 10.4%
+RAW PROBS -> Long: 0.6907 Short: 0.2058 Noise: 0.1035
+[2026-08-24 18:21:41] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.6907|0.2058|0.1035
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:22:09] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 43.6% | P_Short: 48.8% | P_Noise: 7.6%
+RAW PROBS -> Long: 0.4357 Short: 0.4881 Noise: 0.0763
+[2026-08-24 18:22:09] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.4357|0.4881|0.0763
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:22:45] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 25.3% | P_Short: 67.2% | P_Noise: 7.5%
+RAW PROBS -> Long: 0.2530 Short: 0.6724 Noise: 0.0746
+[2026-08-24 18:22:45] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2530|0.6724|0.0746
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:23:16] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 40.8% | P_Short: 48.0% | P_Noise: 11.2%
+RAW PROBS -> Long: 0.4084 Short: 0.4801 Noise: 0.1115
+[2026-08-24 18:23:16] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.4084|0.4801|0.1115
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:23:49] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 49.5% | P_Short: 40.9% | P_Noise: 9.6%
+RAW PROBS -> Long: 0.4952 Short: 0.4085 Noise: 0.0963
+[2026-08-24 18:23:49] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.4952|0.4085|0.0963
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:24:12] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 53.8% | P_Short: 37.0% | P_Noise: 9.2%
+RAW PROBS -> Long: 0.5382 Short: 0.3698 Noise: 0.0920
+[2026-08-24 18:24:12] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.5382|0.3698|0.0920
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:24:38] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 22.7% | P_Short: 64.5% | P_Noise: 12.8%
+RAW PROBS -> Long: 0.2274 Short: 0.6449 Noise: 0.1277
+[2026-08-24 18:24:38] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2274|0.6449|0.1277
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:25:07] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 27.2% | P_Short: 59.0% | P_Noise: 13.7%
+RAW PROBS -> Long: 0.2722 Short: 0.5903 Noise: 0.1375
+[2026-08-24 18:25:07] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2722|0.5903|0.1375
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:25:30] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 31.7% | P_Short: 49.7% | P_Noise: 18.6%
+RAW PROBS -> Long: 0.3168 Short: 0.4969 Noise: 0.1863
+[2026-08-24 18:25:30] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.3168|0.4969|0.1863
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:25:54] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 44.2% | P_Short: 37.1% | P_Noise: 18.7%
+RAW PROBS -> Long: 0.4421 Short: 0.3713 Noise: 0.1866
+[2026-08-24 18:25:54] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.4421|0.3713|0.1866
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:26:29] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 57.4% | P_Short: 31.8% | P_Noise: 10.8%
+RAW PROBS -> Long: 0.5739 Short: 0.3184 Noise: 0.1077
+[2026-08-24 18:26:29] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5739|0.3184|0.1077
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:27:07] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 70.9% | P_Short: 20.7% | P_Noise: 8.4%
+RAW PROBS -> Long: 0.7093 Short: 0.2066 Noise: 0.0841
+[2026-08-24 18:27:07] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.7093|0.2066|0.0841
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:27:38] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 69.8% | P_Short: 22.4% | P_Noise: 7.8%
+RAW PROBS -> Long: 0.6981 Short: 0.2238 Noise: 0.0781
+[2026-08-24 18:27:38] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.6981|0.2238|0.0781
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:28:18] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 72.0% | P_Short: 20.5% | P_Noise: 7.5%
+RAW PROBS -> Long: 0.7205 Short: 0.2049 Noise: 0.0746
+[2026-08-24 18:28:18] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.7205|0.2049|0.0746
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:28:58] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 73.1% | P_Short: 18.3% | P_Noise: 8.7%
+RAW PROBS -> Long: 0.7307 Short: 0.1826 Noise: 0.0867
+[2026-08-24 18:28:58] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.7307|0.1826|0.0867
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:29:36] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 67.0% | P_Short: 19.3% | P_Noise: 13.8%
+RAW PROBS -> Long: 0.6697 Short: 0.1925 Noise: 0.1378
+[2026-08-24 18:29:36] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.6697|0.1925|0.1378
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:30:09] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 65.5% | P_Short: 25.7% | P_Noise: 8.8%
+RAW PROBS -> Long: 0.6549 Short: 0.2571 Noise: 0.0880
+[2026-08-24 18:30:09] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.6549|0.2571|0.0880
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:30:35] | SIGNAL: HOLD (STOCH BLOCKED SHORT) | P_Long: 37.7% | P_Short: 40.9% | P_Noise: 21.3%
+RAW PROBS -> Long: 0.3775 Short: 0.4092 Noise: 0.2134
+[2026-08-24 18:30:35] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3775|0.4092|0.2134
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:31:02] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 54.2% | P_Short: 7.6% | P_Noise: 38.1%
+RAW PROBS -> Long: 0.5422 Short: 0.0764 Noise: 0.3815
+[2026-08-24 18:31:02] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5422|0.0764|0.3815
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:31:28] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 36.3% | P_Short: 33.5% | P_Noise: 30.2%
+RAW PROBS -> Long: 0.3630 Short: 0.3353 Noise: 0.3018
+[2026-08-24 18:31:28] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.3630|0.3353|0.3018
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:32:01] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 43.4% | P_Short: 25.3% | P_Noise: 31.3%
+RAW PROBS -> Long: 0.4339 Short: 0.2531 Noise: 0.3130
+[2026-08-24 18:32:01] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4339|0.2531|0.3130
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:32:26] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 37.4% | P_Short: 33.1% | P_Noise: 29.5%
+RAW PROBS -> Long: 0.3740 Short: 0.3314 Noise: 0.2946
+[2026-08-24 18:32:26] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.3740|0.3314|0.2946
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:32:52] | SIGNAL: HOLD (STOCH BLOCKED SHORT) | P_Long: 25.3% | P_Short: 44.8% | P_Noise: 29.9%
+RAW PROBS -> Long: 0.2527 Short: 0.4483 Noise: 0.2990
+[2026-08-24 18:32:52] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2527|0.4483|0.2990
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:33:16] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 38.8% | P_Short: 35.4% | P_Noise: 25.8%
+RAW PROBS -> Long: 0.3878 Short: 0.3540 Noise: 0.2582
+[2026-08-24 18:33:16] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.3878|0.3540|0.2582
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:33:48] | SIGNAL: HOLD (STOCH BLOCKED SHORT) | P_Long: 42.4% | P_Short: 44.2% | P_Noise: 13.4%
+RAW PROBS -> Long: 0.4245 Short: 0.4417 Noise: 0.1339
+[2026-08-24 18:33:48] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.4245|0.4417|0.1339
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:34:23] | SIGNAL: HOLD (STOCH BLOCKED SHORT) | P_Long: 38.0% | P_Short: 44.7% | P_Noise: 17.4%
+RAW PROBS -> Long: 0.3796 Short: 0.4469 Noise: 0.1736
+[2026-08-24 18:34:23] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3796|0.4469|0.1736
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:34:54] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 36.4% | P_Short: 33.4% | P_Noise: 30.2%
+RAW PROBS -> Long: 0.3641 Short: 0.3342 Noise: 0.3017
+[2026-08-24 18:34:54] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.3641|0.3342|0.3017
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:35:26] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 26.7% | P_Short: 36.9% | P_Noise: 36.4%
+RAW PROBS -> Long: 0.2670 Short: 0.3690 Noise: 0.3640
+[2026-08-24 18:35:26] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2670|0.3690|0.3640
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:35:53] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 36.8% | P_Short: 26.7% | P_Noise: 36.5%
+RAW PROBS -> Long: 0.3680 Short: 0.2672 Noise: 0.3648
+[2026-08-24 18:35:53] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3680|0.2672|0.3648
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:36:27] | SIGNAL: HOLD (STOCH BLOCKED SHORT) | P_Long: 30.3% | P_Short: 39.3% | P_Noise: 30.5%
+RAW PROBS -> Long: 0.3026 Short: 0.3925 Noise: 0.3048
+[2026-08-24 18:36:27] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3026|0.3925|0.3048
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:36:54] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 39.2% | P_Short: 26.0% | P_Noise: 34.8%
+RAW PROBS -> Long: 0.3916 Short: 0.2602 Noise: 0.3481
+[2026-08-24 18:36:54] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.3916|0.2602|0.3481
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:37:40] | SIGNAL: HOLD (STOCH BLOCKED SHORT) | P_Long: 32.4% | P_Short: 39.6% | P_Noise: 28.0%
+RAW PROBS -> Long: 0.3239 Short: 0.3960 Noise: 0.2801
+[2026-08-24 18:37:40] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3239|0.3960|0.2801
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:38:23] | SIGNAL: HOLD (STOCH BLOCKED SHORT) | P_Long: 22.2% | P_Short: 37.3% | P_Noise: 40.5%
+RAW PROBS -> Long: 0.2224 Short: 0.3726 Noise: 0.4050
+[2026-08-24 18:38:23] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2224|0.3726|0.4050
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:39:05] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 19.5% | P_Short: 40.6% | P_Noise: 39.9%
+RAW PROBS -> Long: 0.1954 Short: 0.4058 Noise: 0.3989
+[2026-08-24 18:39:05] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.1954|0.4058|0.3989
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:39:36] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 15.9% | P_Short: 48.0% | P_Noise: 36.2%
+RAW PROBS -> Long: 0.1586 Short: 0.4796 Noise: 0.3619
+[2026-08-24 18:39:36] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.1586|0.4796|0.3619
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:40:11] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 49.5% | P_Short: 23.7% | P_Noise: 26.8%
+RAW PROBS -> Long: 0.4953 Short: 0.2368 Noise: 0.2679
+[2026-08-24 18:40:11] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.4953|0.2368|0.2679
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:40:39] | SIGNAL: HOLD (NOISE)       | P_Long: 33.3% | P_Short: 22.5% | P_Noise: 44.2%
+RAW PROBS -> Long: 0.3326 Short: 0.2253 Noise: 0.4421
+[2026-08-24 18:40:39] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3326|0.2253|0.4421
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:41:18] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 38.9% | P_Short: 16.0% | P_Noise: 45.1%
+RAW PROBS -> Long: 0.3888 Short: 0.1601 Noise: 0.4512
+[2026-08-24 18:41:18] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3888|0.1601|0.4512
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:41:57] | SIGNAL: HOLD (STOCH BLOCKED SHORT) | P_Long: 27.8% | P_Short: 42.2% | P_Noise: 30.0%
+RAW PROBS -> Long: 0.2781 Short: 0.4222 Noise: 0.2997
+[2026-08-24 18:41:57] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2781|0.4222|0.2997
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:42:30] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 49.9% | P_Short: 19.3% | P_Noise: 30.7%
+RAW PROBS -> Long: 0.4992 Short: 0.1934 Noise: 0.3074
+[2026-08-24 18:42:30] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4992|0.1934|0.3074
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:43:11] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 42.7% | P_Short: 31.6% | P_Noise: 25.7%
+RAW PROBS -> Long: 0.4271 Short: 0.3163 Noise: 0.2566
+[2026-08-24 18:43:11] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4271|0.3163|0.2566
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:43:51] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 44.5% | P_Short: 38.2% | P_Noise: 17.3%
+RAW PROBS -> Long: 0.4450 Short: 0.3818 Noise: 0.1731
+[2026-08-24 18:43:51] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4450|0.3818|0.1731
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:44:22] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 43.6% | P_Short: 22.0% | P_Noise: 34.4%
+RAW PROBS -> Long: 0.4361 Short: 0.2201 Noise: 0.3439
+[2026-08-24 18:44:22] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4361|0.2201|0.3439
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:44:49] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 45.7% | P_Short: 30.2% | P_Noise: 24.1%
+RAW PROBS -> Long: 0.4571 Short: 0.3022 Noise: 0.2407
+[2026-08-24 18:44:49] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.4571|0.3022|0.2407
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:45:11] | SIGNAL: HOLD (NOISE)       | P_Long: 26.2% | P_Short: 30.8% | P_Noise: 43.0%
+RAW PROBS -> Long: 0.2621 Short: 0.3084 Noise: 0.4295
+[2026-08-24 18:45:11] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2621|0.3084|0.4295
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:45:42] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 20.1% | P_Short: 44.1% | P_Noise: 35.8%
+RAW PROBS -> Long: 0.2008 Short: 0.4414 Noise: 0.3578
+[2026-08-24 18:45:42] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2008|0.4414|0.3578
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:46:11] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 45.9% | P_Short: 28.2% | P_Noise: 25.9%
+RAW PROBS -> Long: 0.4588 Short: 0.2820 Noise: 0.2592
+[2026-08-24 18:46:11] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.4588|0.2820|0.2592
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:46:34] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 25.1% | P_Short: 43.2% | P_Noise: 31.7%
+RAW PROBS -> Long: 0.2512 Short: 0.4318 Noise: 0.3170
+[2026-08-24 18:46:34] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2512|0.4318|0.3170
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:47:13] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 24.7% | P_Short: 41.7% | P_Noise: 33.6%
+RAW PROBS -> Long: 0.2466 Short: 0.4173 Noise: 0.3360
+[2026-08-24 18:47:13] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2466|0.4173|0.3360
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:47:41] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 23.7% | P_Short: 42.3% | P_Noise: 34.0%
+RAW PROBS -> Long: 0.2368 Short: 0.4235 Noise: 0.3397
+[2026-08-24 18:47:41] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2368|0.4235|0.3397
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:48:10] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 30.7% | P_Short: 42.3% | P_Noise: 27.0%
+RAW PROBS -> Long: 0.3070 Short: 0.4232 Noise: 0.2698
+[2026-08-24 18:48:10] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.3070|0.4232|0.2698
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:48:45] | SIGNAL: HOLD (NOISE)       | P_Long: 31.1% | P_Short: 34.9% | P_Noise: 34.0%
+RAW PROBS -> Long: 0.3113 Short: 0.3490 Noise: 0.3397
+[2026-08-24 18:48:45] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3113|0.3490|0.3397
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:49:16] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 43.6% | P_Short: 26.2% | P_Noise: 30.2%
+RAW PROBS -> Long: 0.4360 Short: 0.2618 Noise: 0.3022
+[2026-08-24 18:49:16] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4360|0.2618|0.3022
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:49:50] | SIGNAL: HOLD (STOCH BLOCKED SHORT) | P_Long: 32.8% | P_Short: 37.9% | P_Noise: 29.3%
+RAW PROBS -> Long: 0.3282 Short: 0.3789 Noise: 0.2929
+[2026-08-24 18:49:50] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3282|0.3789|0.2929
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:50:16] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 44.3% | P_Short: 22.3% | P_Noise: 33.4%
+RAW PROBS -> Long: 0.4429 Short: 0.2227 Noise: 0.3345
+[2026-08-24 18:50:16] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4429|0.2227|0.3345
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:50:48] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 43.9% | P_Short: 26.4% | P_Noise: 29.7%
+RAW PROBS -> Long: 0.4394 Short: 0.2640 Noise: 0.2965
+[2026-08-24 18:50:48] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4394|0.2640|0.2965
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:51:18] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 25.6% | P_Short: 37.0% | P_Noise: 37.4%
+RAW PROBS -> Long: 0.2560 Short: 0.3702 Noise: 0.3738
+[2026-08-24 18:51:18] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2560|0.3702|0.3738
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:51:47] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 10.9% | P_Short: 60.0% | P_Noise: 29.1%
+RAW PROBS -> Long: 0.1089 Short: 0.6003 Noise: 0.2908
+[2026-08-24 18:51:47] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.1089|0.6003|0.2908
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:52:10] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 11.8% | P_Short: 53.2% | P_Noise: 35.0%
+RAW PROBS -> Long: 0.1177 Short: 0.5324 Noise: 0.3499
+[2026-08-24 18:52:10] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.1177|0.5324|0.3499
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:52:30] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 23.0% | P_Short: 44.5% | P_Noise: 32.5%
+RAW PROBS -> Long: 0.2298 Short: 0.4453 Noise: 0.3249
+[2026-08-24 18:52:30] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2298|0.4453|0.3249
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:52:57] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 40.6% | P_Short: 26.9% | P_Noise: 32.5%
+RAW PROBS -> Long: 0.4061 Short: 0.2689 Noise: 0.3250
+[2026-08-24 18:52:57] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.4061|0.2689|0.3250
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:53:29] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 37.4% | P_Short: 26.6% | P_Noise: 36.0%
+RAW PROBS -> Long: 0.3740 Short: 0.2664 Noise: 0.3596
+[2026-08-24 18:53:29] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3740|0.2664|0.3596
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:54:03] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 36.3% | P_Short: 26.4% | P_Noise: 37.3%
+RAW PROBS -> Long: 0.3631 Short: 0.2641 Noise: 0.3727
+[2026-08-24 18:54:03] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3631|0.2641|0.3727
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:54:31] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 36.2% | P_Short: 34.9% | P_Noise: 28.8%
+RAW PROBS -> Long: 0.3622 Short: 0.3495 Noise: 0.2883
+[2026-08-24 18:54:31] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3622|0.3495|0.2883
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:54:57] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 35.1% | P_Short: 27.9% | P_Noise: 37.0%
+RAW PROBS -> Long: 0.3507 Short: 0.2795 Noise: 0.3699
+[2026-08-24 18:54:57] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3507|0.2795|0.3699
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:55:14] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 27.5% | P_Short: 37.5% | P_Noise: 35.1%
+RAW PROBS -> Long: 0.2747 Short: 0.3747 Noise: 0.3506
+[2026-08-24 18:55:14] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2747|0.3747|0.3506
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:55:35] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 15.8% | P_Short: 44.7% | P_Noise: 39.5%
+RAW PROBS -> Long: 0.1584 Short: 0.4467 Noise: 0.3950
+[2026-08-24 18:55:35] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.1584|0.4467|0.3950
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:55:59] | SIGNAL: HOLD (NOISE)       | P_Long: 13.3% | P_Short: 37.7% | P_Noise: 48.9%
+RAW PROBS -> Long: 0.1335 Short: 0.3775 Noise: 0.4891
+[2026-08-24 18:55:59] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.1335|0.3775|0.4891
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:56:17] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 23.4% | P_Short: 44.9% | P_Noise: 31.8%
+RAW PROBS -> Long: 0.2336 Short: 0.4486 Noise: 0.3177
+[2026-08-24 18:56:17] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2336|0.4486|0.3177
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:56:29] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 14.7% | P_Short: 38.8% | P_Noise: 46.5%
+RAW PROBS -> Long: 0.1465 Short: 0.3883 Noise: 0.4652
+[2026-08-24 18:56:29] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.1465|0.3883|0.4652
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:56:36] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 20.5% | P_Short: 45.9% | P_Noise: 33.6%
+RAW PROBS -> Long: 0.2053 Short: 0.4589 Noise: 0.3359
+[2026-08-24 18:56:36] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2053|0.4589|0.3359
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:56:49] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 26.3% | P_Short: 39.4% | P_Noise: 34.3%
+RAW PROBS -> Long: 0.2634 Short: 0.3941 Noise: 0.3425
+[2026-08-24 18:56:49] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2634|0.3941|0.3425
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:57:08] | SIGNAL: HOLD (NOISE)       | P_Long: 32.9% | P_Short: 32.0% | P_Noise: 35.2%
+RAW PROBS -> Long: 0.3285 Short: 0.3197 Noise: 0.3517
+[2026-08-24 18:57:08] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3285|0.3197|0.3517
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:57:16] | SIGNAL: HOLD (NOISE)       | P_Long: 31.1% | P_Short: 27.4% | P_Noise: 41.4%
+RAW PROBS -> Long: 0.3115 Short: 0.2744 Noise: 0.4141
+[2026-08-24 18:57:16] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3115|0.2744|0.4141
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:57:37] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 42.1% | P_Short: 24.4% | P_Noise: 33.5%
+RAW PROBS -> Long: 0.4210 Short: 0.2437 Noise: 0.3353
+[2026-08-24 18:57:37] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.4210|0.2437|0.3353
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:58:00] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 41.6% | P_Short: 22.8% | P_Noise: 35.6%
+RAW PROBS -> Long: 0.4163 Short: 0.2277 Noise: 0.3560
+[2026-08-24 18:58:00] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.4163|0.2277|0.3560
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:58:25] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 42.4% | P_Short: 32.7% | P_Noise: 24.9%
+RAW PROBS -> Long: 0.4238 Short: 0.3272 Noise: 0.2490
+[2026-08-24 18:58:25] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.4238|0.3272|0.2490
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:58:51] | SIGNAL: HOLD (NOISE)       | P_Long: 33.3% | P_Short: 26.6% | P_Noise: 40.1%
+RAW PROBS -> Long: 0.3325 Short: 0.2663 Noise: 0.4011
+[2026-08-24 18:58:51] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3325|0.2663|0.4011
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:59:06] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 29.5% | P_Short: 41.8% | P_Noise: 28.7%
+RAW PROBS -> Long: 0.2955 Short: 0.4180 Noise: 0.2865
+[2026-08-24 18:59:06] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2955|0.4180|0.2865
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:59:22] | SIGNAL: HOLD (NOISE)       | P_Long: 32.2% | P_Short: 36.0% | P_Noise: 31.8%
+RAW PROBS -> Long: 0.3224 Short: 0.3598 Noise: 0.3178
+[2026-08-24 18:59:22] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3224|0.3598|0.3178
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 18:59:46] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 25.5% | P_Short: 42.2% | P_Noise: 32.3%
+RAW PROBS -> Long: 0.2551 Short: 0.4218 Noise: 0.3231
+[2026-08-24 18:59:46] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2551|0.4218|0.3231
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:00:03] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 43.5% | P_Short: 24.4% | P_Noise: 32.1%
+RAW PROBS -> Long: 0.4345 Short: 0.2444 Noise: 0.3211
+[2026-08-24 19:00:03] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4345|0.2444|0.3211
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:00:25] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 52.8% | P_Short: 18.9% | P_Noise: 28.3%
+RAW PROBS -> Long: 0.5278 Short: 0.1892 Noise: 0.2830
+[2026-08-24 19:00:25] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5278|0.1892|0.2830
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:00:40] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 49.3% | P_Short: 18.0% | P_Noise: 32.7%
+RAW PROBS -> Long: 0.4932 Short: 0.1802 Noise: 0.3266
+[2026-08-24 19:00:40] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4932|0.1802|0.3266
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:00:55] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 38.7% | P_Short: 25.4% | P_Noise: 35.8%
+RAW PROBS -> Long: 0.3874 Short: 0.2542 Noise: 0.3584
+[2026-08-24 19:00:55] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3874|0.2542|0.3584
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:01:10] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 24.4% | P_Short: 38.4% | P_Noise: 37.2%
+RAW PROBS -> Long: 0.2444 Short: 0.3837 Noise: 0.3720
+[2026-08-24 19:01:10] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2444|0.3837|0.3720
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:01:25] | SIGNAL: HOLD (NOISE)       | P_Long: 25.8% | P_Short: 31.6% | P_Noise: 42.6%
+RAW PROBS -> Long: 0.2580 Short: 0.3158 Noise: 0.4262
+[2026-08-24 19:01:25] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2580|0.3158|0.4262
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:01:42] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 40.3% | P_Short: 19.9% | P_Noise: 39.8%
+RAW PROBS -> Long: 0.4030 Short: 0.1988 Noise: 0.3982
+[2026-08-24 19:01:42] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4030|0.1988|0.3982
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:02:02] | SIGNAL: HOLD (NOISE)       | P_Long: 29.9% | P_Short: 23.8% | P_Noise: 46.3%
+RAW PROBS -> Long: 0.2991 Short: 0.2383 Noise: 0.4625
+[2026-08-24 19:02:02] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2991|0.2383|0.4625
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:02:19] | SIGNAL: HOLD (NOISE)       | P_Long: 34.8% | P_Short: 20.0% | P_Noise: 45.2%
+RAW PROBS -> Long: 0.3485 Short: 0.1999 Noise: 0.4516
+[2026-08-24 19:02:19] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3485|0.1999|0.4516
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:02:34] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 51.3% | P_Short: 23.0% | P_Noise: 25.7%
+RAW PROBS -> Long: 0.5130 Short: 0.2298 Noise: 0.2572
+[2026-08-24 19:02:34] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.5130|0.2298|0.2572
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:02:48] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 38.8% | P_Short: 25.5% | P_Noise: 35.6%
+RAW PROBS -> Long: 0.3884 Short: 0.2554 Noise: 0.3562
+[2026-08-24 19:02:48] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.3884|0.2554|0.3562
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:03:01] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 42.1% | P_Short: 21.7% | P_Noise: 36.2%
+RAW PROBS -> Long: 0.4210 Short: 0.2169 Noise: 0.3621
+[2026-08-24 19:03:01] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4210|0.2169|0.3621
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:03:22] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 39.2% | P_Short: 32.2% | P_Noise: 28.6%
+RAW PROBS -> Long: 0.3921 Short: 0.3215 Noise: 0.2863
+[2026-08-24 19:03:22] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3921|0.3215|0.2863
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:03:42] | SIGNAL: HOLD (NOISE)       | P_Long: 34.2% | P_Short: 31.8% | P_Noise: 34.0%
+RAW PROBS -> Long: 0.3424 Short: 0.3179 Noise: 0.3397
+[2026-08-24 19:03:42] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3424|0.3179|0.3397
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:04:03] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 50.4% | P_Short: 18.1% | P_Noise: 31.5%
+RAW PROBS -> Long: 0.5041 Short: 0.1808 Noise: 0.3151
+[2026-08-24 19:04:03] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5041|0.1808|0.3151
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:04:27] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 65.9% | P_Short: 12.5% | P_Noise: 21.6%
+RAW PROBS -> Long: 0.6591 Short: 0.1248 Noise: 0.2161
+[2026-08-24 19:04:27] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.6591|0.1248|0.2161
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:04:50] | SIGNAL: HOLD (NOISE)       | P_Long: 31.2% | P_Short: 25.3% | P_Noise: 43.5%
+RAW PROBS -> Long: 0.3123 Short: 0.2525 Noise: 0.4352
+[2026-08-24 19:04:50] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3123|0.2525|0.4352
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:05:18] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 51.4% | P_Short: 17.3% | P_Noise: 31.4%
+RAW PROBS -> Long: 0.5136 Short: 0.1729 Noise: 0.3135
+[2026-08-24 19:05:18] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5136|0.1729|0.3135
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:05:37] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 72.9% | P_Short: 16.2% | P_Noise: 10.9%
+RAW PROBS -> Long: 0.7294 Short: 0.1616 Noise: 0.1090
+[2026-08-24 19:05:37] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.7294|0.1616|0.1090
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:05:55] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 54.0% | P_Short: 19.5% | P_Noise: 26.5%
+RAW PROBS -> Long: 0.5403 Short: 0.1950 Noise: 0.2647
+[2026-08-24 19:05:55] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5403|0.1950|0.2647
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:06:14] | SIGNAL: HOLD (NOISE)       | P_Long: 21.9% | P_Short: 29.1% | P_Noise: 49.0%
+RAW PROBS -> Long: 0.2188 Short: 0.2910 Noise: 0.4903
+[2026-08-24 19:06:14] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2188|0.2910|0.4903
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:06:37] | SIGNAL: HOLD (NOISE)       | P_Long: 32.7% | P_Short: 24.2% | P_Noise: 43.1%
+RAW PROBS -> Long: 0.3268 Short: 0.2418 Noise: 0.4315
+[2026-08-24 19:06:37] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3268|0.2418|0.4315
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:07:05] | SIGNAL: HOLD (NOISE)       | P_Long: 30.6% | P_Short: 32.2% | P_Noise: 37.2%
+RAW PROBS -> Long: 0.3063 Short: 0.3217 Noise: 0.3720
+[2026-08-24 19:07:05] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3063|0.3217|0.3720
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:07:27] | SIGNAL: HOLD (NOISE)       | P_Long: 32.4% | P_Short: 22.4% | P_Noise: 45.2%
+RAW PROBS -> Long: 0.3237 Short: 0.2242 Noise: 0.4521
+[2026-08-24 19:07:27] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3237|0.2242|0.4521
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:07:40] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 57.1% | P_Short: 18.8% | P_Noise: 24.1%
+RAW PROBS -> Long: 0.5712 Short: 0.1882 Noise: 0.2406
+[2026-08-24 19:07:40] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5712|0.1882|0.2406
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:07:47] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 63.5% | P_Short: 24.9% | P_Noise: 11.6%
+RAW PROBS -> Long: 0.6347 Short: 0.2494 Noise: 0.1159
+[2026-08-24 19:07:47] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.6347|0.2494|0.1159
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:07:53] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 49.2% | P_Short: 28.9% | P_Noise: 21.9%
+RAW PROBS -> Long: 0.4916 Short: 0.2891 Noise: 0.2193
+[2026-08-24 19:07:53] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4916|0.2891|0.2193
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:08:00] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 50.6% | P_Short: 30.4% | P_Noise: 19.0%
+RAW PROBS -> Long: 0.5064 Short: 0.3036 Noise: 0.1899
+[2026-08-24 19:08:00] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5064|0.3036|0.1899
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:08:10] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 40.2% | P_Short: 23.4% | P_Noise: 36.4%
+RAW PROBS -> Long: 0.4019 Short: 0.2339 Noise: 0.3642
+[2026-08-24 19:08:10] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4019|0.2339|0.3642
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:08:21] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 48.9% | P_Short: 27.5% | P_Noise: 23.6%
+RAW PROBS -> Long: 0.4890 Short: 0.2747 Noise: 0.2363
+[2026-08-24 19:08:21] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4890|0.2747|0.2363
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:08:32] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 59.3% | P_Short: 22.4% | P_Noise: 18.4%
+RAW PROBS -> Long: 0.5928 Short: 0.2237 Noise: 0.1835
+[2026-08-24 19:08:32] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5928|0.2237|0.1835
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:08:46] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 53.1% | P_Short: 20.6% | P_Noise: 26.3%
+RAW PROBS -> Long: 0.5315 Short: 0.2060 Noise: 0.2625
+[2026-08-24 19:08:46] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5315|0.2060|0.2625
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:08:54] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 58.5% | P_Short: 7.2% | P_Noise: 34.3%
+RAW PROBS -> Long: 0.5854 Short: 0.0720 Noise: 0.3426
+[2026-08-24 19:08:54] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5854|0.0720|0.3426
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:09:08] | SIGNAL: HOLD (NOISE)       | P_Long: 29.5% | P_Short: 18.2% | P_Noise: 52.3%
+RAW PROBS -> Long: 0.2948 Short: 0.1819 Noise: 0.5233
+[2026-08-24 19:09:08] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2948|0.1819|0.5233
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:09:22] | SIGNAL: HOLD (NOISE)       | P_Long: 31.3% | P_Short: 14.6% | P_Noise: 54.0%
+RAW PROBS -> Long: 0.3132 Short: 0.1464 Noise: 0.5405
+[2026-08-24 19:09:22] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3132|0.1464|0.5405
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:09:43] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 44.7% | P_Short: 18.1% | P_Noise: 37.2%
+RAW PROBS -> Long: 0.4468 Short: 0.1810 Noise: 0.3722
+[2026-08-24 19:09:43] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4468|0.1810|0.3722
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:10:01] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 46.2% | P_Short: 17.1% | P_Noise: 36.7%
+RAW PROBS -> Long: 0.4618 Short: 0.1709 Noise: 0.3673
+[2026-08-24 19:10:01] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4618|0.1709|0.3673
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:10:24] | SIGNAL: HOLD (STOCH BLOCKED SHORT) | P_Long: 29.2% | P_Short: 45.5% | P_Noise: 25.3%
+RAW PROBS -> Long: 0.2917 Short: 0.4553 Noise: 0.2530
+[2026-08-24 19:10:24] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2917|0.4553|0.2530
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:10:42] | SIGNAL: HOLD (STOCH BLOCKED SHORT) | P_Long: 32.9% | P_Short: 44.2% | P_Noise: 22.9%
+RAW PROBS -> Long: 0.3288 Short: 0.4420 Noise: 0.2292
+[2026-08-24 19:10:42] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3288|0.4420|0.2292
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:10:59] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 52.0% | P_Short: 32.1% | P_Noise: 15.9%
+RAW PROBS -> Long: 0.5197 Short: 0.3214 Noise: 0.1589
+[2026-08-24 19:10:59] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5197|0.3214|0.1589
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:11:14] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 31.3% | P_Short: 50.4% | P_Noise: 18.3%
+RAW PROBS -> Long: 0.3128 Short: 0.5039 Noise: 0.1833
+[2026-08-24 19:11:14] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.3128|0.5039|0.1833
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:11:33] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 21.3% | P_Short: 41.1% | P_Noise: 37.6%
+RAW PROBS -> Long: 0.2133 Short: 0.4109 Noise: 0.3758
+[2026-08-24 19:11:33] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2133|0.4109|0.3758
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:11:50] | SIGNAL: HOLD (NOISE)       | P_Long: 30.3% | P_Short: 29.8% | P_Noise: 40.0%
+RAW PROBS -> Long: 0.3027 Short: 0.2978 Noise: 0.3995
+[2026-08-24 19:11:50] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3027|0.2978|0.3995
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:12:01] | SIGNAL: HOLD (NOISE)       | P_Long: 28.2% | P_Short: 34.1% | P_Noise: 37.7%
+RAW PROBS -> Long: 0.2821 Short: 0.3406 Noise: 0.3774
+[2026-08-24 19:12:01] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2821|0.3406|0.3774
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:12:19] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 39.3% | P_Short: 28.9% | P_Noise: 31.8%
+RAW PROBS -> Long: 0.3931 Short: 0.2889 Noise: 0.3180
+[2026-08-24 19:12:19] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.3931|0.2889|0.3180
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:12:41] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 54.9% | P_Short: 25.7% | P_Noise: 19.5%
+RAW PROBS -> Long: 0.5489 Short: 0.2565 Noise: 0.1946
+[2026-08-24 19:12:41] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.5489|0.2565|0.1946
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:13:07] | SIGNAL: 🟢 BUY (UPTREND)    | P_Long: 48.5% | P_Short: 13.5% | P_Noise: 38.0%
+RAW PROBS -> Long: 0.4846 Short: 0.1351 Noise: 0.3803
+[2026-08-24 19:13:07] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|1|0.4846|0.1351|0.3803
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:13:33] | SIGNAL: HOLD (NOISE)       | P_Long: 29.9% | P_Short: 22.4% | P_Noise: 47.8%
+RAW PROBS -> Long: 0.2985 Short: 0.2239 Noise: 0.4776
+[2026-08-24 19:13:33] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2985|0.2239|0.4776
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:13:48] | SIGNAL: HOLD (STOCH BLOCKED SHORT) | P_Long: 30.6% | P_Short: 41.9% | P_Noise: 27.5%
+RAW PROBS -> Long: 0.3064 Short: 0.4185 Noise: 0.2751
+[2026-08-24 19:13:48] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.3064|0.4185|0.2751
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:14:07] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 30.4% | P_Short: 41.9% | P_Noise: 27.7%
+RAW PROBS -> Long: 0.3037 Short: 0.4190 Noise: 0.2773
+[2026-08-24 19:14:07] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.3037|0.4190|0.2773
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:14:21] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 32.7% | P_Short: 47.1% | P_Noise: 20.1%
+RAW PROBS -> Long: 0.3274 Short: 0.4714 Noise: 0.2012
+[2026-08-24 19:14:21] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.3274|0.4714|0.2012
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:14:54] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 19.0% | P_Short: 50.1% | P_Noise: 30.9%
+RAW PROBS -> Long: 0.1897 Short: 0.5010 Noise: 0.3093
+[2026-08-24 19:14:54] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.1897|0.5010|0.3093
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:15:15] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 24.6% | P_Short: 36.7% | P_Noise: 38.7%
+RAW PROBS -> Long: 0.2456 Short: 0.3673 Noise: 0.3871
+[2026-08-24 19:15:15] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.2456|0.3673|0.3871
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:15:38] | SIGNAL: HOLD (NOISE)       | P_Long: 21.1% | P_Short: 35.8% | P_Noise: 43.1%
+RAW PROBS -> Long: 0.2112 Short: 0.3575 Noise: 0.4313
+[2026-08-24 19:15:38] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2112|0.3575|0.4313
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:16:02] | SIGNAL: HOLD (NOISE)       | P_Long: 26.6% | P_Short: 34.2% | P_Noise: 39.2%
+RAW PROBS -> Long: 0.2665 Short: 0.3417 Noise: 0.3918
+[2026-08-24 19:16:02] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.2665|0.3417|0.3918
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:16:15] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 40.0% | P_Short: 35.0% | P_Noise: 25.0%
+RAW PROBS -> Long: 0.4000 Short: 0.3499 Noise: 0.2500
+[2026-08-24 19:16:15] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.4000|0.3499|0.2500
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:16:18] | SIGNAL: 🔴 SELL (DOWNTREND) | P_Long: 34.3% | P_Short: 39.5% | P_Noise: 26.2%
+RAW PROBS -> Long: 0.3427 Short: 0.3955 Noise: 0.2619
+[2026-08-24 19:16:18] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|-1|0.3427|0.3955|0.2619
+
+/home/misi/LGBM_mlops/venv/lib/python3.12/site-packages/sklearn/utils/validation.py:2827: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+[2026-08-24 19:16:24] | SIGNAL: HOLD (STOCH BLOCKED LONG) | P_Long: 40.6% | P_Short: 32.6% | P_Noise: 26.9%
+RAW PROBS -> Long: 0.4056 Short: 0.3255 Noise: 0.2688
+[2026-08-24 19:16:24] 🔥 DOLLAR BAR PREDICTION GENERATED! PRED|0|0.4056|0.3255|0.2688
