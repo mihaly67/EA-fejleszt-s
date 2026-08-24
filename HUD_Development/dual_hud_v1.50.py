@@ -108,6 +108,17 @@ class DualPaneHUD(QMainWindow):
         # Position lines dictionary to hold multiple arbitrary entries dynamically
         self.pos_lines = {}
 
+        # === PIVOT (ZIGZAG) LINES (ON MAIN CHART) ===
+        # Spawn off-screen to avoid freezing, update with real prices on tick
+        self.res_mic_line = self.chart.horizontal_line(0.0001, color='gray', width=1, style='dashed', text='R1 (Mic)')
+        self.sup_mic_line = self.chart.horizontal_line(0.0001, color='gray', width=1, style='dashed', text='S1 (Mic)')
+
+        self.res_sec_line = self.chart.horizontal_line(0.0001, color='darkred', width=1, style='dashed', text='R2 (Sec)')
+        self.sup_sec_line = self.chart.horizontal_line(0.0001, color='darkgreen', width=1, style='dashed', text='S2 (Sec)')
+
+        self.res_ter_line = self.chart.horizontal_line(0.0001, color='maroon', width=2, style='solid', text='R3 (Ter)')
+        self.sup_ter_line = self.chart.horizontal_line(0.0001, color='darkolivegreen', width=2, style='solid', text='S3 (Ter)')
+
         # === SUBCHART (PREDICTIONS) ===
         # Create a synchronized subchart (bottom pane by default).
         # We set sync=True so the crosshair and time scales move together perfectly.
@@ -208,6 +219,14 @@ class DualPaneHUD(QMainWindow):
                 self.bid_line.update(data.get('bid', price))
                 self.ask_line.update(data.get('ask', price))
 
+                # Update Pivot Lines
+                self.res_mic_line.update(data.get('res_micro', 0.0001))
+                self.sup_mic_line.update(data.get('sup_micro', 0.0001))
+                self.res_sec_line.update(data.get('res_sec', 0.0001))
+                self.sup_sec_line.update(data.get('sup_sec', 0.0001))
+                self.res_ter_line.update(data.get('res_ter', 0.0001))
+                self.sup_ter_line.update(data.get('sup_ter', 0.0001))
+
                 # Dynamic Multiple Position Lines Management
                 pos_types = data.get('pos_types', [0])
                 pos_prices = data.get('pos_prices', [0.0])
@@ -255,6 +274,14 @@ class DualPaneHUD(QMainWindow):
                 # Update Main Chart Horizontal Lines
                 self.bid_line.update(data.get('bid', price))
                 self.ask_line.update(data.get('ask', price))
+
+                # Update Pivot Lines
+                self.res_mic_line.update(data.get('res_micro', 0.0001))
+                self.sup_mic_line.update(data.get('sup_micro', 0.0001))
+                self.res_sec_line.update(data.get('res_sec', 0.0001))
+                self.sup_sec_line.update(data.get('sup_sec', 0.0001))
+                self.res_ter_line.update(data.get('res_ter', 0.0001))
+                self.sup_ter_line.update(data.get('sup_ter', 0.0001))
 
                 # Dynamic Multiple Position Lines Management
                 pos_types = data.get('pos_types', [0])
