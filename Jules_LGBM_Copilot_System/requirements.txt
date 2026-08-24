@@ -1,0 +1,11 @@
+# Jules LGBM Copilot System - Dependencies
+# Python 3.12+ recommended
+
+pandas
+numpy
+lightgbm
+joblib
+pyzmq
+PyQt5
+PyQtWebEngine
+lightweight-charts-python
