@@ -6,7 +6,11 @@ echo "======================================"
 cd /home/misi/LGBM_mlops
 
 echo "Ensuring previous processes are stopped..."
-./stop_lgbm.sh
+if [ -f "./stop_lgbm.sh" ]; then
+    ./stop_lgbm.sh
+else
+    pkill -f 'mt5_live_copilot' || true
+fi
 
 echo "Starting mt5_live_copilot_v1.96_beta.py..."
 if [ -d "venv" ]; then
