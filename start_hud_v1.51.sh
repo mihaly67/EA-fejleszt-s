@@ -3,8 +3,7 @@ echo "======================================"
 echo "STARTING JULES LGBM COPILOT HUD V1.51"
 echo "======================================"
 
-# Use current directory instead of hardcoded path
-WORKSPACE_DIR=$(pwd)
+cd /home/misi/LGBM_mlops
 
 echo "Cleaning up existing HUD processes..."
 pkill -f 'dual_hud_v1.51.py' || true
