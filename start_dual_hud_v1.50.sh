@@ -16,6 +16,6 @@ echo "Starting dual_hud_v1.50.py..."
 if [ -d "venv" ]; then
     source venv/bin/activate
 fi
-python3 HUD_Development/dual_hud_v1.50.py > hud_v1.50.log 2>&1 &
+python3 /home/misi/LGBM_mlops/HUD_Development/dual_hud_v1.50.py > hud_v1.50.log 2>&1 &
 echo "HUD launched in background. Check your XRDP desktop."
 echo "======================================"

