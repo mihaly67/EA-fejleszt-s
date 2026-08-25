@@ -49,7 +49,7 @@ def initialize_copilot():
     try:
         # Load the model from the adjacent 'models' directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = '/home/misi/LGBM_mlops/Micro_LGBM/models/lgbm_model_fusion_v5_tuned.pkl'
+        model_path = os.path.join(current_dir, '../models', 'lgbm_model_fusion_v5_tuned.pkl')
         print(f"Looking for model at: {model_path}")
         clf = joblib.load(model_path)
     except Exception as e:
