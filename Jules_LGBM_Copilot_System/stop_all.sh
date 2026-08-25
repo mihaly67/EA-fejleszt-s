@@ -1,12 +1,16 @@
 #!/bin/bash
 echo "======================================"
-echo "STOPPING JULES LGBM PROCESSES"
+echo "STOPPING ALL JULES LGBM PROCESSES"
 echo "======================================"
 
-echo "Killing any running Copilot/HUD instances in this directory..."
-# Using pattern match to only kill instances running from Jules_LGBM_Copilot_System
-pkill -f "Jules_LGBM_Copilot_System.*mt5_live_copilot" || true
-pkill -f "Jules_LGBM_Copilot_System.*dual_hud" || true
+echo "Killing any running Copilot/HUD instances..."
+pkill -f 'mt5_live_copilot' || true
+pkill -f 'dual_hud' || true
+
+# Free up ports just in case
+kill $(lsof -t -i :5555) 2>/dev/null || true
+kill $(lsof -t -i :5556) 2>/dev/null || true
+kill $(lsof -t -i :5557) 2>/dev/null || true
 
 echo "All processes stopped successfully."
 echo "======================================"
