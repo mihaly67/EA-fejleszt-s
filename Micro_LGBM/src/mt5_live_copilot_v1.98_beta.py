@@ -27,7 +27,7 @@ macro_lock = threading.Lock()
 
 zmq_context = zmq.Context()
 zmq_publisher = zmq_context.socket(zmq.PUB)
-zmq_publisher.bind("tcp://0.0.0.0:5557")
+zmq_publisher.bind("tcp://127.0.0.1:5557")
 
 signal_history = collections.deque(maxlen=3)
 
@@ -49,7 +49,7 @@ def initialize_copilot():
     try:
         # Load the model from the adjacent 'models' directory
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(current_dir, '..', 'models', 'lgbm_model_fusion_v5_tuned.pkl')
+        model_path = '/home/misi/LGBM_mlops/Micro_LGBM/models/lgbm_model_fusion_v5_tuned.pkl'
         print(f"Looking for model at: {model_path}")
         clf = joblib.load(model_path)
     except Exception as e:
@@ -160,7 +160,7 @@ def evaluate_tick_state(clf, current_features_dict):
 
 
 class MacroReceiver(threading.Thread):
-    def __init__(self, host='0.0.0.0', port=5555):
+    def __init__(self, host='127.0.0.1', port=5555):
         super().__init__()
         self.host = host
         self.port = port
@@ -287,7 +287,7 @@ class MacroReceiver(threading.Thread):
                 print(f"[MACRO] Error: {e}")
 
 class TickReceiver(threading.Thread):
-    def __init__(self, clf, host='0.0.0.0', port=5556):
+    def __init__(self, clf, host='127.0.0.1', port=5556):
         super().__init__()
         self.clf = clf
         self.host = host
