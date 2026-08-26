@@ -95,6 +95,10 @@ class DualPaneHUD(QMainWindow):
         self.chart.time_scale(visible=True, right_offset=15)
         self.chart.get_webview().setStyleSheet("background-color: #121212;")
 
+        # Apply strict JS formatting and minimum width to fix X-axis vertical alignment drift between subcharts
+        self.chart.run_script(f"{self.chart.id}.chart.applyOptions({{localization: {{priceFormatter: function(price) {{ return price.toFixed(5); }} }}}});")
+        self.chart.run_script(f"{self.chart.id}.chart.priceScale('right').applyOptions({{minimumWidth: 70}});")
+
         # Add the chart to the layout (Main Chart = Candlesticks)
         main_layout.addWidget(self.chart.get_webview(), stretch=3)
 
@@ -127,10 +131,9 @@ class DualPaneHUD(QMainWindow):
         self.subchart.grid(vert_enabled=False, horz_enabled=False)
         self.subchart.price_scale(auto_scale=True, scale_margin_top=0.0, scale_margin_bottom=0.0)
 
-        # FIX: Align the right price scales for both the main chart and the subchart to prevent X-axis drifting.
-        self.chart.run_script(f"{self.chart.id}.chart.priceScale('right').applyOptions({{'minimumWidth': 60}})")
-        self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{'visible': true, 'autoScale': true, 'minimumWidth': 60, 'scaleMargins': {{'top': 0, 'bottom': 0}}}})")
-
+        # Apply strict minimum width and formatting to the subchart as well to match the main chart
+        self.subchart.run_script(f"{self.subchart.id}.chart.applyOptions({{localization: {{priceFormatter: function(price) {{ return price.toFixed(2); }} }}}});")
+        self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{'visible': true, 'autoScale': true, 'minimumWidth': 70, 'scaleMargins': {{'top': 0, 'bottom': 0}}}})")
         self.subchart.time_scale(visible=True, seconds_visible=False, right_offset=15)
 
         # Hide candlesticks in the subchart because it's for probabilities
