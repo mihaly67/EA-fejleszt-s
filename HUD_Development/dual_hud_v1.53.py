@@ -93,11 +93,9 @@ class DualPaneHUD(QMainWindow):
         self.chart.layout(background_color='#121212', text_color='#ffffff')
         self.chart.grid(vert_enabled=False, horz_enabled=False)
         self.chart.time_scale(visible=True, right_offset=15)
+        self.chart.run_script(f"{self.chart.id}.chart.applyOptions({{'localization': {{'priceFormatter': 'function(price) {{ return price.toFixed(5); }}'}}}})")
+        self.chart.run_script(f"{self.chart.id}.chart.priceScale('right').applyOptions({{'minimumWidth': 70}})")
         self.chart.get_webview().setStyleSheet("background-color: #121212;")
-
-        # Apply strict JS formatting and minimum width to fix X-axis vertical alignment drift between subcharts
-        self.chart.run_script(f"{self.chart.id}.chart.applyOptions({{localization: {{priceFormatter: function(price) {{ return price.toFixed(5); }} }}}});")
-        self.chart.run_script(f"{self.chart.id}.chart.priceScale('right').applyOptions({{minimumWidth: 70}});")
 
         # Add the chart to the layout (Main Chart = Candlesticks)
         main_layout.addWidget(self.chart.get_webview(), stretch=3)
@@ -130,10 +128,8 @@ class DualPaneHUD(QMainWindow):
         self.subchart.layout(background_color='#121212', text_color='#ffffff')
         self.subchart.grid(vert_enabled=False, horz_enabled=False)
         self.subchart.price_scale(auto_scale=True, scale_margin_top=0.0, scale_margin_bottom=0.0)
-
-        # Apply strict minimum width and formatting to the subchart as well to match the main chart
-        self.subchart.run_script(f"{self.subchart.id}.chart.applyOptions({{localization: {{priceFormatter: function(price) {{ return price.toFixed(2); }} }}}});")
         self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{'visible': true, 'autoScale': true, 'minimumWidth': 70, 'scaleMargins': {{'top': 0, 'bottom': 0}}}})")
+        self.subchart.run_script(f"{self.subchart.id}.chart.applyOptions({{'localization': {{'priceFormatter': 'function(price) {{ return price.toFixed(2); }}'}}}})")
         self.subchart.time_scale(visible=True, seconds_visible=False, right_offset=15)
 
         # Hide candlesticks in the subchart because it's for probabilities
@@ -180,10 +176,6 @@ class DualPaneHUD(QMainWindow):
         minute_ts_dt = raw_ts.floor('min')
         ts_str = minute_ts_dt.strftime('%Y-%m-%d %H:%M:%S')
 
-        # Shift the prediction curve forward by 1 minute so it aligns visually with the CURRENT active candlestick on the right edge.
-        minute_ts_shifted = minute_ts_dt + pd.Timedelta(minutes=1)
-        ts_str_shifted = minute_ts_shifted.strftime('%Y-%m-%d %H:%M:%S')
-
         price = data['close']
 
         if self.current_minute_ts != ts_str:
@@ -210,6 +202,8 @@ class DualPaneHUD(QMainWindow):
         }])
 
         # We also need a dummy update for the subchart to pull its time scale forward
+        ts_str_shifted = (minute_ts_dt + pd.Timedelta(minutes=1)).strftime('%Y-%m-%d %H:%M:%S')
+
         dummy_df = pd.DataFrame([{
             'time': ts_str_shifted,
             'open': 0.0,
@@ -270,14 +264,15 @@ class DualPaneHUD(QMainWindow):
                 self.p_short_line.set(p_short_df)
                 self.p_noise_line.set(p_noise_df)
 
-                d_min = pd.DataFrame([{'time': ts_str, 'DummyMin': 0.0}])
-                d_max = pd.DataFrame([{'time': ts_str, 'DummyMax': 1.0}])
+                d_min = pd.DataFrame([{'time': ts_str_shifted, 'DummyMin': 0.0}])
+                d_max = pd.DataFrame([{'time': ts_str_shifted, 'DummyMax': 1.0}])
                 self.dummy_min.set(d_min)
                 self.dummy_max.set(d_max)
 
                 self.is_initialized = True
             else:
-                # Update Main Chart Horizontal Lines First (So they render BEHIND the candles)
+
+                # Update Main Chart Horizontal Lines
                 self.bid_line.update(data.get('bid', price))
                 self.ask_line.update(data.get('ask', price))
 
@@ -315,11 +310,6 @@ class DualPaneHUD(QMainWindow):
                 for pp in prices_to_delete:
                     del self.pos_lines[pp]
 
-                # Update Main Chart (Candles) LAST so they render ON TOP of horizontal lines
-                s_c = candle_df.iloc[0].copy()
-                s_c.name = None
-                self.chart.update(s_c)
-
                 # Update Subchart Dummy to pull X-axis forward
                 dummy_s = dummy_df.iloc[0].copy()
                 dummy_s.name = None
@@ -345,6 +335,10 @@ class DualPaneHUD(QMainWindow):
                 s_max = pd.Series({'time': ts_str_shifted, 'DummyMax': 1.0})
                 s_max.name = 'DummyMax'
                 self.dummy_max.update(s_max)
+                # Z-INDEX FIX: Update the candle last so it renders on top of the horizontal lines
+                s_c = candle_df.iloc[0].copy()
+                s_c.name = None
+                self.chart.update(s_c)
 
         except Exception as e:
             print(f"Update error: {e}", flush=True)
