@@ -42,7 +42,10 @@ class ZMQReceiverThread(QThread):
             while True:
                 try:
                     msg = socket.recv_string(flags=zmq.NOBLOCK)
-                    if msg.startswith("HUD "):
+                    if msg.startswith("HUD_INIT "):
+                        json_data = msg[9:]
+                        latest_data = json.loads(json_data)
+                    elif msg.startswith("HUD "):
                         json_data = msg[4:]
                         latest_data = json.loads(json_data)
                 except zmq.Again:
@@ -93,9 +96,11 @@ class DualPaneHUD(QMainWindow):
         self.chart.layout(background_color='#121212', text_color='#ffffff')
         self.chart.grid(vert_enabled=False, horz_enabled=False)
         self.chart.time_scale(visible=True, right_offset=15)
-        self.chart.run_script(f"{self.chart.id}.chart.applyOptions({{'localization': {{'priceFormatter': 'function(price) {{ return price.toFixed(5); }}'}}}})")
-        self.chart.run_script(f"{self.chart.id}.chart.priceScale('right').applyOptions({{'minimumWidth': 70}})")
         self.chart.get_webview().setStyleSheet("background-color: #121212;")
+
+        # Apply strict JS formatting and minimum width to fix X-axis vertical alignment drift between subcharts
+        self.chart.run_script(f"{self.chart.id}.chart.applyOptions({{localization: {{priceFormatter: function(price) {{ return price.toFixed(5); }} }}}});")
+        self.chart.run_script(f"{self.chart.id}.chart.priceScale('right').applyOptions({{minimumWidth: 70}});")
 
         # Add the chart to the layout (Main Chart = Candlesticks)
         main_layout.addWidget(self.chart.get_webview(), stretch=3)
@@ -128,8 +133,10 @@ class DualPaneHUD(QMainWindow):
         self.subchart.layout(background_color='#121212', text_color='#ffffff')
         self.subchart.grid(vert_enabled=False, horz_enabled=False)
         self.subchart.price_scale(auto_scale=True, scale_margin_top=0.0, scale_margin_bottom=0.0)
+
+        # Apply strict minimum width and formatting to the subchart as well to match the main chart
+        self.subchart.run_script(f"{self.subchart.id}.chart.applyOptions({{localization: {{priceFormatter: function(price) {{ return price.toFixed(2); }} }}}});")
         self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{'visible': true, 'autoScale': true, 'minimumWidth': 70, 'scaleMargins': {{'top': 0, 'bottom': 0}}}})")
-        self.subchart.run_script(f"{self.subchart.id}.chart.applyOptions({{'localization': {{'priceFormatter': 'function(price) {{ return price.toFixed(2); }}'}}}})")
         self.subchart.time_scale(visible=True, seconds_visible=False, right_offset=15)
 
         # Hide candlesticks in the subchart because it's for probabilities
@@ -167,6 +174,44 @@ class DualPaneHUD(QMainWindow):
         self.chart.get_webview().loadFinished.connect(lambda: QTimer.singleShot(1000, self.zmq_thread.start))
 
     def on_data_received(self, data):
+        # --- HANDLE HISTORY INIT (1 Day of Bars) ---
+        if 'type' in data and data['type'] == 'init':
+            try:
+                times = data.get('times', [])
+                highs = data.get('highs', [])
+                lows = data.get('lows', [])
+
+                if not times:
+                    return
+
+                history_list = []
+                for t, h, l in zip(times, highs, lows):
+                    dt = pd.to_datetime(t, unit='s').strftime('%Y-%m-%d %H:%M:%S')
+                    # Approximate Open/Close from Low/High for history bars
+                    history_list.append({
+                        'time': dt,
+                        'open': l,
+                        'high': h,
+                        'low': l,
+                        'close': h
+                    })
+
+                df_hist = pd.DataFrame(history_list)
+                self.chart.set(df_hist)
+
+                df_dummy = df_hist.copy()
+                df_dummy['open'] = 0.0
+                df_dummy['high'] = 1.0
+                df_dummy['low'] = 0.0
+                df_dummy['close'] = 0.5
+                self.subchart.set(df_dummy)
+
+                self.is_initialized = True
+                print("Historical data (1 day) loaded successfully.")
+            except Exception as e:
+                print(f"Error loading historical init data: {e}")
+            return
+
         # 1-MINUTE LOGIC:
         # The user specifically requested that both the chart and subchart sit on a standard 1-minute X-axis.
         # The candlestick builds (updates) tick-by-tick on the SAME minute coordinate.
@@ -202,19 +247,17 @@ class DualPaneHUD(QMainWindow):
         }])
 
         # We also need a dummy update for the subchart to pull its time scale forward
-        ts_str_shifted = (minute_ts_dt + pd.Timedelta(minutes=1)).strftime('%Y-%m-%d %H:%M:%S')
-
         dummy_df = pd.DataFrame([{
-            'time': ts_str_shifted,
+            'time': ts_str,
             'open': 0.0,
             'high': 1.0,
             'low': 0.0,
             'close': 0.5
         }])
 
-        p_long_df = pd.DataFrame([{'time': ts_str_shifted, 'P_Long': data.get('p_long', 0.0)}])
-        p_short_df = pd.DataFrame([{'time': ts_str_shifted, 'P_Short': data.get('p_short', 0.0)}])
-        p_noise_df = pd.DataFrame([{'time': ts_str_shifted, 'P_Noise': data.get('p_noise', 0.0)}])
+        p_long_df = pd.DataFrame([{'time': ts_str, 'P_Long': data.get('p_long', 0.0)}])
+        p_short_df = pd.DataFrame([{'time': ts_str, 'P_Short': data.get('p_short', 0.0)}])
+        p_noise_df = pd.DataFrame([{'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)}])
 
         try:
             if not self.is_initialized:
@@ -264,13 +307,17 @@ class DualPaneHUD(QMainWindow):
                 self.p_short_line.set(p_short_df)
                 self.p_noise_line.set(p_noise_df)
 
-                d_min = pd.DataFrame([{'time': ts_str_shifted, 'DummyMin': 0.0}])
-                d_max = pd.DataFrame([{'time': ts_str_shifted, 'DummyMax': 1.0}])
+                d_min = pd.DataFrame([{'time': ts_str, 'DummyMin': 0.0}])
+                d_max = pd.DataFrame([{'time': ts_str, 'DummyMax': 1.0}])
                 self.dummy_min.set(d_min)
                 self.dummy_max.set(d_max)
 
                 self.is_initialized = True
             else:
+                # Update Main Chart (Candles)
+                s_c = candle_df.iloc[0].copy()
+                s_c.name = None
+                self.chart.update(s_c)
 
                 # Update Main Chart Horizontal Lines
                 self.bid_line.update(data.get('bid', price))
@@ -316,29 +363,25 @@ class DualPaneHUD(QMainWindow):
                 self.subchart.update(dummy_s)
 
                 # Update Subchart Lines
-                s_l = pd.Series({'time': ts_str_shifted, 'P_Long': data.get('p_long', 0.0)})
+                s_l = pd.Series({'time': ts_str, 'P_Long': data.get('p_long', 0.0)})
                 s_l.name = 'P_Long'
                 self.p_long_line.update(s_l)
 
-                s_s = pd.Series({'time': ts_str_shifted, 'P_Short': data.get('p_short', 0.0)})
+                s_s = pd.Series({'time': ts_str, 'P_Short': data.get('p_short', 0.0)})
                 s_s.name = 'P_Short'
                 self.p_short_line.update(s_s)
 
-                s_n = pd.Series({'time': ts_str_shifted, 'P_Noise': data.get('p_noise', 0.0)})
+                s_n = pd.Series({'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)})
                 s_n.name = 'P_Noise'
                 self.p_noise_line.update(s_n)
 
-                s_min = pd.Series({'time': ts_str_shifted, 'DummyMin': 0.0})
+                s_min = pd.Series({'time': ts_str, 'DummyMin': 0.0})
                 s_min.name = 'DummyMin'
                 self.dummy_min.update(s_min)
 
-                s_max = pd.Series({'time': ts_str_shifted, 'DummyMax': 1.0})
+                s_max = pd.Series({'time': ts_str, 'DummyMax': 1.0})
                 s_max.name = 'DummyMax'
                 self.dummy_max.update(s_max)
-                # Z-INDEX FIX: Update the candle last so it renders on top of the horizontal lines
-                s_c = candle_df.iloc[0].copy()
-                s_c.name = None
-                self.chart.update(s_c)
 
         except Exception as e:
             print(f"Update error: {e}", flush=True)
