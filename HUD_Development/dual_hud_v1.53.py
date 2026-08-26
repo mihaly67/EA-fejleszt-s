@@ -180,6 +180,10 @@ class DualPaneHUD(QMainWindow):
         minute_ts_dt = raw_ts.floor('min')
         ts_str = minute_ts_dt.strftime('%Y-%m-%d %H:%M:%S')
 
+        # Shift the prediction curve forward by 1 minute so it aligns visually with the CURRENT active candlestick on the right edge.
+        minute_ts_shifted = minute_ts_dt + pd.Timedelta(minutes=1)
+        ts_str_shifted = minute_ts_shifted.strftime('%Y-%m-%d %H:%M:%S')
+
         price = data['close']
 
         if self.current_minute_ts != ts_str:
@@ -207,16 +211,16 @@ class DualPaneHUD(QMainWindow):
 
         # We also need a dummy update for the subchart to pull its time scale forward
         dummy_df = pd.DataFrame([{
-            'time': ts_str,
+            'time': ts_str_shifted,
             'open': 0.0,
             'high': 1.0,
             'low': 0.0,
             'close': 0.5
         }])
 
-        p_long_df = pd.DataFrame([{'time': ts_str, 'P_Long': data.get('p_long', 0.0)}])
-        p_short_df = pd.DataFrame([{'time': ts_str, 'P_Short': data.get('p_short', 0.0)}])
-        p_noise_df = pd.DataFrame([{'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)}])
+        p_long_df = pd.DataFrame([{'time': ts_str_shifted, 'P_Long': data.get('p_long', 0.0)}])
+        p_short_df = pd.DataFrame([{'time': ts_str_shifted, 'P_Short': data.get('p_short', 0.0)}])
+        p_noise_df = pd.DataFrame([{'time': ts_str_shifted, 'P_Noise': data.get('p_noise', 0.0)}])
 
         try:
             if not self.is_initialized:
@@ -273,12 +277,7 @@ class DualPaneHUD(QMainWindow):
 
                 self.is_initialized = True
             else:
-                # Update Main Chart (Candles)
-                s_c = candle_df.iloc[0].copy()
-                s_c.name = None
-                self.chart.update(s_c)
-
-                # Update Main Chart Horizontal Lines
+                # Update Main Chart Horizontal Lines First (So they render BEHIND the candles)
                 self.bid_line.update(data.get('bid', price))
                 self.ask_line.update(data.get('ask', price))
 
@@ -316,29 +315,34 @@ class DualPaneHUD(QMainWindow):
                 for pp in prices_to_delete:
                     del self.pos_lines[pp]
 
+                # Update Main Chart (Candles) LAST so they render ON TOP of horizontal lines
+                s_c = candle_df.iloc[0].copy()
+                s_c.name = None
+                self.chart.update(s_c)
+
                 # Update Subchart Dummy to pull X-axis forward
                 dummy_s = dummy_df.iloc[0].copy()
                 dummy_s.name = None
                 self.subchart.update(dummy_s)
 
                 # Update Subchart Lines
-                s_l = pd.Series({'time': ts_str, 'P_Long': data.get('p_long', 0.0)})
+                s_l = pd.Series({'time': ts_str_shifted, 'P_Long': data.get('p_long', 0.0)})
                 s_l.name = 'P_Long'
                 self.p_long_line.update(s_l)
 
-                s_s = pd.Series({'time': ts_str, 'P_Short': data.get('p_short', 0.0)})
+                s_s = pd.Series({'time': ts_str_shifted, 'P_Short': data.get('p_short', 0.0)})
                 s_s.name = 'P_Short'
                 self.p_short_line.update(s_s)
 
-                s_n = pd.Series({'time': ts_str, 'P_Noise': data.get('p_noise', 0.0)})
+                s_n = pd.Series({'time': ts_str_shifted, 'P_Noise': data.get('p_noise', 0.0)})
                 s_n.name = 'P_Noise'
                 self.p_noise_line.update(s_n)
 
-                s_min = pd.Series({'time': ts_str, 'DummyMin': 0.0})
+                s_min = pd.Series({'time': ts_str_shifted, 'DummyMin': 0.0})
                 s_min.name = 'DummyMin'
                 self.dummy_min.update(s_min)
 
-                s_max = pd.Series({'time': ts_str, 'DummyMax': 1.0})
+                s_max = pd.Series({'time': ts_str_shifted, 'DummyMax': 1.0})
                 s_max.name = 'DummyMax'
                 self.dummy_max.update(s_max)
 
