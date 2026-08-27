@@ -1,0 +1,39 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Jules TradingView Copilot</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #121212; }
+        #tv_chart_container { width: 100vw; height: 100vh; }
+    </style>
+    <script type="text/javascript" src="charting_library/charting_library.standalone.js"></script>
+    <script type="text/javascript" src="datafeed.js"></script>
+</head>
+<body>
+    <div id="tv_chart_container"></div>
+    <script type="text/javascript">
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof TradingView === 'undefined') {
+                console.error("TradingView is not defined! Ensure charting_library is correctly loaded.");
+                document.getElementById('tv_chart_container').innerHTML = '<h1 style="color:white; text-align:center; margin-top:20%">TradingView Charting Library Missing!</h1><p style="color:gray; text-align:center;">Please manually place the library inside HUD_Development/tv_frontend/charting_library/</p>';
+                return;
+            }
+            var widget = window.tvWidget = new TradingView.widget({
+                symbol: 'Bitcoin',
+                interval: '1',
+                container_id: 'tv_chart_container',
+                datafeed: Datafeed,
+                library_path: 'charting_library/',
+                locale: 'en',
+                theme: 'Dark',
+                autosize: true,
+                disabled_features: ['header_symbol_search', 'header_compare'],
+                time_frames: [
+                    { text: "1d", resolution: "1", description: "1 Day" },
+                ],
+                studies_overrides: {},
+            });
+        });
+    </script>
+</body>
+</html>
