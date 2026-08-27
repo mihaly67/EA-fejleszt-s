@@ -159,32 +159,6 @@ class DualPaneHUD(QMainWindow):
         self.current_high = 0.0
         self.current_low = float('inf')
 
-        # --- LOAD HISTORICAL BARS FROM CSV BEFORE STARTING ZMQ ---
-        import os
-        csv_path = "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/history_init.csv"
-        if os.path.exists(csv_path):
-            try:
-                import pandas as pd
-                df_hist = pd.read_csv(csv_path)
-                # MT5 sends unix timestamps, convert to formatted string for lightweight charts
-                df_hist['time'] = pd.to_datetime(df_hist['time'], unit='s').dt.strftime('%Y-%m-%d %H:%M:%S')
-
-                self.chart.set(df_hist)
-
-                df_dummy = df_hist.copy()
-                df_dummy['open'] = 0.0
-                df_dummy['high'] = 1.0
-                df_dummy['low'] = 0.0
-                df_dummy['close'] = 0.5
-                self.subchart.set(df_dummy)
-
-                self.is_initialized = True
-                print("Historical data loaded from CSV.")
-            except Exception as e:
-                print(f"Failed to load historical CSV: {e}")
-        else:
-            print("No historical CSV found at startup.")
-
         self.zmq_thread = ZMQReceiverThread()
         self.zmq_thread.data_received.connect(self.on_data_received)
         self.chart.get_webview().loadFinished.connect(lambda: QTimer.singleShot(1000, self.zmq_thread.start))
@@ -240,7 +214,26 @@ class DualPaneHUD(QMainWindow):
         try:
             if not self.is_initialized:
                 # Initialize Main Chart (Candles)
-                self.chart.set(candle_df)
+                import os
+                csv_path = "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/history_init.csv"
+                if os.path.exists(csv_path):
+                    try:
+                        import pandas as pd
+                        df_hist = pd.read_csv(csv_path)
+                        df_hist['time'] = pd.to_datetime(df_hist['time'], unit='s').dt.strftime('%Y-%m-%d %H:%M:%S')
+
+                        # --- LIMIT CANDLES FOR TESTING JS PERFORMANCE ---
+
+
+                        final_df = pd.concat([df_hist, candle_df], ignore_index=True)
+                        final_df = final_df.drop_duplicates(subset=['time'], keep='last')
+                        self.chart.set(final_df)
+                        print("Historical data (10 bars) + First candle loaded.", flush=True)
+                    except Exception as e:
+                        print(f"Failed to load history: {e}", flush=True)
+                        self.chart.set(candle_df)
+                else:
+                    self.chart.set(candle_df)
 
                 self.bid_line.update(data.get('bid', price))
                 self.ask_line.update(data.get('ask', price))
@@ -388,6 +381,7 @@ class DualPaneHUD(QMainWindow):
         event.accept()
 
 if __name__ == '__main__':
+    print("Starting app...", flush=True)
     app = QApplication(sys.argv)
     window = DualPaneHUD()
     window.show()
