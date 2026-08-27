@@ -41,6 +41,35 @@ def build_db(root_dir):
 
     conn.commit()
     conn.close()
+
+    # --- AUTO-GENERATE INDEXED REPOS REPORT ---
+    try:
+        repos = set()
+        cursor.execute("SELECT DISTINCT filepath FROM rag_data")
+        for row in cursor.fetchall():
+            filepath = row[0]
+            if filepath:
+                # Extract the top-level directory name as the repo name
+                parts = filepath.split("/")
+                if len(parts) > 0:
+                    repos.add(parts[0])
+
+        report_path = os.path.join(TARGET_DIR, "INDEXED_REPOS.md")
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write("# SWAT GUI RAG - Vektorizált Repozitóriumok\n\n")
+            f.write("A legutóbbi RAG építés során az alábbi repók és mappák kerültek az adatbázisba:\n\n")
+            for repo in sorted(list(repos)):
+                if repo not in ['.', '..', '']:
+                    f.write(f"- `{repo}`\n")
+
+            cursor.execute("SELECT count(*) FROM rag_data")
+            total_chunks = cursor.fetchone()[0]
+            f.write(f"\n**Összes Vektorizált Blokk:** {total_chunks}\n")
+
+        print(f"📄 INDEXED_REPOS.md sikeresen generálva: {report_path}")
+    except Exception as e:
+        print(f"⚠️ Hiba a repó lista generálásakor: {e}")
+
     print(f"✅ RAG Database built successfully with {count} indexable lines at {DB_PATH}")
 
 def search_db(query):
