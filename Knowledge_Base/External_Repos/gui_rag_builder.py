@@ -40,6 +40,29 @@ def build_db(root_dir):
                 pass
 
     conn.commit()
+
+    # --- AUTO-GENERATE INDEXED REPOS REPORT ---
+    try:
+        repos = set()
+        c.execute("SELECT DISTINCT repo_name FROM codesearch")
+        for row in c.fetchall():
+            if row[0]:
+                repos.add(row[0])
+
+        report_path = os.path.join(root_dir, "INDEXED_REPOS.md")
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write("# SWAT GUI RAG - Vektorizált Repozitóriumok\n\n")
+            f.write("A legutóbbi RAG építés során az alábbi repók és mappák kerültek az adatbázisba:\n\n")
+            for repo in sorted(list(repos)):
+                if repo not in ['.', '..', '']:
+                    f.write(f"- `{repo}`\n")
+
+            f.write(f"\n**Összes Vektorizált Sor:** {count}\n")
+
+        print(f"📄 INDEXED_REPOS.md sikeresen generálva: {report_path}")
+    except Exception as e:
+        print(f"⚠️ Hiba a repó lista generálásakor: {e}")
+
     conn.close()
     print(f"✅ RAG Database built successfully with {count} indexable lines at {DB_PATH}")
 
