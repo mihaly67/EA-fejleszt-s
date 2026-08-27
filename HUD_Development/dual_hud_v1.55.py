@@ -126,7 +126,40 @@ class DualPaneHUD(QMainWindow):
         self.subchart.layout(background_color='#121212', text_color='#ffffff')
         self.subchart.grid(vert_enabled=False, horz_enabled=False)
         self.subchart.price_scale(auto_scale=True, scale_margin_top=0.0, scale_margin_bottom=0.0)
-        self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{'visible': true, 'autoScale': true, 'scaleMargins': {{'top': 0, 'bottom': 0}}}})")
+
+        # --- PERFECT X-AXIS ALIGNMENT (minimumWidth + priceFormatter) ---
+        # A lightweight-charts wrapperben az X tengelyek gyakran elcsúsznak egymáshoz képest a felső (fő) és alsó (sub) charton,
+        # mert a jobb oldali árskála karakterszáma és felbontása eltér.
+        # Ezt úgy lehet tökéletesen orvosolni, hogy egy fix minimum szélességet (pl. 70 pixel) kényszerítünk a PriceScale-re
+        # és egységesítjük a tizedesjegyek megjelenítését. Mivel python wrapperből a formatálás nehézkes, natív JS-t injektálunk.
+
+        # Main chart PriceScale injektálás (max 5 tizedes, fix 70px)
+        self.chart.run_script(f"""
+        {self.chart.id}.chart.priceScale('right').applyOptions({{
+            minimumWidth: 70
+        }});
+        {self.chart.id}.chart.applyOptions({{
+            localization: {{
+                priceFormatter: function(price) {{ return price.toFixed(5); }}
+            }}
+        }});
+        """)
+
+        # Subchart PriceScale injektálás (max 2 tizedes a százalékoknak, fix 70px)
+        self.chart.run_script(f"""
+        {self.subchart.id}.chart.priceScale('right').applyOptions({{
+            visible: true,
+            autoScale: true,
+            scaleMargins: {{top: 0, bottom: 0}},
+            minimumWidth: 70
+        }});
+        {self.subchart.id}.chart.applyOptions({{
+            localization: {{
+                priceFormatter: function(price) {{ return price.toFixed(2); }}
+            }}
+        }});
+        """)
+
         self.subchart.time_scale(visible=True, seconds_visible=False, right_offset=15)
 
         # Hide candlesticks in the subchart because it's for probabilities
