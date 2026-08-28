@@ -805,7 +805,7 @@ void OnTick()
            if(g_socket != INVALID_HANDLE) SocketClose(g_socket);
            g_socket = SocketCreate();
            if(g_socket != INVALID_HANDLE) {
-               if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 1)) { // 1ms non-blocking
+               if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 50)) { // 1ms non-blocking
                    g_socket_connected = true;
                    g_zigzag_init_sent = false;
                    Print("✅ LGBM Macro Bridge Reconnected on ", InpBridgePort);
@@ -821,7 +821,7 @@ void OnTick()
            if(g_dom_socket != INVALID_HANDLE) SocketClose(g_dom_socket);
            g_dom_socket = SocketCreate();
            if(g_dom_socket != INVALID_HANDLE) {
-               if(SocketConnect(g_dom_socket, InpBridgeHost, InpDomBridgePort, 1)) { // 1ms non-blocking
+               if(SocketConnect(g_dom_socket, InpBridgeHost, InpDomBridgePort, 50)) { // 1ms non-blocking
                    g_dom_socket_connected = true;
                    Print("✅ LGBM Tick Bridge Reconnected on ", InpDomBridgePort);
                } else {
