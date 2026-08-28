@@ -126,7 +126,40 @@ class DualPaneHUD(QMainWindow):
         self.subchart.layout(background_color='#121212', text_color='#ffffff')
         self.subchart.grid(vert_enabled=False, horz_enabled=False)
         self.subchart.price_scale(auto_scale=True, scale_margin_top=0.0, scale_margin_bottom=0.0)
-        self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{'visible': true, 'autoScale': true, 'scaleMargins': {{'top': 0, 'bottom': 0}}}})")
+
+        # --- PERFECT X-AXIS ALIGNMENT (minimumWidth + priceFormatter) ---
+        # A lightweight-charts wrapperben az X tengelyek gyakran elcsúsznak egymáshoz képest a felső (fő) és alsó (sub) charton,
+        # mert a jobb oldali árskála karakterszáma és felbontása eltér.
+        # Ezt úgy lehet tökéletesen orvosolni, hogy egy fix minimum szélességet (pl. 70 pixel) kényszerítünk a PriceScale-re
+        # és egységesítjük a tizedesjegyek megjelenítését. Mivel python wrapperből a formatálás nehézkes, natív JS-t injektálunk.
+
+        # Main chart PriceScale injektálás (max 5 tizedes, fix 70px)
+        self.chart.run_script(f"""
+        {self.chart.id}.chart.priceScale('right').applyOptions({{
+            minimumWidth: 70
+        }});
+        {self.chart.id}.chart.applyOptions({{
+            localization: {{
+                priceFormatter: function(price) {{ return price.toFixed(5); }}
+            }}
+        }});
+        """)
+
+        # Subchart PriceScale injektálás (max 2 tizedes a százalékoknak, fix 70px)
+        self.chart.run_script(f"""
+        {self.subchart.id}.chart.priceScale('right').applyOptions({{
+            visible: true,
+            autoScale: true,
+            scaleMargins: {{top: 0, bottom: 0}},
+            minimumWidth: 70
+        }});
+        {self.subchart.id}.chart.applyOptions({{
+            localization: {{
+                priceFormatter: function(price) {{ return price.toFixed(2); }}
+            }}
+        }});
+        """)
+
         self.subchart.time_scale(visible=True, seconds_visible=False, right_offset=15)
 
         # Hide candlesticks in the subchart because it's for probabilities
@@ -215,20 +248,28 @@ class DualPaneHUD(QMainWindow):
             if not self.is_initialized:
                 # Initialize Main Chart (Candles)
                 import os
-                csv_path = "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/history_init.csv"
-                if os.path.exists(csv_path):
+                import pandas as pd
+                csv_paths = [
+                    "/home/misi/.wine/drive_c/Program Files/MetaTrader 5 IC Markets EU/MQL5/Files/history_init.csv",
+                    "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/history_init.csv"
+                ]
+
+                df_hist = None
+                for path in csv_paths:
+                    if os.path.exists(path):
+                        try:
+                            df_hist = pd.read_csv(path)
+                            break
+                        except Exception as e:
+                            print(f"Error reading {path}: {e}")
+
+                if df_hist is not None:
                     try:
-                        import pandas as pd
-                        df_hist = pd.read_csv(csv_path)
                         df_hist['time'] = pd.to_datetime(df_hist['time'], unit='s').dt.strftime('%Y-%m-%d %H:%M:%S')
-
-                        # --- LIMIT CANDLES FOR TESTING JS PERFORMANCE ---
-
-
                         final_df = pd.concat([df_hist, candle_df], ignore_index=True)
                         final_df = final_df.drop_duplicates(subset=['time'], keep='last')
                         self.chart.set(final_df)
-                        print("Historical data (10 bars) + First candle loaded.", flush=True)
+                        print("Historical data + First candle loaded.", flush=True)
                     except Exception as e:
                         print(f"Failed to load history: {e}", flush=True)
                         self.chart.set(candle_df)
