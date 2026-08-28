@@ -14,6 +14,7 @@ class TVHandler(http.server.SimpleHTTPRequestHandler):
             bars = []
 
             csv_paths = [
+                "/home/misi/.wine/drive_c/Program Files/MetaTrader 5 IC Markets EU/MQL5/Files/history_init.csv",
                 "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/history_init.csv"
             ]
             for path in csv_paths:
