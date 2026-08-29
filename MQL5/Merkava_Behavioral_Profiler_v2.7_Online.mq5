@@ -117,7 +117,7 @@ input int           InpY                 = 20;
 //--- Online Python Bridge Settings ---
 input group "=== Python Bridge Settings ==="
 input bool   InpEnablePythonBridge = true;       // Enable TCP Bridge to Python HMM Engine
-input string InpBridgeHost         = "127.0.0.1"; // Python Server IP
+input string InpBridgeHost         = "localhost"; // Python Server IP
 input int    InpBridgePort         = 5555;       // Python LGBM Macro Port
 input int    InpDomBridgePort      = 5556;       // Python LGBM Tick Port
 input int    InpHistoryTicks       = 10000;        // Number of Ticks to send on Init
