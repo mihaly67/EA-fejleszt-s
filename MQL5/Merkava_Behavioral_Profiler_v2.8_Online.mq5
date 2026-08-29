@@ -117,7 +117,7 @@ input int           InpY                 = 20;
 //--- Online Python Bridge Settings ---
 input group "=== Python Bridge Settings ==="
 input bool   InpEnablePythonBridge = true;       // Enable TCP Bridge to Python HMM Engine
-input string InpBridgeHost         = "localhost"; // Python Server IP
+input string InpBridgeHost         = "127.0.0.1"; // Python Server IP
 input int    InpBridgePort         = 5555;       // Python LGBM Macro Port
 input int    InpDomBridgePort      = 5556;       // Python LGBM Tick Port
 input int    InpHistoryTicks       = 10000;        // Number of Ticks to send on Init
@@ -196,7 +196,7 @@ bool ConnectToPython() {
         if(g_socket != INVALID_HANDLE) SocketClose(g_socket);
         g_socket = SocketCreate();
         if(g_socket != INVALID_HANDLE) {
-            if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 50)) { // Extrem rovid blokkolas (50ms) initkor is
+            if(SocketConnect(g_socket, InpBridgeHost, InpBridgePort, 2000)) { // Hosszabb timeout inicializáláskor
                 g_socket_connected = true;
                    g_zigzag_init_sent = false;
                 Print("✅ Successfully connected to LGBM Macro Bridge on ", InpBridgeHost, ":", InpBridgePort);
@@ -213,7 +213,7 @@ bool ConnectToPython() {
         if(g_dom_socket != INVALID_HANDLE) SocketClose(g_dom_socket);
         g_dom_socket = SocketCreate();
         if(g_dom_socket != INVALID_HANDLE) {
-            if(SocketConnect(g_dom_socket, InpBridgeHost, InpDomBridgePort, 50)) { // Extrem rovid blokkolas (50ms) initkor is
+            if(SocketConnect(g_dom_socket, InpBridgeHost, InpDomBridgePort, 2000)) { // Hosszabb timeout inicializáláskor
                 g_dom_socket_connected = true;
                 Print("✅ Successfully connected to LGBM Tick Bridge on ", InpBridgeHost, ":", InpDomBridgePort);
                 result = true;
