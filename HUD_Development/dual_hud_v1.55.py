@@ -264,7 +264,7 @@ class DualPaneHUD(QMainWindow):
 
                 if df_hist is not None:
                     try:
-                        df_hist['time'] = pd.to_datetime(df_hist['time'], unit='s').dt.strftime('%Y-%m-%d %H:%M:%S')
+                        df_hist['time'] = pd.to_datetime(df_hist['time'].astype(int), unit='s').dt.strftime('%Y-%m-%d %H:%M:%S')
                         final_df = pd.concat([df_hist, candle_df], ignore_index=True)
                         final_df = final_df.drop_duplicates(subset=['time'], keep='last')
                         self.chart.set(final_df)
