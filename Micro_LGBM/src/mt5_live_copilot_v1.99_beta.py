@@ -160,7 +160,7 @@ def evaluate_tick_state(clf, current_features_dict):
 
 
 class MacroReceiver(threading.Thread):
-    def __init__(self, host='127.0.0.1', port=5555):
+    def __init__(self, host='localhost', port=5555):
         super().__init__()
         self.host = host
         self.port = port
@@ -287,7 +287,7 @@ class MacroReceiver(threading.Thread):
                 print(f"[MACRO] Error: {e}")
 
 class TickReceiver(threading.Thread):
-    def __init__(self, clf, host='127.0.0.1', port=5556):
+    def __init__(self, clf, host='localhost', port=5556):
         super().__init__()
         self.clf = clf
         self.host = host
