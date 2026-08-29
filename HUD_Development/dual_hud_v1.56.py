@@ -64,7 +64,7 @@ class ZMQReceiverThread(QThread):
 class DualPaneHUD(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Jules LGBM Copilot System")
+        self.setWindowTitle("Jules LGBM Copilot System v1.56")
         self.resize(1000, 800)
         self.setStyleSheet("background-color: #121212; color: #ffffff;")
 
@@ -126,40 +126,7 @@ class DualPaneHUD(QMainWindow):
         self.subchart.layout(background_color='#121212', text_color='#ffffff')
         self.subchart.grid(vert_enabled=False, horz_enabled=False)
         self.subchart.price_scale(auto_scale=True, scale_margin_top=0.0, scale_margin_bottom=0.0)
-
-        # --- PERFECT X-AXIS ALIGNMENT (minimumWidth + priceFormatter) ---
-        # A lightweight-charts wrapperben az X tengelyek gyakran elcsúsznak egymáshoz képest a felső (fő) és alsó (sub) charton,
-        # mert a jobb oldali árskála karakterszáma és felbontása eltér.
-        # Ezt úgy lehet tökéletesen orvosolni, hogy egy fix minimum szélességet (pl. 70 pixel) kényszerítünk a PriceScale-re
-        # és egységesítjük a tizedesjegyek megjelenítését. Mivel python wrapperből a formatálás nehézkes, natív JS-t injektálunk.
-
-        # Main chart PriceScale injektálás (max 5 tizedes, fix 70px)
-        self.chart.run_script(f"""
-        {self.chart.id}.chart.priceScale('right').applyOptions({{
-            minimumWidth: 70
-        }});
-        {self.chart.id}.chart.applyOptions({{
-            localization: {{
-                priceFormatter: function(price) {{ return price.toFixed(5); }}
-            }}
-        }});
-        """)
-
-        # Subchart PriceScale injektálás (max 2 tizedes a százalékoknak, fix 70px)
-        self.chart.run_script(f"""
-        {self.subchart.id}.chart.priceScale('right').applyOptions({{
-            visible: true,
-            autoScale: true,
-            scaleMargins: {{top: 0, bottom: 0}},
-            minimumWidth: 70
-        }});
-        {self.subchart.id}.chart.applyOptions({{
-            localization: {{
-                priceFormatter: function(price) {{ return price.toFixed(2); }}
-            }}
-        }});
-        """)
-
+        self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{'visible': true, 'autoScale': true, 'scaleMargins': {{'top': 0, 'bottom': 0}}}})")
         self.subchart.time_scale(visible=True, seconds_visible=False, right_offset=15)
 
         # Hide candlesticks in the subchart because it's for probabilities
@@ -252,7 +219,6 @@ class DualPaneHUD(QMainWindow):
                     "/home/misi/.wine/drive_c/Program Files/MetaTrader 5 IC Markets EU/MQL5/Files/history_init.csv",
                     "/home/misi/.mt5/drive_c/Program Files/Pepperstone MetaTrader 5/MQL5/Files/history_init.csv"
                 ]
-
                 df_hist = None
                 for path in csv_paths:
                     if os.path.exists(path):
@@ -267,10 +233,11 @@ class DualPaneHUD(QMainWindow):
                         df_hist['time'] = pd.to_datetime(df_hist['time'].astype(int), unit='s').dt.strftime('%Y-%m-%d %H:%M:%S')
                         final_df = pd.concat([df_hist, candle_df], ignore_index=True)
                         final_df = final_df.drop_duplicates(subset=['time'], keep='last')
+
                         self.chart.set(final_df)
-                        print("Historical data + First candle loaded.", flush=True)
+                        print("Historical data fully loaded.", flush=True)
                     except Exception as e:
-                        print(f"Failed to load history: {e}", flush=True)
+                        print(f"History load failed: {e}", flush=True)
                         self.chart.set(candle_df)
                 else:
                     self.chart.set(candle_df)
@@ -312,16 +279,48 @@ class DualPaneHUD(QMainWindow):
                 for pp in prices_to_delete:
                     del self.pos_lines[pp]
 
-                # Initialize Subchart (Predictions + Time Scale Sync)
-                self.subchart.set(dummy_df)
-                self.p_long_line.set(p_long_df)
-                self.p_short_line.set(p_short_df)
-                self.p_noise_line.set(p_noise_df)
+                # The core issue causing "Cannot read property 'series' of undefined":
+                # When self.chart.set() was passed a final_df (containing history + 1 current candle),
+                # the lightweight charts library sets the X-axis mapping based on that multi-row dataframe.
+                # If we then pass single-row dataframes (p_long_df) to the subchart or p_long_line, it crashes!
+                # To fix this, we must initialize the prediction lines with matching history dataframes!
 
-                d_min = pd.DataFrame([{'time': ts_str, 'DummyMin': 0.0}])
-                d_max = pd.DataFrame([{'time': ts_str, 'DummyMax': 1.0}])
-                self.dummy_min.set(d_min)
-                self.dummy_max.set(d_max)
+                if 'final_df' in locals():
+                    # Create dummy history matching the final_df
+                    dummy_hist = final_df[['time']].copy()
+                    dummy_hist['open'] = 0.0
+                    dummy_hist['high'] = 1.0
+                    dummy_hist['low'] = 0.0
+                    dummy_hist['close'] = 0.5
+
+                    p_long_hist = final_df[['time']].copy()
+                    p_long_hist['P_Long'] = 0.0
+                    p_short_hist = final_df[['time']].copy()
+                    p_short_hist['P_Short'] = 0.0
+                    p_noise_hist = final_df[['time']].copy()
+                    p_noise_hist['P_Noise'] = 0.0
+
+                    d_min_hist = final_df[['time']].copy()
+                    d_min_hist['DummyMin'] = 0.0
+                    d_max_hist = final_df[['time']].copy()
+                    d_max_hist['DummyMax'] = 1.0
+
+                    self.subchart.set(dummy_hist)
+                    self.p_long_line.set(p_long_hist)
+                    self.p_short_line.set(p_short_hist)
+                    self.p_noise_line.set(p_noise_hist)
+                    self.dummy_min.set(d_min_hist)
+                    self.dummy_max.set(d_max_hist)
+                else:
+                    self.subchart.set(dummy_df)
+                    self.p_long_line.set(p_long_df)
+                    self.p_short_line.set(p_short_df)
+                    self.p_noise_line.set(p_noise_df)
+
+                    d_min = pd.DataFrame([{'time': ts_str, 'DummyMin': 0.0}])
+                    d_max = pd.DataFrame([{'time': ts_str, 'DummyMax': 1.0}])
+                    self.dummy_min.set(d_min)
+                    self.dummy_max.set(d_max)
 
                 self.is_initialized = True
             else:
@@ -421,7 +420,6 @@ class DualPaneHUD(QMainWindow):
         event.accept()
 
 if __name__ == '__main__':
-    print("Starting app...", flush=True)
     app = QApplication(sys.argv)
     window = DualPaneHUD()
     window.show()
