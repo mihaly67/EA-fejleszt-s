@@ -217,7 +217,7 @@ class DualPaneHUD(QMainWindow):
             if not self.is_initialized:
                 import os
                 df_hist = None
-                path = "/home/misi/.wine/drive_c/Program Files/MetaTrader 5 IC Markets EU/MQL5/Files/history_init.csv"
+                path = "/home/Jules/.wine/drive_c/Program Files/MetaTrader 5 IC Markets EU/MQL5/Files/history_init.csv"
 
                 if os.path.exists(path):
                     try:

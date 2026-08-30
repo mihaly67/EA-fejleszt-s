@@ -16,7 +16,7 @@ pkill -9 -f 'enforce_affinity.sh' || true
 sleep 2
 
 echo "[2/3] Setting up Wine Environment..."
-export WINEPREFIX="/home/misi/.wine"
+export WINEPREFIX="/home/Jules/.wine"
 export DISPLAY=:10.0
 # Force Wine to use esync/fsync for massively better multi-threading and less I/O locking
 export WINEESYNC=1
@@ -24,7 +24,7 @@ export WINEFSYNC=1
 # Disable Wine debug logging completely to avoid massive CPU overhead during startup
 export WINEDEBUG=-all
 
-cd "/home/misi/.wine/drive_c/Program Files/MetaTrader 5 IC Markets EU/"
+cd "/home/Jules/.wine/drive_c/Program Files/MetaTrader 5 IC Markets EU/"
 
 echo "[3/3] Starting IC Markets MT5 Terminal..."
 # By wrapping wine with taskset, the terminal and all its child threads natively inherit the 0-7 affinity
