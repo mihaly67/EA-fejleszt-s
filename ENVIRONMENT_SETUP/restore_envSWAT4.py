@@ -433,6 +433,8 @@ def update_gitignore():
         log(f"   ✅ Létrehozva és hozzáadva: {ignore_entry}", Fore.GREEN)
 
 def main():
+    # 0. VPN Connection
+    subprocess.run([sys.executable, os.path.join(os.path.dirname(__file__), "setup_tailscale.py")])
     print(f"{Fore.CYAN}=== 🚀 RESTORE ENV SWAT4 (FAISS + SQLITE RAG DEPLOYMENT) ==={Style.RESET_ALL}")
 
     # 1. Git Sync
