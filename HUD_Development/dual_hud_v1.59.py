@@ -159,6 +159,8 @@ class DualPaneHUD(QMainWindow):
         self.current_high = 0.0
         self.current_low = float('inf')
 
+        self.is_history_loaded = False
+
         self.zmq_thread = ZMQReceiverThread()
         self.zmq_thread.data_received.connect(self.on_data_received)
         self.chart.get_webview().loadFinished.connect(lambda: QTimer.singleShot(1000, self.zmq_thread.start))
@@ -213,8 +215,53 @@ class DualPaneHUD(QMainWindow):
 
         try:
             if not self.is_initialized:
-                # Initialize Main Chart (Candles)
-                self.chart.set(candle_df)
+                import os
+                df_hist = None
+                path = "/home/misi/.wine/drive_c/Program Files/MetaTrader 5 IC Markets EU/MQL5/Files/history_init.csv"
+
+                if os.path.exists(path):
+                    try:
+                        df_hist = pd.read_csv(path)
+                    except Exception:
+                        pass
+
+                if df_hist is not None and not df_hist.empty:
+                    # Format time column properly for lightweight-charts
+                    df_hist['time'] = pd.to_datetime(df_hist['time'].astype(int), unit='s').dt.strftime('%Y-%m-%d %H:%M:%S')
+
+                    # Concat with the first tick
+                    final_df = pd.concat([df_hist, candle_df], ignore_index=True)
+                    # Deduplicate to prevent "Cannot read property series of undefined" / js crashes
+                    final_df = final_df.drop_duplicates(subset=['time'], keep='last')
+
+                    # Set the main chart with the history + current tick
+                    self.chart.set(final_df)
+
+                    # Initialize subchart series with dummy values matching the exact same time axis
+                    times = final_df['time']
+                    df_hist_p_long = pd.DataFrame({'time': times, 'P_Long': [0.0] * len(times)})
+                    df_hist_p_short = pd.DataFrame({'time': times, 'P_Short': [0.0] * len(times)})
+                    df_hist_p_noise = pd.DataFrame({'time': times, 'P_Noise': [0.0] * len(times)})
+                    df_hist_dummy = pd.DataFrame({'time': times, 'open': [0.0]*len(times), 'high': [1.0]*len(times), 'low': [0.0]*len(times), 'close': [0.5]*len(times)})
+
+                    # Update the very last row (the current tick) with real probabilities
+                    df_hist_p_long.iloc[-1, df_hist_p_long.columns.get_loc('P_Long')] = data.get('p_long', 0.0)
+                    df_hist_p_short.iloc[-1, df_hist_p_short.columns.get_loc('P_Short')] = data.get('p_short', 0.0)
+                    df_hist_p_noise.iloc[-1, df_hist_p_noise.columns.get_loc('P_Noise')] = data.get('p_noise', 0.0)
+
+                    self.subchart.set(df_hist_dummy)
+                    self.p_long_line.set(df_hist_p_long)
+                    self.p_short_line.set(df_hist_p_short)
+                    self.p_noise_line.set(df_hist_p_noise)
+
+                    self.is_history_loaded = True
+                else:
+                    # Fallback to tick-only if history file missing
+                    self.chart.set(candle_df)
+                    self.subchart.set(dummy_df)
+                    self.p_long_line.set(p_long_df)
+                    self.p_short_line.set(p_short_df)
+                    self.p_noise_line.set(p_noise_df)
 
                 self.bid_line.update(data.get('bid', price))
                 self.ask_line.update(data.get('ask', price))
