@@ -4,10 +4,10 @@ echo "🚀 MERKAVA COPILOT SYSTEM LAUNCHER"
 echo "======================================"
 
 # Ensure we are in the correct working directory on the VPS
-if [ -d "/home/misi/LGBM_mlops" ]; then
-    cd /home/misi/LGBM_mlops
+if [ -d "/home/Jules/LGBM_mlops" ]; then
+    cd /home/Jules/LGBM_mlops
 else
-    echo "Warning: /home/misi/LGBM_mlops directory not found. Running in local mode."
+    echo "Warning: /home/Jules/LGBM_mlops directory not found. Running in local mode."
 fi
 
 # 1. Kill any existing Copilot and HUD processes
@@ -27,7 +27,7 @@ sleep 2
 echo "[2/3] 🧠 Starting LightGBM Data Bridge & Inference Engine..."
 if [ -d "Micro_LGBM/src" ]; then
     # Strictly use the absolute path to the venv python executable to avoid environment leaks
-    nohup /home/misi/LGBM_mlops/venv/bin/python3 Micro_LGBM/src/mt5_live_copilot_v1.9_beta.py > Micro_LGBM/src/copilot.log 2>&1 &
+    nohup /home/Jules/jules_venv/bin/python3 Micro_LGBM/src/mt5_live_copilot_v1.9_beta.py > Micro_LGBM/src/copilot.log 2>&1 &
     echo "   -> LightGBM Engine running in background (PID $!)"
     sleep 3
 
@@ -43,5 +43,5 @@ fi
 echo "[3/3] 📊 All systems GO! Backend is listening on ports 5555, 5556, and 5557."
 echo ""
 echo "To view the UI, open a terminal on your desktop and run:"
-echo "cd /home/misi/LGBM_mlops && source venv/bin/activate && python3 HUD_Development/dual_hud.py"
+echo "cd /home/Jules/LGBM_mlops && source ~/jules_venv/bin/activate && python3 HUD_Development/dual_hud.py"
 echo "======================================"

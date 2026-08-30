@@ -3,7 +3,7 @@ echo "======================================"
 echo "STARTING LGBM BACKEND V1.96"
 echo "======================================"
 
-cd /home/misi/LGBM_mlops
+cd /home/Jules/LGBM_mlops
 
 echo "Ensuring previous processes are stopped..."
 if [ -f "./stop_lgbm.sh" ]; then
@@ -14,7 +14,7 @@ fi
 
 echo "Starting mt5_live_copilot_v1.96_beta.py..."
 if [ -d "venv" ]; then
-    source venv/bin/activate
+    source ~/jules_venv/bin/activate
 fi
 python3 -u Micro_LGBM/src/mt5_live_copilot_v1.96_beta.py > copilot_v1.96.log 2>&1 &
 
