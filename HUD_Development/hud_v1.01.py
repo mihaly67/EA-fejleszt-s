@@ -36,8 +36,8 @@ class ZMQReceiverThread(QThread):
 class BasicHUD(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Jules HUD - v1.01 (Live Tick Only)")
-        self.resize(1000, 600)
+        self.setWindowTitle("Jules HUD - v1.00 (Live Tick Only)")
+        self.resize(1100, 700)
 
         # --- UI Elrendezés ---
         central_widget = QWidget()
@@ -57,14 +57,14 @@ class BasicHUD(QMainWindow):
         self.chart = QtChart(inner_width=1, inner_height=1)
         self.chart.layout(background_color='#121212', text_color='#ffffff')
         self.chart.grid(vert_enabled=False, horz_enabled=False)
-        self.chart.time_scale(visible=True, right_offset=100)
+        self.chart.time_scale(visible=True, right_offset=0)
+        # 15% right offset in JS
+        self.chart.run_script(f"{self.chart.id}.chart.timeScale().applyOptions({{ rightOffset: 15 }})")
         self.chart.get_webview().setStyleSheet("background-color: #121212;")
 
-        # --- Bid/Ask Vonalak ---
+        # --- Dinamikus vonalak (Price Lines) ---
         self.bid_line = self.chart.horizontal_line(0.0, color='royalblue', width=1, style='solid', text='Bid')
         self.ask_line = self.chart.horizontal_line(0.0, color='firebrick', width=1, style='solid', text='Ask')
-
-        # Opcionális price line, ami alapból leköveti a close árat. A lightweight-charts alapból kirajzolja a szürke utolsó árat.
         self.last_price_line = self.chart.horizontal_line(0.0, color='gray', width=1, style='dashed', text='Last')
 
 
@@ -119,16 +119,22 @@ class BasicHUD(QMainWindow):
                 # Az legelső beérkező adatnál .set() kell (dataframe listában) az inicializáláshoz!
                 initial_df = pd.DataFrame([candle_data])
                 self.chart.set(initial_df)
+
                 bid = data.get('bid', price)
                 ask = data.get('ask', price)
                 self.bid_line.update(bid)
                 self.ask_line.update(ask)
                 self.last_price_line.update(price)
-
                 self.is_initialized = True
             else:
                 # A további tickeknél az .update() írja felül vagy fűzi hozzá a gyertyát
                 self.chart.update(pd.Series(candle_data))
+
+                bid = data.get('bid', price)
+                ask = data.get('ask', price)
+                self.bid_line.update(bid)
+                self.ask_line.update(ask)
+                self.last_price_line.update(price)
 
         except Exception as e:
             print(f"[Chart Error] {e}", flush=True)

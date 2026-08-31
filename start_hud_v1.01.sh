@@ -1,23 +1,12 @@
 #!/bin/bash
-echo "======================================"
-echo "STARTING JULES LGBM COPILOT HUD V1.00"
-echo "======================================"
-
 cd /home/Jules/LGBM_mlops
 
-echo "Cleaning up existing HUD processes..."
-pkill -f 'hud_v1.01.py' || true
-sleep 1
+echo "Meglévő hud_v1.01.py processzek leállítása..."
+pkill -f hud_v1.01.py
 
+echo "HUD v1.01 (Live Tick) indítása..."
 export DISPLAY=:0
 export QT_QPA_PLATFORM=xcb
 
-echo "Starting HUD_Development/hud_v1.01.py..."
-if [ -d "/home/Jules/jules_venv" ]; then
-    source /home/Jules/jules_venv/bin/activate
-fi
-
-/home/Jules/jules_venv/bin/python3 HUD_Development/hud_v1.01.py > hud.log 2>&1 &
-
-echo "HUD launched in background. Check your desktop."
-echo "======================================"
+/home/Jules/jules_venv/bin/python3 HUD_Development/hud_v1.01.py > /tmp/hud_v1.01_sh.log 2>&1 &
+disown
