@@ -41,6 +41,12 @@ if [ $? -eq 0 ]; then
         echo "==============================================="
         echo " 🎉 BOOTSTRAP SIKERES! A KÖRNYEZET KÉSZ. 🎉  "
         echo "==============================================="
+
+        # Indítjuk a Keep-Alive folyamatot a háttérben, hogy a Devbox ne aludjon el
+        if [ -f "ENVIRONMENT_SETUP/keep_alive.sh" ]; then
+            ./ENVIRONMENT_SETUP/keep_alive.sh > /tmp/keep_alive.log 2>&1 &
+            echo "🛡️ Keep-Alive daemon elindítva (5 percenkénti ping a host felé)."
+        fi
     else
          echo "❌ Hiba: Az SSH kapcsolat nem jött létre."
     fi
