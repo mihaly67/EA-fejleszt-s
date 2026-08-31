@@ -5,7 +5,10 @@ import sys
 def setup_tailscale_connection():
     print("🚀 Initializing Tailscale Connection to Jules Dedicated Server...")
 
-    auth_key = os.environ.get("TAILSCALE_AUTH_KEY", "tskey-auth-kkHGjmEtz811CNTRL-PvniR3jH661CG9tkTBet51TyFnJ4rp1f")
+    auth_key = os.environ.get("TAILSCALE_AUTH_KEY")
+    if not auth_key:
+        print("❌ Error: TAILSCALE_AUTH_KEY environment variable is not set. Please set it before running.")
+        sys.exit(1)
 
     # Check if tailscale is installed
     try:
@@ -23,8 +26,8 @@ def setup_tailscale_connection():
         print(f"⚠️ Warning during tailscale up: {e}")
 
     # Verify Connection with ping
-    print("📡 Pinging 100.66.45.6...")
-    result = subprocess.run(["ping", "-c", "3", "100.66.45.6"], capture_output=True, text=True)
+    print("📡 Pinging 100.77.191.66...")
+    result = subprocess.run(["ping", "-c", "3", "100.77.191.66"], capture_output=True, text=True)
     if result.returncode == 0:
         print("✅ Ping successful! Jules Box is online.")
     else:
