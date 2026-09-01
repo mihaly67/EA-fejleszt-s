@@ -42,10 +42,10 @@ class PositionManager:
         self.max_lines = 10
 
         for _ in range(self.max_lines):
-            line = self.chart.horizontal_line(0.0001, color='forestgreen', width=2, style='solid', text='Entry', axis_label_visible=False)
+            line = self.chart.horizontal_line(0.0001, color='forestgreen', width=2, style='solid', text='Entry', axis_label_visible=True)
             self.live_lines.append(line)
         for _ in range(self.max_lines):
-            line = self.chart.horizontal_line(0.0001, color='forestgreen', width=2, style='dashed', text='Pending', axis_label_visible=False)
+            line = self.chart.horizontal_line(0.0001, color='forestgreen', width=2, style='dashed', text='Pending', axis_label_visible=True)
             self.pending_lines.append(line)
 
     def update_positions(self, pos_types, pos_prices):
@@ -80,7 +80,7 @@ class PositionManager:
 class BasicHUD(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Jules HUD - v1.07 (Live Tick Only)")
+        self.setWindowTitle("Jules HUD - v1.08 (Live Tick Only)")
         self.resize(1100, 700)
 
         # --- UI Elrendezés ---
@@ -104,6 +104,10 @@ class BasicHUD(QMainWindow):
         self.chart.time_scale(visible=True, right_offset=0)
         # 15% right offset in JS
         self.chart.run_script(f"{self.chart.id}.chart.timeScale().applyOptions({{ rightOffset: 15 }})")
+
+        # UI Overlap Fix: Kiszelesitjuk az Y tengelyt (rightPriceScale), igy a szamok es a szovegek elfernek
+        self.chart.run_script(f"{self.chart.id}.chart.priceScale('right').applyOptions({{ minimumWidth: 120 }})")
+
         self.chart.get_webview().setStyleSheet("background-color: #121212;")
 
         # --- Dinamikus vonalak (Price Lines) ---
@@ -113,12 +117,12 @@ class BasicHUD(QMainWindow):
         self.last_price_line = self.chart.horizontal_line(0.0, color='gray', width=1, style='dashed', text='Last')
 
         # --- Pivot Vonalak ---
-        self.res_micro = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.5)', width=1, style='dotted', text='Res Micro', axis_label_visible=False)
-        self.sup_micro = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.5)', width=1, style='dotted', text='Sup Micro', axis_label_visible=False)
-        self.res_sec = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.5)', width=1, style='dashed', text='Res Sec', axis_label_visible=False)
-        self.sup_sec = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.5)', width=1, style='dashed', text='Sup Sec', axis_label_visible=False)
-        self.res_ter = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.5)', width=1, style='solid', text='Res Ter', axis_label_visible=False)
-        self.sup_ter = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.5)', width=1, style='solid', text='Sup Ter', axis_label_visible=False)
+        self.res_micro = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.5)', width=1, style='dotted', text='Res Micro', axis_label_visible=True)
+        self.sup_micro = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.5)', width=1, style='dotted', text='Sup Micro', axis_label_visible=True)
+        self.res_sec = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.5)', width=1, style='dashed', text='Res Sec', axis_label_visible=True)
+        self.sup_sec = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.5)', width=1, style='dashed', text='Sup Sec', axis_label_visible=True)
+        self.res_ter = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.5)', width=1, style='solid', text='Res Ter', axis_label_visible=True)
+        self.sup_ter = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.5)', width=1, style='solid', text='Sup Ter', axis_label_visible=True)
 
 
         main_layout.addWidget(self.chart.get_webview(), stretch=1)
