@@ -48,7 +48,7 @@ class SysMonitor(QMainWindow):
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.show()
 
-        # Update Timer - Increased frequency to 2 seconds
+        # Update Timer - 2 seconds
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_status)
         self.timer.start(2000)
@@ -68,33 +68,40 @@ class SysMonitor(QMainWindow):
         parsed_lines = []
         for line in lines:
             line = line.strip()
-            if not line:
+            if not line or line.startswith("#"):
                 continue
 
-            # Use regex to replace the lonely hyphens with meaningful text
+            # Remove redundant user emails and OS info to clean up parsing
+            line = re.sub(r'deszkmihaly67@\s+linux\s+', '', line)
+
+            # Now parts should be roughly: IP, NAME, STATUS
             parts = re.split(r'\s{2,}', line)
-            if len(parts) >= 4:
+
+            if len(parts) >= 2:
                 ip = parts[0]
                 name = parts[1]
-                user = parts[2]
-                os_type = parts[3]
-                status = parts[4] if len(parts) > 4 else "-"
+                status_raw = parts[2] if len(parts) > 2 else "-"
+                status_raw_lower = status_raw.lower()
 
                 # Make status human readable
-                if status == "-":
-                    # If there's no specific status but it's listed, it's either the local machine (online) or an idle machine
-                    if name.lower() == "jules":
-                        status = "[Helyi gép / ONLINE]"
-                    else:
-                        status = "[Kapcsolódva / IDLE]"
-                elif "active" in status.lower():
+                if name.lower() == "jules":
+                    status = "[Helyi gép / ONLINE]"
+                elif "active" in status_raw_lower:
                     status = "[ONLINE / AKTÍV]"
-                elif "offline" in status.lower():
+                elif "idle" in status_raw_lower:
+                    status = "[ONLINE / IDLE]"
+                elif "offline" in status_raw_lower:
                     status = "[OFFLINE]"
+                else:
+                    status = "[ONLINE / STANDBY]" # Ha csak '-' van, az azt jelenti a tailscale-nél, hogy jelen van, de nincs forgalom
 
                 parsed_lines.append(f"{ip:<15} {name:<12} {status}")
             else:
                 parsed_lines.append(line)
+
+        if not parsed_lines:
+            return "Nincs adat a hálózatról."
+
         return "\n".join(parsed_lines)
 
     def update_status(self):
