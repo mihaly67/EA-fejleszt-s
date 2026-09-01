@@ -37,39 +37,50 @@ class ZMQReceiverThread(QThread):
 class PositionManager:
     def __init__(self, chart):
         self.chart = chart
-        self.lines = [] # Lista a letrehozott vonalaknak
+        self.live_lines = []
+        self.pending_lines = []
+        self.max_lines = 10
+
+        for _ in range(self.max_lines):
+            line = self.chart.horizontal_line(0.0001, color='forestgreen', width=2, style='solid', text='')
+            self.live_lines.append(line)
+        for _ in range(self.max_lines):
+            line = self.chart.horizontal_line(0.0001, color='forestgreen', width=2, style='dashed', text='')
+            self.pending_lines.append(line)
 
     def update_positions(self, pos_types, pos_prices):
-        # 1. Toroljuk a korabbi vonalakat a wrapper delete metodusaval.
-        # Ha a delete nem támogatott, akkor mozgatjuk off-screenre.
-        for line in self.lines:
-            if hasattr(line, 'delete'):
-                try:
-                    line.delete()
-                except Exception:
-                    line.update(0.0001)
-            else:
-                line.update(0.0001)
+        num_positions = len(pos_types) if pos_types and pos_prices and len(pos_types) == len(pos_prices) else 0
 
-        self.lines.clear()
+        live_idx = 0
+        pending_idx = 0
 
-        # 2. Uj vonalak kirajzolasa dinamikus stilussal a bejovo adatok alapjan
-        if pos_types and pos_prices and len(pos_types) == len(pos_prices):
-            for p_type, p_price in zip(pos_types, pos_prices):
-                # EA uj logikaja: 1 = Live Buy, -1 = Live Sell, 2 = Pending Buy, 3 = Pending Sell, 0 = Nincs
-                if p_type == 0 or p_price == 0.0:
-                    continue
+        for i in range(num_positions):
+            p_type = pos_types[i]
+            p_price = pos_prices[i]
+            if p_type == 0 or p_price == 0.0:
+                continue
 
-                line_style = 'solid' if p_type in [1, -1] else 'dashed'
+            if p_type in [1, -1]: # Live
+                if live_idx < self.max_lines:
+                    self.live_lines[live_idx].update(p_price)
+                    live_idx += 1
+            elif p_type in [2, 3]: # Pending
+                if pending_idx < self.max_lines:
+                    self.pending_lines[pending_idx].update(p_price)
+                    pending_idx += 1
 
-                # Zold, nem vakito: forestgreen
-                new_line = self.chart.horizontal_line(p_price, color='forestgreen', width=2, style=line_style, text=f'Entry: {p_price}')
-                self.lines.append(new_line)
+        # A maradék elrejtése
+        while live_idx < self.max_lines:
+            self.live_lines[live_idx].update(0.0001)
+            live_idx += 1
+        while pending_idx < self.max_lines:
+            self.pending_lines[pending_idx].update(0.0001)
+            pending_idx += 1
 
 class BasicHUD(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Jules HUD - v1.02 (Live Tick Only)")
+        self.setWindowTitle("Jules HUD - v1.03 (Live Tick Only)")
         self.resize(1100, 700)
 
         # --- UI Elrendezés ---
@@ -100,6 +111,14 @@ class BasicHUD(QMainWindow):
         self.bid_line = self.chart.horizontal_line(0.0, color='royalblue', width=1, style='solid', text='Bid')
         self.ask_line = self.chart.horizontal_line(0.0, color='firebrick', width=1, style='solid', text='Ask')
         self.last_price_line = self.chart.horizontal_line(0.0, color='gray', width=1, style='dashed', text='Last')
+
+        # --- Pivot Vonalak ---
+        self.res_micro = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.5)', width=1, style='dotted', text='Res Micro')
+        self.sup_micro = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.5)', width=1, style='dotted', text='Sup Micro')
+        self.res_sec = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.7)', width=1, style='dashed', text='Res Sec')
+        self.sup_sec = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.7)', width=1, style='dashed', text='Sup Sec')
+        self.res_ter = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.9)', width=1, style='solid', text='Res Ter')
+        self.sup_ter = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.9)', width=1, style='solid', text='Sup Ter')
 
 
         main_layout.addWidget(self.chart.get_webview(), stretch=1)
@@ -160,6 +179,13 @@ class BasicHUD(QMainWindow):
                 self.ask_line.update(ask)
                 self.last_price_line.update(price)
 
+                self.res_micro.update(data.get('res_micro', 0.0001))
+                self.sup_micro.update(data.get('sup_micro', 0.0001))
+                self.res_sec.update(data.get('res_sec', 0.0001))
+                self.sup_sec.update(data.get('sup_sec', 0.0001))
+                self.res_ter.update(data.get('res_ter', 0.0001))
+                self.sup_ter.update(data.get('sup_ter', 0.0001))
+
                 pos_types = data.get('pos_types', [0])
                 pos_prices = data.get('pos_prices', [0.0])
                 self.position_manager.update_positions(pos_types, pos_prices)
@@ -173,6 +199,13 @@ class BasicHUD(QMainWindow):
                 self.bid_line.update(bid)
                 self.ask_line.update(ask)
                 self.last_price_line.update(price)
+
+                self.res_micro.update(data.get('res_micro', 0.0001))
+                self.sup_micro.update(data.get('sup_micro', 0.0001))
+                self.res_sec.update(data.get('res_sec', 0.0001))
+                self.sup_sec.update(data.get('sup_sec', 0.0001))
+                self.res_ter.update(data.get('res_ter', 0.0001))
+                self.sup_ter.update(data.get('sup_ter', 0.0001))
 
                 pos_types = data.get('pos_types', [0])
                 pos_prices = data.get('pos_prices', [0.0])
