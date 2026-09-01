@@ -1,5 +1,6 @@
 import sys
 import subprocess
+import re
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget,
                              QLabel, QTextEdit, QSystemTrayIcon, QMenu, QAction, QStyle)
 from PyQt5.QtCore import QTimer, Qt
@@ -8,7 +9,7 @@ class SysMonitor(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Jules SSH & Tailscale Monitor")
-        self.resize(650, 500)
+        self.resize(700, 550)
 
         # Main Widget and Layout
         central_widget = QWidget()
@@ -23,7 +24,7 @@ class SysMonitor(QMainWindow):
         # Text Area for Status
         self.status_text = QTextEdit()
         self.status_text.setReadOnly(True)
-        # Apply some basic styling
+        # Text is white per user request
         self.status_text.setStyleSheet("background-color: #1e1e1e; color: #ffffff; font-family: monospace; font-size: 13px;")
         layout.addWidget(self.status_text)
 
@@ -47,24 +48,57 @@ class SysMonitor(QMainWindow):
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.show()
 
-        # Update Timer
+        # Update Timer - Increased frequency to 2 seconds
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_status)
-        self.timer.start(5000) # 5 seconds
+        self.timer.start(2000)
 
         # Initial Update
         self.update_status()
 
     def run_cmd(self, cmd):
         try:
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=3)
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=2)
             return result.stdout.strip() if result.stdout else result.stderr.strip()
         except Exception as e:
             return str(e)
 
+    def parse_tailscale(self, ts_output):
+        lines = ts_output.split("\n")
+        parsed_lines = []
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            # Use regex to replace the lonely hyphens with meaningful text
+            parts = re.split(r'\s{2,}', line)
+            if len(parts) >= 4:
+                ip = parts[0]
+                name = parts[1]
+                user = parts[2]
+                os_type = parts[3]
+                status = parts[4] if len(parts) > 4 else "-"
+
+                # Make status human readable
+                if status == "-":
+                    # If there's no specific status but it's listed, it's either the local machine (online) or an idle machine
+                    if name.lower() == "jules":
+                        status = "[Helyi gép / ONLINE]"
+                    else:
+                        status = "[Kapcsolódva / IDLE]"
+                elif "active" in status.lower():
+                    status = "[ONLINE / AKTÍV]"
+                elif "offline" in status.lower():
+                    status = "[OFFLINE]"
+
+                parsed_lines.append(f"{ip:<15} {name:<12} {status}")
+            else:
+                parsed_lines.append(line)
+        return "\n".join(parsed_lines)
+
     def update_status(self):
         output = "=== SSH SZOLGÁLTATÁS ÁLLAPOTA ===\n"
-        # Since it is MX Linux with SysVinit, we directly query the init script
         ssh_status = self.run_cmd("/etc/init.d/ssh status")
         output += f"{ssh_status}\n\n"
 
@@ -74,12 +108,11 @@ class SysMonitor(QMainWindow):
 
         output += "=== TAILSCALE HÁLÓZAT (Devboxok) ===\n"
         ts_status = self.run_cmd("tailscale status")
-        output += f"{ts_status}\n"
+        output += f"{self.parse_tailscale(ts_status)}\n"
 
         self.status_text.setText(output)
 
     def closeEvent(self, event):
-        # Override close event to minimize to tray instead of exiting
         event.ignore()
         self.hide()
         self.tray_icon.showMessage(
