@@ -391,3 +391,5 @@
 {"timestamp": "2026-09-01T21:47:56.310925", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
 {"timestamp": "2026-09-01T21:56:00.437815", "category": "Context_Summary", "content": "A sys_monitor.py futtat\u00e1s\u00e1hoz telep\u00edt\u00e9sre ker\u00fclt a python3-pyqt5 csomag a fizikai g\u00e9pen. A script sikeresen elindult a h\u00e1tt\u00e9rben a DISPLAY=:0 alatt."}
 {"timestamp": "2026-09-01T21:56:09.348828", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
+{"timestamp": "2026-09-01T22:02:27.573863", "category": "Context_Summary", "content": "A sys_monitor.py friss\u00edtve lett a Jules Box-on (MX Linux). Mivel a rendszer SysVinit-et haszn\u00e1l systemd helyett, az SSH szolg\u00e1ltat\u00e1s st\u00e1tusz\u00e1nak lek\u00e9rdez\u00e9se /etc/init.d/ssh status-ra lett m\u00f3dos\u00edtva a k\u00f3d szintj\u00e9n. Ez megakad\u00e1lyozza a kor\u00e1bbi \"System has not been booted with systemd\" hiba\u00fczeneteket a fel\u00fcleten."}
+{"timestamp": "2026-09-01T22:02:36.133402", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
