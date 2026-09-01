@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Exec=/usr/bin/python3 /home/Jules/LGBM_mlops/Server_Config/sys_monitor.py
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=Jules SysMonitor
+Comment=Shows SSH and Tailscale status
+Icon=utilities-system-monitor
