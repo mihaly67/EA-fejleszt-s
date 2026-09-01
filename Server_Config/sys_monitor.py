@@ -8,7 +8,7 @@ class SysMonitor(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Jules SSH & Tailscale Monitor")
-        self.resize(600, 500)
+        self.resize(650, 500)
 
         # Main Widget and Layout
         central_widget = QWidget()
@@ -16,7 +16,7 @@ class SysMonitor(QMainWindow):
         layout = QVBoxLayout(central_widget)
 
         # Title Label
-        self.title_label = QLabel("<b>Rendszer Állapot Monitor</b>")
+        self.title_label = QLabel("<b>Jules Box Rendszer Állapot (MX Linux / SysVinit)</b>")
         self.title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.title_label)
 
@@ -24,7 +24,7 @@ class SysMonitor(QMainWindow):
         self.status_text = QTextEdit()
         self.status_text.setReadOnly(True)
         # Apply some basic styling
-        self.status_text.setStyleSheet("background-color: #1e1e1e; color: #00ff00; font-family: monospace; font-size: 12px;")
+        self.status_text.setStyleSheet("background-color: #1e1e1e; color: #ffffff; font-family: monospace; font-size: 13px;")
         layout.addWidget(self.status_text)
 
         # Setup System Tray
@@ -63,15 +63,13 @@ class SysMonitor(QMainWindow):
             return str(e)
 
     def update_status(self):
-        output = "=== JULES GÉP ÉS SSH ÁLLAPOT ===\n"
-        ssh_status = self.run_cmd("service ssh status | grep Active || systemctl status ssh | grep Active")
-        if not ssh_status:
-             ssh_status = self.run_cmd("service ssh status")
+        output = "=== SSH SZOLGÁLTATÁS ÁLLAPOTA ===\n"
+        # Since it is MX Linux with SysVinit, we directly query the init script
+        ssh_status = self.run_cmd("/etc/init.d/ssh status")
+        output += f"{ssh_status}\n\n"
 
-        output += f"SSH Szolgáltatás:\n{ssh_status}\n\n"
-
-        output += "=== NYITOTT PORTOK (Tűzfal) ===\n"
-        ports = self.run_cmd("ss -ltn | grep -E ':22|:8000|:8765|:5555|:5556|:5557'")
+        output += "=== NYITOTT PORTOK (Tűzfal / Listen) ===\n"
+        ports = self.run_cmd("ss -ltn | grep -E ':22 |:8000 |:8765 |:5555 |:5556 |:5557 '")
         output += f"{ports}\n\n"
 
         output += "=== TAILSCALE HÁLÓZAT (Devboxok) ===\n"
