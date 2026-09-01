@@ -305,12 +305,12 @@ class TickReceiver(threading.Thread):
             ask = float(parts[3])
 
             # EA sends comma separated strings for multiple positions: 1,-1 and 77100.5,77150.0
-            if len(parts) > 4 and parts[4] != "" and parts[4] != 0:
+            if len(parts) > 4 and parts[4] != "" and parts[4] != "0":
                 pos_types = [int(x) for x in parts[4].split(',')]
             else:
                 pos_types = [0]
 
-            if len(parts) > 5 and parts[5] != "" and parts[5] != 0.0:
+            if len(parts) > 5 and parts[5] != "" and parts[5] != "0.0":
                 pos_prices = [float(x) for x in parts[5].split(',')]
             else:
                 pos_prices = [0.0]
@@ -329,7 +329,9 @@ class TickReceiver(threading.Thread):
                 'Time': t,
                 'Bid': bid,
                 'Ask': ask,
-                'Close': bid, # Approximate Close with Bid
+                'Close': bid,
+                'mid_price': (bid + ask) / 2.0,
+                'dollar_vol': ((bid + ask) / 2.0) * (av1 + bv1),
                 'pos_types': pos_types,
                 'pos_prices': pos_prices,
                 'DOM_AV1': av1,
