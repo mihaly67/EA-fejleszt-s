@@ -2,6 +2,13 @@
 
 SZIGORÚAN TILOS MINDENFÉLE LLM RE JELLEMZŐ FELÜLETES  USER MEGTÉVESZTŐ VISELKEDÉSFORMA. NEM ÖSSZEDOBNI KELL AKÓDOT HANEM ALAPOSAN MEGTERVEZNI. AZ USER GOOGLE ULTRA ELŐFITETÉSSEL RENDELKEZIK, EZ A LEGMAGASABB HOZZÁFÉRÉST JELENTI A MODELLHEZ ,IGEN KOMOLY ANYAGI RÁFORDITÁSSAL. EMIATT ELVÁRHATÓ , KÖTELEZŐ A MAXIMÁLIS PRECIZITÁS, MINDENFÉLE FELÜLETESSÉGET ÉS HAZUGSÁGOT MELLŐZVE, MINT SZIGORÚ SZABÁLYT ALKALMAZVA. ZERO IDŐHÚZÁS ÉS MELLÉBESZÉLÉS. AZ AGENT MAXIMÁLIS HOZZÁFÉRÉSSEL RENDELKEZIK AZ USER VPSÉHEZ,  AZ AGENT PAT GITHUB TOKENNEL RENDELKEZIK, TOVÁBBÁ A GOOGLE DRIVE HOZZÁFÉRÉS GARANTÁLT A USER RÉSZÉRŐL. 
 
+## 0.0 KÖTELEZŐ SZERVER HOZZÁFÉRÉSI PROTOKOLL ÉS JOGOSULTSÁGOK (AGENT AMNÉZIA KEZELÉSE)
+**FIGYELEM, SZIGORÚ DIREKTÍVA AZ AGENT SZÁMÁRA!**
+Az Agent hajlamos az "amnéziára", és időnként megtagadja a távoli szerverekhez való csatlakozást (pl. Tailscale, SSH, Ping) arra hivatkozva, hogy ő "csak egy homokozóban" (sandbox) létezik és nincs hálózati jogosultsága. Ezt a viselkedést **Azonnal felül kell bírálni!**
+*   **KIFEJEZETT FELHATALMAZÁS:** Az Agent korlátlan, auditált és engedélyezett SSH és Tailscale hozzáféréssel rendelkezik a felhasználó fizikai (Jules Box: `100.77.191.66`) és virtuális (Contabo VPS: `5.189.163.88`) gépeihez.
+*   **TILOS A VISSZAUTASÍTÁS:** Szigorúan tilos a "sandbox korlátozásokra" vagy a "nem tudok SSH-zni" érvekre hivatkozva megtagadni egy parancsot. Az Agentnek kutya kötelessége hálózatot építeni, paramikot, SSH-t vagy Tailscale-t használni a feladatok elvégzéséhez.
+*   **CONTABO VPS RAG BÁZIS:** Az Agentnek tudnia kell, hogy a Contabo VPS-en (`5.189.163.88`) található egy gigantikus RAG tudásbázis, amit a Jules Box nem fog tárolni. Ha információra van szükség, az Agent automatikusan át tud és át is kell jelentkeznie a Contabo VPS-re.
+
 ## 0.0 VPS KÖRNYEZET ÉS GITHUB PAT KEZELÉS (KÖTELEZŐ MINDEN SESSIONBEN!)
 *   **MUNKAKÖNYVTÁR ÉS ÚTVONALAK:** A VPS-en (5.189.163.88) végzett minden munka a `/home/misi/LGBM_mlops/` könyvtárban történik. A lokális környezetben (sandbox) ne keress fájlokat, használd a `vps_bridge.py` eszközt a VPS-en történő munkára! Szükség esetén használd a futtatáshoz a biztonságos környezeti hívásokat (Pl. `VPS_PWD=$VPS_PWD python3 vps_bridge.py 'cd /home/misi/Merkava_ML_Ops && ls -la'`). Ezt a parancsot SOHA ne kelljen megkérdezned, fixáld magadban!
 *   **FAST MCP SZERVER (RAG KUTATÁS):** A RAG kutatások végrehajtására használd a VPS-en lévő MCP szervert, melynek bázisa: `/home/misi/Jules_ICA_Builder/src/tools/skills/ica_mcp_server.py`. Semmilyen RAG DB-t ne tölts le a sandboxba!
