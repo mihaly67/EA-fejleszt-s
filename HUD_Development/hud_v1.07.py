@@ -80,7 +80,7 @@ class PositionManager:
 class BasicHUD(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Jules HUD - v1.06 (Live Tick Only)")
+        self.setWindowTitle("Jules HUD - v1.07 (Live Tick Only)")
         self.resize(1100, 700)
 
         # --- UI Elrendezés ---
