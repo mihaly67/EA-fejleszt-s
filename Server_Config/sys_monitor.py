@@ -24,7 +24,7 @@ class SysMonitor(QMainWindow):
         self.status_text = QTextEdit()
         self.status_text.setReadOnly(True)
         # Apply some basic styling
-        self.status_text.setStyleSheet("background-color: #1e1e1e; color: #00ff00; font-family: monospace; font-size: 13px;")
+        self.status_text.setStyleSheet("background-color: #1e1e1e; color: #ffffff; font-family: monospace; font-size: 13px;")
         layout.addWidget(self.status_text)
 
         # Setup System Tray
