@@ -80,7 +80,7 @@ class PositionManager:
 class BasicHUD(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Jules HUD - v1.03 (Live Tick Only)")
+        self.setWindowTitle("Jules HUD - v1.04 (Live Tick Only)")
         self.resize(1100, 700)
 
         # --- UI Elrendezés ---
@@ -115,10 +115,10 @@ class BasicHUD(QMainWindow):
         # --- Pivot Vonalak ---
         self.res_micro = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.5)', width=1, style='dotted', text='Res Micro')
         self.sup_micro = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.5)', width=1, style='dotted', text='Sup Micro')
-        self.res_sec = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.7)', width=1, style='dashed', text='Res Sec')
-        self.sup_sec = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.7)', width=1, style='dashed', text='Sup Sec')
-        self.res_ter = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.9)', width=1, style='solid', text='Res Ter')
-        self.sup_ter = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.9)', width=1, style='solid', text='Sup Ter')
+        self.res_sec = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.5)', width=1, style='dashed', text='Res Sec')
+        self.sup_sec = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.5)', width=1, style='dashed', text='Sup Sec')
+        self.res_ter = self.chart.horizontal_line(0.0001, color='rgba(255, 0, 0, 0.5)', width=1, style='solid', text='Res Ter')
+        self.sup_ter = self.chart.horizontal_line(0.0001, color='rgba(0, 255, 0, 0.5)', width=1, style='solid', text='Sup Ter')
 
 
         main_layout.addWidget(self.chart.get_webview(), stretch=1)
