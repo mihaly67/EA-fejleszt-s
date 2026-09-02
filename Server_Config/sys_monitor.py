@@ -48,10 +48,10 @@ class SysMonitor(QMainWindow):
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.show()
 
-        # Update Timer - 2 seconds
+        # Update Timer - 5 seconds
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_status)
-        self.timer.start(2000)
+        self.timer.start(5000)
 
         # Initial Update
         self.update_status()
