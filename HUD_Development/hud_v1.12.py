@@ -78,7 +78,6 @@ class HUDMainWindow(QMainWindow):
         QTimer.singleShot(1000, self.init_history_and_network)
 
         self.last_close = None
-        self.current_minute_str = None
         self.tick_count = 0
         self.last_dt = None
 
@@ -90,19 +89,17 @@ class HUDMainWindow(QMainWindow):
                 print(f"[HISTORY] CSV fájl megtalálva: {csv_path}", flush=True)
                 df = pd.read_csv(csv_path)
 
-                # STRING conversion instead of implicit datetime - prevents JS conversion errors!
+                # datetime conversion - leave as pandas datetime objects, DO NOT convert to string,
+                # as string passing causes "Value is null" in lightweight-charts JS core on the Jules Box
                 df['time'] = pd.to_datetime(df['time'].astype(int), unit='s')
 
                 if not df.empty:
                     self.last_dt = df.iloc[-1]['time']
-                    self.current_minute_str = self.last_dt.strftime('%Y-%m-%d %H:%M:%S')
                     self.last_close = float(df.iloc[-1]['close'])
-                    print(f"[HISTORY] Last historical candle time: {self.current_minute_str}, close: {self.last_close}", flush=True)
+                    print(f"[HISTORY] Last historical candle time: {self.last_dt}, close: {self.last_close}", flush=True)
 
-                df['time'] = df['time'].dt.strftime('%Y-%m-%d %H:%M:%S')
                 self.chart.set(df)
 
-                # Init subcharts
                 df_long = pd.DataFrame({'time': df['time'], 'P_Long': 0.0})
                 self.line_long.set(df_long)
 
@@ -132,8 +129,6 @@ class HUDMainWindow(QMainWindow):
             elif now > self.last_dt:
                  self.last_dt = now
 
-        tick_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
-
         if self.last_close is None:
             self.last_close = 1.0
 
@@ -142,16 +137,17 @@ class HUDMainWindow(QMainWindow):
         p_s = data['p_short']
 
         if self.tick_count % 10 == 0:
-            print(f"[LIVE] Tick {self.tick_count} | Time: {tick_time_str} | L: {p_l:.2f} S: {p_s:.2f}", flush=True)
+            print(f"[LIVE] Tick {self.tick_count} | Time: {now} | L: {p_l:.2f} S: {p_s:.2f}", flush=True)
 
         try:
-            self.line_long.update(pd.Series({'time': tick_time_str, 'P_Long': p_l}))
-            self.line_short.update(pd.Series({'time': tick_time_str, 'P_Short': p_s}))
-            self.chart.update(pd.Series({'time': tick_time_str, 'open': self.last_close, 'high': self.last_close, 'low': self.last_close, 'close': self.last_close}))
+            # Pass Pandas Datetime objects, not strings.
+            self.line_long.update(pd.Series({'time': now, 'P_Long': p_l}))
+            self.line_short.update(pd.Series({'time': now, 'P_Short': p_s}))
+            self.chart.update(pd.Series({'time': now, 'open': self.last_close, 'high': self.last_close, 'low': self.last_close, 'close': self.last_close}))
         except Exception as e:
             print(f"[UPDATE ERROR] {e}", flush=True)
 
-        self.info_label.setText(f"TICK: {self.tick_count} | SIGNAL: {signal} | LONG: {p_l:.1%} | SHORT: {p_s:.1%} | TIME: {tick_time_str}")
+        self.info_label.setText(f"TICK: {self.tick_count} | SIGNAL: {signal} | LONG: {p_l:.1%} | SHORT: {p_s:.1%} | TIME: {now.strftime('%H:%M:%S')}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
