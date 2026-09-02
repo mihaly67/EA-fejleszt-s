@@ -368,3 +368,4 @@
 {"memory": "A jelenlegi automatikus SSH és Tailscale szolgáltatás indítás (és tűzfal szabály) nem hangolódik össze hibátlanul a bootoláskor (valószínűleg időzítési hiba miatt a tűzfal blokkolja az SSH-t, vagy az SSH daemon nem bindol a Tailscale felületre a hálózat felállása előtt). Egy mindenre kiterjedő, alaposan átgondolt szolgáltatás-indítási scriptet kell készíteni a következő sessionben."}
 {"memory": "A Sandbox SSH kulcsokat a Jules gépre kell kimenteni (/home/Jules/.agent_keys/), a session és a gép újraindítása után a felhasználó fogja azt átadni a chat-en keresztül az új Agent-nek."}
 {"memory": "A HUD v1.01 (hud_v1.01.py) módosítása a Bid/Ask/Last vonalakkal rendben van és az eltolás (right offset) probléma is sikeresen javítva lett."}
+{"memory": "A Jules hardvermonitor alkalmazásnak/widgetnek nem kell automatikusan indulnia (mert két példányban is el tud indulni), ezt csak egyszerű asztali alkalmazásként kell kezelni."}
