@@ -413,3 +413,5 @@
 {"timestamp": "2026-09-02T07:07:30.375715", "category": "Context_Summary", "content": "L\u00e9trehoztam egy 5 perces (300mp) id\u0151z\u00edt\u00e9s\u0171 keep-alive ping scriptet a sandboxban a folyamatos online jelenl\u00e9t biztos\u00edt\u00e1s\u00e1ra a Tailscale h\u00e1l\u00f3zaton. Ezzel p\u00e1rhuzamosan a Jules Boxon fut\u00f3 sys_monitor.py friss\u00edt\u00e9si idej\u00e9t vissza\u00e1ll\u00edtottam 5 m\u00e1sodpercre."}
 {"timestamp": "2026-09-02T07:07:46.474791", "category": "SESSION_MARKER", "content": "[SESSION_END]"}
 {"timestamp": "2026-09-02T09:28:22.458795", "category": "SESSION_MARKER", "content": "[SESSION_START]"}
+{"timestamp": "2026-09-02T11:25:07.701437", "category": "SESSION_MARKER", "content": "[SESSION_START]"}
+{"timestamp": "2026-09-02T10:00:00.000000", "category": "Context_Summary", "content": "SSH connection timeout/freeze on physical server. Saved backup of keys to sandbox SSH_BACKUP. User instructed to manually pull the PR branch via physical server terminal."}
