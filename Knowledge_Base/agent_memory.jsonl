@@ -415,3 +415,4 @@
 {"timestamp": "2026-09-02T09:28:22.458795", "category": "SESSION_MARKER", "content": "[SESSION_START]"}
 {"timestamp": "2026-09-02T11:25:07.701437", "category": "SESSION_MARKER", "content": "[SESSION_START]"}
 {"timestamp": "2026-09-02T10:00:00.000000", "category": "Context_Summary", "content": "SSH connection timeout/freeze on physical server. Saved backup of keys to sandbox SSH_BACKUP. User instructed to manually pull the PR branch via physical server terminal."}
+{"timestamp": "2026-09-02T10:05:00.000000", "category": "Context_Summary", "content": "SSH authentication to the physical Jules Box resolved using uppercase Jules as username and password 1104 via sshpass. The broken hud_v1.11.py and new start_hud_v1.11.sh have been successfully SCP-d to the server and started on DISPLAY=:0.0. Log confirms historical candles loaded and ZMQ is waiting for live ticks without crashing."}
