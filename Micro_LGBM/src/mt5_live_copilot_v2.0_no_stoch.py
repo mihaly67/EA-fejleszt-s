@@ -453,7 +453,8 @@ class TickReceiver(threading.Thread):
                                         latest_prob['stable'] = (len(signal_history) == 3 and len(set(signal_history)) == 1)
 
                                     # Send back to EA
-                                    msg = f"PRED|{sig}|{pl:.4f}|{ps:.4f}|{pn:.4f}\n"
+                                    version_str = "v2.0"
+                                    msg = f"PRED|{version_str}|{sig}|{pl:.4f}|{ps:.4f}|{pn:.4f}\n"
                                     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 🔥 DOLLAR BAR PREDICTION GENERATED! {msg}")
                                     try:
                                         client.sendall(msg.encode('utf-8'))
