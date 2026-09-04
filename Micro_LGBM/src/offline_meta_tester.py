@@ -55,14 +55,15 @@ def run_offline_test():
         'Open', 'High', 'Low', 'Close', 'Total_Volume',
         'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed'
     ]
+    existing_lstm_features = [f for f in lstm_features if f in df.columns]
     SEQ_LENGTH = 20
 
-    model = MetaAdvisorLSTM(input_dim=len(lstm_features))
+    model = MetaAdvisorLSTM(input_dim=len(existing_lstm_features))
     if os.path.exists(lstm_model_path):
         model.load_state_dict(torch.load(lstm_model_path, map_location=torch.device('cpu')))
     model.eval()
 
-    X_raw = df[lstm_features].fillna(0).values
+    X_raw = df[existing_lstm_features].fillna(0).values
     X_mean = np.mean(X_raw, axis=0)
     X_std = np.std(X_raw, axis=0)
     X_norm = (X_raw - X_mean) / (X_std + 1e-8)

@@ -43,13 +43,16 @@ def generate_meta_dataset_and_train():
     # We will simulate the meta-labels for the sake of the NN pipeline
     print("WARNING: Using simulated LGBM output for LSTM architecture test due to missing fusion dataset.")
 
-    # We need a numeric matrix for the LSTM. Let's pick 10 arbitrary continuous features.
+    # We need a numeric matrix for the LSTM. Let's pick continuous features available in labeled_dollar_bars_v5_strict.csv.
     lstm_features = [
         'Open', 'High', 'Low', 'Close', 'Total_Volume',
         'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed'
     ]
 
-    X_lstm_raw = df[lstm_features].fillna(0).values
+    # Verify these features exist, filter if not
+    existing_lstm_features = [f for f in lstm_features if f in df.columns]
+
+    X_lstm_raw = df[existing_lstm_features].fillna(0).values
 
     # Normalize features (StandardScaler logic)
     X_lstm_mean = np.mean(X_lstm_raw, axis=0)
@@ -93,7 +96,7 @@ def generate_meta_dataset_and_train():
     print(f"🚀 INITIALIZING LSTM TRAINING ON: {device} (Forced CPU due to CC 6.1) 🚀")
     print(f"==========================================\n")
 
-    model = MetaAdvisorLSTM(input_dim=len(lstm_features)).to(device)
+    model = MetaAdvisorLSTM(input_dim=len(existing_lstm_features)).to(device)
     criterion = nn.BCELoss() # Binary Cross Entropy for 0/1 meta-label
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
