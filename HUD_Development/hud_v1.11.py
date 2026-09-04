@@ -187,8 +187,8 @@ class BasicHUD(QMainWindow):
                 self.chart.set(initial_df)
 
                 # Subchart inicializálása
-                p_long = data.get('P_Long', 0.0)
-                p_short = data.get('P_Short', 0.0)
+                p_long = data.get('p_long', 0.0)
+                p_short = data.get('p_short', 0.0)
                 self.long_line.set(pd.DataFrame([{'time': ts_str, 'value': p_long}]))
                 self.short_line.set(pd.DataFrame([{'time': ts_str, 'value': p_short}]))
 
@@ -214,8 +214,8 @@ class BasicHUD(QMainWindow):
                 self.chart.update(pd.Series(candle_data))
 
                 # Subchart frissítése
-                p_long = data.get('P_Long', 0.0)
-                p_short = data.get('P_Short', 0.0)
+                p_long = data.get('p_long', 0.0)
+                p_short = data.get('p_short', 0.0)
                 self.long_line.update(pd.Series({'time': ts_str, 'value': p_long}))
                 self.short_line.update(pd.Series({'time': ts_str, 'value': p_short}))
 
