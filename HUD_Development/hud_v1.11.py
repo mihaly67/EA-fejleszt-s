@@ -115,8 +115,8 @@ class BasicHUD(QMainWindow):
         self.subchart.run_script(f"{self.subchart.id}.chart.priceScale('right').applyOptions({{ minimumWidth: 80 }})")
 
         # Létrehozzuk a két predikciós vonalat (Long/Short)
-        self.long_line = self.subchart.create_line(color='rgba(0, 255, 0, 1)', width=2, priceLineVisible=False)
-        self.short_line = self.subchart.create_line(color='rgba(255, 0, 0, 1)', width=2, priceLineVisible=False)
+        self.long_line = self.subchart.create_line(color='rgba(0, 255, 0, 1)', width=2)
+        self.short_line = self.subchart.create_line(color='rgba(255, 0, 0, 1)', width=2)
 
 
         # --- Dinamikus vonalak (Price Lines) ---
