@@ -11,11 +11,11 @@ def run_offline_visualizer():
     print("📈 OFFLINE LGBM PREDICTION VISUALIZER 📈")
     print("==================================================")
 
-    data_path = "/home/Jules/LGBM_mlops/Micro_LGBM/data/labeled_dollar_bars_v5_strict.csv"
+    data_path = "/home/Jules/LGBM_mlops/Micro_LGBM/data/fused_features_dollar_bars.csv"
     lgbm_model_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lgbm_model_fusion_v5_tuned.pkl"
     output_html = "/home/Jules/LGBM_mlops/Micro_LGBM/src/offline_lgbm_test_results.html"
 
-    print(f"Loading raw dollar bars from {data_path}...")
+    print(f"Loading fused dollar bars from {data_path}...")
     df = pd.read_csv(data_path)
 
     # Sort chronologically if not already
@@ -73,7 +73,7 @@ def run_offline_visualizer():
     # Let's find a dense subset of data where actual signals happened
     signal_indices = df[df['LGBM_Signal'] != 0].index
     if len(signal_indices) > 0:
-        start_idx = max(0, signal_indices[len(signal_indices)//2] - 250)
+        start_idx = max(0, signal_indices[-1] - 500)
         end_idx = min(len(df), start_idx + 500)
         plot_df = df.iloc[start_idx:end_idx].copy()
         print(f"Plotting subset from index {start_idx} to {end_idx} containing {len(plot_df[plot_df['LGBM_Signal'] != 0])} signals.")
@@ -122,7 +122,7 @@ def run_offline_visualizer():
     fig.update_layout(
         height=900,
         width=1500,
-        title_text=f"LGBM V5 Offline Sandbox Visualization (Padding applied)",
+        title_text=f"LGBM V5 Offline Sandbox Visualization",
         xaxis_rangeslider_visible=False,
         plot_bgcolor="#111111",
         paper_bgcolor="#000000",
