@@ -1,172 +1,129 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
 import zmq
 import json
+import torch
 import numpy as np
-from datetime import datetime
+import time
+import collections
 
-# 1. Define the Neural Network Architecture (Meta-Learner)
-# It takes 3 inputs (P_Long, P_Short, P_Noise from LGBM)
-# and outputs 3 logits (0 = Hold, 1 = Buy, 2 = Sell)
-class MetaAdvisorNN(nn.Module):
-    def __init__(self):
-        super(MetaAdvisorNN, self).__init__()
-        self.fc1 = nn.Linear(3, 16)
-        self.relu1 = nn.ReLU()
-        self.fc2 = nn.Linear(16, 8)
-        self.relu2 = nn.ReLU()
-        self.out = nn.Linear(8, 3)  # 3 output classes
+# Update for LSTM:
+# Instead of an MLP, we use the MetaAdvisorLSTM which expects sequential data.
+from nn_meta_model import MetaAdvisorLSTM
 
-    def forward(self, x):
-        x = self.fc1(x)
-        x = self.relu1(x)
-        x = self.fc2(x)
-        x = self.relu2(x)
-        x = self.out(x)
-        return x
+def start_meta_advisor_service():
+    print("==========================================")
+    print("🤖 STARTING LSTM META-ADVISOR SERVICE 🤖")
+    print("==========================================")
 
-def main():
-    print("==================================================")
-    print("🚀 STARTING NN META-ADVISOR (LGBM SUPERVISOR) 🚀")
-    print("==================================================")
-
-    # Update for LSTM:
-    # Instead of an MLP, we use the MetaAdvisorLSTM which expects sequential data.
-    from nn_meta_model import MetaAdvisorLSTM
-    import os
-
-    # Needs to match the training configuration
+    # LSTM specific settings
+    SEQ_LENGTH = 20
     lstm_features = [
         'Open', 'High', 'Low', 'Close', 'Total_Volume',
         'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed'
     ]
-    SEQ_LENGTH = 20
 
+    # Initialize the model
     model = MetaAdvisorLSTM(input_dim=len(lstm_features))
     model_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_meta_advisor.pth"
-    if os.path.exists(model_path):
+    try:
         model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         print(f"[INFO] Loaded trained LSTM weights from {model_path}")
-    else:
+    except FileNotFoundError:
         print("[WARNING] Untrained LSTM initialized. No weights found.")
 
     model.eval()
 
-    # We need a buffer to store the last N dollar bars
-    from collections import deque
-    sequence_buffer = deque(maxlen=SEQ_LENGTH)
+    # Load the global scalers saved during training
+    scaler_mean_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_scaler_mean.npy"
+    scaler_std_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_scaler_std.npy"
+    try:
+        X_lstm_mean = np.load(scaler_mean_path)
+        X_lstm_std = np.load(scaler_std_path)
+        print("[INFO] Loaded global feature scalers for normalization.")
+    except FileNotFoundError:
+        print("[WARNING] Missing global scalers! Falling back to 0 mean / 1 std. Inference will be inaccurate.")
+        X_lstm_mean = np.zeros(len(lstm_features))
+        X_lstm_std = np.ones(len(lstm_features))
 
-    # 2. Connect to the LGBM Copilot's ZMQ Publisher
+    # We need a rolling buffer to build sequences
+    feature_buffer = collections.deque(maxlen=SEQ_LENGTH)
+
     context = zmq.Context()
-    subscriber = context.socket(zmq.SUB)
-    subscriber.connect("tcp://127.0.0.1:5557")
-    subscriber.setsockopt_string(zmq.SUBSCRIBE, "")
 
-    # 3. ZMQ Publisher to send verdicts back to HUD/EA on port 5558
-    publisher = context.socket(zmq.PUB)
-    publisher.bind("tcp://0.0.0.0:5558")
+    # Subscribe to LGBM Copilot Publisher
+    sub_socket = context.socket(zmq.SUB)
+    sub_socket.connect("tcp://127.0.0.1:5557")
+    sub_socket.setsockopt_string(zmq.SUBSCRIBE, "HUD ")
+    print("[INFO] Subscribed to LGBM Signals on port 5557")
 
-    print("[INFO] ZMQ Subscriber connected to 127.0.0.1:5557")
-    print("[INFO] ZMQ Publisher bound to 0.0.0.0:5558")
-    print("[INFO] Waiting for LGBM probabilities...\n")
+    # Publish Meta-Verdict
+    pub_socket = context.socket(zmq.PUB)
+    pub_socket.bind("tcp://0.0.0.0:5558")
+    print("[INFO] Broadcasting Meta-Verdict on port 5558")
 
     while True:
         try:
-            message = subscriber.recv_string()
-
-            # The publisher sends: "HUD {"p_long": ...}" -> Strip the first 4 chars
-            if message.startswith("HUD "):
-                json_str = message[4:]
-            else:
-                json_str = message
-
-            payload = json.loads(json_str)
+            # 1. Receive data from LGBM Copilot
+            message = sub_socket.recv_string()
+            payload = message[4:] # Strip 'HUD ' prefix
+            data = json.loads(payload)
 
             # To feed the LSTM, we need to extract the raw features from the HUD payload
-            if 'close' in payload and 'open' in payload:
-                # Build the current feature vector for the LSTM
-                # Note: the HUD publisher in mt5_live_copilot doesn't publish M5_RSI_14 etc directly.
-                # In a full production setup, the publisher must be updated to send all `lstm_features`.
-                # For this baseline implementation, we use safe gets to prevent crashes.
-                current_features = [
-                    payload.get('open', 0.0),
-                    payload.get('high', 0.0),
-                    payload.get('low', 0.0),
-                    payload.get('close', 0.0),
-                    payload.get('Total_Volume', 0.0), # Assuming this gets added
-                    payload.get('M5_RSI_14', 50.0),
-                    payload.get('M15_RSI_14', 50.0),
-                    payload.get('M30_RSI_14', 50.0),
-                    payload.get('Price_Velocity', 0.0),
-                    payload.get('Tick_Speed', 0.0)
-                ]
+            # (Assuming the HUD payload starts including these, or we map what we have)
+            f_dict = data.get('features', {})
 
-                sequence_buffer.append(current_features)
+            # Build the current feature vector for the LSTM
+            # In a full production setup, the publisher must be updated to send all `lstm_features`.
+            # For now, we extract what's available and 0-pad the rest.
+            current_vector = []
+            for f in lstm_features:
+                current_vector.append(f_dict.get(f, 0.0))
 
-                if len(sequence_buffer) == SEQ_LENGTH and 'p_long' in payload:
-                    p_long = payload.get('p_long', 0.0)
-                    p_short = payload.get('p_short', 0.0)
-                    p_noise = payload.get('p_noise', 1.0)
-                    lgbm_signal = payload.get('signal', 0)
+            feature_buffer.append(current_vector)
 
-                    # Convert sequence to tensor: Shape (Batch=1, Seq=20, Features=10)
-                    seq_array = np.array(sequence_buffer)
-                    # Normalize (Optional: apply same normalization as training)
-                    seq_mean = np.mean(seq_array, axis=0)
-                    seq_std = np.std(seq_array, axis=0)
-                    seq_norm = (seq_array - seq_mean) / (seq_std + 1e-8)
+            meta_signal = "WAITING"
+            out_prob = 0.0
 
-                    inputs = torch.tensor([seq_norm], dtype=torch.float32)
+            # Only evaluate if we have a full sequence and the LGBM produced a signal
+            lgbm_signal = data.get('signal', 0)
+
+            if len(feature_buffer) == SEQ_LENGTH:
+                if lgbm_signal != 0:
+                    seq_array = np.array(feature_buffer)
+                    # Normalize using the GLOBAL mean and std from training!
+                    seq_norm = (seq_array - X_lstm_mean) / (X_lstm_std + 1e-8)
+
+                    # Convert to tensor: shape (batch=1, seq_length, input_dim)
+                    seq_tensor = torch.tensor(seq_norm, dtype=torch.float32).unsqueeze(0)
 
                     # Run LSTM Inference
                     with torch.no_grad():
-                        out_prob = model(inputs).item()
+                        out_prob = model(seq_tensor).item()
 
-                        # 0.0 = False Signal (Reject), 1.0 = True Signal (Accept)
-                        if out_prob > 0.5:
-                            meta_signal = "VERIFIED (True)"
-                            color = "🟢"
-                        else:
-                            meta_signal = "REJECTED (False)"
-                            color = "🔴"
+                    meta_signal = "Verified" if out_prob > 0.5 else "Rejected"
 
-                    # Map LGBM int signal to text for display
-                    lgbm_str = "HOLD"
-                    if lgbm_signal == 1: lgbm_str = "BUY"
-                    if lgbm_signal == -1: lgbm_str = "SELL"
+                    color = "\033[92m" if meta_signal == "Verified" else "\033[91m"
+                    print(f"[{time.strftime('%H:%M:%S')}] LGBM Signal: {lgbm_signal}")
+                    print(f"  > LSTM Meta-Verdict       : {color} {meta_signal} (Confidence: {out_prob*100:.1f}%)\033[0m")
+                else:
+                    meta_signal = "None"
+            else:
+                if lgbm_signal != 0:
+                    print(f"[{time.strftime('%H:%M:%S')}] LGBM Signal: {lgbm_signal}")
+                    print(f"  > LSTM Meta-Verdict       : WAITING (Buffering: {len(feature_buffer)}/{SEQ_LENGTH})")
 
-                    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    print(f"[{current_time}]")
-                    print(f"  > LGBM Base Probabilities : L: {p_long*100:.1f}% | S: {p_short*100:.1f}% | N: {p_noise*100:.1f}%")
-                    print(f"  > LGBM Base Decision      : {lgbm_str}")
-                    if lgbm_str != "HOLD":
-                        print(f"  > LSTM Meta-Verdict       : {color} {meta_signal} (Confidence: {out_prob*100:.1f}%)")
-                        # Broadcast to HUD/EA
-                        verdict_payload = {
-                            "type": "meta_advisor",
-                            "meta_verdict": f"{color} {meta_signal}",
-                            "meta_prob": float(out_prob)
-                        }
-                        publisher.send_string(f"META {json.dumps(verdict_payload)}")
-                    else:
-                        print(f"  > LSTM Meta-Verdict       : WAITING (No LGBM signal to verify)")
-                        verdict_payload = {
-                            "type": "meta_advisor",
-                            "meta_verdict": "WAITING",
-                            "meta_prob": 0.0
-                        }
-                        publisher.send_string(f"META {json.dumps(verdict_payload)}")
-
-                    print("-" * 50)
+            # Broadcast Verdict to GUI
+            meta_payload = {
+                "lgbm_signal": lgbm_signal,
+                "meta_verdict": meta_signal, # "Verified", "Rejected", "None", or "WAITING"
+                "meta_confidence": out_prob
+            }
+            pub_socket.send_string(f"META {json.dumps(meta_payload)}")
 
         except json.JSONDecodeError:
-            pass
-        except KeyboardInterrupt:
-            print("\n[INFO] Exiting...")
-            break
+            print("[ERROR] Failed to parse JSON from Copilot.")
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"[ERROR] {e}")
+            time.sleep(1)
 
 if __name__ == "__main__":
-    main()
+    start_meta_advisor_service()

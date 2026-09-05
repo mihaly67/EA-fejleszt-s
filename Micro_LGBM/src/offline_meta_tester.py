@@ -25,6 +25,12 @@ def run_offline_test():
     df['Start_Timestamp'] = pd.to_datetime(df['Start_Timestamp'])
     df = df.sort_values('Start_Timestamp').reset_index(drop=True)
 
+    # Apply Optuna Noise threshold logic
+    TH_NOISE = 0.47
+    noise_mask = df['P_Noise'] >= TH_NOISE
+    df.loc[noise_mask, 'LGBM_Signal'] = 0
+    print(f"Filtered out {noise_mask.sum()} signals due to P_Noise >= {TH_NOISE}.")
+
     print("Loaded Real LGBM Baseline Signals.")
 
     print(f"Loading LSTM from {lstm_model_path}...")
@@ -81,7 +87,7 @@ def run_offline_test():
         print("No signals found in dataset. Plotting last 500 rows.")
 
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                        vertical_spacing=0.03, subplot_titles=('Price & Signals', 'M5 RSI'),
+                        vertical_spacing=0.03, subplot_titles=('Price & Signals', 'LGBM Probabilities'),
                         row_width=[0.2, 0.7])
 
     fig.add_trace(go.Candlestick(x=plot_df['Start_Timestamp'],
@@ -114,9 +120,17 @@ def run_offline_test():
                              mode='markers', marker=dict(symbol='triangle-down', size=10, color='gray', opacity=0.5),
                              name='Rejected SELL'), row=1, col=1)
 
-    fig.add_trace(go.Scatter(x=plot_df['Start_Timestamp'], y=plot_df['M5_RSI_14'], line=dict(color='orange', width=1), name='M5 RSI'), row=2, col=1)
-    fig.add_hline(y=70, line_dash="dot", row=2, col=1, line_color="gray")
-    fig.add_hline(y=30, line_dash="dot", row=2, col=1, line_color="gray")
+    # Plot Probabilities instead of RSI
+    fig.add_trace(go.Scatter(x=plot_df['Start_Timestamp'], y=plot_df['P_Long'], line=dict(color='#00FF00', width=1), name='P(Long)'), row=2, col=1)
+    fig.add_trace(go.Scatter(x=plot_df['Start_Timestamp'], y=plot_df['P_Short'], line=dict(color='#FF00FF', width=1), name='P(Short)'), row=2, col=1)
+    fig.add_trace(go.Scatter(x=plot_df['Start_Timestamp'], y=plot_df['P_Noise'], line=dict(color='gray', width=1, dash='solid'), name='P(Noise)'), row=2, col=1)
+
+    # Add Optuna Threshold Lines
+    TH_LONG = 0.35
+    TH_SHORT = 0.36
+    fig.add_hline(y=TH_LONG, line_dash="dash", row=2, col=1, line_color="green", annotation_text=f"Long TH: {TH_LONG}")
+    fig.add_hline(y=TH_SHORT, line_dash="dash", row=2, col=1, line_color="red", annotation_text=f"Short TH: {TH_SHORT}")
+    fig.add_hline(y=TH_NOISE, line_dash="dot", row=2, col=1, line_color="gray", annotation_text=f"Noise TH: {TH_NOISE}")
 
     fig.update_layout(title='Offline Meta-Advisor Evaluation (LGBM vs LSTM)',
                       xaxis_rangeslider_visible=False,

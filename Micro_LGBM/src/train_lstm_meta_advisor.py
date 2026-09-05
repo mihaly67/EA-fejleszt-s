@@ -57,6 +57,12 @@ def generate_meta_dataset_and_train():
     # Normalize features (StandardScaler logic)
     X_lstm_mean = np.mean(X_lstm_raw, axis=0)
     X_lstm_std = np.std(X_lstm_raw, axis=0)
+
+    # Save the scaler values for live inference!!!
+    np.save("/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_scaler_mean.npy", X_lstm_mean)
+    np.save("/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_scaler_std.npy", X_lstm_std)
+    print("✅ Saved global X_lstm_mean and X_lstm_std for inference normalization.")
+
     X_lstm_norm = (X_lstm_raw - X_lstm_mean) / (X_lstm_std + 1e-8)
 
     # Simulate Meta Labels (1 = LGBM was right, 0 = LGBM was wrong, -1 = No signal)
