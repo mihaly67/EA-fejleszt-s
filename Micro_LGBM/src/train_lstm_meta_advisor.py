@@ -88,12 +88,10 @@ def generate_meta_dataset_and_train():
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
     # Initialize Model (CPU ONLY for compatibility test)
-    # The Quadro P2000 has compute capability 6.1 (sm_61), which is not supported by the
-    # currently installed PyTorch 2.13.0+cu130 (requires >= 7.5).
-    # We force CPU here until the environment is downgraded/reinstalled for Pascal GPUs.
-    device = torch.device("cpu")
+    # Train on GPU if available (PyTorch downgraded to 2.1.2+cu118 for P2000 support)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\n==========================================")
-    print(f"🚀 INITIALIZING LSTM TRAINING ON: {device} (Forced CPU due to CC 6.1) 🚀")
+    print(f"🚀 INITIALIZING LSTM TRAINING ON: {device} 🚀")
     print(f"==========================================\n")
 
     model = MetaAdvisorLSTM(input_dim=len(existing_lstm_features)).to(device)
