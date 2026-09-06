@@ -16,8 +16,9 @@ def create_sequences(data, labels, seq_length):
     ys = []
     # Ignore the first seq_length rows as we can't form a full sequence for them
     for i in range(len(data) - seq_length):
-        x = data[i:(i + seq_length)]
-        # The label corresponds to the prediction at the END of the sequence
+        # The sequence must INCLUDE the current bar (i + seq_length) to match live inference behavior
+        x = data[i + 1 : i + seq_length + 1]
+        # The label corresponds to the prediction AT the sequence end
         y = labels[i + seq_length]
 
         # We only want to train on rows where the LGBM actually made a signal (Meta_Label != -1)
