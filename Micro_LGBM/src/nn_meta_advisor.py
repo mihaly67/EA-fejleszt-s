@@ -70,30 +70,30 @@ def start_meta_advisor_service():
             data = json.loads(payload)
 
             # To feed the LSTM, we need to extract the raw features from the HUD payload
-            # (Assuming the HUD payload starts including these, or we map what we have)
             f_dict = data.get('features', {})
 
-            # Append dynamic LGBM states to the feature dict so the LSTM can use them
+            # CRITICAL FILTER: The HUD payload includes both high-frequency UI ticks and closed dollar bars.
+            # We ONLY want to append to our sequence buffer when a full dollar bar closes (which contains 'Total_Volume').
+            # Otherwise, the 20-bar buffer gets flooded with garbage ticks instantly.
+            is_closed_bar = 'Total_Volume' in f_dict and f_dict['Total_Volume'] > 0
+
             lgbm_signal = data.get('signal', 0)
-            f_dict['LGBM_Signal'] = lgbm_signal
-            f_dict['P_Long'] = data.get('p_long', 0.0)
-            f_dict['P_Short'] = data.get('p_short', 0.0)
-            f_dict['P_Noise'] = data.get('p_noise', 0.0)
-
-            # Build the current feature vector for the LSTM
-            # In a full production setup, the publisher must be updated to send all `lstm_features`.
-            # For now, we extract what's available and 0-pad the rest.
-            current_vector = []
-            for f in lstm_features:
-                current_vector.append(f_dict.get(f, 0.0))
-
-            feature_buffer.append(current_vector)
-
             meta_signal = "WAITING"
             out_prob = 0.0
 
-            # Only evaluate if we have a full sequence and the LGBM produced a signal
-            lgbm_signal = data.get('signal', 0)
+            if is_closed_bar:
+                # Append dynamic LGBM states to the feature dict so the LSTM can use them
+                f_dict['LGBM_Signal'] = lgbm_signal
+                f_dict['P_Long'] = data.get('p_long', 0.0)
+                f_dict['P_Short'] = data.get('p_short', 0.0)
+                f_dict['P_Noise'] = data.get('p_noise', 0.0)
+
+                # Build the current feature vector for the LSTM
+                current_vector = []
+                for f in lstm_features:
+                    current_vector.append(f_dict.get(f, 0.0))
+
+                feature_buffer.append(current_vector)
 
             if len(feature_buffer) == SEQ_LENGTH:
                 if lgbm_signal != 0:
