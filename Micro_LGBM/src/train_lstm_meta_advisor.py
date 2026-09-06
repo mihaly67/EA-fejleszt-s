@@ -29,7 +29,9 @@ def generate_meta_dataset_and_train():
 
     lstm_features = [
         'Open', 'High', 'Low', 'Close', 'Total_Volume',
-        'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed'
+        'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
+        'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S',
+        'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal'
     ]
 
     existing_lstm_features = lstm_features

@@ -75,7 +75,9 @@ def run_offline_test():
     print(f"Loading LSTM from {lstm_model_path}...")
     lstm_features = [
         'Open', 'High', 'Low', 'Close', 'Total_Volume',
-        'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed'
+        'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
+        'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S',
+        'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal'
     ]
 
     # Verify these features exist in the df, pad if missing

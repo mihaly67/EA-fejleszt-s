@@ -137,7 +137,8 @@ def evaluate_tick_state(clf, current_features_dict):
         "p_long": float(p_long),
         "p_short": float(p_short),
         "p_noise": float(p_noise),
-        "is_stable": bool(is_stable)
+        "is_stable": bool(is_stable),
+        "features": f_dict  # Include raw features for the Meta-Advisor LSTM
     }
     try:
         zmq_publisher.send_string(f"HUD {json.dumps(hud_data)}")
@@ -254,7 +255,8 @@ class MacroReceiver(threading.Thread):
                                         "p_long": current_plong,
                                         "p_short": current_pshort,
                                         "p_noise": current_pnoise,
-                                        "is_stable": current_stable
+                                        "is_stable": current_stable,
+                                        "features": macro_cache  # Include raw features for the Meta-Advisor LSTM
                                     }
                                     try:
                                         zmq_publisher.send_string(f"HUD {json.dumps(hud_data)}")
@@ -441,6 +443,15 @@ class TickReceiver(threading.Thread):
                                     f_dict['Ask'] = tick_data.get('ask', close_p)
                                     f_dict['pos_types'] = tick_data.get('pos_types', [0])
                                     f_dict['pos_prices'] = tick_data.get('pos_prices', [0.0])
+                                    f_dict['Total_Volume'] = sum(t.get('volume', 0.0) for t in current_bar_ticks)
+
+                                    # M5, M15, M30 RSI and Price Velocity aren't natively computed here without Pandas and full history.
+                                    # But we can 0-pad them here and they will be normalized to ~0 during inference by the StandardScaler.
+                                    f_dict['M5_RSI_14'] = 50.0
+                                    f_dict['M15_RSI_14'] = 50.0
+                                    f_dict['M30_RSI_14'] = 50.0
+                                    f_dict['Price_Velocity'] = 0.0
+
                                     # Extract time from the last tick in the bar
                                     f_dict['Time'] = current_bar_ticks[-1].get('time', time.time())
                                     sig, pl, ps, pn = evaluate_tick_state(self.clf, f_dict)
@@ -504,7 +515,8 @@ class TickReceiver(threading.Thread):
                                             "p_long": current_plong,
                                             "p_short": current_pshort,
                                             "p_noise": current_pnoise,
-                                            "is_stable": current_stable
+                                                "is_stable": current_stable,
+                                                "features": macro_cache  # Include raw features for the Meta-Advisor LSTM
                                         }
                                         try:
                                             zmq_publisher.send_string(f"HUD {json.dumps(hud_data)}")

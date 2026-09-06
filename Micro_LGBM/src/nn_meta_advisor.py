@@ -18,7 +18,9 @@ def start_meta_advisor_service():
     SEQ_LENGTH = 20
     lstm_features = [
         'Open', 'High', 'Low', 'Close', 'Total_Volume',
-        'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed'
+        'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
+        'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S',
+        'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal'
     ]
 
     # Initialize the model
@@ -70,6 +72,13 @@ def start_meta_advisor_service():
             # To feed the LSTM, we need to extract the raw features from the HUD payload
             # (Assuming the HUD payload starts including these, or we map what we have)
             f_dict = data.get('features', {})
+
+            # Append dynamic LGBM states to the feature dict so the LSTM can use them
+            lgbm_signal = data.get('signal', 0)
+            f_dict['LGBM_Signal'] = lgbm_signal
+            f_dict['P_Long'] = data.get('p_long', 0.0)
+            f_dict['P_Short'] = data.get('p_short', 0.0)
+            f_dict['P_Noise'] = data.get('p_noise', 0.0)
 
             # Build the current feature vector for the LSTM
             # In a full production setup, the publisher must be updated to send all `lstm_features`.
