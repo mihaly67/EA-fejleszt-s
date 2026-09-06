@@ -156,19 +156,20 @@ def run_offline_test():
     rejected_sells = lgbm_sells[lgbm_sells['Meta_Verdict'] == 0]
 
     fig.add_trace(go.Scatter(x=verified_buys['Next_Timestamp'], y=verified_buys['Next_Open'],
-                             mode='markers', marker=dict(symbol='triangle-up', size=12, color='lime', line=dict(width=1, color='black')),
+                             mode='markers', marker=dict(symbol='triangle-up', size=14, color='lime', line=dict(width=1, color='black')),
                              name='Verified BUY'), row=1, col=1)
 
+    # User requested grey markers to be solid and clearly visible
     fig.add_trace(go.Scatter(x=rejected_buys['Next_Timestamp'], y=rejected_buys['Next_Open'],
-                             mode='markers', marker=dict(symbol='triangle-up', size=10, color='gray', opacity=0.5),
+                             mode='markers', marker=dict(symbol='triangle-up', size=12, color='gray', line=dict(width=1, color='black'), opacity=1.0),
                              name='Rejected BUY'), row=1, col=1)
 
     fig.add_trace(go.Scatter(x=verified_sells['Next_Timestamp'], y=verified_sells['Next_Open'],
-                             mode='markers', marker=dict(symbol='triangle-down', size=12, color='red', line=dict(width=1, color='black')),
+                             mode='markers', marker=dict(symbol='triangle-down', size=14, color='red', line=dict(width=1, color='black')),
                              name='Verified SELL'), row=1, col=1)
 
     fig.add_trace(go.Scatter(x=rejected_sells['Next_Timestamp'], y=rejected_sells['Next_Open'],
-                             mode='markers', marker=dict(symbol='triangle-down', size=10, color='gray', opacity=0.5),
+                             mode='markers', marker=dict(symbol='triangle-down', size=12, color='gray', line=dict(width=1, color='black'), opacity=1.0),
                              name='Rejected SELL'), row=1, col=1)
 
     # Plot Probabilities instead of RSI
