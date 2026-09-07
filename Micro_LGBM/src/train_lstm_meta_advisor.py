@@ -15,15 +15,25 @@ def create_sequences(data, labels, seq_length):
     xs = []
     ys = []
     for i in range(len(data) - seq_length):
-        x = data[i + 1 : i + seq_length + 1]
+        x = data[i + 1 : i + seq_length + 1].copy()
         y = labels[i + seq_length]
+
         if y != -1:
+            seq_min = np.min(x[:, 0:4])
+            seq_max = np.max(x[:, 0:4])
+
+            if seq_max > seq_min:
+                x[:, 0:4] = (x[:, 0:4] - seq_min) / (seq_max - seq_min)
+            else:
+                x[:, 0:4] = 0.0
+
             xs.append(x)
             ys.append(y)
+
     return np.array(xs), np.array(ys)
 
 def generate_meta_dataset_and_train():
-    data_path = "/home/Jules/LGBM_mlops/Micro_LGBM/data/meta_labeled_fused_v5.csv"
+    data_path = "/home/Jules/LGBM_mlops/Micro_LGBM/data/meta_labeled_fused_v5_mom.csv"
     print(f"Loading realistically labeled dollar bars from {data_path}...")
     df = pd.read_csv(data_path)
 
@@ -31,7 +41,8 @@ def generate_meta_dataset_and_train():
         'Open', 'High', 'Low', 'Close', 'Total_Volume',
         'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
         'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S',
-        'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal'
+        'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal',
+        'Consecutive_Bars', 'Dist_EMA_10', 'EMA_10_Slope' # New Momentum Features
     ]
 
     existing_lstm_features = lstm_features
@@ -40,19 +51,21 @@ def generate_meta_dataset_and_train():
             df[f] = 0.0
 
     X_lstm_raw = df[existing_lstm_features].fillna(0).values
+
     X_lstm_mean = np.mean(X_lstm_raw, axis=0)
     X_lstm_std = np.std(X_lstm_raw, axis=0)
 
     np.save("/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_scaler_mean.npy", X_lstm_mean)
     np.save("/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_scaler_std.npy", X_lstm_std)
 
-    X_lstm_norm = (X_lstm_raw - X_lstm_mean) / (X_lstm_std + 1e-8)
+    X_lstm_norm = X_lstm_raw.copy()
+    X_lstm_norm[:, 4:] = (X_lstm_raw[:, 4:] - X_lstm_mean[4:]) / (X_lstm_std[4:] + 1e-8)
+
     meta_labels = df['Meta_Label'].values
 
     SEQ_LENGTH = 20
     X_seq, y_seq = create_sequences(X_lstm_norm, meta_labels, SEQ_LENGTH)
 
-    # Check class balance
     print("Class balance in sequences:")
     unique, counts = np.unique(y_seq, return_counts=True)
     print(dict(zip(unique, counts)))
@@ -72,6 +85,7 @@ def generate_meta_dataset_and_train():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\n🚀 INITIALIZING LSTM TRAINING ON: {device} 🚀")
 
+    # Must update architecture input size
     model = MetaAdvisorLSTM(input_dim=len(existing_lstm_features)).to(device)
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)

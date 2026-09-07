@@ -138,7 +138,7 @@ def evaluate_tick_state(clf, current_features_dict):
         "p_short": float(p_short),
         "p_noise": float(p_noise),
         "is_stable": bool(is_stable),
-        "features": f_dict  # Include raw features for the Meta-Advisor LSTM
+        "features": current_features_dict  # Include raw features for the Meta-Advisor LSTM
     }
     try:
         zmq_publisher.send_string(f"HUD {json.dumps(hud_data)}")
@@ -346,6 +346,18 @@ class TickReceiver(threading.Thread):
 
                 # We need to compute simple moving features across closed bars
                 bar_closes = collections.deque(maxlen=15)
+                bar_opens = collections.deque(maxlen=15)
+                bar_highs = collections.deque(maxlen=15)
+                bar_lows = collections.deque(maxlen=15)
+
+                consecutive_bars = 0
+                last_dir = 0
+                bar_opens = collections.deque(maxlen=15)
+                bar_highs = collections.deque(maxlen=15)
+                bar_lows = collections.deque(maxlen=15)
+
+                consecutive_bars = 0
+                last_dir = 0
 
                 while self.running:
                     try:
@@ -400,6 +412,17 @@ class TickReceiver(threading.Thread):
                                     close_p = tick_data['mid_price']
 
                                     bar_closes.append(close_p)
+                                    bar_opens.append(open_p)
+                                    bar_highs.append(high_p)
+                                    bar_lows.append(low_p)
+
+                                    # Calculate Consecutive Bars
+                                    current_dir = 1 if close_p > open_p else (-1 if close_p < open_p else 0)
+                                    if current_dir == last_dir and current_dir != 0:
+                                        consecutive_bars += current_dir
+                                    else:
+                                        consecutive_bars = current_dir
+                                        last_dir = current_dir
 
                                     # Calc features
                                     atr = (high_p - low_p) if len(bar_closes) < 2 else np.mean([abs(bar_closes[i] - bar_closes[i-1]) for i in range(1, len(bar_closes))])
@@ -412,7 +435,29 @@ class TickReceiver(threading.Thread):
                                         'Tick_Speed': len(current_bar_ticks), # Proxy
                                         'Upper_Wick_ATR': upper_wick / atr,
                                         'Lower_Wick_ATR': lower_wick / atr,
+                                        'Consecutive_Bars': consecutive_bars,
                                     }
+
+                                    # Calculate EMA 10 and Slope
+                                    if len(bar_closes) >= 10:
+                                        import pandas as pd
+                                        series = pd.Series(list(bar_closes))
+                                        ema = series.ewm(span=10, adjust=False).mean()
+                                        current_ema = ema.iloc[-1]
+
+                                        rolling_max = max(list(bar_highs)[-14:]) if len(bar_highs) >= 14 else max(list(bar_highs))
+                                        rolling_min = min(list(bar_lows)[-14:]) if len(bar_lows) >= 14 else min(list(bar_lows))
+                                        norm_factor = (rolling_max - rolling_min) + 1e-8
+
+                                        f_dict['Dist_EMA_10'] = (close_p - current_ema) / norm_factor
+
+                                        if len(ema) >= 4:
+                                            f_dict['EMA_10_Slope'] = (current_ema - ema.iloc[-4]) / norm_factor
+                                        else:
+                                            f_dict['EMA_10_Slope'] = 0.0
+                                    else:
+                                        f_dict['Dist_EMA_10'] = 0.0
+                                        f_dict['EMA_10_Slope'] = 0.0
 
                                     # Fuse Macro State (O(1) Memory Lookup)
                                     with macro_lock:
@@ -443,7 +488,10 @@ class TickReceiver(threading.Thread):
                                     f_dict['Ask'] = tick_data.get('ask', close_p)
                                     f_dict['pos_types'] = tick_data.get('pos_types', [0])
                                     f_dict['pos_prices'] = tick_data.get('pos_prices', [0.0])
-                                    f_dict['Total_Volume'] = sum(t.get('volume', 0.0) for t in current_bar_ticks)
+
+                                    # The dict structure generated above doesn't use 'volume', it uses 'dollar_vol'. We use 'Total_Volume' as a flag for a closed bar.
+                                    # Since Dollar Bars are constructed exactly when current_dollar_volume exceeds 100k, we can just use that.
+                                    f_dict['Total_Volume'] = current_dollar_volume
 
                                     # M5, M15, M30 RSI and Price Velocity aren't natively computed here without Pandas and full history.
                                     # But we can 0-pad them here and they will be normalized to ~0 during inference by the StandardScaler.
@@ -451,6 +499,11 @@ class TickReceiver(threading.Thread):
                                     f_dict['M15_RSI_14'] = 50.0
                                     f_dict['M30_RSI_14'] = 50.0
                                     f_dict['Price_Velocity'] = 0.0
+
+                                    if 'Consecutive_Bars' not in f_dict:
+                                        f_dict['Consecutive_Bars'] = consecutive_bars
+                                        f_dict['Dist_EMA_10'] = 0.0
+                                        f_dict['EMA_10_Slope'] = 0.0
 
                                     # Extract time from the last tick in the bar
                                     f_dict['Time'] = current_bar_ticks[-1].get('time', time.time())

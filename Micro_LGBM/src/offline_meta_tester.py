@@ -1,3 +1,5 @@
+import sys
+sys.path.append("/home/Jules/LGBM_mlops/Micro_LGBM/src")
 import pandas as pd
 import numpy as np
 import lightgbm as lgb
@@ -13,8 +15,7 @@ def run_offline_test():
     print("📈 OFFLINE META-ADVISOR TEST & VISUALIZER 📈")
     print("==================================================")
 
-    # Use the FULL fused dataset to generate FRESH probabilities, avoiding the empty signal bug
-    data_path = "/home/Jules/LGBM_mlops/Micro_LGBM/data/fused_features_dollar_bars.csv"
+    data_path = "/home/Jules/LGBM_mlops/Micro_LGBM/data/meta_labeled_fused_v5_mom.csv"
     lgbm_model_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lgbm_model_fusion_v5_tuned.pkl"
     lstm_model_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_meta_advisor.pth"
     scaler_mean_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_scaler_mean.npy"
@@ -24,14 +25,12 @@ def run_offline_test():
     print(f"Loading raw dollar bars from {data_path}...")
     df = pd.read_csv(data_path)
 
-    # Sort chronologically
     df['Start_Timestamp'] = pd.to_datetime(df['Start_Timestamp'])
     df = df.sort_values('Start_Timestamp').reset_index(drop=True)
 
     print(f"Loading LightGBM model from {lgbm_model_path}...")
     clf = joblib.load(lgbm_model_path)
 
-    # Re-run LGBM predictions dynamically on the FULL dataset
     lgbm_features = [
         'Tick_Speed', 'Dist_Micro_R', 'Dist_Micro_S',
         'Dist_Sec_R', 'Dist_Sec_S',
@@ -71,16 +70,15 @@ def run_offline_test():
 
     print("Loaded Real LGBM Baseline Signals.")
 
-    # 2. Run LSTM Meta-Advisor
     print(f"Loading LSTM from {lstm_model_path}...")
     lstm_features = [
         'Open', 'High', 'Low', 'Close', 'Total_Volume',
         'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
         'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S',
-        'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal'
+        'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal',
+        'Consecutive_Bars', 'Dist_EMA_10', 'EMA_10_Slope'
     ]
 
-    # Verify these features exist in the df, pad if missing
     existing_lstm_features = lstm_features
     for f in existing_lstm_features:
         if f not in df.columns:
@@ -93,7 +91,6 @@ def run_offline_test():
         model.load_state_dict(torch.load(lstm_model_path, map_location=torch.device('cpu')))
     model.eval()
 
-    # Normalize the LSTM features using the exact SAME scalers saved during training!
     X_raw = df[existing_lstm_features].fillna(0).values
     try:
         X_mean = np.load(scaler_mean_path)
@@ -104,7 +101,8 @@ def run_offline_test():
         X_mean = np.mean(X_raw, axis=0)
         X_std = np.std(X_raw, axis=0)
 
-    X_norm = (X_raw - X_mean) / (X_std + 1e-8)
+    X_norm = X_raw.copy()
+    X_norm[:, 4:] = (X_raw[:, 4:] - X_mean[4:]) / (X_std[4:] + 1e-8)
 
     df['Meta_Confidence'] = np.nan
     df['Meta_Verdict'] = np.nan
@@ -113,8 +111,16 @@ def run_offline_test():
     with torch.no_grad():
         for i in range(SEQ_LENGTH, len(df)):
             if df['LGBM_Signal'].iloc[i] != 0:
-                # The sequence must INCLUDE the current bar (i) to match live inference behavior
-                seq = X_norm[i - SEQ_LENGTH + 1 : i + 1]
+                seq = X_norm[i - SEQ_LENGTH + 1 : i + 1].copy()
+
+                # Apply the per-sequence min-max scaling for OHLC prices to match training logic
+                seq_min = np.min(seq[:, 0:4])
+                seq_max = np.max(seq[:, 0:4])
+                if seq_max > seq_min:
+                    seq[:, 0:4] = (seq[:, 0:4] - seq_min) / (seq_max - seq_min)
+                else:
+                    seq[:, 0:4] = 0.0
+
                 inputs = torch.tensor(np.array([seq]), dtype=torch.float32)
                 prob = model(inputs).item()
                 df.at[i, 'Meta_Confidence'] = prob
@@ -124,7 +130,6 @@ def run_offline_test():
 
     signal_indices = df[df['LGBM_Signal'] != 0].index
     if len(signal_indices) > 0:
-        # Place the last signal in the middle of the chart
         start_idx = max(0, signal_indices[-1] - 250)
         end_idx = min(len(df), start_idx + 500)
         plot_df = df.iloc[start_idx:end_idx].copy()
@@ -142,9 +147,6 @@ def run_offline_test():
                                  low=plot_df['Low'], close=plot_df['Close'],
                                  name='Price'), row=1, col=1)
 
-    lgbm_buys = plot_df[plot_df['LGBM_Signal'] == 1]
-    lgbm_sells = plot_df[plot_df['LGBM_Signal'] == -1]
-
     plot_df["Next_Timestamp"] = plot_df["Start_Timestamp"].shift(-1)
     plot_df["Next_Open"] = plot_df["Open"].shift(-1)
 
@@ -157,13 +159,17 @@ def run_offline_test():
     verified_sells = lgbm_sells[lgbm_sells['Meta_Verdict'] == 1]
     rejected_sells = lgbm_sells[lgbm_sells['Meta_Verdict'] == 0]
 
+    # Explicitly print the counts so we can see what exists in the plot dataframe
+    print(f"Plotting Verified Buys: {len(verified_buys)}, Rejected Buys: {len(rejected_buys)}")
+    print(f"Plotting Verified Sells: {len(verified_sells)}, Rejected Sells: {len(rejected_sells)}")
+
     fig.add_trace(go.Scatter(x=verified_buys['Next_Timestamp'], y=verified_buys['Next_Open'],
                              mode='markers', marker=dict(symbol='triangle-up', size=14, color='lime', line=dict(width=1, color='black')),
                              name='Verified BUY'), row=1, col=1)
 
-    # User requested grey markers to be solid and clearly visible
+    # User requested solid grey. #808080 is solid grey.
     fig.add_trace(go.Scatter(x=rejected_buys['Next_Timestamp'], y=rejected_buys['Next_Open'],
-                             mode='markers', marker=dict(symbol='triangle-up', size=12, color='gray', line=dict(width=1, color='black'), opacity=1.0),
+                             mode='markers', marker=dict(symbol='triangle-up', size=14, color='#808080', line=dict(width=1, color='black')),
                              name='Rejected BUY'), row=1, col=1)
 
     fig.add_trace(go.Scatter(x=verified_sells['Next_Timestamp'], y=verified_sells['Next_Open'],
@@ -171,10 +177,10 @@ def run_offline_test():
                              name='Verified SELL'), row=1, col=1)
 
     fig.add_trace(go.Scatter(x=rejected_sells['Next_Timestamp'], y=rejected_sells['Next_Open'],
-                             mode='markers', marker=dict(symbol='triangle-down', size=12, color='gray', line=dict(width=1, color='black'), opacity=1.0),
+                             mode='markers', marker=dict(symbol='triangle-down', size=14, color='#808080', line=dict(width=1, color='black')),
                              name='Rejected SELL'), row=1, col=1)
 
-    # Plot Probabilities instead of RSI
+    # Plot Probabilities
     fig.add_trace(go.Scatter(x=plot_df["Start_Timestamp"], y=plot_df["P_Long"], line=dict(color='#00FF00', width=1), name='P(Long)'), row=2, col=1)
     fig.add_trace(go.Scatter(x=plot_df["Start_Timestamp"], y=plot_df["P_Short"], line=dict(color='#FF00FF', width=1), name='P(Short)'), row=2, col=1)
     fig.add_trace(go.Scatter(x=plot_df["Start_Timestamp"], y=plot_df["P_Noise"], line=dict(color='gray', width=1, dash='solid'), name='P(Noise)'), row=2, col=1)
