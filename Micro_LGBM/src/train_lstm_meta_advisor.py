@@ -19,6 +19,8 @@ def create_sequences(data, labels, seq_length):
         y = labels[i + seq_length]
 
         if y != -1:
+            # Per-sequence Min-Max scaling for OHLC to preserve relative shape
+            # Find the min and max across all 4 OHLC columns in this specific window
             seq_min = np.min(x[:, 0:4])
             seq_max = np.max(x[:, 0:4])
 
@@ -33,7 +35,7 @@ def create_sequences(data, labels, seq_length):
     return np.array(xs), np.array(ys)
 
 def generate_meta_dataset_and_train():
-    data_path = "/home/Jules/LGBM_mlops/Micro_LGBM/data/meta_labeled_fused_v5_mom.csv"
+    data_path = "/home/Jules/LGBM_mlops/Micro_LGBM/data/meta_labeled_fused_v5.csv"
     print(f"Loading realistically labeled dollar bars from {data_path}...")
     df = pd.read_csv(data_path)
 
@@ -42,7 +44,7 @@ def generate_meta_dataset_and_train():
         'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
         'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S',
         'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal',
-        'Consecutive_Bars', 'Dist_EMA_10', 'EMA_10_Slope' # New Momentum Features
+        'Consecutive_Bars', 'Dist_EMA_10', 'EMA_10_Slope'
     ]
 
     existing_lstm_features = lstm_features
@@ -51,7 +53,6 @@ def generate_meta_dataset_and_train():
             df[f] = 0.0
 
     X_lstm_raw = df[existing_lstm_features].fillna(0).values
-
     X_lstm_mean = np.mean(X_lstm_raw, axis=0)
     X_lstm_std = np.std(X_lstm_raw, axis=0)
 
@@ -59,13 +60,14 @@ def generate_meta_dataset_and_train():
     np.save("/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_scaler_std.npy", X_lstm_std)
 
     X_lstm_norm = X_lstm_raw.copy()
+    # Apply global normalization ONLY to features starting from index 4 (Total_Volume onwards)
     X_lstm_norm[:, 4:] = (X_lstm_raw[:, 4:] - X_lstm_mean[4:]) / (X_lstm_std[4:] + 1e-8)
-
     meta_labels = df['Meta_Label'].values
 
     SEQ_LENGTH = 20
     X_seq, y_seq = create_sequences(X_lstm_norm, meta_labels, SEQ_LENGTH)
 
+    # Check class balance
     print("Class balance in sequences:")
     unique, counts = np.unique(y_seq, return_counts=True)
     print(dict(zip(unique, counts)))
@@ -85,10 +87,15 @@ def generate_meta_dataset_and_train():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\n🚀 INITIALIZING LSTM TRAINING ON: {device} 🚀")
 
-    # Must update architecture input size
+    # Using Optuna Best Params:
+    # hidden_dim: 128, num_layers: 1, dropout_rate: 0.344, lr: 0.00118
+    # We need to update nn_meta_model.py first to accept these if we want to change architecture.
+    # Since nn_meta_model.py uses default hidden=256, layers=2, we'll keep architecture static for now
+    # but use the tuned learning rate.
+
     model = MetaAdvisorLSTM(input_dim=len(existing_lstm_features)).to(device)
     criterion = nn.BCELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.00118)
 
     EPOCHS = 10
 
