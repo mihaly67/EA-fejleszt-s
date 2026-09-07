@@ -34,10 +34,10 @@ def get_feature_importance():
     df = pd.read_csv(data_path)
 
     lstm_features = [
-        'Open', 'High', 'Low', 'Close', 'Total_Volume',
-        'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
+        'Total_Volume',
+        'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
         'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S',
-        'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal',
+        'P_Long', 'P_Short', 'P_Noise',
         'Consecutive_Bars', 'Dist_EMA_10', 'EMA_10_Slope'
     ]
 
@@ -53,8 +53,7 @@ def get_feature_importance():
     X_lstm_mean = np.load(scaler_mean_path)
     X_lstm_std = np.load(scaler_std_path)
 
-    X_lstm_norm = X_lstm_raw.copy()
-    X_lstm_norm[:, 4:] = (X_lstm_raw[:, 4:] - X_lstm_mean[4:]) / (X_lstm_std[4:] + 1e-8)
+    X_lstm_norm = (X_lstm_raw - X_lstm_mean) / (X_lstm_std + 1e-8)
 
     meta_labels = df['Meta_Label'].values
 

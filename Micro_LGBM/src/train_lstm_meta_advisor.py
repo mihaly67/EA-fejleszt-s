@@ -23,7 +23,7 @@ def create_sequences(data, labels, seq_length):
     return np.array(xs), np.array(ys)
 
 def generate_meta_dataset_and_train():
-    data_path = "/home/Jules/LGBM_mlops/Micro_LGBM/data/meta_labeled_fused_v5.csv"
+    data_path = "/home/Jules/LGBM_mlops/Micro_LGBM/data/meta_labeled_fused_v5_mom.csv"
     print(f"Loading realistically labeled dollar bars from {data_path}...")
     df = pd.read_csv(data_path)
 
@@ -34,6 +34,30 @@ def generate_meta_dataset_and_train():
         'P_Long', 'P_Short', 'P_Noise',
         'Consecutive_Bars', 'Dist_EMA_10', 'EMA_10_Slope'
     ]
+
+    # Generate historic LGBM probabilities to provide valid training context
+    lgbm_model_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lgbm_model_fusion_v5_tuned.pkl"
+    clf = joblib.load(lgbm_model_path)
+
+    lgbm_base_features = [
+        'Tick_Speed', 'Dist_Micro_R', 'Dist_Micro_S',
+        'Dist_Sec_R', 'Dist_Sec_S',
+        'Dist_Ter_R', 'Dist_Ter_S',
+        'Stoch_State_M1',
+        'Upper_Wick_ATR', 'Lower_Wick_ATR'
+    ]
+
+    for f in lgbm_base_features:
+        if f not in df.columns:
+            df[f] = 0.0
+
+    X_lgbm = df[lgbm_base_features].fillna(0)
+    probs = clf.predict_proba(X_lgbm)
+
+    classes = clf.classes_
+    df['P_Long'] = probs[:, np.where(classes == 2)[0][0]]
+    df['P_Short'] = probs[:, np.where(classes == 0)[0][0]]
+    df['P_Noise'] = probs[:, np.where(classes == 1)[0][0]]
 
     existing_lstm_features = lstm_features
     for f in existing_lstm_features:

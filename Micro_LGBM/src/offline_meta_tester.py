@@ -108,12 +108,14 @@ def run_offline_test():
 
     print("Running LSTM inference on sequences...")
     with torch.no_grad():
+        # Evaluate EVERY bar to create a continuous confidence curve
         for i in range(SEQ_LENGTH, len(df)):
+            seq = X_norm[i - SEQ_LENGTH + 1 : i + 1].copy()
+            inputs = torch.tensor(np.array([seq]), dtype=torch.float32)
+            prob = model(inputs).item()
+            df.at[i, 'Meta_Confidence'] = prob
+
             if df['LGBM_Signal'].iloc[i] != 0:
-                seq = X_norm[i - SEQ_LENGTH + 1 : i + 1].copy()
-                inputs = torch.tensor(np.array([seq]), dtype=torch.float32)
-                prob = model(inputs).item()
-                df.at[i, 'Meta_Confidence'] = prob
                 df.at[i, 'Meta_Verdict'] = 1 if prob > 0.5 else 0
 
     print("Generating Plotly visualization...")
@@ -128,9 +130,9 @@ def run_offline_test():
         plot_df = df.iloc[-500:].copy()
         print("No signals found in dataset. Plotting last 500 rows.")
 
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                        vertical_spacing=0.03, subplot_titles=('Price & Signals (LGBM + Meta Advisor)', 'LGBM Probabilities'),
-                        row_width=[0.2, 0.7])
+    fig = make_subplots(rows=3, cols=1, shared_xaxes=True,
+                        vertical_spacing=0.03, subplot_titles=('Price & Signals (LGBM + Meta Advisor)', 'LGBM Probabilities', 'LSTM Confidence Curve'),
+                        row_width=[0.2, 0.2, 0.6])
 
     fig.add_trace(go.Candlestick(x=plot_df['Start_Timestamp'],
                                  open=plot_df['Open'], high=plot_df['High'],
@@ -178,6 +180,10 @@ def run_offline_test():
     fig.add_hline(y=TH_LONG, line_dash="dash", row=2, col=1, line_color="green", annotation_text=f"Long TH: {TH_LONG}")
     fig.add_hline(y=TH_SHORT, line_dash="dash", row=2, col=1, line_color="red", annotation_text=f"Short TH: {TH_SHORT}")
     fig.add_hline(y=TH_NOISE, line_dash="dot", row=2, col=1, line_color="gray", annotation_text=f"Noise TH: {TH_NOISE}")
+
+    # Plot LSTM Confidence on row 3
+    fig.add_trace(go.Scatter(x=plot_df["Start_Timestamp"], y=plot_df["Meta_Confidence"], line=dict(color='cyan', width=1.5), name='LSTM Confidence'), row=3, col=1)
+    fig.add_hline(y=0.5, line_dash="dash", row=3, col=1, line_color="yellow", annotation_text="Verdict TH: 0.5")
 
     fig.update_layout(title='Offline Meta-Advisor Evaluation (LGBM vs LSTM)',
                       xaxis_rangeslider_visible=False,

@@ -54,9 +54,10 @@ df = pd.read_csv(data_path)
 
 # Based on SHAP, we DROP the noise features: Open, High, Low, Close, M5_RSI_14
 lstm_features = [
-    'Total_Volume', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
+    'Total_Volume',
+    'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
     'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S',
-    'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal',
+    'P_Long', 'P_Short', 'P_Noise',
     'Consecutive_Bars', 'Dist_EMA_10', 'EMA_10_Slope'
 ]
 

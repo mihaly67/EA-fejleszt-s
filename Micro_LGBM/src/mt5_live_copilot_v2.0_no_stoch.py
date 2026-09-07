@@ -493,11 +493,10 @@ class TickReceiver(threading.Thread):
                                     # Since Dollar Bars are constructed exactly when current_dollar_volume exceeds 100k, we can just use that.
                                     f_dict['Total_Volume'] = current_dollar_volume
 
-                                    # M5, M15, M30 RSI and Price Velocity aren't natively computed here without Pandas and full history.
-                                    # But we can 0-pad them here and they will be normalized to ~0 during inference by the StandardScaler.
-                                    f_dict['M5_RSI_14'] = 50.0
-                                    f_dict['M15_RSI_14'] = 50.0
-                                    f_dict['M30_RSI_14'] = 50.0
+                                    # Since M15_RSI_14 and M30_RSI_14 are heavily used by the LSTM,
+                                    # we pull them from the macro_cache instead of padding them.
+                                    f_dict['M15_RSI_14'] = macro_cache.get('M15_RSI_14', 50.0)
+                                    f_dict['M30_RSI_14'] = macro_cache.get('M30_RSI_14', 50.0)
                                     f_dict['Price_Velocity'] = 0.0
 
                                     if 'Consecutive_Bars' not in f_dict:
