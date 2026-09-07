@@ -17,10 +17,10 @@ def start_meta_advisor_service():
     # LSTM specific settings
     SEQ_LENGTH = 20
     lstm_features = [
-        'Open', 'High', 'Low', 'Close', 'Total_Volume',
-        'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
+        'Total_Volume',
+        'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
         'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S',
-        'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal',
+        'P_Long', 'P_Short', 'P_Noise',
         'Consecutive_Bars', 'Dist_EMA_10', 'EMA_10_Slope'
     ]
 
@@ -100,19 +100,8 @@ def start_meta_advisor_service():
                 if lgbm_signal != 0:
                     seq_array = np.array(feature_buffer)
 
-                    # Normalize using the GLOBAL mean and std from training for indicators/volumes!
-                    # OHLC (indices 0,1,2,3) gets MIN-MAX scaled locally.
-                    seq_norm = seq_array.copy()
-                    seq_norm[:, 4:] = (seq_array[:, 4:] - X_lstm_mean[4:]) / (X_lstm_std[4:] + 1e-8)
-
-                    seq_min = np.min(seq_norm[:, 0:4])
-                    seq_max = np.max(seq_norm[:, 0:4])
-                    if seq_max > seq_min:
-                        seq_norm[:, 0:4] = (seq_norm[:, 0:4] - seq_min) / (seq_max - seq_min)
-                    else:
-                        seq_norm[:, 0:4] = 0.0
-
-                    # Convert to tensor: shape (batch=1, seq_length, input_dim)
+                    # Normalize ALL features globally using training scaler
+                    seq_norm = (seq_array - X_lstm_mean) / (X_lstm_std + 1e-8)
                     seq_tensor = torch.tensor(seq_norm, dtype=torch.float32).unsqueeze(0)
 
                     # Run LSTM Inference

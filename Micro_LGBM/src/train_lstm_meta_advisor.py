@@ -17,21 +17,9 @@ def create_sequences(data, labels, seq_length):
     for i in range(len(data) - seq_length):
         x = data[i + 1 : i + seq_length + 1].copy()
         y = labels[i + seq_length]
-
         if y != -1:
-            # Per-sequence Min-Max scaling for OHLC to preserve relative shape
-            # Find the min and max across all 4 OHLC columns in this specific window
-            seq_min = np.min(x[:, 0:4])
-            seq_max = np.max(x[:, 0:4])
-
-            if seq_max > seq_min:
-                x[:, 0:4] = (x[:, 0:4] - seq_min) / (seq_max - seq_min)
-            else:
-                x[:, 0:4] = 0.0
-
             xs.append(x)
             ys.append(y)
-
     return np.array(xs), np.array(ys)
 
 def generate_meta_dataset_and_train():
@@ -40,10 +28,10 @@ def generate_meta_dataset_and_train():
     df = pd.read_csv(data_path)
 
     lstm_features = [
-        'Open', 'High', 'Low', 'Close', 'Total_Volume',
-        'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
+        'Total_Volume',
+        'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
         'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S',
-        'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal',
+        'P_Long', 'P_Short', 'P_Noise',
         'Consecutive_Bars', 'Dist_EMA_10', 'EMA_10_Slope'
     ]
 
@@ -59,9 +47,7 @@ def generate_meta_dataset_and_train():
     np.save("/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_scaler_mean.npy", X_lstm_mean)
     np.save("/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_scaler_std.npy", X_lstm_std)
 
-    X_lstm_norm = X_lstm_raw.copy()
-    # Apply global normalization ONLY to features starting from index 4 (Total_Volume onwards)
-    X_lstm_norm[:, 4:] = (X_lstm_raw[:, 4:] - X_lstm_mean[4:]) / (X_lstm_std[4:] + 1e-8)
+    X_lstm_norm = (X_lstm_raw - X_lstm_mean) / (X_lstm_std + 1e-8)
     meta_labels = df['Meta_Label'].values
 
     SEQ_LENGTH = 20

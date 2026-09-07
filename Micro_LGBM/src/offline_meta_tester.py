@@ -72,10 +72,10 @@ def run_offline_test():
 
     print(f"Loading LSTM from {lstm_model_path}...")
     lstm_features = [
-        'Open', 'High', 'Low', 'Close', 'Total_Volume',
-        'M5_RSI_14', 'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
+        'Total_Volume',
+        'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
         'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S',
-        'P_Long', 'P_Short', 'P_Noise', 'LGBM_Signal',
+        'P_Long', 'P_Short', 'P_Noise',
         'Consecutive_Bars', 'Dist_EMA_10', 'EMA_10_Slope'
     ]
 
@@ -101,8 +101,7 @@ def run_offline_test():
         X_mean = np.mean(X_raw, axis=0)
         X_std = np.std(X_raw, axis=0)
 
-    X_norm = X_raw.copy()
-    X_norm[:, 4:] = (X_raw[:, 4:] - X_mean[4:]) / (X_std[4:] + 1e-8)
+    X_norm = (X_raw - X_mean) / (X_std + 1e-8)
 
     df['Meta_Confidence'] = np.nan
     df['Meta_Verdict'] = np.nan
@@ -112,15 +111,6 @@ def run_offline_test():
         for i in range(SEQ_LENGTH, len(df)):
             if df['LGBM_Signal'].iloc[i] != 0:
                 seq = X_norm[i - SEQ_LENGTH + 1 : i + 1].copy()
-
-                # Apply the per-sequence min-max scaling for OHLC prices to match training logic
-                seq_min = np.min(seq[:, 0:4])
-                seq_max = np.max(seq[:, 0:4])
-                if seq_max > seq_min:
-                    seq[:, 0:4] = (seq[:, 0:4] - seq_min) / (seq_max - seq_min)
-                else:
-                    seq[:, 0:4] = 0.0
-
                 inputs = torch.tensor(np.array([seq]), dtype=torch.float32)
                 prob = model(inputs).item()
                 df.at[i, 'Meta_Confidence'] = prob
