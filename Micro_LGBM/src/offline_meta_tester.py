@@ -118,17 +118,20 @@ def run_offline_test():
             if df['LGBM_Signal'].iloc[i] != 0:
                 df.at[i, 'Meta_Verdict'] = 1 if prob > 0.5 else 0
 
-    print("Generating Plotly visualization...")
+    print(f"Meta_Confidence Stats: Mean: {df['Meta_Confidence'].mean():.4f}, Min: {df['Meta_Confidence'].min():.4f}, Max: {df['Meta_Confidence'].max():.4f}")
+    print(f"Total Verified Buys: {len(df[(df['LGBM_Signal'] == 1) & (df['Meta_Verdict'] == 1)])}, Rejected: {len(df[(df['LGBM_Signal'] == 1) & (df['Meta_Verdict'] == 0)])}")
+    print(f"Total Verified Sells: {len(df[(df['LGBM_Signal'] == -1) & (df['Meta_Verdict'] == 1)])}, Rejected: {len(df[(df['LGBM_Signal'] == -1) & (df['Meta_Verdict'] == 0)])}")
 
+    print("Generating Plotly visualization...")
     signal_indices = df[df['LGBM_Signal'] != 0].index
     if len(signal_indices) > 0:
-        start_idx = max(0, signal_indices[-1] - 250)
-        end_idx = min(len(df), start_idx + 500)
+        start_idx = max(0, len(df) - 1000)
+        end_idx = len(df)
         plot_df = df.iloc[start_idx:end_idx].copy()
         print(f"Plotting subset from index {start_idx} to {end_idx} containing {len(plot_df[plot_df['LGBM_Signal'] != 0])} signals.")
     else:
-        plot_df = df.iloc[-500:].copy()
-        print("No signals found in dataset. Plotting last 500 rows.")
+        plot_df = df.iloc[-1000:].copy()
+        print("No signals found in dataset. Plotting last 1000 rows.")
 
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True,
                         vertical_spacing=0.03, subplot_titles=('Price & Signals (LGBM + Meta Advisor)', 'LGBM Probabilities', 'LSTM Confidence Curve'),

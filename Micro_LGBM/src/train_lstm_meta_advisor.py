@@ -101,10 +101,18 @@ def generate_meta_dataset_and_train():
     # hidden_dim: 128, num_layers: 1, dropout_rate: 0.344, lr: 0.00118
     # We need to update nn_meta_model.py first to accept these if we want to change architecture.
     # Since nn_meta_model.py uses default hidden=256, layers=2, we'll keep architecture static for now
-    # but use the tuned learning rate.
+    # but use the tuned learning rate.    # Calculate class weights for Imbalance
+    count_0 = counts[0]
+    count_1 = counts[1]
+    total = count_0 + count_1
+    weight_0 = total / (2.0 * count_0)
+    weight_1 = total / (2.0 * count_1)
+    print(f"Class Weights -> 0 (Reject): {weight_0:.4f}, 1 (Verify): {weight_1:.4f}")
 
     model = MetaAdvisorLSTM(input_dim=len(existing_lstm_features)).to(device)
-    criterion = nn.BCELoss()
+
+    # We apply element-wise weights inside the training loop to BCELoss without reduction
+    criterion = nn.BCELoss(reduction='none')
     optimizer = optim.Adam(model.parameters(), lr=0.00118)
 
     EPOCHS = 10
@@ -116,12 +124,16 @@ def generate_meta_dataset_and_train():
             batch_X, batch_y = batch_X.to(device), batch_y.to(device)
             optimizer.zero_grad()
             outputs = model(batch_X)
+
+            # Apply class weights dynamically
+            batch_weights = torch.where(batch_y == 1.0, torch.tensor(weight_1, device=device), torch.tensor(weight_0, device=device))
             loss = criterion(outputs, batch_y)
+            loss = (loss * batch_weights).mean()
+
             loss.backward()
             optimizer.step()
             train_loss += loss.item() * batch_X.size(0)
         train_loss /= len(train_loader.dataset)
-
         model.eval()
         val_loss = 0.0
         correct = 0
@@ -131,6 +143,11 @@ def generate_meta_dataset_and_train():
                 batch_X, batch_y = batch_X.to(device), batch_y.to(device)
                 outputs = model(batch_X)
                 loss = criterion(outputs, batch_y)
+
+                # Apply the same weights to val loss for consistent metric tracking
+                batch_weights = torch.where(batch_y == 1.0, torch.tensor(weight_1, device=device), torch.tensor(weight_0, device=device))
+                loss = (loss * batch_weights).mean()
+
                 val_loss += loss.item() * batch_X.size(0)
                 predicted = (outputs > 0.5).float()
                 total += batch_y.size(0)
