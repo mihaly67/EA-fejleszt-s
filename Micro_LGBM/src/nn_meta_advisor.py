@@ -6,24 +6,27 @@ import collections
 import time
 import os
 
+# Instead of an MLP, we use the MetaAdvisorLSTM which expects sequential data.
 from nn_meta_model import MetaAdvisorLSTM
 
-def start_standalone_advisor_service():
+def start_meta_advisor_service():
     print("==========================================")
-    print("🤖 STARTING STANDALONE LSTM SERVICE 🤖")
+    print("🤖 STARTING LSTM META-ADVISOR SERVICE 🤖")
     print("==========================================")
 
-    # Same independent feature set used in training
+    # LSTM specific settings
     SEQ_LENGTH = 20
     lstm_features = [
         'Total_Volume',
         'M15_RSI_14', 'M30_RSI_14', 'Price_Velocity', 'Tick_Speed',
         'Dist_Micro_R', 'Dist_Micro_S', 'Dist_Sec_R', 'Dist_Sec_S', 'Dist_Ter_R', 'Dist_Ter_S',
+        'P_Long', 'P_Short', 'P_Noise',
         'Consecutive_Bars', 'Dist_EMA_10', 'EMA_10_Slope'
     ]
 
-    model = MetaAdvisorLSTM(input_dim=len(lstm_features), output_dim=3)
-    model_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_standalone_advisor.pth"
+    # Initialize the model
+    model = MetaAdvisorLSTM(input_dim=len(lstm_features))
+    model_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_meta_advisor.pth"
     try:
         model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         print(f"[INFO] Loaded trained LSTM weights from {model_path}")
@@ -33,17 +36,19 @@ def start_standalone_advisor_service():
 
     model.eval()
 
-    scaler_mean_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_standalone_scaler_mean.npy"
-    scaler_std_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_standalone_scaler_std.npy"
+    # Load scaling parameters generated during training
+    scaler_mean_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_scaler_mean.npy"
+    scaler_std_path = "/home/Jules/LGBM_mlops/Micro_LGBM/models/lstm_scaler_std.npy"
     try:
         X_lstm_mean = np.load(scaler_mean_path)
         X_lstm_std = np.load(scaler_std_path)
-        print("[INFO] Loaded LSTM standalone scalers.")
+        print("[INFO] Loaded global LSTM scalers for live sequence normalization.")
     except FileNotFoundError:
         print("[WARNING] Missing global scalers! Falling back to 0 mean / 1 std. Inference will be inaccurate.")
         X_lstm_mean = np.zeros(len(lstm_features))
         X_lstm_std = np.ones(len(lstm_features))
 
+    # We need a rolling buffer to build sequences
     feature_buffer = collections.deque(maxlen=SEQ_LENGTH)
 
     context = zmq.Context()
@@ -53,14 +58,11 @@ def start_standalone_advisor_service():
     sub_socket.connect("tcp://127.0.0.1:5557")
     sub_socket.setsockopt_string(zmq.SUBSCRIBE, "HUD")
 
-    # Publish standalone LSTM signals (Port 5558)
+    # Publish verdicts (Port 5558)
     pub_socket = context.socket(zmq.PUB)
     pub_socket.bind("tcp://0.0.0.0:5558")
 
-    print(f"[INFO] LSTM Standalone Advisor listening on 5557 (SUB) and publishing on 5558 (PUB)...\n")
-
-    # Track the last bar time to avoid tick flooding
-    last_bar_time = None
+    print(f"[INFO] LSTM Meta-Advisor listening on 5557 (SUB) and publishing on 5558 (PUB)...\n")
 
     while True:
         try:
@@ -74,22 +76,21 @@ def start_standalone_advisor_service():
             if current_bar_time is None:
                 continue
 
-            # Only advance the LSTM sequence if a new dollar bar has fully formed
-            # We track the 'Total_Volume' to identify unique bars, or bar_time_seconds
-            # Since dollar bars are volume/dollar based, their "Bar_Time_Seconds" resets.
             current_total_volume = f_dict.get('Total_Volume', 0)
 
-            # Simple heuristic: If Total_Volume drops, it means a new bar just started
-            # OR if it's the very first tick.
-            if not hasattr(start_standalone_advisor_service, "prev_vol"):
-                start_standalone_advisor_service.prev_vol = -1
+            if not hasattr(start_meta_advisor_service, "prev_vol"):
+                start_meta_advisor_service.prev_vol = -1
 
             is_new_bar = False
-            if current_total_volume < start_standalone_advisor_service.prev_vol:
+            if current_total_volume < start_meta_advisor_service.prev_vol:
                 is_new_bar = True
 
-            # We update the *current* active bar in the buffer dynamically without advancing,
-            # UNLESS a new bar has definitively started.
+            # Inject LGBM's current probabilities and signals into the feature vector!
+            # The HUD payload includes signal and probabilities from LightGBM
+            f_dict['LGBM_Signal'] = data.get('signal', 0)
+            f_dict['P_Long'] = data.get('p_long', 0.0)
+            f_dict['P_Short'] = data.get('p_short', 0.0)
+            f_dict['P_Noise'] = data.get('p_noise', 0.0)
 
             current_vector = []
             for f in lstm_features:
@@ -98,51 +99,41 @@ def start_standalone_advisor_service():
             if is_new_bar or len(feature_buffer) == 0:
                 feature_buffer.append(current_vector)
             else:
-                # Update the last element in the buffer with the live tick
                 feature_buffer[-1] = current_vector
 
-            start_standalone_advisor_service.prev_vol = current_total_volume
+            start_meta_advisor_service.prev_vol = current_total_volume
 
-            lstm_signal = 0
-            p_short = 0.0
-            p_noise = 0.0
-            p_long = 0.0
+            meta_signal = "WAITING"
+            out_prob = 0.0
+
+            lgbm_signal = data.get('signal', 0)
 
             if len(feature_buffer) == SEQ_LENGTH:
-                seq_array = np.array(feature_buffer)
-                seq_norm = (seq_array - X_lstm_mean) / (X_lstm_std + 1e-8)
+                if lgbm_signal != 0:
+                    seq_array = np.array(feature_buffer)
+                    seq_norm = (seq_array - X_lstm_mean) / (X_lstm_std + 1e-8)
+                    seq_tensor = torch.tensor(seq_norm, dtype=torch.float32).unsqueeze(0)
 
-                seq_tensor = torch.tensor(seq_norm, dtype=torch.float32).unsqueeze(0)
+                    with torch.no_grad():
+                        out_prob = model(seq_tensor).item()
 
-                with torch.no_grad():
-                    out_logits = model(seq_tensor)
-                    probs = torch.softmax(out_logits, dim=1).numpy()[0]
+                    meta_signal = "Verified" if out_prob > 0.5 else "Rejected"
 
-                p_short = float(probs[0])
-                p_noise = float(probs[1])
-                p_long = float(probs[2])
-
-                # Standalone classification
-                pred_idx = np.argmax(probs)
-                if pred_idx == 0:
-                    lstm_signal = -1
-                elif pred_idx == 2:
-                    lstm_signal = 1
+                    color = "\033[92m" if meta_signal == "Verified" else "\033[91m"
+                    print(f"[{time.strftime('%H:%M:%S')}] LGBM Signal: {lgbm_signal}")
+                    print(f"  > LSTM Meta-Verdict       : {color} {meta_signal} (Confidence: {out_prob*100:.1f}%)\033[0m")
                 else:
-                    lstm_signal = 0
+                    meta_signal = "None"
+            else:
+                if lgbm_signal != 0:
+                    print(f"[{time.strftime('%H:%M:%S')}] LGBM Signal: {lgbm_signal}")
+                    print(f"  > LSTM Meta-Verdict       : WAITING (Buffering: {len(feature_buffer)}/{SEQ_LENGTH})")
 
-                color = "\033[92m" if lstm_signal == 1 else ("\033[91m" if lstm_signal == -1 else "\033[90m")
-                print(f"[{time.strftime('%H:%M:%S')}] LSTM Standalone Signal: {color}{lstm_signal}\033[0m | P_Long: {p_long*100:.1f}%, P_Short: {p_short*100:.1f}%, P_Noise: {p_noise*100:.1f}%")            # Broadcast Verdict to GUI (Decoupled completely from LGBM)
-            # The HUD expects 'meta_verdict' and prefix 'META'
-            meta_signal = "Verified" if lstm_signal == 1 else ("Rejected" if lstm_signal == -1 else "None")
+            # Broadcast Verdict to GUI
             meta_payload = {
-                "lgbm_signal": lstm_signal, # Fallback to satisfy HUD logic
-                "meta_verdict": meta_signal,
-                "meta_confidence": p_long if lstm_signal == 1 else p_short,
-                "lstm_signal": lstm_signal,
-                "lstm_p_long": p_long,
-                "lstm_p_short": p_short,
-                "lstm_p_noise": p_noise
+                "lgbm_signal": lgbm_signal,
+                "meta_verdict": meta_signal, # "Verified", "Rejected", "None", or "WAITING"
+                "meta_confidence": out_prob
             }
             pub_socket.send_string(f"META {json.dumps(meta_payload)}")
 
@@ -153,4 +144,4 @@ def start_standalone_advisor_service():
             time.sleep(1)
 
 if __name__ == "__main__":
-    start_standalone_advisor_service()
+    start_meta_advisor_service()
